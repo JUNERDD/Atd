@@ -43,7 +43,7 @@ export function runToolchainAndIndexChecks(
       hasHomebrewPath: s.hasHomebrewPath,
       hasUsrLocalPath: s.hasUsrLocalPath,
     };
-    const rem = docsRem('optimize_shell_rc_profile', 'login-shell');
+    const rem = actRem('optimize_shell_rc_profile', 'none');
     if (d.fallbackReason)
       return { status: 'warn', reasonCode: d.fallbackReason, metrics, remediation: rem };
     if (d.resolved && (d.durationMs ?? 0) > 2500) {
@@ -75,13 +75,13 @@ export function runToolchainAndIndexChecks(
           status: 'fail',
           reasonCode: 'unsupported_node_version',
           metrics,
-          remediation: docsRem('reinstall_official_release', 'node-runtime'),
+          remediation: docsRem('reinstall_official_release'),
         };
   });
 
   const rgCheck = timedCheck('shell.ripgrep_binary', 'shell_and_toolchain', async () => {
     const rgBin = await (hooks.resolveRg ?? resolveRipgrep)().catch(() => null);
-    const rem = docsRem('install_native_ripgrep', 'toolchain');
+    const rem = actRem('install_native_ripgrep', 'none');
     if (!rgBin) {
       return {
         status: 'warn',
@@ -107,19 +107,21 @@ export function runToolchainAndIndexChecks(
   });
 
   const cliCheck = timedCheck('shell.host_cli_tools', 'shell_and_toolchain', async () => {
-    const [launchers, git, uv, npx] = await Promise.all([
-      Promise.resolve(requiredMcpLaunchers),
-      probe('git', ['--version']),
-      probe('uv', ['--version']),
-      probe('npx', ['--version']),
-    ]);
-    const map: Record<string, BinaryProbeOutcome> = { git, uv, uvx: uv, npx };
-    const missingRequired = launchers.some((tool) => map[tool] && !map[tool].ok);
-    const anyEbadarch = [git, uv, npx].some((r) => r.errorKind === 'ebadarch');
+    const gitP = probe('git', ['--version']);
+    const uvP = probe('uv', ['--version']);
+    const npxP = probe('npx', ['--version']);
+    const launchers = await Promise.resolve(requiredMcpLaunchers);
+    const uvxP = launchers.includes('uvx') ? probe('uvx', ['--version']) : Promise.resolve(null);
+    const [git, uv, npx, uvx] = await Promise.all([gitP, uvP, npxP, uvxP]);
+    const map: Record<string, BinaryProbeOutcome | null> = { git, uv, uvx, npx };
+    const missingRequired = launchers.some((tool) => tool in map && !map[tool]?.ok);
+    const probed = uvx ? [git, uv, npx, uvx] : [git, uv, npx];
+    const anyEbadarch = probed.some((r) => r.errorKind === 'ebadarch');
     const metrics: Record<string, DoctorMetricValue> = {
       gitOk: git.ok,
       uvOk: uv.ok,
       npxOk: npx.ok,
+      ...(uvx ? { uvxOk: uvx.ok } : {}),
       requiredLauncherCount: launchers.length,
     };
     const rem = actRem('fix_mcp_cli_toolchain', 'open_settings_section', 'extensions');
@@ -134,7 +136,7 @@ export function runToolchainAndIndexChecks(
     if (anyEbadarch) {
       return { status: 'warn', reasonCode: 'cli_bad_cpu_arch_ebadarch', metrics, remediation: rem };
     }
-    if ([git, uv, npx].some((r) => !r.ok)) {
+    if (probed.some((r) => !r.ok)) {
       return { status: 'pass', reasonCode: 'optional_cli_not_installed', metrics };
     }
     return { status: 'pass', reasonCode: 'ok', metrics };
@@ -156,18 +158,33 @@ export function runToolchainAndIndexChecks(
       state,
       ...(loadErrorCode ? { loadErrorCode } : {}),
     };
-    const rem = docsRem('reinstall_or_check_home_volume', 'file-index');
-    if (state === 'unsupported' && loadErrorCode) {
-      return { status: 'fail', reasonCode: 'napi_addon_load_failed', metrics, remediation: rem };
-    }
+    const localRem = actRem('reinstall_or_check_home_volume', 'none');
     if (loadErrorCode === 'options') {
-      return { status: 'warn', reasonCode: 'external_home_unsupported', metrics, remediation: rem };
+      return {
+        status: 'warn',
+        reasonCode: 'external_home_unsupported',
+        metrics,
+        remediation: localRem,
+      };
+    }
+    if (state === 'unsupported' && loadErrorCode) {
+      return {
+        status: 'fail',
+        reasonCode: 'napi_addon_load_failed',
+        metrics,
+        remediation: docsRem('reinstall_or_check_home_volume'),
+      };
     }
     if (loadErrorCode === 'events') {
-      return { status: 'warn', reasonCode: 'fsevents_watch_failed', metrics, remediation: rem };
+      return {
+        status: 'warn',
+        reasonCode: 'fsevents_watch_failed',
+        metrics,
+        remediation: localRem,
+      };
     }
     if (state === 'degraded' || loadErrorCode === 'store') {
-      return { status: 'warn', reasonCode: 'index_store_failed', metrics, remediation: rem };
+      return { status: 'warn', reasonCode: 'index_store_failed', metrics, remediation: localRem };
     }
     return { status: 'pass', reasonCode: 'ok', metrics };
   });

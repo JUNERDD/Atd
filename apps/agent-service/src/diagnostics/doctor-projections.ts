@@ -5,36 +5,25 @@ import path from 'node:path';
 import {
   parse,
   ServiceConnectionsFileSchema,
-  type McpDiagnosticProjection,
   type ProviderBaseUrlShape,
   type ProviderDiagnosticProjection,
   type RecentRunDiagnosticProjection,
   type ServiceConnection,
   type ServiceDiagnosticsSnapshot,
 } from '@atd/agent-contracts';
+import { isRestrictedComputerRun } from '../computer/tool-set.js';
 import type { Ledger } from '../ledger.js';
-import type { Logger } from '../logging.js';
-import { launchKind } from '../mcp/launch-fingerprint.js';
-import { probeLaunchApprovalKeyState, type LaunchApprovalKeyState } from '../mcp/launch-key.js';
-import { launchStoreFile } from '../mcp/launch-store.js';
-import { getActiveMcpConnectionStates } from '../mcp/lifecycle.js';
-import { loadPluginServerLayer } from '../mcp/plugin-servers.js';
-import { readStoredServers } from '../mcp/server-file.js';
+import { catalogDefaultBaseUrl } from '../providers/catalog.js';
 import { currentCredentialIssues } from '../providers/credential-issues.js';
+import { readMcpPassiveSummary, type McpPassiveSummary } from './doctor-mcp-summary.js';
 import { extractNestedErrorCode, isTlsCertCode } from './doctor-probes.js';
 import { sanitizeMachineCode } from './run-prep-ring.js';
 
+export { readMcpPassiveSummary, type McpPassiveSummary };
+
 export const SNAPSHOT_MAX_BYTES = 600 * 1024;
 const LOCAL_NET_CODES = new Set(['EHOSTUNREACH', 'ENETUNREACH', 'EACCES']);
-const LAUNCHER_NAMES = new Set(['npx', 'uv', 'uvx', 'git']);
 const errorCategoriesByDataDir = new Map<string, Map<string, string>>();
-
-export interface McpPassiveSummary {
-  launchApprovalKeyState: LaunchApprovalKeyState;
-  servers: McpDiagnosticProjection[];
-  degradedCount: number;
-  requiredLaunchers: string[];
-}
 
 export function recordProviderErrorCategory(
   dataDir: string,
@@ -122,78 +111,19 @@ export async function readConnectionsPassive(dataDir: string): Promise<ServiceCo
   }
 }
 
-export async function readMcpPassiveSummary(
-  serviceId: string,
-  dataDir: string,
-  log: Logger,
-): Promise<McpPassiveSummary> {
-  let approvalIds = new Set<string>();
+function normalizeComparableUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
   try {
-    const raw = JSON.parse(await readFile(launchStoreFile(dataDir), 'utf8')) as {
-      approvals?: Array<{ serverId?: unknown }>;
-    };
-    if (Array.isArray(raw.approvals)) {
-      approvalIds = new Set(
-        raw.approvals.map((a) => a.serverId).filter((id): id is string => typeof id === 'string'),
-      );
-    }
+    const u = new URL(trimmed);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return `${u.protocol}//${u.host.toLowerCase()}${u.pathname.replace(/\/+$/, '')}${u.search}`;
   } catch {
-    // Absent or unreadable.
+    return null;
   }
-  const [storedServers, pluginLayer, keyState] = await Promise.all([
-    readStoredServers(dataDir).catch(() => []),
-    loadPluginServerLayer(dataDir, log),
-    probeLaunchApprovalKeyState(serviceId, {
-      hasSavedApprovals: approvalIds.size > 0,
-      timeoutMs: 300,
-    }),
-  ]);
-  const liveStates = getActiveMcpConnectionStates(dataDir);
-  const all = [...storedServers, ...pluginLayer.records].slice(0, 128);
-  const launchers = new Set<string>();
-  let degradedCount = 0;
-
-  const servers: McpDiagnosticProjection[] = all.map((srv) => {
-    const state = liveStates
-      ? liveStates.get(srv.serverId)
-      : srv.disabled
-        ? 'disabled'
-        : 'disconnected';
-    if (state === 'error' || state === 'auth_required' || state === 'approval_required')
-      degradedCount += 1;
-    const rawErr = liveStates?.lastError(srv.serverId) ?? '';
-    const lastErrorCode = rawErr
-      ? (sanitizeMachineCode(rawErr.split(/\W+/, 1)[0]) ?? 'mcp_error')
-      : null;
-    if (!srv.disabled && srv.stdio?.command) {
-      const base = path.basename(srv.stdio.command.trim()).toLowerCase();
-      if (LAUNCHER_NAMES.has(base)) launchers.add(base);
-    }
-    const needsApproval = launchKind(srv as Parameters<typeof launchKind>[0]) !== null;
-    const approval = !needsApproval
-      ? 'notRequired'
-      : approvalIds.has(srv.serverId)
-        ? 'approved'
-        : 'required';
-    return {
-      serverId: srv.serverId,
-      transport: srv.transport,
-      state,
-      approval,
-      envKeyCount: Object.keys(srv.stdio?.env ?? {}).length,
-      headerKeyCount: Object.keys(srv.http?.headers ?? {}).length,
-      lastErrorCode,
-    };
-  });
-  return {
-    launchApprovalKeyState: keyState,
-    servers,
-    degradedCount,
-    requiredLaunchers: [...launchers],
-  };
 }
 
-function parseBaseUrlShape(baseUrl: string): ProviderBaseUrlShape {
+function parseBaseUrlShape(baseUrl: string, provider: string): ProviderBaseUrlShape {
   const trimmed = baseUrl.trim();
   if (!trimmed) return { customHost: false, scheme: null, loopback: false };
   try {
@@ -201,8 +131,10 @@ function parseBaseUrlShape(baseUrl: string): ProviderBaseUrlShape {
     const scheme =
       parsed.protocol === 'http:' ? 'http' : parsed.protocol === 'https:' ? 'https' : 'invalid';
     const host = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    const norm = normalizeComparableUrl(trimmed);
+    const defaultNorm = normalizeComparableUrl(catalogDefaultBaseUrl(provider));
     return {
-      customHost: true,
+      customHost: norm === null || defaultNorm === null || norm !== defaultNorm,
       scheme,
       loopback: host === 'localhost' || host === '127.0.0.1' || host === '::1',
     };
@@ -225,7 +157,9 @@ export function projectProviders(
           ? 'credential_missing'
           : null;
     const authType =
-      conn.authType === 'oauth' ? 'oauth' : conn.authType === 'api_key' ? 'api_key' : 'none';
+      conn.authType === 'oauth' || conn.authType === 'api_key' || conn.authType === 'ambient'
+        ? conn.authType
+        : 'none';
     const lastErrorCategory =
       getProviderErrorCategory(dataDir, conn.connectionId) ??
       credentialIssue ??
@@ -243,7 +177,7 @@ export function projectProviders(
       connected: conn.connected,
       hasCredential: conn.hasCredential,
       credentialIssue,
-      baseUrlShape: parseBaseUrlShape(conn.baseUrl),
+      baseUrlShape: parseBaseUrlShape(conn.baseUrl, conn.provider),
       modelCheckStatus,
       lastErrorCategory,
     };
@@ -285,9 +219,11 @@ export function projectRecentRuns(
               (e) => e.phase.includes('memory') || (e.reasonCode?.includes('memory') ?? false),
             ),
             catalogError: matching.some((e) => e.reasonCode?.includes('catalog') ?? false),
-            mcpStrippedForUnattended: matching.some(
-              (e) => e.phase.includes('mcp') || (e.reasonCode?.includes('mcp') ?? false),
-            ),
+            mcpStrippedForUnattended:
+              isRestrictedComputerRun(run.snapshot) ||
+              matching.some(
+                (e) => e.phase.includes('mcp') || (e.reasonCode?.includes('mcp') ?? false),
+              ),
           },
         },
       });
@@ -300,26 +236,52 @@ export function projectRecentRuns(
 export function enforceSnapshotSizeCap(
   snapshot: ServiceDiagnosticsSnapshot,
 ): ServiceDiagnosticsSnapshot {
-  while (Buffer.byteLength(JSON.stringify(snapshot), 'utf8') > SNAPSHOT_MAX_BYTES) {
-    if (snapshot.boundedLogRing.lines.length > 0) {
-      const droppedLine = snapshot.boundedLogRing.lines.shift()!;
+  let totalBytes = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
+  if (totalBytes <= SNAPSHOT_MAX_BYTES) return snapshot;
+
+  while (totalBytes > SNAPSHOT_MAX_BYTES) {
+    const needToFree = totalBytes - SNAPSHOT_MAX_BYTES + 16;
+    let freed = 0;
+
+    const lines = snapshot.boundedLogRing.lines;
+    let dropLines = 0;
+    let rawFreed = 0;
+    while (dropLines < lines.length && freed < needToFree) {
+      const line = lines[dropLines]!;
+      freed +=
+        Buffer.byteLength(JSON.stringify(line), 'utf8') + (dropLines < lines.length - 1 ? 1 : 0);
+      rawFreed += Buffer.byteLength(line, 'utf8');
+      dropLines += 1;
+    }
+    if (dropLines > 0) {
+      lines.splice(0, dropLines);
       snapshot.boundedLogRing.byteLength = Math.max(
         0,
-        snapshot.boundedLogRing.byteLength - Buffer.byteLength(droppedLine, 'utf8'),
+        snapshot.boundedLogRing.byteLength - rawFreed,
       );
-      snapshot.boundedLogRing.droppedEntries += 1;
-      continue;
+      snapshot.boundedLogRing.droppedEntries += dropLines;
     }
-    if (snapshot.recentRuns.length > 0) {
-      snapshot.recentRuns.pop();
-      continue;
+
+    while (snapshot.recentRuns.length > 0 && freed < needToFree) {
+      const comma = snapshot.recentRuns.length > 1 ? 1 : 0;
+      const item = snapshot.recentRuns.pop()!;
+      freed += Buffer.byteLength(JSON.stringify(item), 'utf8') + comma;
     }
-    if (snapshot.runPrepDecisionRing.entries.length > 0) {
-      snapshot.runPrepDecisionRing.entries.shift();
-      snapshot.runPrepDecisionRing.droppedCount += 1;
-      continue;
+
+    const ringEntries = snapshot.runPrepDecisionRing.entries;
+    let dropRing = 0;
+    while (dropRing < ringEntries.length && freed < needToFree) {
+      const comma = dropRing < ringEntries.length - 1 ? 1 : 0;
+      freed += Buffer.byteLength(JSON.stringify(ringEntries[dropRing]!), 'utf8') + comma;
+      dropRing += 1;
     }
-    break;
+    if (dropRing > 0) {
+      ringEntries.splice(0, dropRing);
+      snapshot.runPrepDecisionRing.droppedCount += dropRing;
+    }
+
+    if (freed === 0) break;
+    totalBytes = Buffer.byteLength(JSON.stringify(snapshot), 'utf8');
   }
   return snapshot;
 }

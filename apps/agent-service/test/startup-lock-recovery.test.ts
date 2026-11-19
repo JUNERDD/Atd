@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, test } from 'node:test';
@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import {
   acquireLock,
   getConfigRecoveryState,
+  isLockHolderAlive,
   prepareServe,
   releaseLock,
   resetConfigRecoveryStateForTests,
@@ -160,3 +161,39 @@ test('cli serve contention does NOT delete live owner service.lock and scrubs pe
 
   await releaseLock(paths);
 });
+
+test(
+  'B11: isLockHolderAlive preserves live lock when ps times out, fails with non-zero code, or is missing',
+  { skip: process.platform === 'win32' },
+  async () => {
+    const fakeBin = await makeTempDir('atd-fake-ps-');
+    const fakePs = path.join(fakeBin, 'ps');
+    const origPath = process.env.PATH;
+    try {
+      // 1. `ps` hangs past 1000ms timeout (`killed: true`) while `process.pid` is alive -> true.
+      await writeFile(fakePs, '#!/bin/sh\n/bin/sleep 2\n', 'utf8');
+      await chmod(fakePs, 0o755);
+      process.env.PATH = `${fakeBin}${path.delimiter}${origPath ?? ''}`;
+      assert.equal(await isLockHolderAlive(process.pid, 'node'), true);
+
+      // 2. `ps` fails with exit status 2 while `process.pid` is alive -> true.
+      await writeFile(fakePs, '#!/bin/sh\nexit 2\n', 'utf8');
+      await chmod(fakePs, 0o755);
+      assert.equal(await isLockHolderAlive(process.pid, 'node'), true);
+
+      // 3. `ps` missing (`ENOENT`) while `process.pid` is alive -> true.
+      process.env.PATH = fakeBin;
+      await rm(fakePs, { force: true });
+      assert.equal(await isLockHolderAlive(process.pid, 'node'), true);
+
+      // 4. Dead PID still returns false.
+      const exited = spawn('/bin/sh', ['-c', 'exit 0'], { stdio: 'ignore' });
+      const deadPid = exited.pid!;
+      await new Promise<void>((resolve) => exited.once('close', () => resolve()));
+      process.env.PATH = origPath;
+      assert.equal(await isLockHolderAlive(deadPid, 'node'), false);
+    } finally {
+      process.env.PATH = origPath;
+    }
+  },
+);

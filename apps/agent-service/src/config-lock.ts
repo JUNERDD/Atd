@@ -77,23 +77,29 @@ function matchesServiceExecutable(comm: string, expectedCommand?: string): boole
   );
 }
 
-/** Checks both PID liveness and executable identity to guard against same-UID PID reuse. */
-export async function isLockHolderAlive(pid: number, expectedCommand?: string): Promise<boolean> {
+function isPidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
-  } catch {
-    return false;
+    return true;
+  } catch (error) {
+    return isErrnoCode(error, 'EPERM');
   }
+}
+
+/** Checks both PID liveness and executable identity to guard against same-UID PID reuse. */
+export async function isLockHolderAlive(pid: number, expectedCommand?: string): Promise<boolean> {
+  if (!isPidAlive(pid)) return false;
   if (process.platform === 'win32') return true;
   try {
     const { stdout } = await execFileAsync('ps', ['-p', String(pid), '-o', 'comm='], {
       timeout: 1000,
     });
     const comm = stdout.trim();
-    return comm ? matchesServiceExecutable(comm, expectedCommand) : false;
-  } catch (error) {
-    // Minimal environments without `ps` fall back to `process.kill(pid, 0)`.
-    return isErrnoCode(error, 'ENOENT');
+    return comm ? matchesServiceExecutable(comm, expectedCommand) : isPidAlive(pid);
+  } catch {
+    // Only treat `ps` failure as dead if `pid` actually exited (`ESRCH`); timeouts (`killed`) or
+    // spawn/exec failures (`ENOENT`, `EAGAIN`, `EMFILE`, `ENFILE`, `EACCES`) preserve live locks.
+    return isPidAlive(pid);
   }
 }
 

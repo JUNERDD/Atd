@@ -33,7 +33,12 @@ export const ProviderDiagnosticProjectionSchema = Type.Object(
     /** First 8 lowercase hex characters of `SHA-256(connectionId)` for intra-snapshot correlation. */
     connectionIdHash: Type.String({ minLength: 8, maxLength: 8, pattern: '^[0-9a-f]{8}$' }),
     provider: Type.String({ minLength: 1, maxLength: 128 }),
-    authType: Type.Union([Type.Literal('api_key'), Type.Literal('oauth'), Type.Literal('none')]),
+    authType: Type.Union([
+      Type.Literal('api_key'),
+      Type.Literal('oauth'),
+      Type.Literal('none'),
+      Type.Literal('ambient'),
+    ]),
     connected: Type.Boolean(),
     hasCredential: Type.Boolean(),
     credentialIssue: Type.Union([

@@ -10,13 +10,18 @@ import type {
   DoctorRemediationAction,
   ServiceConnection,
 } from '@atd/agent-contracts';
-import { KeyringBackend, keyringServiceName, type KeyringStatus } from '../credentials/keyring.js';
+import {
+  hasKeyringModule,
+  keyringServiceName,
+  probeTestKeyringPassive,
+  type KeyringStatus,
+} from '../credentials/keyring.js';
 import { getCachedStatus, isTestMode } from '../credentials/keyring-cache.js';
 import type { ServicePaths } from '../storage.js';
 import { scrubPersonalPaths } from './scrub-paths.js';
 
 export const CHILD_VERSION_TIMEOUT_MS = 1_200;
-const KEYRING_PROBE_TIMEOUT_MS = 350;
+const KEYRING_PROBE_TIMEOUT_MS = 300;
 const CONNECTIVITY_TIMEOUT_MS = 1_500;
 const DEFAULT_MIRROR_URL = 'https://downloads.atd.best';
 const TLS_CERT_CODES = new Set([
@@ -33,10 +38,10 @@ export interface BinaryProbeOutcome {
   errorKind: 'missing' | 'ebadarch' | 'timeout' | 'failed' | null;
 }
 
-export const docsRem = (remediationCode: string, slug: string): DoctorRemediation => ({
+export const docsRem = (remediationCode: string): DoctorRemediation => ({
   remediationCode,
   action: 'open_external_docs',
-  docsUrl: `https://atd.best/docs/diagnostics/${slug}`,
+  docsUrl: 'https://atd.best',
 });
 
 export const actRem = (
@@ -144,26 +149,72 @@ export function runVersionProbe(
   });
 }
 
+function probeDarwinKeychainNonModal(timeoutMs: number): Promise<KeyringStatus> {
+  return new Promise((resolve) => {
+    let settled = false;
+    let stderr = '';
+    const finish = (status: KeyringStatus) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(status);
+    };
+    const child = spawn('/usr/bin/security', ['show-keychain-info'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const timer = setTimeout(() => {
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        // Exited.
+      }
+      finish({ available: false, backend: 'unavailable', detail: 'Timed out.' });
+    }, timeoutMs);
+    child.stderr?.on('data', (c: Buffer) => {
+      if (stderr.length < 256) stderr += c.toString('utf8');
+    });
+    child.once('error', (err) => {
+      finish({
+        available: false,
+        backend: 'unavailable',
+        detail: scrubPersonalPaths(err.message).slice(0, 128),
+      });
+    });
+    child.once('close', (code) => {
+      if (code === 0) {
+        finish({ available: true, backend: 'keychain', detail: 'Default keychain unlocked.' });
+      } else {
+        const line = scrubPersonalPaths(stderr.split(/\r?\n/, 1)[0]?.trim() ?? '').slice(0, 128);
+        finish({
+          available: false,
+          backend: 'unavailable',
+          detail: line || `Keychain unavailable (exit ${code ?? 'unknown'}).`,
+        });
+      }
+    });
+  });
+}
+
 export async function probeKeyringPassive(
   serviceId: string,
   override?: () => Promise<KeyringStatus>,
 ): Promise<KeyringStatus> {
   if (override) return override();
-  if (!isTestMode()) {
-    const cached = getCachedStatus(keyringServiceName(serviceId));
-    if (cached) return cached;
+  if (isTestMode()) return probeTestKeyringPassive(serviceId, KEYRING_PROBE_TIMEOUT_MS);
+  const cached = getCachedStatus(keyringServiceName(serviceId));
+  if (cached) return cached;
+  if (!(await hasKeyringModule())) {
+    return { available: false, backend: 'unavailable', detail: 'Module missing.' };
   }
-  const backend = new KeyringBackend(serviceId);
-  const sig = AbortSignal.timeout(KEYRING_PROBE_TIMEOUT_MS);
-  return Promise.race([
-    backend.status(sig),
-    new Promise<KeyringStatus>((resolve) =>
-      setTimeout(
-        () => resolve({ available: false, backend: 'unavailable', detail: 'Timed out.' }),
-        KEYRING_PROBE_TIMEOUT_MS,
-      ),
-    ),
-  ]);
+  if (process.platform === 'darwin') {
+    return probeDarwinKeychainNonModal(KEYRING_PROBE_TIMEOUT_MS);
+  }
+  if (process.platform === 'win32') {
+    return { available: true, backend: 'credential-manager', detail: 'Passive check.' };
+  }
+  return process.env.DBUS_SESSION_BUS_ADDRESS?.trim()
+    ? { available: true, backend: 'secret-service', detail: 'Session bus present.' }
+    : { available: false, backend: 'unavailable', detail: 'No Secret Service session bus.' };
 }
 
 export async function defaultProviderEndpointProbe(conn: ServiceConnection, signal: AbortSignal) {
@@ -254,7 +305,7 @@ export async function probeMirrorHead(options: {
   const head =
     options.headMirror ??
     ((u: string, s: AbortSignal) => fetch(u, { method: 'HEAD', redirect: 'manual', signal: s }));
-  const rem = docsRem('sync_clock_or_trust_ca', 'connectivity');
+  const rem = actRem('sync_clock_or_trust_ca', 'none');
   try {
     const res = await head(url, sig);
     await res.body?.cancel().catch(() => undefined);

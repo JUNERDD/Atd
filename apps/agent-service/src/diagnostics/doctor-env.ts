@@ -7,7 +7,6 @@ import type { SystemProxy } from '../network/system-proxy.js';
 import type { ServicePaths } from '../storage.js';
 import {
   actRem,
-  docsRem,
   isNodeUseSystemCaEnabled,
   probeMirrorHead,
   probeStorageAndDisk,
@@ -98,7 +97,7 @@ function checkNetworkAndMirror(input: EnvDoctorInput, hooks: EnvDoctorHooks) {
             status: 'warn',
             reasonCode: 'glob_bypass_rules_skipped',
             metrics,
-            remediation: docsRem('configure_supported_http_proxy', 'proxy'),
+            remediation: actRem('configure_supported_http_proxy', 'none'),
           }
         : { status: 'pass', reasonCode: 'ok', metrics };
     },
@@ -129,7 +128,7 @@ function checkNetworkAndMirror(input: EnvDoctorInput, hooks: EnvDoctorHooks) {
         extraCaCertsReadable,
         nodeUseSystemCa: isNodeUseSystemCaEnabled(),
       };
-      const rem = docsRem('configure_proxy_and_ca_trust', 'proxy');
+      const rem = actRem('configure_proxy_and_ca_trust', 'none');
       if (extraCa && !extraCaCertsReadable) {
         return {
           status: 'fail',

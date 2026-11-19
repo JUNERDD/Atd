@@ -294,7 +294,12 @@ test('ServiceDiagnosticsSnapshotSchema enforces allowlist projections and ring c
     },
   };
   assert.equal(parse(ServiceDiagnosticsSnapshotSchema, snapshot).schemaVersion, 1);
-
+  for (const authType of ['api_key', 'oauth', 'none', 'ambient'] as const) {
+    assert.equal(
+      parse(ProviderDiagnosticProjectionSchema, { ...snapshot.providers[0], authType }).authType,
+      authType,
+    );
+  }
   assert.throws(
     () =>
       parse(ProviderDiagnosticProjectionSchema, {

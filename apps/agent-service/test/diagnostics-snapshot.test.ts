@@ -4,10 +4,16 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, test } from 'node:test';
-import { parse, ServiceDiagnosticsSnapshotSchema } from '@atd/agent-contracts';
+import {
+  parse,
+  ServiceDiagnosticsSnapshotSchema,
+  type ServiceConnection,
+} from '@atd/agent-contracts';
 import { prepareServe } from '../dist/config.js';
 import {
   enforceSnapshotSizeCap,
+  projectProviders,
+  projectRecentRuns,
   SNAPSHOT_MAX_BYTES,
 } from '../dist/diagnostics/doctor-projections.js';
 import {
@@ -255,10 +261,88 @@ test('Snapshot hashes connectionId, strips secrets/paths/prompts, and enforces <
     assert.ok(!json.includes(forbidden), `Snapshot must not contain ${forbidden}`);
   }
 
-  // Explicitly verify enforceSnapshotSizeCap trims down an oversized snapshot > 600 KiB.
+  // Explicitly verify enforceSnapshotSizeCap trims down an oversized snapshot > 600 KiB in <= 3 passes (B27).
   const oversized = structuredClone(snapshot);
-  oversized.boundedLogRing.lines = Array.from({ length: 200 }, () => 'y'.repeat(4000));
-  enforceSnapshotSizeCap(oversized);
+  const quoteLine = JSON.stringify({ msg: `"quoted"\\path\\`.repeat(60) });
+  oversized.boundedLogRing.lines = Array.from({ length: 492 }, () => quoteLine);
+  oversized.boundedLogRing.byteLength = oversized.boundedLogRing.lines.reduce(
+    (sum, line) => sum + Buffer.byteLength(line, 'utf8'),
+    0,
+  );
+  let fullStringifyCalls = 0;
+  const origStringify = JSON.stringify;
+  JSON.stringify = ((value: unknown, ...rest: unknown[]) => {
+    if (value === oversized) fullStringifyCalls += 1;
+    return (origStringify as (...a: unknown[]) => string)(value, ...rest);
+  }) as typeof JSON.stringify;
+  try {
+    enforceSnapshotSizeCap(oversized);
+  } finally {
+    JSON.stringify = origStringify;
+  }
+  assert.ok(
+    fullStringifyCalls <= 3,
+    `Expected <= 3 full stringify passes, got ${fullStringifyCalls}`,
+  );
   assert.ok(Buffer.byteLength(JSON.stringify(oversized), 'utf8') <= SNAPSHOT_MAX_BYTES);
   parse(ServiceDiagnosticsSnapshotSchema, oversized);
+
+  // Verify default vs custom baseUrl, ambient auth, and unattended MCP stripping (B28).
+  const mkConn = (
+    connectionId: string,
+    provider: string,
+    baseUrl: string,
+    authType: ServiceConnection['authType'],
+  ): ServiceConnection => ({
+    connectionId,
+    provider,
+    baseUrl,
+    authType,
+    name: 'Test',
+    defaultModel: 'm',
+    revision: 1,
+    connected: true,
+    hasCredential: true,
+    configurationId: 'cfg',
+    verifiedModel: 'm',
+    migratedAt: null,
+  });
+  const projs = projectProviders('/tmp/nonexistent-b28', [
+    mkConn('c1', 'openai', 'https://api.openai.com/v1', 'api_key'),
+    mkConn('c2', 'anthropic', 'https://api.anthropic.com/', 'api_key'),
+    mkConn('c3', 'openai', 'https://proxy.corp.local/v1', 'api_key'),
+    mkConn('c4', 'amazon-bedrock', '', 'ambient'),
+  ]);
+  assert.equal(projs[0]?.baseUrlShape.customHost, false);
+  assert.equal(projs[1]?.baseUrlShape.customHost, false);
+  assert.equal(projs[2]?.baseUrlShape.customHost, true);
+  assert.equal(projs[3]?.authType, 'ambient');
+
+  const unatSnapshot = {
+    trigger: { kind: 'schedule', source: 'auto_1' },
+    computer: { bindingIds: ['b1'] },
+    tools: ['read'],
+    memory: false,
+  };
+  const unatRuns = projectRecentRuns(
+    {
+      data: {
+        tasks: [
+          {
+            id: 't1',
+            runs: [
+              {
+                id: 'run_u1',
+                createdAt: '2026-11-18T01:00:00Z',
+                status: 'completed',
+                snapshot: unatSnapshot,
+              },
+            ],
+          },
+        ],
+      },
+    } as never,
+    [],
+  );
+  assert.equal(unatRuns[0]?.degradedFlags.mcpStrippedForUnattended, true);
 });
