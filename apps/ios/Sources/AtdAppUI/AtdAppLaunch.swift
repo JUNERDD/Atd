@@ -24,6 +24,9 @@ public enum AtdAppLaunch {
 /// own package here, and in `AtdWidgetsUIPackage` when the widget extension links it too.
 nonisolated public struct AtdAppUIPackage: AppIntentsPackage {
   public static var includedPackages: [any AppIntentsPackage.Type] {
-    [AtdIntentsPackage.self, AtdCameraUIPackage.self, AtdMiniAppsPackage.self]
+    [
+      AtdIntentsPackage.self, AtdCameraUIPackage.self, AtdMiniAppsPackage.self,
+      AtdAutomationsPackage.self,
+    ]
   }
 }

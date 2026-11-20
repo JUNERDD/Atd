@@ -1,7 +1,1608 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-
+    "agenda.allDay.today %@" : {
+      "comment" : "Step result: today's first event lasts all day",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today · %@ (all day)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天：%@（全天）"
+          }
+        }
+      }
+    },
+    "agenda.allDay.tomorrow %@" : {
+      "comment" : "Step result: tomorrow's first event lasts all day",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomorrow · %@ (all day)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天：%@（全天）"
+          }
+        }
+      }
+    },
+    "agenda.allDayMark" : {
+      "comment" : "A listed event that lasts all day",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All day"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全天"
+          }
+        }
+      }
+    },
+    "agenda.denied" : {
+      "comment" : "Step result: no access to Calendar or Reminders",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd can’t read Calendar or Reminders"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 不能读日历和提醒事项"
+          }
+        }
+      }
+    },
+    "agenda.first.today %@ %@" : {
+      "comment" : "Step result: today's first event, its time then its title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today %1$@ · %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天 %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "agenda.first.tomorrow %@ %@" : {
+      "comment" : "Step result: tomorrow's first event, its time then its title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomorrow %1$@ · %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天 %1$@ %2$@"
+          }
+        }
+      }
+    },
+    "agenda.more %@ %lld" : {
+      "comment" : "Step result: the first event, then how many more events and reminders",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ +%2$lld more"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@，还有 %2$lld 项"
+          }
+        }
+      }
+    },
+    "agenda.none.today" : {
+      "comment" : "Step result: today has no events or reminders",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing on your calendar today"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天没有日程"
+          }
+        }
+      }
+    },
+    "agenda.none.tomorrow" : {
+      "comment" : "Step result: tomorrow has no events or reminders",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing on your calendar tomorrow"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天没有日程"
+          }
+        }
+      }
+    },
+    "agenda.reminder %@" : {
+      "comment" : "A listed reminder",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminder: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "提醒：%@"
+          }
+        }
+      }
+    },
+    "agenda.reminders.today %lld" : {
+      "comment" : "Step result: no events today, this many reminders due",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No events today · Reminders: %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天没有日程，有 %lld 个提醒"
+          }
+        }
+      }
+    },
+    "agenda.reminders.tomorrow %lld" : {
+      "comment" : "Step result: no events tomorrow, this many reminders due",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No events tomorrow · Reminders: %lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天没有日程，有 %lld 个提醒"
+          }
+        }
+      }
+    },
+    "automation.deleted" : {
+      "comment" : "Shortcuts: an automation that was deleted in Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleted automation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已删除的自动化"
+          }
+        }
+      }
+    },
+    "builtin.carplay.name" : {
+      "comment" : "Built-in automation: today's briefing, read aloud by Shortcuts",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Read Today’s Briefing Aloud"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用语音读今日简报"
+          }
+        }
+      }
+    },
+    "builtin.carplay.trigger" : {
+      "comment" : "Built-in automation's trigger",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When CarPlay connects"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连上 CarPlay 时"
+          }
+        }
+      }
+    },
+    "builtin.desk.label" : {
+      "comment" : "What the built-in focus timer is for",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desk"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "书桌"
+          }
+        }
+      }
+    },
+    "builtin.desk.name" : {
+      "comment" : "Built-in automation: starts and ends a focus timer",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start a Focus Session"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始专注记录"
+          }
+        }
+      }
+    },
+    "builtin.desk.trigger" : {
+      "comment" : "Built-in automation's trigger",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When I tap the “Desk” NFC tag"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "碰一下「书桌」NFC 标签"
+          }
+        }
+      }
+    },
+    "builtin.home.message" : {
+      "comment" : "Text of the message the home checklist offers to send",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I’m home"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到家了"
+          }
+        }
+      }
+    },
+    "builtin.home.name" : {
+      "comment" : "Built-in automation: tomorrow's schedule, a message, today's spending",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Home Checklist"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到家清单"
+          }
+        }
+      }
+    },
+    "builtin.home.trigger" : {
+      "comment" : "Built-in automation's trigger",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When I get home"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到家时"
+          }
+        }
+      }
+    },
+    "builtin.leave.name" : {
+      "comment" : "Built-in automation: a briefing on tomorrow's schedule",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commute Briefing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通勤简报"
+          }
+        }
+      }
+    },
+    "builtin.leave.trigger" : {
+      "comment" : "Built-in automation's trigger",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When I leave work"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "离开公司时"
+          }
+        }
+      }
+    },
+    "builtin.sleep.name" : {
+      "comment" : "Built-in automation: reads today's spending from the ledger",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sum Up Today’s Spending"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总结今天的账"
+          }
+        }
+      }
+    },
+    "builtin.sleep.trigger" : {
+      "comment" : "Built-in automation's trigger",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When the Sleep Focus turns on"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「睡眠」专注模式开启时"
+          }
+        }
+      }
+    },
+    "command.deleted" : {
+      "comment" : "Step result: the step's command was deleted",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This command was deleted"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个指令已经删了"
+          }
+        }
+      }
+    },
+    "command.noResult" : {
+      "comment" : "Step result: the model's answer was empty or unreadable",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No result came back"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有得到结果"
+          }
+        }
+      }
+    },
+    "command.nothingToWorkOn" : {
+      "comment" : "Step result: the command reads text and no earlier step left any",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing to work on"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可处理的文字"
+          }
+        }
+      }
+    },
+    "family.alarm" : {
+      "comment" : "New automation: trigger kind, an alarm",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alarm"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "闹钟"
+          }
+        }
+      }
+    },
+    "family.alarm.shortcuts" : {
+      "comment" : "Setup step: the trigger's name in Shortcuts' list of personal automations",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alarm"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "闹钟"
+          }
+        }
+      }
+    },
+    "family.alarm.title" : {
+      "comment" : "Trigger of a new automation; the alarm is picked in Shortcuts",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When an alarm is stopped"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "闹钟停止时"
+          }
+        }
+      }
+    },
+    "family.arrive" : {
+      "comment" : "New automation: trigger kind, arriving somewhere",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrive"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到达"
+          }
+        }
+      }
+    },
+    "family.arrive.shortcuts" : {
+      "comment" : "Setup step: the trigger's name in Shortcuts' list of personal automations",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrive"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到达"
+          }
+        }
+      }
+    },
+    "family.arrive.title" : {
+      "comment" : "Trigger of a new automation; the place is picked in Shortcuts",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When I arrive somewhere"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到达某个地点时"
+          }
+        }
+      }
+    },
+    "family.carplay" : {
+      "comment" : "New automation: trigger kind, CarPlay connecting",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CarPlay"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CarPlay"
+          }
+        }
+      }
+    },
+    "family.carplay.shortcuts" : {
+      "comment" : "Setup step: the trigger's name in Shortcuts' list of personal automations",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CarPlay"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CarPlay"
+          }
+        }
+      }
+    },
+    "family.carplay.title" : {
+      "comment" : "Trigger of a new automation",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When CarPlay connects"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连上 CarPlay 时"
+          }
+        }
+      }
+    },
+    "family.charger" : {
+      "comment" : "New automation: trigger kind, plugging in the charger",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Charger"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "充电器"
+          }
+        }
+      }
+    },
+    "family.charger.shortcuts" : {
+      "comment" : "Setup step: the trigger's name in Shortcuts' list of personal automations",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Charger"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "充电器"
+          }
+        }
+      }
+    },
+    "family.charger.title" : {
+      "comment" : "Trigger of a new automation",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When I plug in the charger"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接上充电器时"
+          }
+        }
+      }
+    },
+    "family.focus" : {
+      "comment" : "New automation: trigger kind, a Focus turning on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focus"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专注模式"
+          }
+        }
+      }
+    },
+    "family.focus.shortcuts" : {
+      "comment" : "Setup step: the trigger's name in Shortcuts' list of personal automations",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focus"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专注模式"
+          }
+        }
+      }
+    },
+    "family.focus.title" : {
+      "comment" : "Trigger of a new automation; the Focus is picked in Shortcuts",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When a Focus turns on"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专注模式开启时"
+          }
+        }
+      }
+    },
+    "family.leave" : {
+      "comment" : "New automation: trigger kind, leaving somewhere",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "离开"
+          }
+        }
+      }
+    },
+    "family.leave.shortcuts" : {
+      "comment" : "Setup step: the trigger's name in Shortcuts' list of personal automations",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leave"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "离开"
+          }
+        }
+      }
+    },
+    "family.leave.title" : {
+      "comment" : "Trigger of a new automation; the place is picked in Shortcuts",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When I leave somewhere"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "离开某个地点时"
+          }
+        }
+      }
+    },
+    "family.nfc" : {
+      "comment" : "New automation: trigger kind, tapping an NFC tag",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NFC Tag"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NFC 标签"
+          }
+        }
+      }
+    },
+    "family.nfc.shortcuts" : {
+      "comment" : "Setup step: the trigger's name in Shortcuts' list of personal automations",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NFC"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NFC"
+          }
+        }
+      }
+    },
+    "family.nfc.title" : {
+      "comment" : "Trigger of a new automation; the tag is picked in Shortcuts",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When I tap an NFC tag"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "碰一下 NFC 标签"
+          }
+        }
+      }
+    },
+    "family.time" : {
+      "comment" : "New automation: trigger kind, a time of day",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time of Day"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "特定时间"
+          }
+        }
+      }
+    },
+    "family.time.shortcuts" : {
+      "comment" : "Setup step: the trigger's name in Shortcuts' list of personal automations",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time of Day"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "特定时间"
+          }
+        }
+      }
+    },
+    "family.time.title" : {
+      "comment" : "Trigger of a new automation; the time is picked in Shortcuts",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At the time I set"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在设定的时间"
+          }
+        }
+      }
+    },
+    "message.ask %@" : {
+      "comment" : "Question on the Live Activity before a message is sent; the argument is its text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send: “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发一条：“%@”"
+          }
+        }
+      }
+    },
+    "message.ask.to %@ %@" : {
+      "comment" : "Question on the Live Activity: recipients, then the message's text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text %1$@: “%2$@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发给%1$@：“%2$@”"
+          }
+        }
+      }
+    },
+    "message.cannotSend" : {
+      "comment" : "Step result and alert: the iPhone cannot send messages now",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This iPhone can’t send messages right now"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这台 iPhone 现在不能发信息"
+          }
+        }
+      }
+    },
+    "message.failed" : {
+      "comment" : "Step result: Messages could not send it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The message didn’t go through"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "信息没发出去"
+          }
+        }
+      }
+    },
+    "message.notSent" : {
+      "comment" : "Step result: the person passed on the message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Message not sent"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没发这条信息"
+          }
+        }
+      }
+    },
+    "message.notSent.to %@" : {
+      "comment" : "Step result: the person passed on the message to these recipients",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Didn’t text %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没发给%@"
+          }
+        }
+      }
+    },
+    "message.sent %@" : {
+      "comment" : "Step result: the person sent the message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已发出“%@”"
+          }
+        }
+      }
+    },
+    "message.sent.to %@ %@" : {
+      "comment" : "Step result: recipients, then the text the person sent",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texted %1$@ “%2$@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已发给%1$@“%2$@”"
+          }
+        }
+      }
+    },
+    "reply.alreadyRunning %@" : {
+      "comment" : "Shortcuts result: the automation's previous run is still going",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is still running"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」还在运行"
+          }
+        }
+      }
+    },
+    "reply.awaiting %@ %@" : {
+      "comment" : "Shortcuts result: the run waits for the person; then the question",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” is waiting for you: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%1$@」在等你确认：%2$@"
+          }
+        }
+      }
+    },
+    "reply.disabled %@" : {
+      "comment" : "Shortcuts result: the automation is switched off in Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is off, so it didn’t run"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」已关闭，这次没运行"
+          }
+        }
+      }
+    },
+    "reply.finished %@" : {
+      "comment" : "Shortcuts result: every step is done",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」做完了"
+          }
+        }
+      }
+    },
+    "reply.finished.failure %@" : {
+      "comment" : "Shortcuts result: done, one step failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” is done, but one step didn’t work"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」做完了，有 1 步没做成"
+          }
+        }
+      }
+    },
+    "reply.finished.failures %@ %lld" : {
+      "comment" : "Shortcuts result: done, this many steps failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” is done, but %2$lld steps didn’t work"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%1$@」做完了，有 %2$lld 步没做成"
+          }
+        }
+      }
+    },
+    "reply.focusEnded %@" : {
+      "comment" : "Shortcuts result: a focus session ended; the argument is its length",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focused for %@. Logged."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本次专注 %@，已记下"
+          }
+        }
+      }
+    },
+    "reply.focusStarted %@" : {
+      "comment" : "Shortcuts result: a focus session started; the argument is what it is for",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focus started: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始专注：%@"
+          }
+        }
+      }
+    },
+    "reply.interrupted %@" : {
+      "comment" : "Shortcuts result: the run ran out of time",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” didn’t finish. Open Atd to continue."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」没做完，打开 Atd 继续"
+          }
+        }
+      }
+    },
+    "reply.missing" : {
+      "comment" : "Shortcuts result: Shortcuts still runs an automation deleted in Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This automation was deleted in Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个自动化已经在 Atd 里删了"
+          }
+        }
+      }
+    },
+    "spending.many %lld %@" : {
+      "comment" : "Step result: how many expenses today, then the total per currency",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today: %1$lld expenses, %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天 %1$lld 笔，共 %2$@"
+          }
+        }
+      }
+    },
+    "spending.none" : {
+      "comment" : "Step result: no expenses today",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing logged today"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天还没有记账"
+          }
+        }
+      }
+    },
+    "spending.one %@" : {
+      "comment" : "Step result: one expense today; the argument is the amount",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today: 1 expense, %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天 1 笔，共 %@"
+          }
+        }
+      }
+    },
+    "step.agenda.today" : {
+      "comment" : "Automation step",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check today’s schedule"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "看今天的日程"
+          }
+        }
+      }
+    },
+    "step.agenda.today.running" : {
+      "comment" : "Automation step while it runs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking today’s schedule…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在看今天的日程…"
+          }
+        }
+      }
+    },
+    "step.agenda.tomorrow" : {
+      "comment" : "Automation step",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check tomorrow’s schedule"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "看明天的日程"
+          }
+        }
+      }
+    },
+    "step.agenda.tomorrow.running" : {
+      "comment" : "Automation step while it runs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking tomorrow’s schedule…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在看明天的日程…"
+          }
+        }
+      }
+    },
+    "step.briefing.today" : {
+      "comment" : "Automation step",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today’s briefing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日简报"
+          }
+        }
+      }
+    },
+    "step.briefing.today.running" : {
+      "comment" : "Automation step while it runs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Writing today’s briefing…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在写今日简报…"
+          }
+        }
+      }
+    },
+    "step.briefing.tomorrow" : {
+      "comment" : "Automation step",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomorrow’s briefing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天的简报"
+          }
+        }
+      }
+    },
+    "step.briefing.tomorrow.running" : {
+      "comment" : "Automation step while it runs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Writing tomorrow’s briefing…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在写明天的简报…"
+          }
+        }
+      }
+    },
+    "step.command.deleted" : {
+      "comment" : "Automation step whose command was deleted",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A deleted command"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已删除的指令"
+          }
+        }
+      }
+    },
+    "step.command.running %@" : {
+      "comment" : "Automation step while a command runs; the argument is its name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running “%@”…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在运行「%@」…"
+          }
+        }
+      }
+    },
+    "step.focus %@" : {
+      "comment" : "Automation step: the focus timer; the argument is what it is for",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Focus timer (%@)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "专注计时（%@）"
+          }
+        }
+      }
+    },
+    "step.ledger" : {
+      "comment" : "Automation step",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sum up today’s spending"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总结今天的账"
+          }
+        }
+      }
+    },
+    "step.ledger.running" : {
+      "comment" : "Automation step while it runs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Summing up today’s spending…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在总结今天的账…"
+          }
+        }
+      }
+    },
+    "step.message %@" : {
+      "comment" : "Automation step: a message with nobody chosen yet; the argument is its text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Send “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发一条“%@”"
+          }
+        }
+      }
+    },
+    "step.message.to %@ %@" : {
+      "comment" : "Automation step: recipients, then the message's text",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text %1$@ “%2$@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "发给%1$@“%2$@”"
+          }
+        }
+      }
+    },
+    "step.notRun" : {
+      "comment" : "Automation step that this kind of run cannot take",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not run"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有运行"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }

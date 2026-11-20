@@ -1,4 +1,5 @@
 import AppIntents
+import AtdAutomations
 import AtdCameraUI
 import AtdIntents
 import AtdMiniApps
@@ -14,6 +15,9 @@ import AtdMiniApps
 /// through `Bundle.module`.
 public struct AtdWidgetsUIPackage: AppIntentsPackage {
   public static var includedPackages: [any AppIntentsPackage.Type] {
-    [AtdIntentsPackage.self, AtdCameraUIPackage.self, AtdMiniAppsPackage.self]
+    [
+      AtdIntentsPackage.self, AtdCameraUIPackage.self, AtdMiniAppsPackage.self,
+      AtdAutomationsPackage.self,
+    ]
   }
 }

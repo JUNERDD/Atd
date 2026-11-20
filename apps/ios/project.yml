@@ -64,6 +64,7 @@ targets:
       - path: Sources/AtdIntents/MainBundle
       - path: Sources/AtdCameraUI/MainBundle
       - path: Sources/AtdMiniApps/MainBundle
+      - path: Sources/AtdAutomations/MainBundle
     dependencies:
       - package: AtdMobile
         product: AtdAppUI
@@ -256,6 +257,7 @@ targets:
       - path: Sources/AtdIntents/MainBundle
       - path: Sources/AtdCameraUI/MainBundle
       - path: Sources/AtdMiniApps/MainBundle
+      - path: Sources/AtdAutomations/MainBundle
     dependencies:
       - package: AtdMobile
         product: AtdWidgetsUI
@@ -353,5 +355,6 @@ schemes:
         - package: AtdMobile/AtdActionsTests
         - package: AtdMobile/AtdCameraTests
         - package: AtdMobile/AtdIntentsTests
+        - package: AtdMobile/AtdAutomationsTests
     archive:
       config: Release
