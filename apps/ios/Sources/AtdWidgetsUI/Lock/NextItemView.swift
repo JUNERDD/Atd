@@ -9,34 +9,40 @@ import WidgetKit
 struct NextItemView: View {
   let state: NextItemState
 
+  /// Text follows Dynamic Type up to this size; larger, the three lines outgrow the accessory.
+  static let largestType = DynamicTypeSize.xLarge
+
   var body: some View {
-    switch state {
-    case .item(let item):
-      content(
-        title: item.map(Self.title) ?? EntryCopy.string("next.none"),
-        place: item.flatMap(Self.place)
-      )
-      .accessibilityElement(children: .combine)
-    case .needsAccess:
-      Button(intent: GrantAgendaAccessIntent()) {
-        content(title: EntryCopy.string("access.allow"), place: nil)
+    Group {
+      switch state {
+      case .item(let item):
+        content(
+          title: item.map(Self.title) ?? EntryCopy.string("next.none"),
+          place: item.flatMap(Self.place)
+        )
+        .accessibilityElement(children: .combine)
+      case .needsAccess:
+        Button(intent: GrantAgendaAccessIntent()) {
+          content(title: EntryCopy.string("access.allow"), place: nil)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
       }
-      .buttonStyle(.plain)
-      .accessibilityElement(children: .combine)
     }
+    .dynamicTypeSize(...Self.largestType)
   }
 
   private func content(title: String, place: String?) -> some View {
     VStack(alignment: .leading, spacing: 1) {
       Label(EntryCopy.string("next.name"), systemImage: "calendar.badge.clock")
-        .font(.system(size: 13, weight: .semibold))
+        .font(.footnote.weight(.semibold))
         .foregroundStyle(.secondary)
       Text(title)
-        .font(.system(size: 16, weight: .bold))
+        .font(.callout.weight(.bold))
         .lineLimit(1)
       if let place {
         Text(place)
-          .font(.system(size: 14, weight: .medium))
+          .font(.footnote.weight(.medium))
           .foregroundStyle(.secondary)
           .lineLimit(1)
       }

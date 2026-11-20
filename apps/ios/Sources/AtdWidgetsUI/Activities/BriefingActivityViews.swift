@@ -13,14 +13,13 @@ struct BriefingActivityLockView: View {
   let isStale: Bool
 
   var body: some View {
-    // Three results of two rows each fill the 160 points the Lock Screen gives an activity.
     VStack(alignment: .leading, spacing: 8) {
       BriefingActivityHeader(attributes: attributes)
       BriefingActivityBody(attributes: attributes, state: state, isStale: isStale)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(.horizontal, 16)
-    .padding(.vertical, 12)
+    .padding(14)
+    .dynamicTypeSize(...BriefingActivityBody.largestType)
   }
 }
 
@@ -32,11 +31,11 @@ struct BriefingActivityHeader: View {
     HStack(spacing: 8) {
       BriefingActivitySticker(attributes: attributes, size: 26)
       Text(attributes.name)
-        .font(.system(size: 15, weight: .semibold))
+        .font(.subheadline.weight(.semibold))
         .lineLimit(1)
       Spacer(minLength: 8)
       Text(Self.dayText(attributes.day))
-        .font(.system(size: 12))
+        .font(.caption.weight(.medium))
         .foregroundStyle(.secondary)
         .lineLimit(1)
     }
@@ -65,6 +64,11 @@ struct BriefingActivityBody: View {
   let attributes: BriefingActivityAttributes
   let state: BriefingActivityAttributes.ContentState
   let isStale: Bool
+  @Environment(\.dynamicTypeSize) private var typeSize
+
+  /// Text follows Dynamic Type up to this size. The Lock Screen and the Dynamic Island give an
+  /// activity at most 160 points of height, which larger text would outgrow.
+  static let largestType = DynamicTypeSize.xxLarge
 
   var body: some View {
     switch state.phase {
@@ -77,16 +81,13 @@ struct BriefingActivityBody: View {
         Text(EntryCopy.string("activity.working"))
           .foregroundStyle(.secondary)
       }
-      .font(.system(size: 14))
+      .font(.subheadline.weight(.medium))
     case .done:
-      VStack(alignment: .leading, spacing: 2) {
-        ForEach(Array(state.lines.enumerated()), id: \.offset) { _, line in
-          Text(line)
-            .font(.system(size: 13))
-            .lineLimit(2)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-      }
+      // One text, so the rows a short line leaves free go to the next one.
+      Text(state.lines.joined(separator: "\n"))
+        .font(.footnote.weight(.medium))
+        .lineSpacing(2)
+        .lineLimit(Self.rows(at: typeSize))
     case .needsAccess:
       Button(intent: GrantAgendaAccessIntent()) {
         Label(EntryCopy.string("access.allow"), systemImage: "calendar")
@@ -104,11 +105,17 @@ struct BriefingActivityBody: View {
     }
   }
 
+  /// How many rows of the result fit under the header within 160 points: five at the default
+  /// size, four once Dynamic Type makes them taller.
+  static func rows(at size: DynamicTypeSize) -> Int {
+    size > .large ? 4 : 5
+  }
+
   /// Why the run stopped, with 重试 when trying again can help.
   private func problem(_ message: String, retry: Bool) -> some View {
     HStack(spacing: 10) {
       Text(message)
-        .font(.system(size: 14))
+        .font(.subheadline.weight(.medium))
         .foregroundStyle(.secondary)
         .lineLimit(2)
         .frame(maxWidth: .infinity, alignment: .leading)

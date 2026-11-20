@@ -10,34 +10,40 @@ import WidgetKit
 
 /// Snapshots of the widgets, the Lock Screen accessories and the Live Activity, which the
 /// simulator cannot show without someone adding them (A19). Each is attached to the test result
-/// as a PNG, and each checks that its content fits the space its family has on an iPhone 17 Pro.
+/// as a PNG, and each checks that its content fits the space its family has on a 393-pt-wide
+/// iPhone, the smallest size most current iPhones give it. Text follows Dynamic Type up to a
+/// largest size each surface sets, so the checks run at the default size and at the largest.
 @MainActor
 struct EntryRenderTests {
   /// The system's content margins inside a Home Screen widget.
   private static let margin: CGFloat = 16
+  /// The default text size and the largest one, which each surface caps at its own largest size.
+  private static let typeSizes: [DynamicTypeSize] = [.large, .accessibility5]
 
   @Test(arguments: [ColorScheme.light, .dark])
   func commandsWidgetFitsBothSizes(_ scheme: ColorScheme) throws {
     for (family, width, height) in [
-      (WidgetFamily.systemSmall, 170.0, 170.0), (.systemMedium, 364, 170),
+      (WidgetFamily.systemSmall, 158.0, 158.0), (.systemMedium, 338, 158),
     ] {
-      let face = CommandsWidgetView(family: family)
-      let fitted = try size(of: face, width: width - 2 * Self.margin, scheme: scheme)
-      #expect(fitted.height <= height - 2 * Self.margin, "\(family)")
-      try record(
-        face.padding(Self.margin).frame(width: width, height: height)
-          .background(Color(uiColor: .systemBackground)),
-        named: "commands-\(family)-\(scheme)", scheme: scheme)
+      let fitted = try size(
+        of: CommandsWidgetView(family: family), width: width - 2 * Self.margin, scheme: scheme)
+      #expect(fitted.height <= height - 2 * Self.margin, "\(family): \(fitted.height)")
+      // Larger names shrink to fit their buttons, which only the widget's own frame shows.
+      for type in Self.typeSizes {
+        try record(
+          CommandsWidgetView(family: family).dynamicTypeSize(type).padding(Self.margin)
+            .frame(width: width, height: height).background(Color(uiColor: .systemBackground)),
+          named: "commands-\(family)-\(type)-\(scheme)", scheme: scheme)
+      }
     }
   }
 
-  @Test(arguments: [DynamicTypeSize.large, .accessibility2])
+  @Test(arguments: [DynamicTypeSize.large, .accessibility5])
   func nextItemFitsTheRectangularAccessory(_ type: DynamicTypeSize) throws {
     let today = NextItem(
       event: AgendaEvent(
-        title: "Design review with the whole team", start: .now,
-        end: .now.addingTimeInterval(3_600),
-        isAllDay: false, location: "Room 2"),
+        title: "和设计团队一起评审下一版首页", start: .now, end: .now.addingTimeInterval(3_600),
+        isAllDay: false, location: "三楼大会议室"),
       day: .today)
     let tomorrow = NextItem(
       event: AgendaEvent(title: "Flight", start: .now, end: .now, isAllDay: true), day: .tomorrow)
@@ -47,13 +53,10 @@ struct EntryRenderTests {
     ]
     for (name, state) in states {
       let view = NextItemView(state: state).dynamicTypeSize(type).foregroundStyle(.white)
-      // At accessibility sizes the text may outgrow the accessory, which then truncates it;
-      // the snapshot shows how.
-      if !type.isAccessibilitySize {
-        #expect(try size(of: view, width: 170, scheme: .dark).height <= 76, "\(name)")
-      }
+      let fitted = try size(of: view, width: 160, scheme: .dark)
+      #expect(fitted.height <= 72, "\(name): \(fitted.height)")
       try record(
-        view.frame(width: 170, height: 76).background(.black),
+        view.frame(width: 160, height: 72).background(.black),
         named: "next-\(name)-\(type)", scheme: .dark)
     }
   }
@@ -63,10 +66,12 @@ struct EntryRenderTests {
       ("ask", "waveform", EntryCopy.string("widget.ask")),
       ("expense", "receipt", EntryCopy.string("widget.expense")),
     ] {
-      try record(
-        LockButtonView(symbol: symbol, label: label).foregroundStyle(.white)
-          .frame(width: 72, height: 72).background(.black),
-        named: "lock-\(name)", scheme: .dark)
+      for type in Self.typeSizes {
+        try record(
+          LockButtonView(symbol: symbol, label: label).dynamicTypeSize(type)
+            .foregroundStyle(.white).frame(width: 72, height: 72).background(.black),
+          named: "lock-\(name)-\(type)", scheme: .dark)
+      }
     }
   }
 
@@ -75,27 +80,37 @@ struct EntryRenderTests {
     let briefing = try #require(BuiltinCommands.all().first { $0.id == BuiltinCommands.briefingID })
     let attributes = BriefingActivityAttributes(command: briefing, day: .now)
     typealias State = BriefingActivityAttributes.ContentState
-    let long = String(
+    // Sentences longer than the rows they get, in both languages.
+    let chinese = String(
+      repeating: "十点和设计团队在三楼大会议室评审首页改版，记得带上第三季度的数据。", count: 3)
+    let english = String(
       repeating: "Lunch with the design team in the big room on the third floor ", count: 3)
     let phases: [(String, State, Bool)] = [
       ("working", State(phase: .working), false),
       ("stale", State(phase: .working), true),
-      ("done", State(phase: .done, lines: [long, long, long]), false),
+      ("done", State(phase: .done, lines: [chinese, chinese, chinese]), false),
+      ("doneEnglish", State(phase: .done, lines: [english, english, english]), false),
       ("needsAccess", State(phase: .needsAccess), false),
       ("noModel", State(phase: .noModel), false),
       (
-        "failed", State(phase: .failed, message: "The network seems to be down.", canRetry: true),
+        "failed", State(phase: .failed, message: "网络好像断了，过一会儿再试一次。", canRetry: true),
         false
       ),
     ]
     for (name, state, stale) in phases {
-      let view = BriefingActivityLockView(attributes: attributes, state: state, isStale: stale)
-      // Apple caps a Lock Screen Live Activity at 160 points.
-      let fitted = try size(of: view, width: 370, scheme: scheme)
-      #expect(fitted.height <= 160, "\(name)")
-      try record(
-        view.frame(width: 370).background(Color(uiColor: .systemBackground)),
-        named: "activity-\(name)-\(scheme)", scheme: scheme)
+      // The default size, the first larger one, and the largest the activity allows.
+      for type in [DynamicTypeSize.large, .xLarge, .accessibility5] {
+        let view = BriefingActivityLockView(attributes: attributes, state: state, isStale: stale)
+          .dynamicTypeSize(type)
+        // Apple caps a Lock Screen Live Activity at 160 points; it is 371 wide here.
+        let fitted = try size(of: view, width: 371, scheme: scheme)
+        #expect(fitted.height <= 160, "\(name) at \(type): \(fitted.height)")
+        if type == .large || state.phase == .done {
+          try record(
+            view.frame(width: 371).background(Color(uiColor: .systemBackground)),
+            named: "activity-\(name)-\(type)-\(scheme)", scheme: scheme)
+        }
+      }
     }
   }
 

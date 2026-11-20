@@ -37,6 +37,9 @@ struct LockButtonView: View {
   let symbol: String
   let label: String
 
+  /// The name follows Dynamic Type up to this size; larger, it no longer fits the circle.
+  static let largestType = DynamicTypeSize.xLarge
+
   var body: some View {
     ZStack {
       AccessoryWidgetBackground()
@@ -44,12 +47,14 @@ struct LockButtonView: View {
         Image(systemName: symbol)
           .font(.system(size: 20, weight: .semibold))
         Text(label)
-          .font(.system(size: 10, weight: .semibold))
-          .lineLimit(1)
-          .minimumScaleFactor(0.6)
+          .font(.caption2.weight(.semibold))
+          .multilineTextAlignment(.center)
+          .lineLimit(2)
+          .minimumScaleFactor(0.8)
           .padding(.horizontal, 6)
       }
     }
+    .dynamicTypeSize(...Self.largestType)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(Text(label))
     .accessibilityAddTraits(.isButton)

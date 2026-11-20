@@ -11,6 +11,9 @@ import WidgetKit
 struct CommandsWidgetView: View {
   let family: WidgetFamily
 
+  /// Text follows Dynamic Type up to this size; larger, the names no longer fit their buttons.
+  static let largestType = DynamicTypeSize.xLarge
+
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
       if family != .systemSmall {
@@ -27,6 +30,7 @@ struct CommandsWidgetView: View {
         }
       }
     }
+    .dynamicTypeSize(...Self.largestType)
     .accessibilityElement(children: .contain)
     .accessibilityLabel(Text(EntryCopy.string("commands.name")))
   }
@@ -37,10 +41,10 @@ struct CommandsWidgetView: View {
         .widgetAccentable()
         .accessibilityHidden(true)
       Text(verbatim: "Atd")
-        .font(.system(size: 13, weight: .semibold))
+        .font(.footnote.weight(.semibold))
       Spacer(minLength: 4)
       Text(EntryCopy.string("commands.name"))
-        .font(.system(size: 12, weight: .medium))
+        .font(.caption.weight(.medium))
         .foregroundStyle(.secondary)
     }
     .accessibilityHidden(true)
@@ -109,7 +113,7 @@ struct CommandsWidgetCell: View {
     layout {
       CommandsWidgetSticker(button: button, size: compact ? 26 : 28)
       Text(button.label)
-        .font(.system(size: compact ? 12 : 14, weight: .semibold))
+        .font(compact ? .caption.weight(.semibold) : .subheadline.weight(.semibold))
         .lineLimit(compact ? 2 : 1)
         .minimumScaleFactor(0.7)
         .multilineTextAlignment(compact ? .center : .leading)

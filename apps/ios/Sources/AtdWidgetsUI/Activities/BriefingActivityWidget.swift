@@ -38,7 +38,7 @@ public struct BriefingActivityWidget: Widget {
       }
       DynamicIslandExpandedRegion(.trailing) {
         Text(BriefingActivityHeader.dayText(attributes.day))
-          .font(.caption)
+          .font(.caption.weight(.medium))
           .foregroundStyle(.secondary)
           .lineLimit(1)
           .padding(.trailing, 4)
@@ -47,6 +47,7 @@ public struct BriefingActivityWidget: Widget {
         BriefingActivityBody(attributes: attributes, state: context.state, isStale: context.isStale)
           .frame(maxWidth: .infinity, alignment: .leading)
           .padding(.horizontal, 4)
+          .dynamicTypeSize(...BriefingActivityBody.largestType)
       }
     } compactLeading: {
       BriefingActivitySticker(attributes: attributes, size: 22)

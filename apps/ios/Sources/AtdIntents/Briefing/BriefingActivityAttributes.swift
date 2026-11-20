@@ -25,7 +25,7 @@ public struct BriefingActivityAttributes: ActivityAttributes, Sendable {
     public var message: String?
     public var canRetry: Bool
 
-    /// The Lock Screen shows three lines of two rows each. Clamping keeps the state far below
+    /// The Lock Screen shows up to five rows of these lines. Clamping keeps the state far below
     /// ActivityKit's 4 KB for attributes and state together.
     public static let lineLimit = 3
     public static let characterLimit = 120
