@@ -2,8 +2,8 @@ import AtdModel
 import SwiftUI
 
 /// The command editor, on the sheet's paper like a note: the sticker and the name head it, then
-/// the 要求, the options, where it shows up, what it reads and does, and a trial run. Used by a
-/// command's sheet and by the review step of a new command.
+/// the 要求, the options, where it shows up, what it reads and does, the model it runs on, and a
+/// trial run. Used by a command's sheet and by the review step of a new command.
 struct CommandForm: View {
   @Binding var command: Command
   @FocusState private var focus: Field?
@@ -67,6 +67,7 @@ struct CommandForm: View {
         Toggle(AppText.string("command.review"), isOn: $command.output.review)
           .toggleStyle(InkToggleStyle())
           .padding(.horizontal, 20)
+        ModelRow(choice: $command.model)
       }
       .padding(.top, 34)
 

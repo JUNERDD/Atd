@@ -1,6 +1,24 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "action.back" : {
+      "comment" : "Accessibility label: the round ‹ that goes back to the previous page of a sheet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回"
+          }
+        }
+      }
+    },
     "action.close" : {
       "comment" : "Accessibility label: closes a sheet",
       "extractionState" : "manual",
@@ -33,6 +51,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "好"
+          }
+        }
+      }
+    },
+    "action.retry" : {
+      "comment" : "Button: sends a request again after it failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
           }
         }
       }
@@ -339,6 +375,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "要求"
+          }
+        }
+      }
+    },
+    "command.model" : {
+      "comment" : "Row in a command's sheet, and the title of the sheet it opens: the model the command runs on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型"
           }
         }
       }
@@ -1329,6 +1383,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "我的"
+          }
+        }
+      }
+    },
+    "model.connection %@ %@" : {
+      "comment" : "A model choice: the connection's name, then the model's id",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "model.default" : {
+      "comment" : "A command's model choice that follows the default model set in Me › Models",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认"
+          }
+        }
+      }
+    },
+    "model.filter" : {
+      "comment" : "Placeholder of the field that narrows a long list of a connection's models",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search Models"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索模型"
+          }
+        }
+      }
+    },
+    "model.loading" : {
+      "comment" : "Shown while a connection's models are fetched from its provider",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading models…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在读取模型…"
           }
         }
       }
