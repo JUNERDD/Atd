@@ -1,0 +1,13 @@
+{
+  "name": "@atd/ios",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Atd for iPhone: the app and its keyboard extension (Swift, SwiftUI, UIKit). Requires Xcode 26, XcodeGen and SwiftLint.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/test.mjs",
+    "lint": "swiftlint lint --strict --quiet",
+    "format": "swift format --in-place --recursive --parallel Package.swift App Keyboard Sources Tests",
+    "format:check": "swift format lint --strict --recursive --parallel Package.swift App Keyboard Sources Tests"
+  }
+}

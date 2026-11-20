@@ -13,6 +13,9 @@ every size.
   stretch it or use a cover crop.
 - `app-icon.png`: 1024 × 1024 transparent. The off-white (`#f5f5f4`) tile is 864 × 864 with a 190px
   radius and an 80px outer margin; the mark is 400px, centered.
+- The iPhone icons (`apps/ios/App/Assets.xcassets`, `AppIcon` and `AppIconDev`) are the same tile
+  scaled to fill an opaque 1024 × 1024 square, since iOS applies its own mask and rejects
+  transparency.
 
 ## Application use
 

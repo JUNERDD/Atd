@@ -1,0 +1,12 @@
+# SwiftPM
+.build/
+.swiftpm/
+# XcodeGen output; project.yml is the source of truth
+*.xcodeproj/
+App/Info.plist
+App/Atd.entitlements
+Keyboard/Info.plist
+Keyboard/AtdKeyboard.entitlements
+# xcodebuild -derivedDataPath
+DerivedData/
+xcuserdata/

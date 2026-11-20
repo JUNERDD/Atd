@@ -111,6 +111,22 @@ const outputs = [
   [appIcon, `${WEBSITE}/apple-touch-icon.png`, 180],
 ];
 
+// iPhone app icons: iOS masks the icon itself and refuses transparency, so the tile fills the whole
+// 1024px square (the macOS tile scaled up). The image is fully opaque, which rsvg-convert writes as
+// RGB without an alpha channel, as App Store Connect requires.
+const IOS_ASSETS = 'apps/ios/App/Assets.xcassets';
+const iosIcon = (badge) =>
+  svg(
+    1024,
+    1024,
+    `<rect width="1024" height="1024" fill="#f5f5f4"/>` +
+      `<g transform="scale(${1024 / 864}) translate(-80 -80)">${mark(512, 512, 400)}${badge}</g>`,
+  );
+outputs.push(
+  [iosIcon(''), `${IOS_ASSETS}/AppIcon.appiconset/icon-1024.png`, 1024],
+  [iosIcon(DEV_BADGE), `${IOS_ASSETS}/AppIconDev.appiconset/icon-1024.png`, 1024],
+);
+
 const ICON_SIZES = [16, 32, 128, 256, 512];
 for (const [set, source] of [
   ['AppIcon', appIcon],

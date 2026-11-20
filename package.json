@@ -15,10 +15,11 @@
     "test": "turbo run test",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "check": "pnpm format:check && turbo run lint typecheck test build --filter=!@atd/macos && node scripts/on-macos.mjs pnpm check:macos",
-    "check:macos": "pnpm check:swift && pnpm check:rust",
+    "check": "pnpm format:check && turbo run lint typecheck test build --filter=!@atd/macos --filter=!@atd/ios && node scripts/on-macos.mjs pnpm check:macos",
+    "check:macos": "pnpm check:swift && pnpm check:rust && pnpm check:ios",
     "check:swift": "turbo run codegen:check format:check lint test build --filter=@atd/macos --concurrency=1",
     "check:rust": "node scripts/check-rust-file-length.mjs && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
+    "check:ios": "turbo run format:check lint lexicon:check test build --filter=@atd/ios --concurrency=1",
     "design:link": "node scripts/design-link.mjs",
     "check:secrets": "gitleaks git --staged --redact --verbose --no-banner --ignore-gitleaks-allow --config .gitleaks.toml"
   },

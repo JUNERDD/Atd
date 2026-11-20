@@ -1,0 +1,153 @@
+# XcodeGen source of truth for the thin App and keyboard extension targets. The generated
+# Atd.xcodeproj, the Info.plists and the entitlements files are not checked in;
+# `pnpm --filter @atd/ios build` regenerates them. All logic lives in the AtdMobile Swift package
+# next to this file.
+name: Atd
+options:
+  developmentLanguage: en
+  deploymentTarget:
+    iOS: '26.0'
+  createIntermediateGroups: true
+settings:
+  base:
+    IPHONEOS_DEPLOYMENT_TARGET: '26.0'
+    SWIFT_VERSION: '6.0'
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: '1'
+    # iPhone only.
+    TARGETED_DEVICE_FAMILY: '1'
+    # Simulator builds are signed to run locally, which needs no team and still applies the App
+    # Group and Keychain entitlements below. Device and TestFlight builds pass the team through
+    # ATD_DEVELOPMENT_TEAM and sign automatically.
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: '$(ATD_DEVELOPMENT_TEAM)'
+    CODE_SIGN_IDENTITY[sdk=iphonesimulator*]: '-'
+    ENABLE_USER_SCRIPT_SANDBOXING: true
+    DEAD_CODE_STRIPPING: true
+    # The Keychain group the app and the keyboard share for provider keys. Code never names an
+    # access group: items land in the first group of keychain-access-groups, which is this one.
+    ATD_KEYCHAIN_GROUP: com.junerdd.atd.shared
+  # Debug and Release differ in bundle id and App Group, so both builds can be installed side by
+  # side without sharing commands or settings.
+  configs:
+    Debug:
+      ATD_BUNDLE_ID: com.junerdd.atd.dev
+      ATD_APP_GROUP: group.com.junerdd.atd.dev
+    Release:
+      ATD_BUNDLE_ID: com.junerdd.atd
+      ATD_APP_GROUP: group.com.junerdd.atd
+packages:
+  AtdMobile:
+    path: .
+targets:
+  Atd:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - Info.plist
+          - Atd.entitlements
+    dependencies:
+      - package: AtdMobile
+        product: AtdAppUI
+      - target: AtdKeyboard
+        embed: true
+        codeSign: true
+    settings:
+      base:
+        PRODUCT_NAME: Atd
+        PRODUCT_BUNDLE_IDENTIFIER: $(ATD_BUNDLE_ID)
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: false
+      configs:
+        Debug:
+          ASSETCATALOG_COMPILER_APPICON_NAME: AppIconDev
+    entitlements:
+      path: App/Atd.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(ATD_APP_GROUP)
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)$(ATD_KEYCHAIN_GROUP)
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Atd
+        CFBundleDevelopmentRegion: en
+        # The String Catalogs' languages. InfoPlist.xcstrings translates the keys below.
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        LSApplicationCategoryType: public.app-category.productivity
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        # Atd talks only HTTPS to the provider the person configured.
+        ITSAppUsesNonExemptEncryption: false
+        # 问 Atd attaches a photo taken with the camera only when the person asks.
+        NSCameraUsageDescription: Atd uses the camera only when you take a photo to ask about.
+        # Read by AtdModel's AppGroup in the app and the keyboard alike.
+        AtdAppGroup: $(ATD_APP_GROUP)
+  AtdKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Keyboard
+        excludes:
+          - Info.plist
+          - AtdKeyboard.entitlements
+    dependencies:
+      - package: AtdMobile
+        product: AtdKeyboardUI
+    settings:
+      base:
+        PRODUCT_NAME: AtdKeyboard
+        PRODUCT_BUNDLE_IDENTIFIER: $(ATD_BUNDLE_ID).keyboard
+        GENERATE_INFOPLIST_FILE: false
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+    # Without Full Access the system keeps the keyboard out of the App Group, the Keychain and
+    # the network; it then types from its own container only.
+    entitlements:
+      path: Keyboard/AtdKeyboard.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(ATD_APP_GROUP)
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)$(ATD_KEYCHAIN_GROUP)
+    info:
+      path: Keyboard/Info.plist
+      properties:
+        CFBundleDisplayName: Atd
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        AtdAppGroup: $(ATD_APP_GROUP)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+          NSExtensionAttributes:
+            PrimaryLanguage: zh-Hans
+            IsASCIICapable: true
+            PrefersRightToLeft: false
+            # Commands need the network, the App Group and the Keychain; typing never does.
+            RequestsOpenAccess: true
+schemes:
+  Atd:
+    build:
+      targets:
+        Atd: all
+        AtdKeyboard: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: AtdMobile/AtdModelTests
+    archive:
+      config: Release

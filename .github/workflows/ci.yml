@@ -68,8 +68,8 @@ jobs:
       # jobs run them.
       - run: pnpm check
 
-  # A pull request runs the Swift and Rust checks only when it touches their inputs; a push to
-  # main always runs both. The Intel packaging rehearsal follows `package` on release/ branches.
+  # A pull request runs the Swift, Rust and iOS checks only when it touches their inputs; a push to
+  # main always runs all three. The Intel packaging rehearsal follows `package` on release/ branches.
   changes:
     name: Detect changed areas
     if: github.event_name == 'pull_request'
@@ -80,6 +80,7 @@ jobs:
     outputs:
       swift: ${{ steps.filter.outputs.swift }}
       rust: ${{ steps.filter.outputs.rust }}
+      ios: ${{ steps.filter.outputs.ios }}
       package: ${{ steps.filter.outputs.package }}
       candidate: ${{ steps.candidate.outputs.enabled }}
       marketing-version: ${{ steps.candidate.outputs.marketing-version }}
@@ -111,6 +112,10 @@ jobs:
               - rust-toolchain.toml
               - scripts/check-rust-file-length.mjs
               - packages/file-index/**
+            # The iPhone app and keyboard: their own package, project and lexicon only.
+            ios:
+              - *shared
+              - apps/ios/**
             # Everything the Release app packs: the shell, the service and its workspace packages
             # (packages/file-index among them), the renderer and the Rust addon's crates.
             package:
@@ -219,6 +224,41 @@ jobs:
       - name: Rust checks (file length, fmt, clippy, test)
         run: pnpm check:rust
 
+  # The iPhone app and its keyboard extension: format, the 350-line limit, the pinyin lexicon
+  # against its source, the package tests on a simulator, and the simulator build.
+  ios:
+    name: iOS checks
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.ios == 'true') }}
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+      # The same Xcode as local development and the macOS shell.
+      - name: Select Xcode 26.3
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.3.app
+          xcodebuild -version
+          swift --version
+          xcrun simctl list runtimes
+      - name: Install XcodeGen and SwiftLint
+        run: |
+          for tool in xcodegen swiftlint; do
+            command -v "$tool" > /dev/null || brew install "$tool"
+          done
+          xcodegen --version
+          swiftlint version
+      # Only turbo from the root; the iOS package has no JavaScript dependencies.
+      - run: pnpm install --frozen-lockfile --filter atd
+      # check:ios serializes the simulator test run and the simulator build.
+      - name: iOS checks (format, lint, lexicon, test, simulator build)
+        run: pnpm check:ios
+
   # AIShellTests on the oldest supported system. The image defaults to Xcode 16.4 (Swift 6.1);
   # the package needs Swift 6.2, so the job selects the Xcode 26.3 the image also carries. Not part
   # of the required summary check.
@@ -293,22 +333,25 @@ jobs:
   # The "Protect main" ruleset requires a status check with this exact name, so this job keeps
   # the id and name of the former single macOS job. It passes when each macOS job passed or was
   # skipped because the pull request does not touch its inputs; a failed change detection fails
-  # it, since that also skips both jobs.
+  # it, since that also skips those jobs.
   desktop:
     name: macOS desktop smoke test
-    needs: [changes, swift, rust]
+    needs: [changes, swift, rust, ios]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
-      - name: Require the Swift and Rust checks
+      - name: Require the Swift, Rust and iOS checks
         env:
           CHANGES: ${{ needs.changes.result }}
           SWIFT: ${{ needs.swift.result }}
           RUST: ${{ needs.rust.result }}
+          IOS: ${{ needs.ios.result }}
           RUN_SWIFT: ${{ github.event_name != 'pull_request' || needs.changes.outputs.swift == 'true' }}
           RUN_RUST: ${{ github.event_name != 'pull_request' || needs.changes.outputs.rust == 'true' }}
+          RUN_IOS: ${{ github.event_name != 'pull_request' || needs.changes.outputs.ios == 'true' }}
         run: |
-          echo "Change detection: $CHANGES, Swift checks: $SWIFT, Rust checks: $RUST"
+          echo "Change detection: $CHANGES, Swift checks: $SWIFT, Rust checks: $RUST, iOS checks: $IOS"
           if [ "$CHANGES" = failure ]; then exit 1; fi
           expected() { if [ "$1" = true ]; then echo success; else echo skipped; fi; }
-          [ "$SWIFT" = "$(expected "$RUN_SWIFT")" ] && [ "$RUST" = "$(expected "$RUN_RUST")" ]
+          [ "$SWIFT" = "$(expected "$RUN_SWIFT")" ] && [ "$RUST" = "$(expected "$RUN_RUST")" ] &&
+            [ "$IOS" = "$(expected "$RUN_IOS")" ]

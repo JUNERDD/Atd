@@ -89,6 +89,12 @@
     "@atd/macos#build": {
       "cache": false
     },
+    "@atd/ios#build": {
+      "cache": false
+    },
+    "lexicon:check": {
+      "outputs": []
+    },
     "codegen:check": {
       "inputs": [
         "$TURBO_DEFAULT$",

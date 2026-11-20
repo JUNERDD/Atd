@@ -1,0 +1,60 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "tab.ask" : {
+      "comment" : "Tab bar: the round button that opens the Ask Atd panel",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ask Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "问 Atd"
+          }
+        }
+      }
+    },
+    "tab.commands" : {
+      "comment" : "Tab bar: the command library",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指令"
+          }
+        }
+      }
+    },
+    "tab.me" : {
+      "comment" : "Tab bar: settings, models and the keyboard",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Me"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我的"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
