@@ -17,11 +17,8 @@ extension Command {
 
   /// Built-in commands can be taken out of every entry point but not deleted.
   var isBuiltin: Bool {
-    Self.builtinIDs.contains(id)
+    BuiltinCommands.ids.contains(id)
   }
-
-  /// The fixed ids of the commands a new library starts with, whichever this build ships.
-  private static let builtinIDs = Set(BuiltinCommands.all().map(\.id))
 }
 
 extension Surface {
