@@ -39,19 +39,18 @@ struct ModelPicker: View {
 
   /// 默认 first, then every connection with the model it would run.
   private var choices: some View {
-    let pinned = store.settings.pinned(choice)
-    return InkList(inset: 62) {
+    InkList(inset: 62) {
       PickerRow(
-        title: AppText.string("model.default"), subtitle: defaultSubtitle, selected: pinned == nil
+        title: AppText.string("model.default"), subtitle: defaultSubtitle, selected: chosen == nil
       ) {
         choice = .appDefault
         dismiss()
       }
       ForEach(store.settings.connections) { connection in
-        let chosen = pinned?.connection.id == connection.id
+        let picked = chosenModel(in: connection)
         PickerRow(
-          title: connection.name, subtitle: chosen ? pinned?.model : connection.model,
-          selected: chosen, opens: true
+          title: connection.name, subtitle: picked ?? connection.model, selected: picked != nil,
+          opens: true
         ) {
           opened = connection
         }
@@ -68,10 +67,14 @@ struct ModelPicker: View {
     return AppText.string("model.connection \(connection.name) \(connection.model)")
   }
 
+  /// The connection and model the command is set to, while that connection exists; nil for 默认.
+  private var chosen: ResolvedModel? {
+    store.settings.resolve(choice).flatMap { $0.isChosen ? $0 : nil }
+  }
+
   private func chosenModel(in connection: ProviderConnection) -> String? {
-    guard let pinned = store.settings.pinned(choice), pinned.connection.id == connection.id
-    else { return nil }
-    return pinned.model
+    guard let chosen, chosen.connection.id == connection.id else { return nil }
+    return chosen.model
   }
 }
 

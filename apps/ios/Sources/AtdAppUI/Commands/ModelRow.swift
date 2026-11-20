@@ -64,7 +64,7 @@ struct ModelRow: View {
 extension AppSettings {
   /// What the 模型 row says: 默认, or the connection's name and the model.
   @MainActor func label(_ choice: ModelChoice) -> String {
-    guard let pinned = pinned(choice) else { return AppText.string("model.default") }
-    return AppText.string("model.connection \(pinned.connection.name) \(pinned.model)")
+    guard let run = resolve(choice), run.isChosen else { return AppText.string("model.default") }
+    return AppText.string("model.connection \(run.connection.name) \(run.model)")
   }
 }

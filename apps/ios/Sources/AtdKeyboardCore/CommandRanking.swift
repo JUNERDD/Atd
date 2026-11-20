@@ -6,8 +6,7 @@ enum CommandRanking {
   /// Whether the keyboard can run a command: it reads the field, the clipboard or nothing, and
   /// its result goes into the field.
   static func isSupported(_ command: Command) -> Bool {
-    [.text, .copied, .none].contains(command.input)
-      && [.replace, .insert].contains(command.output.action)
+    command.runs(on: .keyboard)
   }
 
   /// The commands that have something to work on: a command for a copy made since the clipboard

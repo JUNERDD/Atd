@@ -8,20 +8,18 @@ extension Command {
     return name.isEmpty ? AppText.string("commands.untitled") : name
   }
 
-  /// A row's one secondary line: where the command shows up, in plain words.
+  /// A row's one secondary line: where the command shows up, in plain words. A place that cannot
+  /// run it is left out, as it never shows up there.
   var whereLabel: String {
-    let places = Surface.available.filter { placement[$0] }.map(\.shortLabel)
+    let places = Surface.available.filter { placement[$0] && runs(on: $0) }.map(\.shortLabel)
     return places.isEmpty
       ? AppText.string("commands.nowhere") : places.formatted(.list(type: .and, width: .narrow))
   }
 
   /// Built-in commands can be taken out of every entry point but not deleted.
   var isBuiltin: Bool {
-    Self.builtinIDs.contains(id)
+    BuiltinCommands.ids.contains(id)
   }
-
-  /// The fixed ids of the commands a new library starts with, whichever this build ships.
-  private static let builtinIDs = Set(BuiltinCommands.all().map(\.id))
 }
 
 extension Surface {
@@ -69,20 +67,6 @@ extension CommandOutput.Action {
     case .insert: AppText.string("output.insert")
     case .card: AppText.string("output.card")
     case .copy: AppText.string("output.copy")
-    }
-  }
-}
-
-/// Text a trial run starts from, so a built-in command can be tried with one tap. Commands the
-/// person made start empty.
-enum TrialSample {
-  static func text(for command: Command) -> String {
-    switch command.id {
-    case BuiltinCommands.polishID: AppText.string("sample.polish")
-    case BuiltinCommands.replyID: AppText.string("sample.reply")
-    case BuiltinCommands.translateID: AppText.string("sample.translate")
-    case BuiltinCommands.shortenID: AppText.string("sample.shorten")
-    default: ""
     }
   }
 }

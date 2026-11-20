@@ -103,14 +103,9 @@ public struct ModelRunner: TextGenerating {
 
   /// The model `choice` resolves to, ready to stream.
   public func backend(for choice: ModelChoice) throws(ModelFailure) -> any ModelBackend {
-    let settings = settings()
-    var connection = settings.defaultConnection
-    var model = connection?.model
-    if case .connection(let id, let chosen) = choice, let named = settings.connection(id) {
-      connection = named
-      model = chosen
-    }
-    guard let connection, let model else { throw .noModel }
+    guard let resolved = settings().resolve(choice) else { throw .noModel }
+    let connection = resolved.connection
+    let model = resolved.model
     guard let key = try? secrets.key(for: connection.id), !key.isEmpty else {
       throw .invalidKey
     }

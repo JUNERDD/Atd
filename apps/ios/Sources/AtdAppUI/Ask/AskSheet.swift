@@ -138,9 +138,9 @@ struct AskSheet: View {
 
   private func attach(_ data: Data) async {
     guard conversation.photos.count < AskConversation.photoLimit,
-      let photo = await PhotoEncoder.encode(data)
+      let photo = await ImageEncoding.modelImage(from: data)
     else { return }
-    conversation.photos.append(photo)
+    conversation.photos.append(AskConversation.PendingPhoto(image: photo))
   }
 
   /// 存为指令: the question becomes the sentence to draft from, and the answer goes with it as an

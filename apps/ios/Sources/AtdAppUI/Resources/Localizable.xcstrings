@@ -2014,6 +2014,24 @@
         }
       }
     },
+    "sample.event" : {
+      "comment" : "Sample input of 提取日程's trial run: a shared message with a time and place in it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Budget review on Thursday at 3 pm in the 3rd-floor meeting room"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "周四下午三点在 3 楼会议室过一下预算"
+          }
+        }
+      }
+    },
     "sample.polish" : {
       "comment" : "Sample text a built-in command is tried on in its trial run 润色 (Polish)",
       "extractionState" : "manual",
@@ -2028,6 +2046,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "去 不过可能晚点到 你们先搭帐篷"
+          }
+        }
+      }
+    },
+    "sample.receipt" : {
+      "comment" : "Lines printed on the sample receipt photo 记一笔's trial run reads: the shop first; a tab sets the price flush right; today's date is added under the shop",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Corner Café\nLatte ×1\t$5.50\nCroissant ×1\t$3.75\nTotal\t$9.25\nApple Pay"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "街角咖啡\n拿铁 ×1\t¥28.00\n可颂 ×1\t¥12.00\n合计\t¥40.00\n微信支付"
           }
         }
       }
@@ -2086,6 +2122,24 @@
         }
       }
     },
+    "sample.whiteboard" : {
+      "comment" : "Lines written on the sample whiteboard photo 整理白板's trial run reads, the first as its heading",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Q4 plan\nGoals: ship v2, retention +5%\nTimeline: testing in the first week of Dec\nWang: design drafts by Friday\nMe: update the schedule next Monday"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Q4 规划\n目标：新版上线、留存提升 5%\n时间线：12 月第一周提测\n小王：周五交设计稿\n我：下周一更新排期"
+          }
+        }
+      }
+    },
     "surface.camera" : {
       "comment" : "Where a command can show up: the camera flow that acts on a photo",
       "extractionState" : "manual",
@@ -2136,6 +2190,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "控制中心与操作按钮"
+          }
+        }
+      }
+    },
+    "surface.controls.footer" : {
+      "comment" : "Footer under a command's 出现在 switches while 控制中心与操作按钮 is on: the switch alone does not put the command there",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add an Atd control to Control Center or the Action button first."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "控制中心和操作按钮要先在系统里加上 Atd 控件。"
           }
         }
       }
@@ -2356,6 +2428,204 @@
         }
       }
     },
+    "trial.agenda" : {
+      "comment" : "What 今日简报's trial run reads, shown as its input",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today’s events and reminders"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天的日程和提醒事项"
+          }
+        }
+      }
+    },
+    "trial.agenda.noCalendar" : {
+      "comment" : "Under 今天的日程和提醒事项 in 今日简报's trial run when Atd may not read the calendar",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd can’t read your calendar"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 没有日历权限"
+          }
+        }
+      }
+    },
+    "trial.agenda.noReminders" : {
+      "comment" : "Under 今天的日程和提醒事项 in 今日简报's trial run when Atd may not read reminders",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd can’t read your reminders"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 没有提醒事项权限"
+          }
+        }
+      }
+    },
+    "trial.card.book" : {
+      "comment" : "Label of the line saying which book an expense goes in, in a trial run's card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Book"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记到"
+          }
+        }
+      }
+    },
+    "trial.card.category" : {
+      "comment" : "Label of the line with an expense's category, in a trial run's card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Category"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "类别"
+          }
+        }
+      }
+    },
+    "trial.card.event" : {
+      "comment" : "Label of the line with the title of the event a trial run found",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New event"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新日程"
+          }
+        }
+      }
+    },
+    "trial.card.expense" : {
+      "comment" : "Label of the line with what was paid and how much, in a trial run's card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expense"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记一笔"
+          }
+        }
+      }
+    },
+    "trial.card.field %@ %@" : {
+      "comment" : "A labeled line of a trial run's card: the label, then the value",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@：%2$@"
+          }
+        }
+      }
+    },
+    "trial.card.place" : {
+      "comment" : "Label of the line with where an event is, in a trial run's card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Place"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "地点"
+          }
+        }
+      }
+    },
+    "trial.card.time" : {
+      "comment" : "Label of the line with when an event is, in a trial run's card",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "时间"
+          }
+        }
+      }
+    },
+    "trial.card.todos" : {
+      "comment" : "Heading of the to-dos a trial run found in notes",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To-dos"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待办"
+          }
+        }
+      }
+    },
     "trial.input" : {
       "comment" : "Trial card: label above the sample text",
       "extractionState" : "manual",
@@ -2406,6 +2676,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "输出"
+          }
+        }
+      }
+    },
+    "trial.photo.change" : {
+      "comment" : "Button in a trial run that replaces its photo with one from the photo picker",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "换一张"
+          }
+        }
+      }
+    },
+    "trial.photo.own" : {
+      "comment" : "Accessibility label: the photo the person picked for a trial run",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你选的照片"
+          }
+        }
+      }
+    },
+    "trial.photo.pick" : {
+      "comment" : "Button in a trial run that opens the photo picker to choose the photo it reads",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从照片选"
+          }
+        }
+      }
+    },
+    "trial.photo.sample" : {
+      "comment" : "Accessibility label: the sample photo a built-in command's trial run reads",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sample photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "示例照片"
           }
         }
       }

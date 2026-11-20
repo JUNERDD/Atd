@@ -3,8 +3,8 @@ import AtdModel
 import SwiftUI
 
 /// The command editor, on the sheet's paper like a note: the sticker and the name head it, then
-/// the 要求, the options, where it shows up, what it reads and does, the model it runs on, and a
-/// trial run. Used by a command's sheet and by the review step of a new command.
+/// the 要求, the options, the entry points that can run it, what it reads and does, the model it
+/// runs on, and a trial run. Used by a command's sheet and by the review step of a new command.
 struct CommandForm: View {
   @Binding var command: Command
   @FocusState private var focus: Field?
@@ -55,11 +55,15 @@ struct CommandForm: View {
 
       SectionHeader(AppText.string("command.surfaces"))
       InkList {
-        ForEach(Surface.available, id: \.self) { surface in
+        ForEach(offered, id: \.self) { surface in
           Toggle(surface.label, isOn: $command.placement[surface])
             .toggleStyle(InkToggleStyle())
             .padding(.horizontal, 20)
         }
+      }
+      if command.placement.controls {
+        // Turning the switch on is not enough: the person adds Atd's control in the system.
+        SectionFooter(AppText.string("surface.controls.footer"))
       }
 
       InkList {
@@ -77,6 +81,12 @@ struct CommandForm: View {
         .padding(.top, 34)
     }
     .padding(.bottom, 16)
+  }
+
+  /// The entry points the command can be placed in: those that can run it, and any it is placed
+  /// in anyway (by an older library), so that switch can still be turned off.
+  private var offered: [Surface] {
+    Surface.available.filter { command.runs(on: $0) || command.placement[$0] }
   }
 }
 
