@@ -139,6 +139,8 @@ let package = Package(
     .testTarget(
       name: "AtdAutomationsTests",
       dependencies: ["AtdAutomations", "AtdModel", "AtdAI", "AtdActions", "AtdWidgetsUI"]),
+    .testTarget(
+      name: "AtdShareUITests", dependencies: ["AtdShareUI", "AtdModel", "AtdAI", "AtdActions"]),
   ],
   swiftLanguageModes: [.v6]
 )
