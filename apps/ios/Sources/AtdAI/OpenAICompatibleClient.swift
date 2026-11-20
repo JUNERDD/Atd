@@ -1,3 +1,4 @@
+import AtdModel
 import Foundation
 
 /// `POST {baseURL}/chat/completions` with `stream: true`: OpenAI, and the providers and servers
@@ -9,6 +10,7 @@ public struct OpenAICompatibleClient: ModelBackend {
   public var baseURL: URL
   public var apiKey: String
   public var model: String
+  var effort: ReasoningEffort?
   var session: URLSession
   var headDeadline = HTTPStream.headDeadline
 
@@ -40,13 +42,10 @@ public struct OpenAICompatibleClient: ModelBackend {
   }
 
   func urlRequest(for request: ModelRequest) throws -> URLRequest {
-    var post = URLRequest(url: baseURL.appending(path: "chat/completions"))
-    post.httpMethod = "POST"
-    post.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-    post.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    post.setValue("text/event-stream", forHTTPHeaderField: "Accept")
-    post.httpBody = try JSONEncoder.snakeCase.encode(ChatRequest(model: model, request: request))
-    return post
+    try openAIPost(
+      url: baseURL.appending(path: "chat/completions"), key: apiKey,
+      conversation: request.conversationID,
+      body: ChatRequest(model: model, request: request, reasoningEffort: effort))
   }
 }
 
@@ -79,10 +78,12 @@ struct ChatRequest: Encodable {
   }
 
   var model: String
+  var reasoningEffort: ReasoningEffort?
   var stream = true
   var messages: [Message]
 
-  init(model: String, request: ModelRequest) {
+  init(model: String, request: ModelRequest, reasoningEffort: ReasoningEffort?) {
+    self.reasoningEffort = reasoningEffort
     self.model = model
     let system =
       request.system.isEmpty ? [] : [Message(role: "system", content: .text(request.system))]

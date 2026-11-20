@@ -9,6 +9,8 @@ public struct ModelRequest: Sendable, Equatable {
   /// before answering still finishes a phone-length rewrite or answer.
   public static let defaultMaxOutputTokens = 8_000
 
+  /// Stable across turns of one conversation for gateways that route by session.
+  public var conversationID: UUID?
   public var system: String
   /// Alternating turns that start and end with the person's.
   public var messages: [ModelMessage]

@@ -4,7 +4,7 @@ import UIKit
 /// The host field, through the controller's text document proxy.
 final class ProxyDocument: DocumentEditor {
   private weak var controller: UIInputViewController?
-  /// Stands in for the field's identifier if the controller is gone, so nothing matches it.
+  /// A detached proxy cannot match the UUID of any attached host field.
   private let detached = UUID()
 
   init(_ controller: UIInputViewController) {
@@ -17,7 +17,12 @@ final class ProxyDocument: DocumentEditor {
   var contextAfterInput: String? { proxy?.documentContextAfterInput }
   var selectedText: String? { proxy?.selectedText }
   var hasText: Bool { proxy?.hasText ?? false }
-  var documentIdentifier: UUID { proxy?.documentIdentifier ?? detached }
+  var documentIdentifier: UUID {
+    // UIKit returns nil while attaching or removing a host, despite the SDK's nonnull UUID.
+    // Read the nullable Objective-C result before bridging it to a Swift value.
+    let selector = #selector(getter: UITextDocumentProxy.documentIdentifier)
+    return proxy?.perform(selector)?.takeUnretainedValue() as? UUID ?? detached
+  }
 
   func insertText(_ text: String) {
     proxy?.insertText(text)

@@ -2,7 +2,7 @@ import UIKit
 
 /// The keyboard's root view: the ✦ line when it is open, the strip, and the keys or the panel
 /// that takes their place. It has the system keyboard's background and plays input clicks.
-final class KeyboardInputView: UIInputView, UIInputViewAudioFeedback {
+final class KeyboardInputView: UIView, UIInputViewAudioFeedback {
   let askRow = AskRowView()
   let strip = StripView()
   let keys = KeysView()
@@ -25,9 +25,8 @@ final class KeyboardInputView: UIInputView, UIInputViewAudioFeedback {
 
   var enableInputClicksWhenVisible: Bool { true }
 
-  override init(frame: CGRect, inputViewStyle: UIInputView.Style) {
-    super.init(frame: frame, inputViewStyle: inputViewStyle)
-    allowsSelfSizing = true
+  override init(frame: CGRect) {
+    super.init(frame: frame)
     for view in [askRow, strip, keys, candidates, clipboard, options] as [UIView] {
       addSubview(view)
     }

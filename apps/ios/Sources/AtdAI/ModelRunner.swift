@@ -5,9 +5,11 @@ import Foundation
 public struct ProviderEndpoint: Sendable {
   public var api: ProviderAPI
   public var baseURL: URL
+  public var effort: ReasoningEffort?
   public var key: String
 
-  public init(api: ProviderAPI, baseURL: URL, key: String) {
+  public init(api: ProviderAPI, baseURL: URL, key: String, effort: ReasoningEffort? = nil) {
+    self.effort = effort
     self.api = api
     self.baseURL = baseURL
     self.key = key
@@ -16,16 +18,22 @@ public struct ProviderEndpoint: Sendable {
   public func backend(model: String, session: URLSession = .models) -> any ModelBackend {
     switch api {
     case .openAICompatible:
-      OpenAICompatibleClient(baseURL: baseURL, apiKey: key, model: model, session: session)
+      var client = OpenAICompatibleClient(
+        baseURL: baseURL, apiKey: key, model: model, session: session)
+      client.effort = effort
+      return client
+    case .openAIResponses:
+      return OpenAIResponsesClient(
+        baseURL: baseURL, apiKey: key, model: model, effort: effort, session: session)
     case .anthropic:
-      AnthropicClient(baseURL: baseURL, apiKey: key, model: model, session: session)
+      return AnthropicClient(baseURL: baseURL, apiKey: key, model: model, session: session)
     }
   }
 
   /// The models the key can use, in the provider's order.
   public func models(session: URLSession = .models) async throws -> [ModelInfo] {
     switch api {
-    case .openAICompatible:
+    case .openAICompatible, .openAIResponses:
       try await OpenAICompatibleClient(baseURL: baseURL, apiKey: key, model: "", session: session)
         .models()
     case .anthropic:
@@ -52,7 +60,14 @@ public struct ModelInfo: Sendable, Equatable, Identifiable {
   /// The provider's display name, when it gives one ("Claude Opus 5.5").
   public var name: String?
 
-  public init(id: String, name: String? = nil) {
+  public var api: ProviderAPI?
+  public var efforts: [ReasoningEffort]?
+
+  public init(
+    id: String, name: String? = nil, api: ProviderAPI? = nil, efforts: [ReasoningEffort]? = nil
+  ) {
+    self.api = api
+    self.efforts = efforts
     self.id = id
     self.name = name
   }
@@ -99,7 +114,18 @@ public struct ModelRunner: TextGenerating {
     guard let key = try? secrets.key(for: connection.id), !key.isEmpty else {
       throw .invalidKey
     }
-    return ProviderEndpoint(api: connection.api, baseURL: connection.baseURL, key: key)
-      .backend(model: model, session: session)
+    // Effort and a discovered route belong to the saved model. A different OpenCode model
+    // can use the gateway's Responses translation without inheriting those settings.
+    if model != connection.model, let preset = ProviderPreset.preset(connection.presetID),
+      let url = preset.openCodeURL(for: .openAIResponses)
+    {
+      return ProviderEndpoint(api: .openAIResponses, baseURL: url, key: key)
+        .backend(model: model, session: session)
+    }
+    return ProviderEndpoint(
+      api: connection.api, baseURL: connection.baseURL, key: key,
+      effort: model == connection.model ? connection.reasoningEffort : nil
+    )
+    .backend(model: model, session: session)
   }
 }

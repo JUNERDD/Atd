@@ -10,31 +10,34 @@ import UIKit
 /// says, again whenever an observed part of it changes. Panels and the keyboard's height are its
 /// own.
 open class AtdKeyboardViewController: UIInputViewController {
-  private let board = KeyboardInputView(frame: .zero, inputViewStyle: .keyboard)
+  private let board = KeyboardInputView(frame: .zero)
   private let data = KeyboardData()
   private var session: Session?
   private var panel: Panel?
   /// The Full Access line was tapped and shows where to turn it on.
   private var showsPath = false
-  private var height: NSLayoutConstraint?
   private var showsGlobe: Bool?
   private var libraryObserver: DarwinObserver?
   private var watching: Task<Void, Never>?
 
-  override open func loadView() {
-    inputView = board
-  }
+  private var boardHeight: NSLayoutConstraint?
 
   override open func viewDidLoad() {
     super.viewDidLoad()
+    board.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(board)
+    let height = board.heightAnchor.constraint(
+      equalToConstant: KeyboardMetrics.height(asking: false))
+    NSLayoutConstraint.activate([
+      board.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      board.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      board.topAnchor.constraint(equalTo: view.topAnchor),
+      board.bottomAnchor.constraint(equalTo: view.bottomAnchor), height,
+    ])
+    boardHeight = height
     session = Session(
       document: ProxyDocument(self), clipboard: SystemClipboard(), pinyin: data.engine(),
       generator: data.generator, seenChangeCount: data.seenChangeCount)
-    let height = view.heightAnchor.constraint(
-      equalToConstant: KeyboardMetrics.height(asking: false))
-    height.priority = .init(999)
-    height.isActive = true
-    self.height = height
     wire()
     reload()
     observe()
@@ -206,7 +209,7 @@ open class AtdKeyboardViewController: UIInputViewController {
       }
     case nil: break
     }
-    height?.constant = KeyboardMetrics.height(asking: asking != nil)
+    boardHeight?.constant = KeyboardMetrics.height(asking: asking != nil)
   }
 
   private func keyStates(_ roles: KeyRoles) -> KeyStates {

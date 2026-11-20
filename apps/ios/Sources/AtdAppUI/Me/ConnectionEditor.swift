@@ -12,6 +12,8 @@ struct ConnectionEditor: View {
   @Environment(\.dismiss) private var dismiss
   @State private var presetID: String
   @State private var key = ""
+  @State private var selectedAPI: ProviderAPI
+  @State private var effort: ReasoningEffort?
   @State private var address: String
   @State private var model: String
   @State private var models: [ModelInfo] = []
@@ -31,6 +33,8 @@ struct ConnectionEditor: View {
     self.connection = connection
     let preset = connection.map(\.presetID) ?? ProviderPreset.all()[0].id
     _presetID = State(initialValue: preset)
+    _selectedAPI = State(initialValue: connection?.api ?? ProviderPreset.all()[0].api)
+    _effort = State(initialValue: connection?.reasoningEffort)
     _address = State(
       initialValue: connection?.presetID == ProviderPreset.customID
         ? connection?.baseURL.absoluteString ?? "" : "")
@@ -49,7 +53,7 @@ struct ConnectionEditor: View {
   }
 
   private var baseURL: URL? {
-    if let url = preset.baseURL { return url }
+    if let url = preset.openCodeURL(for: api) ?? preset.baseURL { return url }
     let typed = address.trimmingCharacters(in: .whitespacesAndNewlines)
     guard let url = URL(string: typed), url.scheme == "https" || url.scheme == "http",
       url.host() != nil
@@ -57,9 +61,33 @@ struct ConnectionEditor: View {
     return url
   }
 
+  private var listedModel: ModelInfo? { models.first { $0.id == modelID } }
+
+  private var api: ProviderAPI {
+    if preset.isOpenCode {
+      return listedModel?.api ?? (modelID == connection?.model ? connection?.api : nil)
+        ?? preset.api
+    }
+    return selectedAPI
+  }
+
+  private var efforts: [ReasoningEffort] {
+    if api == .anthropic { return [] }
+    if let choices = listedModel?.efforts { return choices }
+    if preset.isOpenCode {
+      return modelID == connection?.model ? [connection?.reasoningEffort].compactMap { $0 } : []
+    }
+    if api == .openAIResponses {
+      return [.minimal, .low, .medium, .high, .xhigh]
+    }
+    return []
+  }
+
   private var endpoint: ProviderEndpoint? {
     guard let key = effectiveKey, let baseURL else { return nil }
-    return ProviderEndpoint(api: preset.api, baseURL: baseURL, key: key)
+    return ProviderEndpoint(
+      api: api, baseURL: baseURL, key: key,
+      effort: effort.flatMap { efforts.contains($0) ? $0 : nil })
   }
 
   private var modelID: String {
@@ -109,11 +137,25 @@ struct ConnectionEditor: View {
         .padding(.horizontal, 10)
         .frame(minHeight: 44)
         .onChange(of: presetID) { _, id in
-          model = ProviderPreset.preset(id)?.suggestedModel ?? ""
+          guard let next = ProviderPreset.preset(id) else { return }
+          key = ""
+          selectedAPI = next.api
+          model = next.suggestedModel ?? ""
+          effort = nil
           models = []
           check = .idle
           listModels()
         }
+      }
+
+      if preset.id == ProviderPreset.customID {
+        Picker(AppText.string("connection.protocol"), selection: $selectedAPI) {
+          Text(verbatim: "Chat Completions").tag(ProviderAPI.openAICompatible)
+          Text(verbatim: "Responses").tag(ProviderAPI.openAIResponses)
+          Text(verbatim: "Anthropic Messages").tag(ProviderAPI.anthropic)
+        }
+        .padding(.horizontal, 16)
+        .onChange(of: selectedAPI) { listModels() }
       }
 
       SectionHeader(AppText.string("connection.key"))
@@ -122,6 +164,7 @@ struct ConnectionEditor: View {
           ? AppText.string("connection.key.placeholder") : AppText.string("connection.key.saved"),
         text: $key
       )
+      .keyboardType(.asciiCapable)
       .textInputAutocapitalization(.never)
       .autocorrectionDisabled()
       .inkField()
@@ -146,7 +189,11 @@ struct ConnectionEditor: View {
         TextField(AppText.string("connection.model.placeholder"), text: $model)
           .textInputAutocapitalization(.never)
           .autocorrectionDisabled()
-          .onChange(of: model) { check = .idle }
+          .keyboardType(.asciiCapable)
+          .onChange(of: model) {
+            effort = nil
+            invalidateCheck()
+          }
         if !models.isEmpty {
           Menu {
             ForEach(models) { info in
@@ -163,6 +210,18 @@ struct ConnectionEditor: View {
       .inkField()
       .padding(.horizontal, 16)
       .padding(.top, 6)
+
+      if !efforts.isEmpty && !modelID.isEmpty {
+        SectionHeader(AppText.string("connection.effort"))
+        Picker(AppText.string("connection.effort"), selection: $effort) {
+          Text(AppText.string("connection.effort.default")).tag(nil as ReasoningEffort?)
+          ForEach(efforts, id: \.self) { level in
+            Text(verbatim: level.rawValue).tag(Optional(level))
+          }
+        }
+        .padding(.horizontal, 10)
+        .onChange(of: effort) { invalidateCheck() }
+      }
 
       VStack(alignment: .leading, spacing: 10) {
         Button(action: runCheck) {
@@ -213,9 +272,15 @@ struct ConnectionEditor: View {
     }
   }
 
+  private func invalidateCheck() {
+    checking?.cancel()
+    check = .idle
+  }
+
   /// Fetches the models the key can use, once the key and address are in, so one can be picked
   /// from a menu; a model id can always be typed instead.
   private func listModels() {
+    invalidateCheck()
     listing?.cancel()
     guard let endpoint else {
       models = []
@@ -225,7 +290,12 @@ struct ConnectionEditor: View {
       // Wait for the typing to settle before asking the provider.
       try? await Task.sleep(for: .milliseconds(600))
       guard !Task.isCancelled else { return }
-      let listed = (try? await endpoint.models()) ?? []
+      let listed: [ModelInfo]
+      if preset.isOpenCode {
+        listed = (try? await preset.openCodeModels(key: endpoint.key)) ?? []
+      } else {
+        listed = (try? await endpoint.models()) ?? []
+      }
       guard !Task.isCancelled else { return }
       models = listed
     }
@@ -238,21 +308,26 @@ struct ConnectionEditor: View {
     checking = Task {
       do {
         try await endpoint.test(model: model)
+        guard !Task.isCancelled else { return }
         check = .works
       } catch let failure as ModelFailure {
+        guard !Task.isCancelled else { return }
         check = .failed(failure)
       } catch {
+        guard !Task.isCancelled else { return }
         check = .idle
       }
     }
   }
 
   private func save() {
-    guard let baseURL, endpoint != nil, !modelID.isEmpty else { return }
+    guard let endpoint, !modelID.isEmpty else { return }
     let typedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
     let saved = ProviderConnection(
       id: connection?.id ?? UUID().uuidString, presetID: preset.id,
-      name: connection?.name ?? preset.name, api: preset.api, baseURL: baseURL, model: modelID)
+      name: connection?.name ?? preset.name, api: endpoint.api, baseURL: endpoint.baseURL,
+      model: modelID,
+      reasoningEffort: endpoint.effort)
     store.save(saved, key: typedKey.isEmpty ? nil : typedKey)
     if store.failure == nil { dismiss() }
   }
