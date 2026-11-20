@@ -1,6 +1,42 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "ask.image" : {
+      "comment" : "Siri asks for the photo a command runs on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Which photo?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用哪张照片？"
+          }
+        }
+      }
+    },
+    "ask.text" : {
+      "comment" : "Siri asks for the text a command runs on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What should it work on?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要处理哪段文字？"
+          }
+        }
+      }
+    },
     "briefing.title" : {
       "comment" : "Shortcuts action and control: runs Today's Briefing",
       "extractionState" : "manual",
@@ -15,6 +51,294 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "今日简报"
+          }
+        }
+      }
+    },
+    "choice.copy" : {
+      "comment" : "Button under the clipboard summary: copies it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拷贝"
+          }
+        }
+      }
+    },
+    "choice.open" : {
+      "comment" : "Button under the clipboard summary: opens Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 Atd"
+          }
+        }
+      }
+    },
+    "command.type" : {
+      "comment" : "What Siri, Shortcuts and Spotlight call one of the person's commands",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指令"
+          }
+        }
+      }
+    },
+    "confirm.event" : {
+      "comment" : "Siri asks before adding the event a command found",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add this to Calendar?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加到日历吗？"
+          }
+        }
+      }
+    },
+    "confirm.expense %@" : {
+      "comment" : "Siri asks before logging an expense; %@ is the ledger book",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log this in “%@”?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记入「%@」吗？"
+          }
+        }
+      }
+    },
+    "dialog.added" : {
+      "comment" : "Siri says the event was added",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added to Calendar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已添加到日历。"
+          }
+        }
+      }
+    },
+    "dialog.copied" : {
+      "comment" : "Siri says the summary was copied",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已拷贝。"
+          }
+        }
+      }
+    },
+    "dialog.logged %@" : {
+      "comment" : "Siri says the expense was logged; %@ is the ledger book",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logged in “%@”."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已记入「%@」。"
+          }
+        }
+      }
+    },
+    "failure.calendar" : {
+      "comment" : "Atd may not read or add to Calendar",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd can't access Calendar. You can allow it in Settings › Apps › Atd."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 无法访问日历，可在设置 › App › Atd 中允许。"
+          }
+        }
+      }
+    },
+    "failure.commandMissing" : {
+      "comment" : "The command a shortcut or control was set up with was deleted",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That command is no longer in Atd."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 里已经没有这条指令了。"
+          }
+        }
+      }
+    },
+    "failure.emptyClipboard" : {
+      "comment" : "The clipboard has no text to run on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There's no text on the clipboard."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剪贴板里没有文字。"
+          }
+        }
+      }
+    },
+    "failure.invalidExpense" : {
+      "comment" : "The expense has no amount the ledger keeps",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This amount can't be logged."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这笔金额记不了。"
+          }
+        }
+      }
+    },
+    "failure.noDefaultCalendar" : {
+      "comment" : "There is no default calendar to add the event to",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There's no default calendar. You can choose one in Settings › Apps › Calendar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有默认日历，可在设置 › App › 日历中选择。"
+          }
+        }
+      }
+    },
+    "failure.reminders" : {
+      "comment" : "Atd may not read Reminders",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd can't access Reminders. You can allow it in Settings › Apps › Atd."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 无法访问提醒事项，可在设置 › App › Atd 中允许。"
+          }
+        }
+      }
+    },
+    "failure.unavailable" : {
+      "comment" : "Siri or a control could not open Atd's data",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd can't open its data right now."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 现在打不开自己的数据。"
+          }
+        }
+      }
+    },
+    "grantAccess.title" : {
+      "comment" : "Button on the Lock Screen and in a Live Activity: opens Atd to ask for calendar access",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Calendar Access"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许访问日历"
           }
         }
       }
@@ -55,20 +379,74 @@
         }
       }
     },
-    "refreshWidget.title" : {
-      "comment" : "Widget button that reloads what the widget shows",
+    "openCommand.target" : {
+      "comment" : "Shortcuts parameter: the command to open",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Refresh"
+            "value" : "Command"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "刷新"
+            "value" : "指令"
+          }
+        }
+      }
+    },
+    "openCommand.title" : {
+      "comment" : "Shortcuts action and Spotlight result: opens a command in Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Command"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开指令"
+          }
+        }
+      }
+    },
+    "runCommand.command" : {
+      "comment" : "Shortcuts parameter: the command to run",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指令"
+          }
+        }
+      }
+    },
+    "runCommand.image" : {
+      "comment" : "Shortcuts parameter: the photo a photo command runs on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片"
           }
         }
       }
@@ -105,6 +483,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "运行指令"
+          }
+        }
+      }
+    },
+    "runControl.command" : {
+      "comment" : "Control setting: the command the control runs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指令"
+          }
+        }
+      }
+    },
+    "runControl.title" : {
+      "comment" : "Control that runs a command the person picks",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run Command"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "运行指令"
+          }
+        }
+      }
+    },
+    "summarize.text" : {
+      "comment" : "Shortcuts parameter: text to sum up instead of the clipboard",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文字"
+          }
+        }
+      }
+    },
+    "summarize.title" : {
+      "comment" : "Siri and Shortcuts action: sums up the clipboard in three points",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Summarize Clipboard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "总结剪贴板"
           }
         }
       }

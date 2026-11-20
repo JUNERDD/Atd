@@ -129,6 +129,9 @@ let package = Package(
       name: "AtdKeyboardCoreTests",
       dependencies: ["AtdKeyboardCore", "AtdModel", "AtdAI", "AtdPinyin"]),
     .testTarget(name: "AtdActionsTests", dependencies: ["AtdActions", "AtdModel"]),
+    .testTarget(
+      name: "AtdIntentsTests",
+      dependencies: ["AtdIntents", "AtdModel", "AtdAI", "AtdActions", "AtdWidgetsUI"]),
   ],
   swiftLanguageModes: [.v6]
 )
