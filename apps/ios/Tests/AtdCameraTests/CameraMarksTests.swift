@@ -69,15 +69,33 @@ import Testing
   }
 
   @Test func labelsGoBelowTheirBoxAndStepDownPastEachOther() {
+    // Lines too wide for a label beside them, and too near the top for one above.
     let bounds = CGRect(x: 0, y: 0, width: 300, height: 500)
     let size = CGSize(width: 120, height: 20)
     let frames = CameraLayout.place(
       [
-        CameraLayout.Label(anchor: CGRect(x: 10, y: 10, width: 100, height: 20), size: size),
-        CameraLayout.Label(anchor: CGRect(x: 30, y: 12, width: 100, height: 20), size: size),
+        CameraLayout.Label(anchor: CGRect(x: 10, y: 10, width: 250, height: 20), size: size),
+        CameraLayout.Label(anchor: CGRect(x: 30, y: 12, width: 250, height: 20), size: size),
       ], in: bounds)
     #expect(frames[0].minY == 34)
     #expect(frames[1].minY == frames[0].maxY + 4)
+  }
+
+  @Test func aPinGoesBesideItsLineWhenBelowAndAboveAreTaken() {
+    // Three short lines: the second line's pin has the first pin above it and the third line
+    // under it, so it goes beside its line instead of over the third.
+    let lines = [
+      CGRect(x: 10, y: 10, width: 100, height: 20), CGRect(x: 10, y: 60, width: 100, height: 20),
+      CGRect(x: 10, y: 100, width: 100, height: 20),
+    ]
+    let size = CGSize(width: 80, height: 20)
+    let frames = CameraLayout.place(
+      [
+        CameraLayout.Label(anchor: lines[0], size: size),
+        CameraLayout.Label(anchor: lines[1], size: size),
+      ], in: CGRect(x: 0, y: 0, width: 300, height: 200), avoiding: lines)
+    #expect(frames[0] == CGRect(x: 10, y: 34, width: 80, height: 20))
+    #expect(frames[1] == CGRect(x: 114, y: 60, width: 80, height: 20))
   }
 
   @Test func aTagGoesBesideItsBoxWhenThereIsRoom() {

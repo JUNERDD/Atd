@@ -60,12 +60,13 @@ public enum CameraLayout {
     }
   }
 
-  /// Frames for `labels`, in order. Each takes the first free spot of: beside its anchor's
-  /// trailing edge (only when `besideFirst`), just below it, just above it. A spot is free when
-  /// it lies inside `bounds` and covers no label placed before and no box in `avoiding` (the
-  /// photo's text) other than those its own anchor overlaps. Without a free spot a label goes
-  /// below its anchor, moved down past labels already placed, or above it (moved up) when that
-  /// would leave `bounds` at the bottom, kept inside `bounds` as far as its size allows.
+  /// Frames for `labels`, in order. Each takes the first free spot of: just below its anchor,
+  /// just above it, beside its trailing edge; with `besideFirst` (tags) beside comes first. A
+  /// spot is free when it lies inside `bounds` and covers no label placed before and no box in
+  /// `avoiding` (the photo's text) other than those its own anchor overlaps. Without a free spot
+  /// a label goes below its anchor, moved down past labels already placed, or above it (moved
+  /// up) when that would leave `bounds` at the bottom, kept inside `bounds` as far as its size
+  /// allows.
   public static func place(
     _ labels: [Label], in bounds: CGRect, avoiding text: [CGRect] = [], besideFirst: Bool = false,
     gap: CGFloat = 4
@@ -92,7 +93,7 @@ public enum CameraLayout {
     let above = CGRect(origin: CGPoint(x: x, y: anchor.minY - gap - size.height), size: size)
     let beside = CGRect(
       origin: CGPoint(x: anchor.maxX + gap, y: anchor.midY - size.height / 2), size: size)
-    return besideFirst ? [beside, below, above] : [below, above]
+    return besideFirst ? [beside, below, above] : [below, above, beside]
   }
 
   /// Below the anchor past the labels already placed, or above it when that leaves `bounds`.
