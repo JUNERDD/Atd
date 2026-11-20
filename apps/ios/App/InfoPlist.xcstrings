@@ -19,20 +19,74 @@
         }
       }
     },
-    "NSCameraUsageDescription" : {
-      "comment" : "Camera permission prompt, shown the first time a photo is taken in Ask Atd",
+    "NSCalendarsFullAccessUsageDescription" : {
+      "comment" : "Calendar permission prompt (full access), shown the first time Atd reads your events",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Atd uses the camera only when you take a photo to ask about."
+            "value" : "When you ask about your schedule or check Today's Briefing, Atd reads that day's events to answer you."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Atd 只在你拍照提问时使用相机。"
+            "value" : "你问到日程或看今日简报时，Atd 读取对应日期的安排来回答你。"
+          }
+        }
+      }
+    },
+    "NSCalendarsWriteOnlyAccessUsageDescription" : {
+      "comment" : "Calendar permission prompt (add events only), shown the first time a confirmed event is added",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd adds the events you confirm to your calendar, and only when you run a command."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 会把你确认过的日程添加到日历，只在你运行「提取日程」时使用。"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "comment" : "Camera permission prompt, shown the first time Atd's camera or Ask Atd takes a photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd uses the camera only when you take a photo to run a command on it or to ask about it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 只在你拍照运行指令或提问时使用相机。"
+          }
+        }
+      }
+    },
+    "NSRemindersFullAccessUsageDescription" : {
+      "comment" : "Reminders permission prompt, shown the first time Atd adds a to-do or reads today's reminders",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd adds the to-dos you confirm to Reminders, and reads today's reminders for Today's Briefing."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 会把你确认过的待办加到提醒事项，看今日简报时读取今天的提醒。"
           }
         }
       }

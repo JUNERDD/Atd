@@ -1,0 +1,24 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSCameraUsageDescription" : {
+      "comment" : "Camera permission prompt, shown the first time Atd's camera or Ask Atd takes a photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd uses the camera only when you take a photo to run a command on it or to ask about it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 只在你拍照运行指令或提问时使用相机。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

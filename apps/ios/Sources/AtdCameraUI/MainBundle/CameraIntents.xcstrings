@@ -1,0 +1,24 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "capture.title" : {
+      "comment" : "Control and Camera Control action: opens Atd's camera",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snap and Act"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍了就办"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

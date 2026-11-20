@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Builds the app and its keyboard extension for the iOS Simulator:
+ * Builds the app and its extensions for the iOS Simulator:
  *
  *   node scripts/build.mjs [--configuration <Debug|Release>]
  *

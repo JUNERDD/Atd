@@ -1,7 +1,13 @@
-# XcodeGen source of truth for the thin App and keyboard extension targets. The generated
-# Atd.xcodeproj, the Info.plists and the entitlements files are not checked in;
-# `pnpm --filter @atd/ios build` regenerates them. All logic lives in the AtdMobile Swift package
-# next to this file.
+# XcodeGen source of truth for the thin App target and its extensions (keyboard, share, widgets,
+# Lock Screen capture). The generated Atd.xcodeproj, the Info.plists and the entitlements files are
+# not checked in; `pnpm --filter @atd/ios build` regenerates them. All logic lives in the AtdMobile
+# Swift package next to this file.
+#
+# A new Info.plist key goes under the `info: properties` of every target that reads it, with its
+# copy translated in that target's InfoPlist.xcstrings when people see it. A new entitlement goes
+# under `entitlements: properties` (the simulator build applies it too). App Intents read their
+# copy only from the bundle that declares them: a package module's `MainBundle/` tables are listed
+# under the sources of the app and of every extension that links the module.
 name: Atd
 options:
   developmentLanguage: en
@@ -28,15 +34,17 @@ settings:
     # The Keychain group the app and the keyboard share for provider keys. Code never names an
     # access group: items land in the first group of keychain-access-groups, which is this one.
     ATD_KEYCHAIN_GROUP: com.junerdd.atd.shared
-  # Debug and Release differ in bundle id and App Group, so both builds can be installed side by
-  # side without sharing commands or settings.
+  # Debug and Release differ in bundle id, App Group and URL scheme, so both builds can be
+  # installed side by side without sharing commands, settings or links.
   configs:
     Debug:
       ATD_BUNDLE_ID: com.junerdd.atd.dev
       ATD_APP_GROUP: group.com.junerdd.atd.dev
+      ATD_URL_SCHEME: atd-dev
     Release:
       ATD_BUNDLE_ID: com.junerdd.atd
       ATD_APP_GROUP: group.com.junerdd.atd
+      ATD_URL_SCHEME: atd
 packages:
   AtdMobile:
     path: .
@@ -52,10 +60,27 @@ targets:
       # The lexicon's license, shown under 我的 › 开源许可.
       - path: Lexicon/LICENSE
         buildPhase: resources
+      # The copy of the App Intents the app declares.
+      - path: Sources/AtdIntents/MainBundle
+      - path: Sources/AtdCameraUI/MainBundle
+      - path: Sources/AtdMiniApps/MainBundle
     dependencies:
       - package: AtdMobile
         product: AtdAppUI
+      # The App Shortcuts in App/ name its intents.
+      - package: AtdMobile
+        product: AtdIntents
       - target: AtdKeyboard
+        embed: true
+        codeSign: true
+      - target: AtdShare
+        embed: true
+        codeSign: true
+      - target: AtdWidgets
+        embed: true
+        codeSign: true
+      # An ExtensionKit extension: embedded in Atd.app/Extensions.
+      - target: AtdCapture
         embed: true
         codeSign: true
     settings:
@@ -91,10 +116,32 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         # Atd talks only HTTPS to the provider the person configured.
         ITSAppUsesNonExemptEncryption: false
-        # 问 Atd attaches a photo taken with the camera only when the person asks.
-        NSCameraUsageDescription: Atd uses the camera only when you take a photo to ask about.
-        # Read by AtdModel's AppGroup in the app and the keyboard alike.
+        # Atd's camera and 问 Atd take a photo only when the person asks.
+        NSCameraUsageDescription: Atd uses the camera only when you take a photo to run a command
+          on it or to ask about it.
+        # 提取日程 adds confirmed events; it never needs to read the calendar.
+        NSCalendarsWriteOnlyAccessUsageDescription: Atd adds the events you confirm to your
+          calendar, and only when you run a command.
+        # 今日简报 and questions about the person's schedule read the day's events.
+        NSCalendarsFullAccessUsageDescription: When you ask about your schedule or check Today's
+          Briefing, Atd reads that day's events to answer you.
+        NSRemindersFullAccessUsageDescription: Atd adds the to-dos you confirm to Reminders, and
+          reads today's reminders for Today's Briefing.
+        # 今日简报 and automations show their progress on the Lock Screen.
+        NSSupportsLiveActivities: true
+        # Automations a person starts keep running in the background
+        # (BGContinuedProcessingTaskRequest), one identifier per run under this prefix.
+        BGTaskSchedulerPermittedIdentifiers:
+          - $(ATD_BUNDLE_ID).automation.*
+        # Atd's links (AtdModel's AtdRoute), which widgets and deep links open.
+        CFBundleURLTypes:
+          - CFBundleURLName: $(ATD_BUNDLE_ID)
+            CFBundleURLSchemes:
+              - $(ATD_URL_SCHEME)
+        # Read by AtdModel in the app and every extension alike: the App Group's id and the scheme
+        # of Atd's links.
         AtdAppGroup: $(ATD_APP_GROUP)
+        AtdURLScheme: $(ATD_URL_SCHEME)
   AtdKeyboard:
     type: app-extension
     platform: iOS
@@ -131,6 +178,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         AtdAppGroup: $(ATD_APP_GROUP)
+        AtdURLScheme: $(ATD_URL_SCHEME)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.keyboard-service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
@@ -140,12 +188,158 @@ targets:
             PrefersRightToLeft: false
             # Commands need the network, the App Group and the Keychain; typing never does.
             RequestsOpenAccess: true
+  AtdShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Share
+        excludes:
+          - Info.plist
+          - AtdShare.entitlements
+    dependencies:
+      - package: AtdMobile
+        product: AtdShareUI
+    settings:
+      base:
+        PRODUCT_NAME: AtdShare
+        PRODUCT_BUNDLE_IDENTIFIER: $(ATD_BUNDLE_ID).share
+        GENERATE_INFOPLIST_FILE: false
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+    # The same App Group and Keychain group as the app: the share sheet runs commands with the
+    # person's models and writes what they confirm.
+    entitlements:
+      path: Share/AtdShare.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(ATD_APP_GROUP)
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)$(ATD_KEYCHAIN_GROUP)
+    info:
+      path: Share/Info.plist
+      properties:
+        CFBundleDisplayName: Atd
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        AtdAppGroup: $(ATD_APP_GROUP)
+        AtdURLScheme: $(ATD_URL_SCHEME)
+        NSCalendarsWriteOnlyAccessUsageDescription: Atd adds the events you confirm to your
+          calendar, and only when you run a command.
+        # The share sheet never asks for these; it reads what the app was already allowed to.
+        NSCalendarsFullAccessUsageDescription: When you ask about your schedule or check Today's
+          Briefing, Atd reads that day's events to answer you.
+        NSRemindersFullAccessUsageDescription: Atd adds the to-dos you confirm to Reminders, and
+          reads today's reminders for Today's Briefing.
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            # Text, one link or Safari page, or one image.
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsWebPageWithMaxCount: 1
+              NSExtensionActivationSupportsImageWithMaxCount: 1
+            # Runs in a page Safari shares (Share/SharePage.js).
+            NSExtensionJavaScriptPreprocessingFile: SharePage
+  AtdWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+        excludes:
+          - Info.plist
+          - AtdWidgets.entitlements
+      # The copy of the App Intents the extension declares.
+      - path: Sources/AtdIntents/MainBundle
+      - path: Sources/AtdCameraUI/MainBundle
+      - path: Sources/AtdMiniApps/MainBundle
+    dependencies:
+      - package: AtdMobile
+        product: AtdWidgetsUI
+    settings:
+      base:
+        PRODUCT_NAME: AtdWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: $(ATD_BUNDLE_ID).widgets
+        GENERATE_INFOPLIST_FILE: false
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        # One executable in Debug too: the debug dylib split cost the macOS widget extension its
+        # App Intents metadata (apps/macos/project.yml). The iOS app's extraction works either way.
+        ENABLE_DEBUG_DYLIB: NO
+    # Widgets read the App Group; their buttons' intents write to it.
+    entitlements:
+      path: Widgets/AtdWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(ATD_APP_GROUP)
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Atd
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        AtdAppGroup: $(ATD_APP_GROUP)
+        AtdURLScheme: $(ATD_URL_SCHEME)
+        # Widgets never ask; they read what the app was already allowed to.
+        NSCalendarsFullAccessUsageDescription: When you ask about your schedule or check Today's
+          Briefing, Atd reads that day's events to answer you.
+        NSRemindersFullAccessUsageDescription: Atd adds the to-dos you confirm to Reminders, and
+          reads today's reminders for Today's Briefing.
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  AtdCapture:
+    # LockedCameraCapture: the camera Atd shows while the iPhone is locked. It has no network and
+    # no App Group, so it takes no entitlements; its photos reach the app after the person unlocks.
+    type: extensionkit-extension
+    platform: iOS
+    sources:
+      - path: Capture
+        excludes:
+          - Info.plist
+      # The copy of the App Intents the extension declares.
+      - path: Sources/AtdCameraUI/MainBundle
+    dependencies:
+      - package: AtdMobile
+        product: AtdCameraUI
+    settings:
+      base:
+        PRODUCT_NAME: AtdCapture
+        PRODUCT_BUNDLE_IDENTIFIER: $(ATD_BUNDLE_ID).capture
+        GENERATE_INFOPLIST_FILE: false
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        ENABLE_DEBUG_DYLIB: NO
+    info:
+      path: Capture/Info.plist
+      properties:
+        # XcodeGen sets the package type for app extensions only.
+        CFBundlePackageType: $(PRODUCT_BUNDLE_PACKAGE_TYPE)
+        CFBundleDisplayName: Atd
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Every target carries both keys; this extension never reaches the group.
+        AtdAppGroup: $(ATD_APP_GROUP)
+        AtdURLScheme: $(ATD_URL_SCHEME)
+        NSCameraUsageDescription: Atd uses the camera only when you take a photo to run a command
+          on it or to ask about it.
+        EXAppExtensionAttributes:
+          EXExtensionPointIdentifier: com.apple.securecapture
 schemes:
   Atd:
     build:
       targets:
         Atd: all
         AtdKeyboard: all
+        AtdShare: all
+        AtdWidgets: all
+        AtdCapture: all
     run:
       config: Debug
     test:

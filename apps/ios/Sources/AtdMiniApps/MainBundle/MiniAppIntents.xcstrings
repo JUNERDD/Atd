@@ -1,0 +1,42 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "miniAppWidget.app" : {
+      "comment" : "Widget configuration parameter: the mini app to show",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mini App"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小应用"
+          }
+        }
+      }
+    },
+    "miniAppWidget.title" : {
+      "comment" : "Widget configuration: which mini app a widget shows",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Mini App"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择小应用"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

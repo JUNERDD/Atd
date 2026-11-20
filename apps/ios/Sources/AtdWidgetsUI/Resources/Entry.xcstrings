@@ -1,0 +1,60 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "briefing.name" : {
+      "comment" : "Live Activity while Today's Briefing runs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today's Briefing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日简报"
+          }
+        }
+      }
+    },
+    "commands.name" : {
+      "comment" : "Name of the Home Screen widget with the commands you use most",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Commands"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "常用指令"
+          }
+        }
+      }
+    },
+    "lock.name" : {
+      "comment" : "Name of the Lock Screen widget that opens Ask Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Ask"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "随手问"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
