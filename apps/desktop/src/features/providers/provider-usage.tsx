@@ -12,6 +12,7 @@ import {
 } from '@atd/ui/components/dialog';
 import { Progress } from '@atd/ui/components/progress';
 import { cn } from '@atd/ui/lib/utils';
+import { CHATGPT_PRIVACY_VERSION } from '@atd/agent-contracts';
 import type { Connection, ProviderUsage } from '../../client/providers/schema';
 import {
   WINDOW_LABELS,
@@ -22,7 +23,7 @@ import {
   resetIn,
   soonestReset,
 } from './provider-usage-format';
-import { useProviderUsage } from './use-provider-usage';
+import { providerUsageAvailable, useProviderUsage } from './use-provider-usage';
 
 /**
  * A compact allowance badge for a connection row or the model picker. It stays out of the way
@@ -38,7 +39,9 @@ export function ProviderUsageSummary({
 }) {
   const { t, i18n } = useTranslation('providers');
   const { data } = useProviderUsage(connection);
-  if (data?.kind !== 'ok') return null;
+  // A disabled query can still retain a cached value; the gate must hide it when consent, plan
+  // permission, the credential or the connection no longer allows a usage read.
+  if (!providerUsageAvailable(connection) || data?.kind !== 'ok') return null;
   const short = data.windows
     .map((window) => `${t(WINDOW_SHORT_LABELS[window.id])} ${percent(window.usedRatio)}`)
     .join(' · ');
@@ -132,7 +135,19 @@ export function ProviderUsageDialog({
 }) {
   const { t, i18n } = useTranslation('providers');
   const query = useProviderUsage(connection);
-  const usage: ProviderUsage | undefined = connection?.connected ? query.data : undefined;
+  const available = providerUsageAvailable(connection);
+  const usage: ProviderUsage | undefined = available ? query.data : undefined;
+  const gated = !connection
+    ? null
+    : !connection.connected
+      ? t('connections.usage.unavailable')
+      : !available
+        ? connection.credentialIssue
+          ? t('connections.usage.unavailable')
+          : connection.chatgptConsent?.privacyVersion === CHATGPT_PRIVACY_VERSION
+            ? t('chatgpt.planDisabledDescription')
+            : t('chatgpt.privacyRequired')
+        : null;
   return (
     <Dialog
       open={Boolean(connection)}
@@ -148,10 +163,8 @@ export function ProviderUsageDialog({
           <DialogDescription>{t('connections.usage.description')}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          {connection && !connection.connected && (
-            <p className="text-sm text-muted-foreground">{t('connections.usage.unavailable')}</p>
-          )}
-          {connection?.connected && query.isPending && (
+          {gated && <p className="text-sm text-muted-foreground">{gated}</p>}
+          {available && query.isPending && (
             <p className="text-sm text-muted-foreground">{t('connections.usage.loading')}</p>
           )}
           {usage?.kind === 'unsupported' && (
@@ -169,7 +182,7 @@ export function ProviderUsageDialog({
               </details>
             </div>
           )}
-          {connection?.connected && query.isError && !usage && (
+          {available && query.isError && !usage && (
             <div className="grid gap-2">
               <p className="text-sm text-destructive">{t('connections.usage.error')}</p>
               <details className="text-xs">
@@ -240,8 +253,8 @@ export function ProviderUsageDialog({
           <Button
             variant="outline"
             size="sm"
-            disabled={!connection?.connected || query.isFetching}
-            onClick={() => void query.refetch()}
+            disabled={!available || query.isFetching}
+            onClick={() => void query.refresh()}
           >
             <RefreshCw />
             {t('connections.usage.retry')}

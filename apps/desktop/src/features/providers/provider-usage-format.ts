@@ -53,10 +53,16 @@ export function money(value: number, currency: string, language: string): string
 }
 
 export function soonestReset(windows: readonly ProviderUsageWindow[]): ProviderUsageWindow | null {
+  // A reset that has already elapsed, or lands inside the next minute where `resetIn` returns
+  // null, must not mask a later window that still has a usable reset time.
+  const now = Date.now();
   return (
     windows
-      .filter((window) => window.resetsAt)
-      .sort((a, b) => Date.parse(a.resetsAt!) - Date.parse(b.resetsAt!))[0] ?? null
+      .flatMap((window) => {
+        const at = window.resetsAt ? Date.parse(window.resetsAt) : Number.NaN;
+        return Number.isFinite(at) && at - now >= 30_000 ? [{ window, at }] : [];
+      })
+      .sort((a, b) => a.at - b.at)[0]?.window ?? null
   );
 }
 

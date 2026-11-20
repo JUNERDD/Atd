@@ -26,8 +26,13 @@ export function isRecord(value: unknown): value is RecordValue {
 }
 
 export function numberValue(value: unknown): number | null {
-  const parsed =
-    typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+  // `Number('')` and `Number('   ')` are `0`, which would turn a missing upstream value into a
+  // real balance or a fully used window.
+  const text = value.trim();
+  if (!text) return null;
+  const parsed = Number(text);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -60,11 +65,14 @@ export async function getJson(
  * reach the UI, which is what a user needs to fix access.
  */
 export function failure(response: Response, json: unknown): ProviderUsageResponse {
-  const message =
+  const detail =
     (isRecord(json) && isRecord(json.error) && textValue(json.error.message)) ||
     (isRecord(json) && textValue(json.message)) ||
     null;
-  return { kind: 'error', message: `HTTP ${response.status}${message ? `: ${message}` : ''}` };
+  return {
+    kind: 'error',
+    message: `HTTP ${response.status}${detail ? `: ${detail}` : ''}`.slice(0, 2000),
+  };
 }
 
 export function quotaWindow(id: ProviderUsageWindowId, value: unknown): ProviderUsageWindow | null {
@@ -247,6 +255,10 @@ export async function openRouterCredits(request: UsageRequest): Promise<Provider
   return {
     kind: 'ok',
     windows: [],
-    balance: { currency: 'USD', remaining: Math.max(total - used, 0), total },
+    balance: {
+      currency: 'USD',
+      remaining: Math.max(total - used, 0),
+      total: Math.max(total, 0),
+    },
   };
 }

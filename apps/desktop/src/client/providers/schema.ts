@@ -269,7 +269,7 @@ export interface ProviderBridge {
   checkStatuses: () => Promise<void>;
   verify: (reference: ModelReference) => Promise<void>;
   /** Provider-reported allowance windows and balance; unsupported providers answer as such. */
-  usage: (connectionId: string) => Promise<ProviderUsage>;
+  usage: (connectionId: string, refresh?: boolean) => Promise<ProviderUsage>;
   login: (connectionId: string, request?: ProviderLoginRequest) => Promise<LoginState>;
   answer: (id: string, promptId: string, value: string) => Promise<void>;
   cancel: (id: string) => Promise<void>;

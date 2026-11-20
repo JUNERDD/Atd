@@ -4,6 +4,7 @@ import {
   deepseekBalance,
   kimiUsage,
   moonshotBalance,
+  numberValue,
   openRouterCredits,
   type UsageRequest,
 } from '../dist/providers/usage-adapters.js';
@@ -161,6 +162,7 @@ test('Z.AI maps coding-plan windows by unit', async () => {
       },
       { baseUrl: 'https://api.z.ai/api/coding/paas/v4' },
     ),
+    'https://api.z.ai',
   );
   assert.equal(usage.kind, 'ok');
   if (usage.kind !== 'ok') return;
@@ -190,7 +192,7 @@ test('Zhipu pay-as-you-go accounts fall back to the account balance', async () =
       headers: { 'content-type': 'application/json' },
     });
   };
-  const usage = await zhipuUsage(request);
+  const usage = await zhipuUsage(request, 'https://open.bigmodel.cn');
   assert.equal(calls, 2);
   assert.deepEqual(usage, {
     kind: 'ok',
@@ -201,19 +203,22 @@ test('Zhipu pay-as-you-go accounts fall back to the account balance', async () =
 
 test('MiniMax maps interval and weekly remaining percentages', async () => {
   const usage = await minimaxUsage(
-    responding({
-      base_resp: { status_code: 0, status_msg: 'success' },
-      model_remains: [
-        {
-          model_name: 'general',
-          current_interval_remaining_percent: 60,
-          current_weekly_remaining_percent: 30,
-          current_weekly_status: 1,
-          end_time: Date.now() + 3_600_000,
-          weekly_end_time: Date.now() + 86_400_000,
-        },
-      ],
-    }),
+    responding(
+      {
+        base_resp: { status_code: 0, status_msg: 'success' },
+        model_remains: [
+          {
+            model_name: 'general',
+            current_interval_remaining_percent: 60,
+            current_weekly_remaining_percent: 30,
+            current_weekly_status: 1,
+            end_time: Date.now() + 3_600_000,
+            weekly_end_time: Date.now() + 86_400_000,
+          },
+        ],
+      },
+      { baseUrl: 'https://api.minimax.io/anthropic' },
+    ),
     true,
   );
   assert.equal(usage.kind, 'ok');
@@ -229,13 +234,16 @@ test('MiniMax maps interval and weekly remaining percentages', async () => {
 
 test('OpenCode Go maps rolling, weekly, and monthly windows', async () => {
   const usage = await openCodeGoUsage(
-    responding({
-      usage: {
-        rolling: { status: 'ok', percent: 25, resetsAt: '2026-11-17T08:36:27Z' },
-        weekly: { status: 'ok', percent: 50, resetsAt: '2026-11-20T08:36:27Z' },
-        monthly: { status: 'ok', percent: 75, resetsAt: '2026-12-17T08:36:27Z' },
+    responding(
+      {
+        usage: {
+          rolling: { status: 'ok', percent: 25, resetsAt: '2026-11-17T08:36:27Z' },
+          weekly: { status: 'ok', percent: 50, resetsAt: '2026-11-20T08:36:27Z' },
+          monthly: { status: 'ok', percent: 75, resetsAt: '2026-12-17T08:36:27Z' },
+        },
       },
-    }),
+      { baseUrl: 'https://opencode.ai/zen/go/v1' },
+    ),
   );
   assert.equal(usage.kind, 'ok');
   if (usage.kind !== 'ok') return;
@@ -289,4 +297,24 @@ test('ChatGPT reports an expired sign-in', async () => {
   const usage = await chatgptUsage(responding({}, { status: 401 }));
   assert.equal(usage.kind, 'error');
   if (usage.kind === 'error') assert.match(usage.message, /Sign in again/);
+});
+
+test('empty numeric strings are missing, not zero', () => {
+  assert.equal(numberValue(''), null);
+  assert.equal(numberValue('   '), null);
+  assert.equal(numberValue('12.5'), 12.5);
+});
+
+test('custom endpoints do not receive usage keys', async () => {
+  let calls = 0;
+  const request = responding({});
+  request.baseUrl = 'https://gateway.example.com';
+  request.fetch = (async () => {
+    calls += 1;
+    return new Response('{}');
+  }) as typeof fetch;
+  assert.deepEqual(await zhipuUsage(request, 'https://api.z.ai'), { kind: 'unsupported' });
+  assert.deepEqual(await minimaxUsage(request, false), { kind: 'unsupported' });
+  assert.deepEqual(await openCodeGoUsage(request), { kind: 'unsupported' });
+  assert.equal(calls, 0);
 });

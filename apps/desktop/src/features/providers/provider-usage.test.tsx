@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CHATGPT_PRIVACY_VERSION } from '@atd/agent-contracts';
 import { installBridge } from '../../../tests/app-test-bridge';
 import type { Connection } from '../../client/providers/schema';
 import { queryClient } from '../../lib/query-client';
 import { ProviderUsageSummary } from './provider-usage';
+import { soonestReset } from './provider-usage-format';
 import { ProviderUsagePanel } from './provider-usage-panel';
 import { useProviderUsage } from './use-provider-usage';
 
@@ -99,13 +101,14 @@ describe('provider usage panel', () => {
 
   it('keeps the last windows and names a failed refresh once', async () => {
     installBridge();
-    window.desktop!.settings.providers.usage = vi
+    const usage = vi
       .fn()
       .mockResolvedValueOnce({
         kind: 'ok' as const,
         windows: [{ id: 'session' as const, usedRatio: 0.25 }],
       })
-      .mockRejectedValueOnce(new Error('network down'));
+      .mockResolvedValueOnce({ kind: 'error' as const, message: 'network down' });
+    window.desktop!.settings.providers.usage = usage;
 
     render(<ProviderUsagePanel connection={connectionFixture()} />);
     expect(await screen.findByText('Session (5 hours)')).toBeInTheDocument();
@@ -117,6 +120,42 @@ describe('provider usage panel', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('Session (5 hours)')).toBeInTheDocument();
     expect(screen.queryByText('Usage is unavailable right now.')).not.toBeInTheDocument();
+    expect(usage).toHaveBeenLastCalledWith('kimi-1', true);
+  });
+
+  it('does not request ChatGPT usage without current consent and plan permission', async () => {
+    installBridge();
+    const usage = vi.fn(async () => ({ kind: 'ok' as const, windows: [] }));
+    window.desktop!.settings.providers.usage = usage;
+
+    render(
+      <ProviderUsagePanel
+        connection={connectionFixture({
+          provider: 'openai',
+          authType: 'oauth',
+          chatgptConsent: {
+            privacyVersion: CHATGPT_PRIVACY_VERSION,
+            backgroundAllowed: false,
+            acceptedAt: new Date().toISOString(),
+          },
+          chatgptPlanEnabled: false,
+        })}
+      />,
+    );
+
+    expect(await screen.findByText(/plan usage is not enabled/i)).toBeInTheDocument();
+    expect(usage).not.toHaveBeenCalled();
+  });
+
+  it('skips elapsed and invalid resets when picking the soonest one', () => {
+    const now = Date.now();
+    expect(
+      soonestReset([
+        { id: 'session', usedRatio: 0.1, resetsAt: new Date(now - 60_000).toISOString() },
+        { id: 'weekly', usedRatio: 0.2, resetsAt: 'not-a-date' },
+        { id: 'monthly', usedRatio: 0.3, resetsAt: new Date(now + 3_600_000).toISOString() },
+      ])?.id,
+    ).toBe('monthly');
   });
 });
 

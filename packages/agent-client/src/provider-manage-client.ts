@@ -132,11 +132,12 @@ export function verifyProvider(
 export function getProviderUsage(
   options: AgentClientOptions,
   connectionId: string,
+  refresh = false,
   fetchImpl?: typeof fetch,
 ): Promise<ProviderUsageResponse> {
   return manageRequest(
     options,
-    connectionPath(connectionId, '/usage'),
+    `${connectionPath(connectionId, '/usage')}${refresh ? '?refresh=true' : ''}`,
     'GET',
     undefined,
     (json) => parse(ProviderUsageResponseSchema, json),

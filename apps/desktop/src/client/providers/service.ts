@@ -290,8 +290,8 @@ export class ProviderService {
   }
 
   /** Provider-reported allowance windows and balance; providers without an API answer as such. */
-  async usage(connectionId: string): Promise<ProviderUsage> {
-    return getProviderUsage(this.options(), connectionId);
+  async usage(connectionId: string, refresh = false): Promise<ProviderUsage> {
+    return getProviderUsage(this.options(), connectionId, refresh);
   }
 
   /**

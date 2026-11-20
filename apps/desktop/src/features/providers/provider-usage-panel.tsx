@@ -5,10 +5,14 @@ import { Card, CardContent } from '@atd/ui/components/card';
 import { Progress } from '@atd/ui/components/progress';
 import { Skeleton } from '@atd/ui/components/skeleton';
 import { cn } from '@atd/ui/lib/utils';
-import type { ProviderUsageBalance, ProviderUsageWindow } from '@atd/agent-contracts';
+import {
+  CHATGPT_PRIVACY_VERSION,
+  type ProviderUsageBalance,
+  type ProviderUsageWindow,
+} from '@atd/agent-contracts';
 import type { Connection } from '../../client/providers/schema';
 import { WINDOW_LABELS, balanceText, money, percent, resetIn } from './provider-usage-format';
-import { useProviderUsage } from './use-provider-usage';
+import { providerUsageAvailable, useProviderUsage } from './use-provider-usage';
 
 /**
  * The connection detail page's allowance section. It makes the provider's real windows and
@@ -24,7 +28,17 @@ export function ProviderUsagePanel({
 }) {
   const { t, i18n } = useTranslation('providers');
   const query = useProviderUsage(connection);
-  const usage = query.data;
+  const available = providerUsageAvailable(connection);
+  const usage = available ? query.data : undefined;
+  const gated = !connection.connected
+    ? t('connections.usage.unavailable')
+    : !available
+      ? connection.credentialIssue
+        ? t('connections.usage.unavailable')
+        : connection.chatgptConsent?.privacyVersion === CHATGPT_PRIVACY_VERSION
+          ? t('chatgpt.planDisabledDescription')
+          : t('chatgpt.privacyRequired')
+      : null;
   const updated = query.dataUpdatedAt
     ? new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' }).format(
         query.dataUpdatedAt,
@@ -51,8 +65,8 @@ export function ProviderUsagePanel({
           <Button
             variant="ghost"
             size="sm"
-            disabled={!connection.connected || query.isFetching}
-            onClick={() => void query.refetch()}
+            disabled={!available || query.isFetching}
+            onClick={() => void query.refresh()}
           >
             <RefreshCw className={query.isFetching ? 'animate-spin' : undefined} />
             {t('connections.usage.retry')}
@@ -61,10 +75,8 @@ export function ProviderUsagePanel({
       </div>
       <Card size="sm" className="provider-usage-card">
         <CardContent className="grid gap-4">
-          {!connection.connected && (
-            <p className="text-sm text-muted-foreground">{t('connections.usage.unavailable')}</p>
-          )}
-          {connection.connected && query.isPending && <UsageSkeleton />}
+          {gated && <p className="text-sm text-muted-foreground">{gated}</p>}
+          {available && query.isPending && <UsageSkeleton />}
           {usage?.kind === 'unsupported' && (
             <p className="text-sm text-muted-foreground">{t('connections.usage.unsupported')}</p>
           )}
@@ -72,7 +84,7 @@ export function ProviderUsagePanel({
             <p className="text-sm text-muted-foreground">{t('connections.usage.unavailable')}</p>
           )}
           {usage?.kind === 'error' && <UsageError message={usage.message} />}
-          {connection.connected && query.isError && !usage && (
+          {available && query.isError && !usage && (
             <UsageError
               message={query.error instanceof Error ? query.error.message : String(query.error)}
             />

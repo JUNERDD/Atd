@@ -63,7 +63,12 @@ export function ProviderConnections({
 }) {
   const { t } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
-  const [usageConnection, setUsageConnection] = useState<Connection | null>(null);
+  // Resolve the live row instead of pinning the snapshot the menu opened with, so a connection
+  // that updates, disconnects or is removed while the dialog is open is not shown stale.
+  const [usageConnectionId, setUsageConnectionId] = useState<string | null>(null);
+  const usageConnection = usageConnectionId
+    ? (rows.find((row) => row.connection.connectionId === usageConnectionId)?.connection ?? null)
+    : null;
   return (
     <>
       <ItemGroup className="provider-connections">
@@ -143,7 +148,7 @@ export function ProviderConnections({
               </ItemMenuItem>
               <ItemMenuItem
                 disabled={!connection.connected}
-                onSelect={() => setUsageConnection(connection)}
+                onSelect={() => setUsageConnectionId(connection.connectionId)}
               >
                 <Gauge />
                 {t('connections.usage.action')}
@@ -274,7 +279,10 @@ export function ProviderConnections({
           );
         })}
       </ItemGroup>
-      <ProviderUsageDialog connection={usageConnection} onClose={() => setUsageConnection(null)} />
+      <ProviderUsageDialog
+        connection={usageConnection}
+        onClose={() => setUsageConnectionId(null)}
+      />
     </>
   );
 }

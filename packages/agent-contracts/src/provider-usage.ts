@@ -29,7 +29,8 @@ export type ProviderUsageWindow = Static<typeof ProviderUsageWindowSchema>;
 export const ProviderUsageBalanceSchema = Type.Object(
   {
     currency: Type.String({ maxLength: 16 }),
-    remaining: Type.Number({ minimum: 0 }),
+    /** Pay-as-you-go accounts in arrears report a negative remaining balance. */
+    remaining: Type.Number(),
     total: Type.Optional(Type.Number({ minimum: 0 })),
     monthlyUsed: Type.Optional(Type.Number({ minimum: 0 })),
     monthlyLimit: Type.Optional(Type.Number({ minimum: 0 })),

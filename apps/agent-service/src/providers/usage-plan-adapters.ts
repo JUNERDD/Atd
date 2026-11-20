@@ -15,6 +15,31 @@ import {
 
 type WindowBody = Omit<ProviderUsageWindow, 'id'>;
 
+const ZHIPU_HOSTS = ['api.z.ai', 'open.bigmodel.cn'];
+const MINIMAX_HOSTS = ['api.minimax.io', 'api.minimax.cn', 'api.minimaxi.com'];
+const OPENCODE_HOSTS = ['opencode.ai'];
+
+/**
+ * The vendor origin that serves usage, or `undefined` when the connection points at a custom
+ * endpoint. Usage endpoints authenticate with the saved API key, so a custom gateway must not
+ * receive it; the caller answers `unsupported` instead.
+ */
+function vendorOrigin(baseUrl: string, hosts: readonly string[]): string | undefined {
+  if (!baseUrl) return undefined;
+  try {
+    const url = new URL(baseUrl);
+    return hosts.includes(url.hostname) ? url.origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The vendor origin for a connection, falling back to the provider's default usage host. */
+function usageOrigin(baseUrl: string, hosts: readonly string[], fallback: string): string | null {
+  if (baseUrl) return vendorOrigin(baseUrl, hosts) ?? null;
+  return fallback;
+}
+
 async function zhipuBalance(request: UsageRequest, origin: string): Promise<ProviderUsageResponse> {
   const { response, json } = await getJson(
     request,
@@ -26,7 +51,7 @@ async function zhipuBalance(request: UsageRequest, origin: string): Promise<Prov
   if (json.success === false)
     return {
       kind: 'error',
-      message: `API error: ${textValue(json.msg) ?? 'Unknown error'}`,
+      message: `API error: ${textValue(json.msg) ?? 'Unknown error'}`.slice(0, 2000),
     };
   const data = isRecord(json.data) ? json.data : json;
   const remaining = numberValue(data.availableBalance) ?? numberValue(data.balance);
@@ -63,8 +88,12 @@ function isNoCodingPlan(message: string): boolean {
  * Z.AI / Zhipu coding-plan windows. The quota endpoint lives on the host's origin and the key
  * travels without the `Bearer` prefix, unlike the inference API.
  */
-export async function zhipuUsage(request: UsageRequest): Promise<ProviderUsageResponse> {
-  const origin = new URL(request.baseUrl || 'https://open.bigmodel.cn').origin;
+export async function zhipuUsage(
+  request: UsageRequest,
+  fallbackOrigin: string,
+): Promise<ProviderUsageResponse> {
+  const origin = usageOrigin(request.baseUrl, ZHIPU_HOSTS, fallbackOrigin);
+  if (!origin) return { kind: 'unsupported' };
   const { response, json } = await getJson(request, `${origin}/api/monitor/usage/quota/limit`, {
     authorization: request.apiKey,
     'accept-language': 'en-US,en',
@@ -74,7 +103,7 @@ export async function zhipuUsage(request: UsageRequest): Promise<ProviderUsageRe
   if (json.success === false) {
     const message = textValue(json.msg) ?? 'Unknown error';
     if (isNoCodingPlan(message)) return zhipuBalance(request, origin);
-    return { kind: 'error', message: `API error: ${message}` };
+    return { kind: 'error', message: `API error: ${message}`.slice(0, 2000) };
   }
   const data = isRecord(json.data) ? json.data : undefined;
   if (!data) return { kind: 'error', message: "Missing 'data' field in response." };
@@ -113,10 +142,15 @@ export async function minimaxUsage(
   request: UsageRequest,
   isCn: boolean,
 ): Promise<ProviderUsageResponse> {
-  const domain = isCn ? 'https://api.minimaxi.com' : 'https://api.minimax.io';
+  const origin = usageOrigin(
+    request.baseUrl,
+    MINIMAX_HOSTS,
+    isCn ? 'https://api.minimaxi.com' : 'https://api.minimax.io',
+  );
+  if (!origin) return { kind: 'unsupported' };
   const { response, json } = await getJson(
     request,
-    `${domain}/v1/api/openplatform/coding_plan/remains`,
+    `${origin}/v1/api/openplatform/coding_plan/remains`,
   );
   if (!response.ok) return failure(response, json);
   if (!isRecord(json)) return { kind: 'ok', windows: [] };
@@ -125,7 +159,11 @@ export async function minimaxUsage(
     if (status !== null && status !== 0)
       return {
         kind: 'error',
-        message: `API error (code ${status}): ${textValue(json.base_resp.status_msg) ?? 'Unknown error'}`,
+        message:
+          `API error (code ${status}): ${textValue(json.base_resp.status_msg) ?? 'Unknown error'}`.slice(
+            0,
+            2000,
+          ),
       };
   }
   const item = Array.isArray(json.model_remains)
@@ -156,11 +194,13 @@ export async function minimaxUsage(
   return { kind: 'ok', windows };
 }
 
-const OPEN_CODE_GO_USAGE_URL = 'https://opencode.ai/zen/go/v1/usage';
+const OPEN_CODE_GO_ORIGIN = 'https://opencode.ai';
 
 /** OpenCode Go exposes rolling (five-hour), weekly and monthly used percentages. */
 export async function openCodeGoUsage(request: UsageRequest): Promise<ProviderUsageResponse> {
-  const { response, json } = await getJson(request, OPEN_CODE_GO_USAGE_URL);
+  const origin = usageOrigin(request.baseUrl, OPENCODE_HOSTS, OPEN_CODE_GO_ORIGIN);
+  if (!origin) return { kind: 'unsupported' };
+  const { response, json } = await getJson(request, `${origin}/zen/go/v1/usage`);
   if (response.status === 403)
     return {
       kind: 'error',

@@ -170,11 +170,17 @@ export function registerConnectionRoutes(
   });
 
   /** Provider-reported allowance windows and balance; providers without an API answer `unsupported`. */
-  app.get<Params>('/v1/providers/:connectionId/usage', RENDERER_ROUTE, async (request) => {
-    const { live, ...opened } = await load(request.params.connectionId);
-    if (!live.connected) throw new ConflictError(`Reconnect ${live.name} to view usage.`);
-    return providerUsage(opened, live);
-  });
+  app.get<Params & { Querystring: { refresh?: string } }>(
+    '/v1/providers/:connectionId/usage',
+    RENDERER_ROUTE,
+    async (request) => {
+      const { live, ...opened } = await load(request.params.connectionId);
+      if (!live.connected) throw new ConflictError(`Reconnect ${live.name} to view usage.`);
+      // An explicit refresh bypasses the short server cache; the row's automatic read still shares
+      // one provider call between the summary, the dialog and the detail panel.
+      return providerUsage(opened, live, { refresh: request.query.refresh === 'true' });
+    },
+  );
 
   app.get<Params>('/v1/providers/:connectionId/contexts', RENDERER_ROUTE, async (request) => {
     const { modelId } = parse(ProviderContextsQuerySchema, request.query);
