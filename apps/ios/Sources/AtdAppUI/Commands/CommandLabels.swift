@@ -15,13 +15,13 @@ extension Command {
       ? AppText.string("commands.nowhere") : places.formatted(.list(type: .and, width: .narrow))
   }
 
-  /// Built-in commands can be taken out of the keyboard but not deleted.
+  /// Built-in commands can be taken out of every entry point but not deleted.
   var isBuiltin: Bool {
-    [
-      BuiltinCommands.polishID, BuiltinCommands.replyID, BuiltinCommands.translateID,
-      BuiltinCommands.shortenID,
-    ].contains(id)
+    Self.builtinIDs.contains(id)
   }
+
+  /// The fixed ids of the commands a new library starts with, whichever this build ships.
+  private static let builtinIDs = Set(BuiltinCommands.all().map(\.id))
 }
 
 extension Surface {

@@ -25,7 +25,9 @@ struct CommandsPage: View {
               CommandRow(command: command, fresh: fresh == command.id)
             }
             .buttonStyle(RowButtonStyle())
-            .id(command.id)
+            // The scroll target is a view inside the row: InkList re-emits its rows to put
+            // dividers between them, and an id on the row itself does not reach the scroller.
+            .background { Color.clear.id(command.id) }
           }
         }
       }
@@ -33,6 +35,12 @@ struct CommandsPage: View {
         guard let id else { return }
         withAnimation { scroller.scrollTo(id, anchor: .center) }
       }
+    }
+    // A command saved elsewhere (存为指令 › 查看) is pointed out the same way as a new one.
+    .onChange(of: CommandSpotlight.shared.commandID, initial: true) { _, id in
+      guard let id else { return }
+      CommandSpotlight.shared.clear()
+      if let command = store.library.command(id) { highlight(command) }
     }
     .sheet(item: $opened) { opened in
       CommandDetailSheet(id: opened.id)

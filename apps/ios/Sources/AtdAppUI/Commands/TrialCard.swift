@@ -4,8 +4,9 @@ import AtdModel
 import Observation
 import SwiftUI
 
-/// Runs a command on sample text and streams the result, so a change to its 要求 or options can
-/// be tried before the keyboard uses it. Nothing is written anywhere.
+/// Runs a command on sample text with the model it is set to and streams the result, so a change
+/// to its 要求, options or model can be tried before the keyboard uses it. Nothing is written
+/// anywhere.
 struct TrialCard: View {
   let command: Command
   @Environment(AppStore.self) private var store
@@ -75,7 +76,9 @@ struct TrialCard: View {
       .buttonStyle(InkButtonStyle(form: .block))
     } else {
       Button {
-        trial.start(command, input: input, runner: store.runner) { store.noteFailure($0) }
+        trial.start(command, input: input, runner: store.runner) {
+          store.noteFailure($0, for: command.model)
+        }
       } label: {
         Label(runTitle, systemImage: trial.hasRun ? "arrow.counterclockwise" : "play.fill")
       }

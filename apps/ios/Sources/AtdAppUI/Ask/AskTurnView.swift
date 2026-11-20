@@ -3,11 +3,17 @@ import AtdInk
 import SwiftUI
 import UIKit
 
-/// One question and its answer: the question on the right with its photos, the answer under it
-/// as it streams in, then 拷贝 — or why there is no answer, with 重试 when trying again can help.
+/// One question and its answer: the question on the right with its context and photos, the
+/// answer under it as it streams in, then 存为指令 and 拷贝 — or why there is no answer, with 重试
+/// when trying again can help. Once the answer is saved as a command, 存为指令 gives way to the
+/// command's name and 查看.
 struct AskTurnView: View {
   let turn: AskConversation.Turn
   let retry: () -> Void
+  /// 存为指令: turns this exchange into a command to review.
+  let save: () -> Void
+  /// 查看: shows the command this answer was saved as.
+  let showSaved: () -> Void
   @State private var copied = false
 
   var body: some View {
@@ -32,12 +38,18 @@ struct AskTurnView: View {
             .font(.footnote)
             .foregroundStyle(.secondary)
         }
-        if turn.state == .done { copyButton }
+        if turn.state == .done {
+          // Side by side while they fit; one under another at large text sizes.
+          ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { actions }
+            VStack(alignment: .leading, spacing: 8) { actions }
+          }
+        }
       case .failed(let failure):
         Text(failure.message).foregroundStyle(.secondary)
         if failure.canRetry {
           Button(action: retry) {
-            Label(AppText.string("ask.retry"), systemImage: "arrow.counterclockwise")
+            Label(AppText.string("action.retry"), systemImage: "arrow.counterclockwise")
           }
           .buttonStyle(InkButtonStyle())
         }
@@ -45,8 +57,30 @@ struct AskTurnView: View {
     }
   }
 
+  @ViewBuilder private var actions: some View {
+    if let saved = turn.saved {
+      HStack(spacing: 6) {
+        Image(systemName: "checkmark.circle.fill")
+          .foregroundStyle(Color(uiColor: .systemGreen))
+          .accessibilityHidden(true)
+        Text(AppText.string("ask.saved \(saved.name)"))
+      }
+      .font(.subheadline.weight(.semibold))
+      .accessibilityElement(children: .combine)
+      Button(AppText.string("ask.view"), action: showSaved)
+        .buttonStyle(InkButtonStyle())
+    } else {
+      Button(action: save) {
+        Label(AppText.string("ask.save"), systemImage: "wand.and.sparkles")
+      }
+      .buttonStyle(InkButtonStyle())
+    }
+    copyButton
+  }
+
   private var question: some View {
     VStack(alignment: .trailing, spacing: 8) {
+      if let context = turn.context { AskContextChip(context: context) }
       if !turn.photos.isEmpty {
         HStack(spacing: 6) {
           ForEach(turn.photos.indices, id: \.self) { index in

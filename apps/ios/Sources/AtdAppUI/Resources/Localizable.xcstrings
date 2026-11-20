@@ -1,6 +1,24 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "action.back" : {
+      "comment" : "Accessibility label: the round ‹ that goes back to the previous page of a sheet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回"
+          }
+        }
+      }
+    },
     "action.close" : {
       "comment" : "Accessibility label: closes a sheet",
       "extractionState" : "manual",
@@ -33,6 +51,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "好"
+          }
+        }
+      }
+    },
+    "action.retry" : {
+      "comment" : "Button: sends a request again after it failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
           }
         }
       }
@@ -73,6 +109,24 @@
         }
       }
     },
+    "ask.backToChat" : {
+      "comment" : "Accessibility label: the ‹ that leaves Save as Command and goes back to the Ask Atd conversation",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to Conversation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回对话"
+          }
+        }
+      }
+    },
     "ask.camera" : {
       "comment" : "Ask Atd attachment: take a photo",
       "extractionState" : "manual",
@@ -87,6 +141,60 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "拍照"
+          }
+        }
+      }
+    },
+    "ask.context %@" : {
+      "comment" : "Accessibility label of the chip naming what an Ask conversation is about, such as a photo the camera took; the chip's title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于「%@」"
+          }
+        }
+      }
+    },
+    "ask.context.prompt %@" : {
+      "comment" : "Sent to the model, not shown: the line above the context's text, before the first question; the context's title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About “%@”:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于「%@」："
+          }
+        }
+      }
+    },
+    "ask.context.remove %@" : {
+      "comment" : "Accessibility label: leaves the context out of the conversation before the first question; the chip's title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don't include “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不再附带「%@」"
           }
         }
       }
@@ -217,20 +325,38 @@
         }
       }
     },
-    "ask.retry" : {
-      "comment" : "Button: asks again after a failure",
+    "ask.save" : {
+      "comment" : "Button under an answer in Ask Atd, and the panel's title while it drafts a command from that answer",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retry"
+            "value" : "Save as Command"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重试"
+            "value" : "存为指令"
+          }
+        }
+      }
+    },
+    "ask.saved %@" : {
+      "comment" : "Under an answer that was saved as a command, and announced by VoiceOver; the command's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved as “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已存为「%@」"
           }
         }
       }
@@ -325,6 +451,24 @@
         }
       }
     },
+    "ask.view" : {
+      "comment" : "Button beside “Saved as …”: closes Ask Atd and points the command out in Commands",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看"
+          }
+        }
+      }
+    },
     "command.instructions" : {
       "comment" : "Section title: what the model is asked to do",
       "extractionState" : "manual",
@@ -339,6 +483,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "要求"
+          }
+        }
+      }
+    },
+    "command.model" : {
+      "comment" : "Row in a command's sheet, and the title of the sheet it opens: the model the command runs on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模型"
           }
         }
       }
@@ -1380,6 +1542,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "我的"
+          }
+        }
+      }
+    },
+    "model.connection %@ %@" : {
+      "comment" : "A model choice: the connection's name, then the model's id",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "model.default" : {
+      "comment" : "A command's model choice that follows the default model set in Me › Models",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认"
+          }
+        }
+      }
+    },
+    "model.filter" : {
+      "comment" : "Placeholder of the field that narrows a long list of a connection's models",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search Models"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索模型"
+          }
+        }
+      }
+    },
+    "model.loading" : {
+      "comment" : "Shown while a connection's models are fetched from its provider",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading models…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在读取模型…"
           }
         }
       }
