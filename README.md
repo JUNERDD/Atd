@@ -7,15 +7,15 @@
 
 <img src="packages/ui/src/assets/brands/atd/app-icon.png" width="96" alt="Atd app icon" />
 
-**A quiet agent for your Mac.**
+**A quiet, open-source AI desktop agent for macOS** — _anything, anytime, anywhere, to do._
 
-Select text, capture your screen, or press **⌘ ⇧ Space** to start a conversation. Atd brings your models, tools, and local context into a small desktop panel—for everyday work, coding tasks, and apps of your own.
+Select text, capture your screen, or press **⌘ ⇧ Space** to start a conversation. Atd brings your cloud or local models, MCP tools, computer use, and local context into a small desktop panel—for everyday work, coding tasks, and apps of your own.
 
 **macOS 15+ · Apple silicon and Intel**
 
 [![Download Atd for Apple silicon](https://img.shields.io/badge/Download_for_Mac-Apple_silicon-111111?style=for-the-badge&logo=apple&logoColor=white)](https://downloads.atd.best/latest/Atd-arm64.dmg) [![Download Atd for Intel](https://img.shields.io/badge/Download_for_Mac-Intel-111111?style=for-the-badge&logo=apple&logoColor=white)](https://downloads.atd.best/latest/Atd-x64.dmg)
 
-[Website](https://atd.best) · GitHub download mirror: [Apple silicon](https://github.com/JUNERDD/Atd/releases/latest/download/Atd-arm64.dmg), [Intel](https://github.com/JUNERDD/Atd/releases/latest/download/Atd-x64.dmg) · [Release notes](https://github.com/JUNERDD/Atd/releases/latest) · [Interface previews](#interface-previews) · [Report an issue](https://github.com/JUNERDD/Atd/issues)
+[Atd Website (atd.best)](https://atd.best) · [Features](https://atd.best/features) · [FAQ](https://atd.best/faq) · [Blog](https://atd.best/blog) · GitHub download mirror: [Apple silicon](https://github.com/JUNERDD/Atd/releases/latest/download/Atd-arm64.dmg), [Intel](https://github.com/JUNERDD/Atd/releases/latest/download/Atd-x64.dmg) · [Release notes](https://github.com/JUNERDD/Atd/releases/latest) · [Interface previews](#interface-previews) · [Report an issue](https://github.com/JUNERDD/Atd/issues)
 
 [![Atd main panel on the desktop: a new task with quick commands, All commands, Create app and My apps, the composer, its approval mode and the model](.github/readme/main-panel.jpg)](.github/readme/main-panel.jpg)
 
