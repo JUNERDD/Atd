@@ -3,7 +3,8 @@ import AtdModel
 import SwiftUI
 
 /// The 指令 tab: every command in the library, each row saying where it shows up. A row opens the
-/// command's editor; 新建指令 drafts one from a sentence or starts from a blank form.
+/// command's editor, and so does a link to the command (`.command(id:)`); 新建指令 drafts one
+/// from a sentence or starts from a blank form.
 struct CommandsPage: View {
   @Environment(AppStore.self) private var store
   @State private var opened: OpenedCommand?
@@ -41,6 +42,12 @@ struct CommandsPage: View {
       guard let id else { return }
       CommandSpotlight.shared.clear()
       if let command = store.library.command(id) { highlight(command) }
+    }
+    .onChange(of: RouteCenter.shared.pending, initial: true) {
+      let link = RouteCenter.shared.take { if case .command(let id) = $0 { id } else { nil } }
+      guard let id = link, store.library.command(id) != nil else { return }
+      creating = false
+      opened = OpenedCommand(id: id)
     }
     .sheet(item: $opened) { opened in
       CommandDetailSheet(id: opened.id)

@@ -171,11 +171,13 @@ struct AskSheet: View {
       .post()
   }
 
-  /// 查看: closes the panel and points the command out on the 指令 tab.
+  /// 查看: closes the panel and points the command out on the 指令 tab, whichever tab the panel
+  /// was opened over.
   private func show(_ saved: AskConversation.SavedCommand?) {
     guard let saved else { return }
     CommandSpotlight.shared.show(saved.id)
     dismiss()
+    RouteCenter.shared.open(.commands)
   }
 }
 
