@@ -9,7 +9,7 @@ import SwiftUI
 struct AskSheet: View {
   @Environment(AppStore.self) private var store
   @Environment(\.dismiss) private var dismiss
-  @State private var conversation = AskConversation()
+  @State private var conversation: AskConversation
   @State private var draft = ""
   @State private var trayOpen = false
   @State private var choosingPhotos = false
@@ -21,6 +21,12 @@ struct AskSheet: View {
   /// The turn to bring back into view when the conversation shows again.
   @State private var reveal: UUID?
   @FocusState private var fieldFocused: Bool
+
+  /// Opens 问 Atd, about `context` when there is one: its chip waits above the field, and the first
+  /// question takes its text in the prompt and its photo as an attachment.
+  init(context: AskContext? = nil) {
+    _conversation = State(initialValue: AskConversation(context: context))
+  }
 
   var body: some View {
     VStack(spacing: 0) {

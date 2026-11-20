@@ -6,14 +6,17 @@ import Observation
 import UniformTypeIdentifiers
 
 /// One 问 Atd conversation: questions with their photos, answers streamed in, and the photos
-/// waiting to go with the next question. It lives only as long as the panel; nothing is saved,
-/// except the commands made from its answers (存为指令), which go to the library.
+/// waiting to go with the next question; perhaps about a context it was opened with. It lives only
+/// as long as the panel; nothing is saved, except the commands made from its answers (存为指令),
+/// which go to the library.
 @Observable
 final class AskConversation {
   struct Turn: Identifiable {
     let id = UUID()
     let question: String
     let photos: [ModelImage]
+    /// The context, on the question it first went with.
+    var context: AskContext?
     var answer = ""
     var state = State.thinking
     /// The command this answer was saved as.
@@ -34,7 +37,14 @@ final class AskConversation {
   private(set) var turns: [Turn] = []
   /// Photos to send with the next question, in the order they were added.
   var photos: [ModelImage] = []
+  /// What the conversation is about: it goes with the first question and stays in every request
+  /// after it. Until then it can be left out.
+  private(set) var context: AskContext?
   @ObservationIgnored private var answering: Task<Void, Never>?
+
+  init(context: AskContext? = nil) {
+    self.context = context
+  }
 
   /// At most this many photos go with one question.
   static let photoLimit = 4
@@ -49,7 +59,7 @@ final class AskConversation {
   ) {
     let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !question.isEmpty, !isAnswering else { return }
-    turns.append(Turn(question: question, photos: photos))
+    turns.append(Turn(question: question, photos: photos, context: turns.isEmpty ? context : nil))
     photos = []
     answer(runner: runner, onFailure: onFailure)
   }
@@ -68,11 +78,19 @@ final class AskConversation {
     if let last = turns.indices.last, isAnswering { turns[last].state = .stopped }
   }
 
-  /// 新对话: clears the panel.
+  /// 新对话: clears the panel, context and all.
   func reset() {
     stop()
     turns = []
     photos = []
+    context = nil
+  }
+
+  /// ✕ on the context's chip: the conversation is not about it after all. Once a question has
+  /// gone with it, it stays.
+  func leaveOutContext() {
+    guard turns.isEmpty else { return }
+    context = nil
   }
 
   /// Notes that the answer of turn `id` was saved as `command`, so the turn says so.
@@ -85,10 +103,23 @@ final class AskConversation {
     guard let index = turns.indices.last else { return }
     let turn = turns[index]
     // Earlier exchanges that ended with an answer give the model the conversation so far.
-    let earlier = turns[..<index].filter { $0.state == .done }.map {
+    var earlier = turns[..<index].filter { $0.state == .done }.map {
       AskPrompt.Exchange(question: $0.question, images: $0.photos, answer: $0.answer)
     }
-    let request = AskPrompt.request(turn.question, images: turn.photos, after: earlier)
+    var question = turn.question
+    var images = turn.photos
+    // The context goes with the request's first question, even when the turn it was shown on
+    // ended without an answer and so is not part of the request.
+    if let context {
+      if earlier.isEmpty {
+        question = context.framing(question)
+        images = context.images + images
+      } else {
+        earlier[0].question = context.framing(earlier[0].question)
+        earlier[0].images = context.images + earlier[0].images
+      }
+    }
+    let request = AskPrompt.request(question, images: images, after: earlier)
     let id = turn.id
     answering = Task {
       do {

@@ -145,6 +145,60 @@
         }
       }
     },
+    "ask.context %@" : {
+      "comment" : "Accessibility label of the chip naming what an Ask conversation is about, such as a photo the camera took; the chip's title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于「%@」"
+          }
+        }
+      }
+    },
+    "ask.context.prompt %@" : {
+      "comment" : "Sent to the model, not shown: the line above the context's text, before the first question; the context's title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About “%@”:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关于「%@」："
+          }
+        }
+      }
+    },
+    "ask.context.remove %@" : {
+      "comment" : "Accessibility label: leaves the context out of the conversation before the first question; the chip's title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Don't include “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不再附带「%@」"
+          }
+        }
+      }
+    },
     "ask.copied" : {
       "comment" : "Ask Atd button after copying",
       "extractionState" : "manual",

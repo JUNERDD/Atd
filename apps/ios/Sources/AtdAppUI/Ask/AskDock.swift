@@ -1,9 +1,9 @@
 import AtdAI
 import SwiftUI
 
-/// The bottom of 问 Atd: the field between + and send (stop while an answer streams), the photos
-/// waiting to go with the next question, and the tray that adds one. Until a model is added, it is
-/// the way to add one.
+/// The bottom of 问 Atd: the field between + and send (stop while an answer streams), the context
+/// and photos waiting to go with the next question, and the tray that adds a photo. Until a model
+/// is added, it is the way to add one.
 struct AskDock: View {
   let conversation: AskConversation
   @Binding var draft: String
@@ -23,6 +23,10 @@ struct AskDock: View {
       .padding(16)
     } else {
       VStack(alignment: .leading, spacing: 10) {
+        if conversation.turns.isEmpty, let context = conversation.context {
+          AskContextChip(context: context) { conversation.leaveOutContext() }
+            .padding(.top, 4)
+        }
         if !conversation.photos.isEmpty { attachments }
         if trayOpen { tray }
         HStack(alignment: .bottom, spacing: 8) {
