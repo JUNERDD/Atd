@@ -14,6 +14,7 @@ public enum AtdAppLaunch {
     // Background task handlers must be registered before launch finishes.
     AutomationLaunch.prepare()
     CameraLaunch.prepare()
+    MiniAppDebug.launch()
   }
 }
 
