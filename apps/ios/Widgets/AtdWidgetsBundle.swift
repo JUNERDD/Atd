@@ -14,6 +14,7 @@ struct AtdWidgetsBundle: WidgetBundle {
     AskControl()
     BriefingControl()
     CaptureControl()
+    ExpenseCaptureControl()
     BriefingActivityWidget()
     AutomationActivityWidget()
     FocusActivityWidget()
