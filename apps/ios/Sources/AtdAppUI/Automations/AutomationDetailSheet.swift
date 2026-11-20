@@ -151,9 +151,13 @@ struct AutomationDetailSheet: View {
       .padding(.top, 24)
   }
 
+  /// What else ends an automation: deleting it in Atd leaves the one in Shortcuts, and a
+  /// built-in, which Atd keeps, ends only there.
   @ViewBuilder private func footer(_ automation: Automation) -> some View {
-    SectionFooter(AutomationText.string("detail.footer"))
-    if !automation.isBuiltin {
+    if automation.isBuiltin {
+      SectionFooter(AutomationText.string("detail.footer.builtin"))
+    } else {
+      SectionFooter(AutomationText.string("detail.footer"))
       Button(AutomationText.string("detail.delete"), role: .destructive) {
         confirmingDelete = true
       }

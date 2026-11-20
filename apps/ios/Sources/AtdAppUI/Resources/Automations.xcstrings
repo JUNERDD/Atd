@@ -128,7 +128,7 @@
       }
     },
     "detail.footer" : {
-      "comment" : "Under an automation",
+      "comment" : "Above the delete button of an automation the person added",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -141,6 +141,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "要彻底删掉，还要在「快捷指令」里删除这个自动化。"
+          }
+        }
+      }
+    },
+    "detail.footer.builtin" : {
+      "comment" : "Under a built-in automation, which Atd keeps",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To stop it for good, delete the automation in Shortcuts."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要彻底停掉，就在「快捷指令」里删除这个自动化。"
           }
         }
       }
