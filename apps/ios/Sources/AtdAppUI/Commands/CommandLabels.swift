@@ -8,9 +8,10 @@ extension Command {
     return name.isEmpty ? AppText.string("commands.untitled") : name
   }
 
-  /// A row's one secondary line: where the command shows up, in plain words.
+  /// A row's one secondary line: where the command shows up, in plain words. A place that cannot
+  /// run it is left out, as it never shows up there.
   var whereLabel: String {
-    let places = Surface.available.filter { placement[$0] }.map(\.shortLabel)
+    let places = Surface.available.filter { placement[$0] && runs(on: $0) }.map(\.shortLabel)
     return places.isEmpty
       ? AppText.string("commands.nowhere") : places.formatted(.list(type: .and, width: .narrow))
   }

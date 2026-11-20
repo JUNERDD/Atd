@@ -2140,6 +2140,24 @@
         }
       }
     },
+    "surface.controls.footer" : {
+      "comment" : "Footer under a command's 出现在 switches while 控制中心与操作按钮 is on: the switch alone does not put the command there",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add an Atd control to Control Center or the Action button first."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "控制中心和操作按钮要先在系统里加上 Atd 控件。"
+          }
+        }
+      }
+    },
     "surface.controls.short" : {
       "comment" : "Where a command can show up, short form on a command row",
       "extractionState" : "manual",
