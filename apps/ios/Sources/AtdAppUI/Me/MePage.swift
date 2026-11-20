@@ -2,9 +2,12 @@ import AtdInk
 import AtdModel
 import SwiftUI
 
-/// The 我的 tab: the models, the keyboard and its phrases, and what Atd sends.
+/// The 我的 tab: the models, the keyboard and its phrases, and what Atd sends. A `.models` route
+/// (a link to 模型) opens the models page.
 struct MePage: View {
   @Environment(AppStore.self) private var store
+  @State private var showingModels = false
+  private let routes = RouteCenter.shared
 
   var body: some View {
     NavigationStack {
@@ -13,8 +16,8 @@ struct MePage: View {
 
         SectionHeader(AppText.string("me.models"))
         InkList(inset: 62) {
-          NavigationLink {
-            ModelsPage()
+          Button {
+            showingModels = true
           } label: {
             SettingsRow(
               symbol: "key", title: AppText.string("me.defaultModel"), value: modelValue,
@@ -56,6 +59,10 @@ struct MePage: View {
         .padding(.top, 26)
       }
       .toolbar(.hidden, for: .navigationBar)
+      .navigationDestination(isPresented: $showingModels) { ModelsPage() }
+    }
+    .onChange(of: routes.pending, initial: true) {
+      if routes.take({ $0 == .models ? true : nil }) != nil { showingModels = true }
     }
   }
 
