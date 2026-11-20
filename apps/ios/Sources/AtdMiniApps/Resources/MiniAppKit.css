@@ -1,0 +1,418 @@
+/* Atd's ink-and-paper kit for mini app pages. The host puts it before every page, with the color
+   tokens it resolves from the system colors (--paper, --ink, --line, --hl, --hl-<tint>, --on,
+   --chosen), so a page drawn with these classes looks like the rest of the app: paper, inked
+   edges drawn by hand, highlighter marks. Text follows Dynamic Type through the system fonts. */
+
+:root {
+  color-scheme: light dark;
+  --gap: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  padding: 4px 16px 32px;
+  font: -apple-system-body;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  overflow-wrap: anywhere;
+}
+
+#app {
+  display: grid;
+  gap: var(--gap);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.title {
+  font: -apple-system-headline;
+}
+
+.kicker {
+  font: -apple-system-subheadline;
+  color: var(--ink-2);
+}
+
+.big {
+  display: block;
+  font-size: 2.5em;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.big small {
+  font-size: 0.5em;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--ink-2);
+}
+
+.sub {
+  font: -apple-system-subheadline;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.meta {
+  font: -apple-system-footnote;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.row-between {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+/* An inked edge drawn by hand: the edge lives on ::before so the wobble filter never blurs text. */
+.card,
+.btn,
+.field,
+.segmented,
+.check-box,
+.meter {
+  position: relative;
+  isolation: isolate;
+}
+
+.card::before,
+.btn::before,
+.field-frame::before,
+.segmented::before,
+.meter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  filter: url(#ink-rough);
+}
+
+.card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 26px 20px 28px 18px / 20px 28px 18px 26px;
+}
+
+.card::before {
+  box-shadow: inset 0 0 0 1px var(--card-line);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 24px 19px 26px 17px / 19px 26px 17px 24px;
+  font: -apple-system-subheadline;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  cursor: pointer;
+  transition: transform 120ms ease-out;
+}
+
+.btn::before {
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1.1px var(--line);
+}
+
+.btn:active {
+  transform: translate(1px, 1.5px);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+}
+
+.btn.primary {
+  color: var(--paper);
+}
+
+.btn.primary::before {
+  background: var(--ink-solid);
+  box-shadow: none;
+}
+
+.btn.hl::before {
+  background: var(--hl);
+}
+
+.btn.block {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  font: -apple-system-body;
+  font-weight: 600;
+}
+
+.btn.round {
+  width: 44px;
+  padding: 0;
+  border-radius: 53% 47% 51% 45% / 47% 54% 45% 52%;
+}
+
+.field-frame {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  border-radius: 16px 20px 15px 18px / 18px 15px 20px 16px;
+}
+
+.field-frame::before {
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1.1px var(--line);
+}
+
+.field-frame:focus-within::before {
+  box-shadow: inset 0 0 0 1.3px var(--ink);
+}
+
+.field {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 16px 20px 15px 18px / 18px 15px 20px 16px;
+  font: -apple-system-body;
+  color: var(--ink);
+  background: transparent;
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.field::placeholder {
+  color: var(--ink-3);
+}
+
+.segmented {
+  display: flex;
+  padding: 4px;
+  border-radius: 19px 15px 20px 14px / 15px 20px 14px 19px;
+}
+
+.segmented::before {
+  box-shadow: inset 0 0 0 1.1px var(--line);
+}
+
+.segmented label {
+  flex: 1;
+  display: grid;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented span {
+  display: grid;
+  place-items: center;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 15px 11px 16px 10px / 11px 16px 10px 15px;
+  font: -apple-system-subheadline;
+  white-space: nowrap;
+}
+
+.segmented input:checked + span {
+  font-weight: 600;
+  background: var(--chosen);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 0;
+  border: 0;
+  font: -apple-system-body;
+  color: var(--ink);
+  text-align: start;
+  background: none;
+}
+
+.list > li + li .row,
+.list > .row + .row {
+  border-top: 0.5px solid var(--card-line);
+}
+
+.row .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.row .end {
+  margin-inline-start: auto;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.check-box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%;
+  box-shadow: inset 0 0 0 1.4px var(--line);
+  color: transparent;
+}
+
+[aria-checked='true'] .check-box {
+  color: var(--ink);
+  background: var(--on);
+}
+
+[aria-checked='true'] .grow {
+  color: var(--ink-2);
+  text-decoration: line-through;
+}
+
+.meter {
+  display: block;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 7px 5px 8px 4px / 5px 8px 4px 7px;
+}
+
+.meter > i {
+  display: block;
+  height: 100%;
+  background: var(--hl);
+  transition: width 400ms ease-out;
+}
+
+.meter::after {
+  box-shadow: inset 0 0 0 1.1px var(--line);
+  z-index: 1;
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 18px 14px 20px 13px / 14px 20px 13px 18px;
+  font: -apple-system-subheadline;
+  background: var(--on);
+}
+
+.sym {
+  display: inline-block;
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+  background: currentColor;
+  -webkit-mask: var(--sym) center / contain no-repeat;
+  mask: var(--sym) center / contain no-repeat;
+}
+
+.ring {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+.ring > svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  filter: url(#ink-rough);
+}
+
+.ring > .ring-in {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  line-height: 1.1;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.bars > span {
+  flex: 1;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  text-align: center;
+}
+
+.bars i {
+  display: block;
+  align-self: end;
+  border-radius: 4px 3px 1px 2px / 3px 4px 2px 1px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  filter: url(#ink-rough);
+}
+
+.bars i.on {
+  background: var(--hl);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.bars small {
+  font: -apple-system-caption2;
+  color: var(--ink-2);
+}
+
+.ink-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

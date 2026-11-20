@@ -1,6 +1,168 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "miniAppCheck.list" : {
+      "comment" : "App Intents: parameter, the list the item is in",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "List"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清单"
+          }
+        }
+      }
+    },
+    "miniAppCheck.record" : {
+      "comment" : "App Intents: parameter, the item ticked",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Item"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "项目"
+          }
+        }
+      }
+    },
+    "miniAppCheck.title" : {
+      "comment" : "App Intents: a checklist widget's row (hidden from Shortcuts)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tick Off in Mini App"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在小应用里勾选"
+          }
+        }
+      }
+    },
+    "miniAppCheck.value" : {
+      "comment" : "App Intents: parameter, whether the item is ticked",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "miniAppEntity.type" : {
+      "comment" : "App Intents: the kind of thing a mini app is, in Shortcuts and widget settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mini App"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小应用"
+          }
+        }
+      }
+    },
+    "miniAppIntent.app" : {
+      "comment" : "App Intents: parameter, the mini app a widget button changes",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mini App"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小应用"
+          }
+        }
+      }
+    },
+    "miniAppIntent.field" : {
+      "comment" : "App Intents: parameter, the piece of data a widget button changes",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Field"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数据项"
+          }
+        }
+      }
+    },
+    "miniAppStep.amount" : {
+      "comment" : "App Intents: parameter, how much a counter widget's button adds",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amount"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "数量"
+          }
+        }
+      }
+    },
+    "miniAppStep.title" : {
+      "comment" : "App Intents: a counter widget's button (hidden from Shortcuts)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log in Mini App"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在小应用里记一次"
+          }
+        }
+      }
+    },
     "miniAppWidget.app" : {
       "comment" : "Widget configuration parameter: the mini app to show",
       "extractionState" : "manual",
@@ -15,6 +177,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "小应用"
+          }
+        }
+      }
+    },
+    "miniAppWidget.description" : {
+      "comment" : "Widget configuration description",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose which mini app the widget shows."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择小组件显示哪个小应用。"
           }
         }
       }

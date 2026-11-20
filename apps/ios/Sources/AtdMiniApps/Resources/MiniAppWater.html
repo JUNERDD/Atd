@@ -1,0 +1,68 @@
+<style>
+  .water {
+    justify-items: center;
+    gap: 14px;
+    padding-block: 22px;
+    text-align: center;
+  }
+  .water .num {
+    font-size: 3.4em;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .water .actions {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+</style>
+<section class="card water">
+  <div class="ring" id="ring" style="width: 180px; height: 180px"></div>
+  <p class="sub" id="left" aria-live="polite"></p>
+  <div class="actions">
+    <button class="btn" id="less" type="button">
+      <i class="sym" data-name="arrow.uturn.backward"></i><span id="less-label"></span>
+    </button>
+    <button class="btn primary" id="more" type="button">
+      <i class="sym" data-name="drop.fill"></i><span id="more-label"></span>
+    </button>
+  </div>
+</section>
+<script>
+  const zh = atd.locale.startsWith('zh');
+  const text = zh
+    ? {
+        of: (goal) => `/ ${goal} 杯`,
+        left: (n) => `还差 ${n} 杯`,
+        done: '今天已经喝够了',
+        less: '撤销',
+        more: '喝了一杯',
+      }
+    : {
+        of: (goal) => `of ${goal} cups`,
+        left: (n) => (n === 1 ? '1 cup to go' : `${n} cups to go`),
+        done: 'You reached today’s goal',
+        less: 'Undo',
+        more: 'Had a cup',
+      };
+  const $ = (id) => document.getElementById(id);
+  $('less-label').textContent = text.less;
+  $('more-label').textContent = text.more;
+  $('less').addEventListener('click', () => atd.add('cups', -1));
+  $('more').addEventListener('click', () => atd.add('cups', 1));
+
+  atd.onData((data, atd) => {
+    const today = atd.stats.cups.today;
+    const goal = data.goal;
+    $('ring').innerHTML =
+      atd.ui.ring(today / goal, 180, 18) +
+      `<div class="ring-in"><span class="num">${atd.ui.number(today)}</span>` +
+      `<span class="sub">${atd.ui.esc(text.of(goal))}</span></div>`;
+    const left = Math.max(0, goal - today);
+    $('left').textContent = left ? text.left(left) : text.done;
+    $('less').disabled = today <= 0;
+  });
+</script>

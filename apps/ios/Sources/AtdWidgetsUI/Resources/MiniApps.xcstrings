@@ -1,6 +1,24 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "miniApp.description" : {
+      "comment" : "Description of the mini app widget in the widget gallery",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows one of your mini apps."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "显示你的一个小应用。"
+          }
+        }
+      }
+    },
     "miniApp.name" : {
       "comment" : "Name of the Home Screen widget that shows one mini app",
       "extractionState" : "manual",

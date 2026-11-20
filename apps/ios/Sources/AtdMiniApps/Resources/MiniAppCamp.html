@@ -1,0 +1,49 @@
+<style>
+  .packed .meter {
+    margin: 8px 0 2px;
+  }
+  .gear .end {
+    font: -apple-system-footnote;
+  }
+</style>
+<section class="card packed">
+  <span class="kicker" id="kicker"></span>
+  <span class="big" id="count"></span>
+  <span id="meter"></span>
+  <span class="sub" id="done" hidden></span>
+</section>
+<ul class="list gear" id="items"></ul>
+<script>
+  const zh = atd.locale.startsWith('zh');
+  const text = zh
+    ? { kicker: '已打包', done: '都装好了，出发吧' }
+    : { kicker: 'Packed', done: 'All packed. Off you go!' };
+  const $ = (id) => document.getElementById(id);
+  $('kicker').textContent = text.kicker;
+  $('done').textContent = text.done;
+
+  $('items').addEventListener('click', (event) => {
+    const row = event.target.closest('[data-id]');
+    if (!row) return;
+    const packed = row.getAttribute('aria-checked') === 'true';
+    atd.update('items', row.dataset.id, { packed: !packed });
+  });
+
+  atd.onData((data) => {
+    const items = data.items;
+    const packed = items.filter((item) => item.packed).length;
+    $('count').innerHTML = `${packed}<small>/${items.length}</small>`;
+    $('meter').innerHTML = atd.ui.meter(items.length ? packed / items.length : 0);
+    $('done').hidden = !(items.length && packed === items.length);
+    $('items').innerHTML = items
+      .map(
+        (item) =>
+          `<li><button class="row" type="button" role="checkbox" data-id="${atd.ui.esc(item.id)}" ` +
+          `aria-checked="${item.packed}"><span class="check-box">` +
+          `<i class="sym" data-name="checkmark"></i></span>` +
+          `<span class="grow">${atd.ui.esc(item.label)}</span>` +
+          `<span class="end">${atd.ui.esc(item.group)}</span></button></li>`,
+      )
+      .join('');
+  });
+</script>

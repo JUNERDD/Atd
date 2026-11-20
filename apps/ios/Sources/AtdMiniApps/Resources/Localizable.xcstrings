@@ -1,7 +1,1098 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-
+    "builtin.camp.finished" : {
+      "comment" : "Built-in mini app: 露营清单's widget once everything is packed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All packed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "都装好了"
+          }
+        }
+      }
+    },
+    "builtin.camp.group.carry" : {
+      "comment" : "Built-in mini app: a group of camping gear (carried on you)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carry"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "随身"
+          }
+        }
+      }
+    },
+    "builtin.camp.group.cooking" : {
+      "comment" : "Built-in mini app: a group of camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cooking"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "做饭"
+          }
+        }
+      }
+    },
+    "builtin.camp.group.other" : {
+      "comment" : "Built-in mini app: a group of camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Other"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "其他"
+          }
+        }
+      }
+    },
+    "builtin.camp.group.sleep" : {
+      "comment" : "Built-in mini app: a group of camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleep"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡觉"
+          }
+        }
+      }
+    },
+    "builtin.camp.idea.add" : {
+      "comment" : "Built-in mini app: a suggested change for 露营清单",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add one: sunscreen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加一项：防晒霜"
+          }
+        }
+      }
+    },
+    "builtin.camp.idea.groups" : {
+      "comment" : "Built-in mini app: a suggested change for 露营清单",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Group by sleeping, cooking and carrying"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "按睡觉、做饭、随身分组"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.aid" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "First aid kit"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "急救包"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.bag" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleeping bag"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "睡袋"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.bug" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bug spray"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "驱蚊液"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.flask" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thermos"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保温水壶"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.lamp" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Headlamp"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "头灯"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.mat" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleeping pad"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "防潮垫"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.power" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Power bank"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "充电宝"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.rain" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rain jacket"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "雨衣"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.stove" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stove and gas"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "炉头和气罐"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.table" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folding table and chairs"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "折叠桌椅"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.tent" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tent"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "帐篷"
+          }
+        }
+      }
+    },
+    "builtin.camp.item.trash" : {
+      "comment" : "Built-in mini app: camping gear",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trash bags"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "垃圾袋"
+          }
+        }
+      }
+    },
+    "builtin.camp.kicker" : {
+      "comment" : "Built-in mini app: 露营清单's widget, above the packed count",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Packed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已打包"
+          }
+        }
+      }
+    },
+    "builtin.camp.name" : {
+      "comment" : "Built-in mini app name: a camping packing list",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camping List"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "露营清单"
+          }
+        }
+      }
+    },
+    "builtin.camp.next" : {
+      "comment" : "Built-in mini app: 露营清单's widget, before the next item to pack",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一件"
+          }
+        }
+      }
+    },
+    "builtin.ledger.idea.budget" : {
+      "comment" : "Built-in mini app: a suggested change for 记账本 (可以这样说)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A monthly budget of 3,000; warn me when I'm close"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每月预算 3000，快超了提醒我"
+          }
+        }
+      }
+    },
+    "builtin.ledger.idea.pie" : {
+      "comment" : "Built-in mini app: a suggested change for 记账本 (可以这样说)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a pie chart by category"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加一个按类别的饼图"
+          }
+        }
+      }
+    },
+    "builtin.ledger.name" : {
+      "comment" : "Built-in mini app name: the expense ledger",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ledger"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记账本"
+          }
+        }
+      }
+    },
+    "builtin.water.button" : {
+      "comment" : "Built-in mini app: 喝水's widget button, after a plus sign",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 cup"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 杯"
+          }
+        }
+      }
+    },
+    "builtin.water.idea.cups" : {
+      "comment" : "Built-in mini app: a suggested change for 喝水",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Draw each cup as a glass"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把每一杯画成一个杯子"
+          }
+        }
+      }
+    },
+    "builtin.water.idea.goal" : {
+      "comment" : "Built-in mini app: a suggested change for 喝水",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Make the daily goal 10 cups"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每天目标改成 10 杯"
+          }
+        }
+      }
+    },
+    "builtin.water.name" : {
+      "comment" : "Built-in mini app name: counting glasses of water",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Water"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "喝水"
+          }
+        }
+      }
+    },
+    "builtin.water.unit" : {
+      "comment" : "Built-in mini app: the unit of 喝水's count, after a number",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cups"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "杯"
+          }
+        }
+      }
+    },
+    "glance.app" : {
+      "comment" : "Mini app widget and card: a widget whose mini app is unknown",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mini App"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小应用"
+          }
+        }
+      }
+    },
+    "glance.checklist.finished" : {
+      "comment" : "Mini app widget and card: every item of a checklist is ticked",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部完成"
+          }
+        }
+      }
+    },
+    "glance.checklist.kicker" : {
+      "comment" : "Mini app widget and card: above a checklist's ticked count",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已完成"
+          }
+        }
+      }
+    },
+    "glance.checklist.next %@ %@" : {
+      "comment" : "Mini app widget and card: a checklist's next item, e.g. 下一件：头灯",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@：%2$@"
+          }
+        }
+      }
+    },
+    "glance.checklist.nextDefault" : {
+      "comment" : "Mini app widget and card: before a checklist's next item",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一项"
+          }
+        }
+      }
+    },
+    "glance.counter.add %@" : {
+      "comment" : "Mini app widget and card: VoiceOver label of a counter widget's button, e.g. 加 1 杯",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加 %@"
+          }
+        }
+      }
+    },
+    "glance.counter.left" : {
+      "comment" : "Mini app widget and card: above how much is left to reach today's goal",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To go"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还差"
+          }
+        }
+      }
+    },
+    "glance.counter.reached" : {
+      "comment" : "Mini app widget and card: a counter reached today's goal",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已达标"
+          }
+        }
+      }
+    },
+    "glance.counter.today" : {
+      "comment" : "Mini app widget and card: above today's count",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天"
+          }
+        }
+      }
+    },
+    "glance.deleted" : {
+      "comment" : "Mini app widget and card: the mini app was deleted after its widget was added",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deleted"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已删除"
+          }
+        }
+      }
+    },
+    "glance.goal %@" : {
+      "comment" : "Mini app widget and card: a counter's daily goal, e.g. 目标 8 杯",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Goal %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目标 %@"
+          }
+        }
+      }
+    },
+    "glance.ledger.kicker" : {
+      "comment" : "Mini app widget and card: 记账本's widget, above this month's spending",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This month"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本月支出"
+          }
+        }
+      }
+    },
+    "glance.ledger.label.month %@" : {
+      "comment" : "Mini app widget and card: VoiceOver, 记账本's widget",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "spent %@ this month"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本月支出 %@"
+          }
+        }
+      }
+    },
+    "glance.ledger.label.today %@ %lld" : {
+      "comment" : "Mini app widget and card: VoiceOver, 记账本's widget: today's total and number of expenses",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "today %1$@, %2$lld logged"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天 %1$@，%2$lld 笔"
+          }
+        }
+      }
+    },
+    "glance.ledger.meta %@" : {
+      "comment" : "Mini app widget and card: 记账本's card: this month's spending",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This month %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本月 %@"
+          }
+        }
+      }
+    },
+    "glance.ledger.today %@ %lld" : {
+      "comment" : "Mini app widget and card: 记账本's widget: today's total and number of expenses",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today %1$@ · %2$lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天 %1$@ · %2$lld 笔"
+          }
+        }
+      }
+    },
+    "glance.ledger.week" : {
+      "comment" : "Mini app widget and card: 记账本's widget, above the last seven days' bars",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last 7 days"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "近 7 天"
+          }
+        }
+      }
+    },
+    "glance.missing" : {
+      "comment" : "Mini app widget and card: the mini app's files cannot be read",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can't open"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打不开"
+          }
+        }
+      }
+    },
+    "glance.rows.empty" : {
+      "comment" : "Mini app widget and card: a list widget with no records yet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing yet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还没有记录"
+          }
+        }
+      }
+    },
+    "glance.rows.kicker" : {
+      "comment" : "Mini app widget and card: above a list widget's latest records",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "最近"
+          }
+        }
+      }
+    },
+    "glance.separator" : {
+      "comment" : "Mini app widget and card: joins the parts VoiceOver reads for a widget",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ", "
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "，"
+          }
+        }
+      }
+    },
+    "glance.stat.noDate" : {
+      "comment" : "Mini app widget and card: a countdown whose date is not set yet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No date yet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还没设日期"
+          }
+        }
+      }
+    },
+    "glance.stat.passed" : {
+      "comment" : "Mini app widget and card: under days counted since a date that has passed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "days ago"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已过去"
+          }
+        }
+      }
+    },
+    "glance.streak.day" : {
+      "comment" : "Mini app widget and card: the unit after the number 1 counting days (1 天)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "day"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天"
+          }
+        }
+      }
+    },
+    "glance.streak.days" : {
+      "comment" : "Mini app widget and card: the unit after a number of days other than 1 (12 天)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "days"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "天"
+          }
+        }
+      }
+    },
+    "glance.streak.inline %lld" : {
+      "comment" : "Mini app widget and card: a streak beside the Lock Screen clock",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld days"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 天"
+          }
+        }
+      }
+    },
+    "glance.streak.kicker" : {
+      "comment" : "Mini app widget and card: above a streak's count of days in a row",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In a row"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连续"
+          }
+        }
+      }
+    },
+    "glance.streak.meta %@ %lld" : {
+      "comment" : "Mini app widget and card: a streak on the app's card, e.g. 连续读书 12 天",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$lld"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$lld 天"
+          }
+        }
+      }
+    },
+    "glance.streak.none" : {
+      "comment" : "Mini app widget and card: a streak app has nothing logged today",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing logged today"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天还没记"
+          }
+        }
+      }
+    },
+    "glance.today %@" : {
+      "comment" : "Mini app widget and card: today's value, e.g. 今天 5 杯 or 今天 5/8 杯",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天 %@"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }
