@@ -23,6 +23,11 @@ public struct AnthropicClient: ModelBackend {
     self.session = session
   }
 
+  /// Custom providers may supply the API root or its already-versioned base URL.
+  private var versionedURL: URL {
+    baseURL.lastPathComponent == "v1" ? baseURL : baseURL.appending(path: "v1")
+  }
+
   public func stream(_ request: ModelRequest) -> AsyncThrowingStream<String, any Error> {
     let post: URLRequest
     do {
@@ -41,7 +46,7 @@ public struct AnthropicClient: ModelBackend {
     repeat {
       var query = [URLQueryItem(name: "limit", value: "1000")]
       if let after { query.append(URLQueryItem(name: "after_id", value: after)) }
-      var get = URLRequest(url: baseURL.appending(path: "v1/models").appending(queryItems: query))
+      var get = URLRequest(url: versionedURL.appending(path: "models").appending(queryItems: query))
       authorize(&get)
       let page = try await HTTPStream.json(
         get, session: session, as: ModelPage.self, failure: AnthropicAnswerDecoder.failure)
@@ -52,8 +57,9 @@ public struct AnthropicClient: ModelBackend {
   }
 
   func urlRequest(for request: ModelRequest) throws -> URLRequest {
-    var post = URLRequest(url: baseURL.appending(path: "v1/messages"))
+    var post = URLRequest(url: versionedURL.appending(path: "messages"))
     post.httpMethod = "POST"
+    post.identifyOpenCodeSession(request.conversationID)
     authorize(&post)
     post.setValue("application/json", forHTTPHeaderField: "Content-Type")
     post.setValue("text/event-stream", forHTTPHeaderField: "Accept")

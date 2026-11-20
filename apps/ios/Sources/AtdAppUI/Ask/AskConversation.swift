@@ -34,6 +34,7 @@ final class AskConversation {
     case failed(ModelFailure)
   }
 
+  private var conversationID = UUID()
   private(set) var turns: [Turn] = []
   /// Photos to send with the next question, in the order they were added.
   var photos: [ModelImage] = []
@@ -81,6 +82,7 @@ final class AskConversation {
   /// 新对话: clears the panel, context and all.
   func reset() {
     stop()
+    conversationID = UUID()
     turns = []
     photos = []
     context = nil
@@ -119,7 +121,8 @@ final class AskConversation {
         earlier[0].images = context.images + earlier[0].images
       }
     }
-    let request = AskPrompt.request(question, images: images, after: earlier)
+    var request = AskPrompt.request(question, images: images, after: earlier)
+    request.conversationID = conversationID
     let id = turn.id
     answering = Task {
       do {

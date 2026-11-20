@@ -20,7 +20,7 @@ public struct ProviderPreset: Sendable, Identifiable, Equatable {
   public static func all() -> [ProviderPreset] {
     [
       ProviderPreset(
-        id: "openai", name: "OpenAI", api: .openAICompatible,
+        id: "openai", name: "OpenAI", api: .openAIResponses,
         baseURL: url("https://api.openai.com/v1")),
       ProviderPreset(
         id: "anthropic", name: "Anthropic", api: .anthropic,
@@ -38,6 +38,33 @@ public struct ProviderPreset: Sendable, Identifiable, Equatable {
         id: "qwen", name: String(localized: "preset.qwen", bundle: .module),
         api: .openAICompatible,
         baseURL: url("https://dashscope-intl.aliyuncs.com/compatible-mode/v1")),
+      ProviderPreset(
+        id: "opencode-go", name: "OpenCode Go", api: .openAIResponses,
+        baseURL: url("https://opencode.ai/inference/go/openai/v1")),
+      ProviderPreset(
+        id: "opencode", name: "OpenCode", api: .openAIResponses,
+        baseURL: url("https://opencode.ai/inference/openai/v1")),
+      ProviderPreset(
+        id: "xai", name: "xAI", api: .openAIResponses,
+        baseURL: url("https://api.x.ai/v1")),
+      ProviderPreset(
+        id: "groq", name: "Groq", api: .openAICompatible,
+        baseURL: url("https://api.groq.com/openai/v1")),
+      ProviderPreset(
+        id: "cerebras", name: "Cerebras", api: .openAICompatible,
+        baseURL: url("https://api.cerebras.ai/v1")),
+      ProviderPreset(
+        id: "moonshotai", name: "Moonshot AI", api: .openAICompatible,
+        baseURL: url("https://api.moonshot.ai/v1")),
+      ProviderPreset(
+        id: "zai", name: "Z.AI Coding Plan", api: .openAICompatible,
+        baseURL: url("https://api.z.ai/api/coding/paas/v4")),
+      ProviderPreset(
+        id: "minimax", name: "MiniMax", api: .anthropic,
+        baseURL: url("https://api.minimax.io/anthropic")),
+      ProviderPreset(
+        id: "together", name: "Together AI", api: .openAICompatible,
+        baseURL: url("https://api.together.ai/v1")),
       ProviderPreset(
         id: customID, name: String(localized: "preset.custom", bundle: .module),
         api: .openAICompatible, baseURL: nil),

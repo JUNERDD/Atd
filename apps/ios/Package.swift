@@ -58,6 +58,7 @@ let package = Package(
       resources: [.process("Resources")], swiftSettings: mainActorByDefault),
     .testTarget(name: "AtdModelTests", dependencies: ["AtdModel"]),
     .testTarget(name: "AtdAITests", dependencies: ["AtdAI"]),
+    .testTarget(name: "AtdKeyboardUITests", dependencies: ["AtdKeyboardUI"]),
     .testTarget(name: "AtdPinyinTests", dependencies: ["AtdPinyin"]),
     .testTarget(
       name: "AtdKeyboardCoreTests",

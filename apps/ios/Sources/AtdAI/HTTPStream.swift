@@ -21,6 +21,19 @@ extension URLSession {
   public static let models = URLSession(configuration: .models)
 }
 
+func openAIPost(
+  url: URL, key: String, conversation: UUID?, body: some Encodable
+) throws -> URLRequest {
+  var post = URLRequest(url: url)
+  post.httpMethod = "POST"
+  post.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+  post.setValue("application/json", forHTTPHeaderField: "Content-Type")
+  post.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+  post.identifyOpenCodeSession(conversation)
+  post.httpBody = try JSONEncoder.snakeCase.encode(body)
+  return post
+}
+
 /// How a protocol reads its streamed answers and its errors.
 protocol AnswerDecoding: Sendable {
   /// Reads one event: the text it adds, and whether the answer is now complete.
