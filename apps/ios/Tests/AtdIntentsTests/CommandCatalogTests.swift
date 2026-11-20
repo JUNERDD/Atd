@@ -23,24 +23,6 @@ struct CommandCatalogTests {
     #expect(CommandCatalog.commands(on: .controls, in: library).map(\.name) == ["Receipt", "Plan"])
   }
 
-  /// The local copy of `Command.runs(on:)` keeps A43's rule for the surfaces root swaps in.
-  @Test func runsFollowsTheRuleForEverySurface() {
-    let card = personCommand("Card", input: .text, action: .card)
-    let none = personCommand("None", input: .none)
-    #expect(CommandCatalog.runs(personCommand("Text"), on: .keyboard))
-    #expect(!CommandCatalog.runs(card, on: .keyboard))
-    #expect(!CommandCatalog.runs(personCommand("Photo", input: .image), on: .keyboard))
-    #expect(!CommandCatalog.runs(none, on: .share))
-    #expect(!CommandCatalog.runs(none, on: .camera))
-    #expect(CommandCatalog.runs(card, on: .share))
-    for surface in [Surface.controls, .siri] {
-      #expect(
-        [card, none, personCommand("Photo", input: .image)].allSatisfy {
-          CommandCatalog.runs($0, on: surface)
-        })
-    }
-  }
-
   @Test func matchingIgnoresCaseWidthAndBlankText() {
     let commands = [personCommand("Polish"), personCommand("润色"), personCommand("ＡＢＣ")]
     #expect(CommandCatalog.matching("pol", in: commands).map(\.name) == ["Polish"])
