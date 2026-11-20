@@ -1,0 +1,150 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "camera.lines.header" : {
+      "comment" : "Prompt: heads the numbered text lines found in the photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Text lines found in the photo, numbered:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "照片里识别到的文字，按行编号："
+          }
+        }
+      }
+    },
+    "camera.lines.none" : {
+      "comment" : "Prompt: stands in for the text lines when the photo has none",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(no text found)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "（没有识别到文字）"
+          }
+        }
+      }
+    },
+    "camera.marks.event" : {
+      "comment" : "Prompt rule appended to 提取日程 from the camera; keep the JSON keys and values in English",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In that same JSON object, also add the key \"marks\": a list with one {\"field\": \"date\" | \"time\" | \"place\", \"lines\": [<numbers of the text lines it was read from>]} for each of those you read from the numbered lines."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在同一个 JSON 对象里另外加一个键 \"marks\"：一个列表，你从编号文字行读到的每一项各占一个 {\"field\": \"date\" | \"time\" | \"place\", \"lines\": [<它所在的文字行编号>]}。"
+          }
+        }
+      }
+    },
+    "camera.marks.expense" : {
+      "comment" : "Prompt rule appended to 记一笔 from the camera; keep the JSON keys and values in English",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In that same JSON object, also add the key \"marks\": a list with one {\"field\": \"merchant\" | \"time\" | \"total\", \"lines\": [<numbers of the text lines it was read from>]} for each of those you read from the numbered lines."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在同一个 JSON 对象里另外加一个键 \"marks\"：一个列表，你从编号文字行读到的每一项各占一个 {\"field\": \"merchant\" | \"time\" | \"total\", \"lines\": [<它所在的文字行编号>]}。"
+          }
+        }
+      }
+    },
+    "camera.marks.notes" : {
+      "comment" : "Prompt rule appended to 整理白板 from the camera; keep the JSON keys in English",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In that same JSON object, also add the key \"marks\": a list with one {\"section\": <the section's position in \"sections\", from 1>, \"lines\": [<numbers of the text lines it was read from>]} for each section."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在同一个 JSON 对象里另外加一个键 \"marks\"：一个列表，每个分组各占一个 {\"section\": <它在 \"sections\" 里的位置，从 1 开始>, \"lines\": [<它所在的文字行编号>]}。"
+          }
+        }
+      }
+    },
+    "camera.translate.role" : {
+      "comment" : "Prompt: what 翻译 does with a photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You translate what the person photographed. The photo is attached, and the text lines found in it are listed with numbers [n]."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你帮用户翻译他拍下的内容。照片已附上，照片里识别到的文字按行编号 [n] 列出。"
+          }
+        }
+      }
+    },
+    "camera.translate.rules %@ %@" : {
+      "comment" : "Prompt: the shape of 翻译's answer from the camera. %1$@ is a currency code, %2$@ an example amount in it. Keep the JSON keys in English",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer in JSON Lines only: one JSON object per line, no code fences and no other text.\nFirst line: {\"title\": \"<what the photo shows, in a few words, in English>\"}.\nThen one line per item, top to bottom: {\"lines\": [<numbers of the text lines the item comes from>], \"text\": \"<the translation>\", \"price\": \"<the price as printed>\", \"approx\": \"<about what that price is in %1$@, written like %2$@>\"}.\nAn item is one meaningful unit: a dish with its price, a sign, a sentence. Leave out \"price\" when there is none, and \"approx\" unless the price is in another currency. Skip lines that need no translation."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只用 JSON Lines 回答：每行一个 JSON 对象，不要代码块，也不要其他文字。\n第一行：{\"title\": \"<照片里是什么，几个字，用中文>\"}。\n之后从上到下每个条目一行：{\"lines\": [<这个条目来自的文字行编号>], \"text\": \"<译文>\", \"price\": \"<照片上印的价格>\", \"approx\": \"<这个价格约合多少%1$@，写成 %2$@ 的样子>\"}。\n一个条目是一个有意义的单位：一道菜和它的价格、一块标牌、一句话。没有价格就省略 \"price\"；只有价格是其他货币时才给 \"approx\"。不需要翻译的行跳过。"
+          }
+        }
+      }
+    },
+    "camera.translate.target %@" : {
+      "comment" : "Prompt: the language 翻译 translates into; %@ is its 译成 value",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Translate into %@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "翻译成%@。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

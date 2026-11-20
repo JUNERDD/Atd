@@ -1,20 +1,272 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "viewfinder.title" : {
-      "comment" : "Name of Atd's camera, shown on its viewfinder",
+    "locked.failed" : {
+      "comment" : "Lock Screen camera: Atd did not open",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Snap and Act"
+            "value" : "Couldn’t open Atd. Your photo is kept."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "拍了就办"
+            "value" : "没能打开 Atd，照片已保留。"
+          }
+        }
+      }
+    },
+    "locked.opening" : {
+      "comment" : "Lock Screen camera: after the shot, while Atd opens",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unlock to continue in Atd"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "解锁后在 Atd 里继续"
+          }
+        }
+      }
+    },
+    "viewfinder.close" : {
+      "comment" : "Viewfinder button: closes the camera",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭"
+          }
+        }
+      }
+    },
+    "viewfinder.denied" : {
+      "comment" : "Viewfinder: camera access is off",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd can’t use the camera"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 没有相机权限"
+          }
+        }
+      }
+    },
+    "viewfinder.denied.detail" : {
+      "comment" : "Viewfinder: how to turn camera access on",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow camera access for Atd in Settings. You can still choose a photo."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在设置里允许 Atd 使用相机。仍然可以从照片选。"
+          }
+        }
+      }
+    },
+    "viewfinder.flash" : {
+      "comment" : "Viewfinder button: the flash",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flash"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "闪光灯"
+          }
+        }
+      }
+    },
+    "viewfinder.flash.off" : {
+      "comment" : "Accessibility value of the flash button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关"
+          }
+        }
+      }
+    },
+    "viewfinder.flash.on" : {
+      "comment" : "Accessibility value of the flash button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开"
+          }
+        }
+      }
+    },
+    "viewfinder.library" : {
+      "comment" : "Viewfinder button: runs the mode on a photo from the library",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从照片选"
+          }
+        }
+      }
+    },
+    "viewfinder.modes" : {
+      "comment" : "Accessibility label of the camera's modes",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模式"
+          }
+        }
+      }
+    },
+    "viewfinder.noModes" : {
+      "comment" : "Viewfinder: no command has the camera placement",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No command uses the camera yet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "还没有指令用到相机"
+          }
+        }
+      }
+    },
+    "viewfinder.settings" : {
+      "comment" : "Viewfinder button: opens Atd's page in Settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Settings"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "去设置"
+          }
+        }
+      }
+    },
+    "viewfinder.shutter" : {
+      "comment" : "Viewfinder button: takes the photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take Photo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍照"
+          }
+        }
+      }
+    },
+    "viewfinder.unavailable" : {
+      "comment" : "Viewfinder: no camera, or another app is using it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera unavailable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相机不可用"
+          }
+        }
+      }
+    },
+    "viewfinder.unavailable.detail" : {
+      "comment" : "Viewfinder: what still works without the camera",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can still choose a photo."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仍然可以从照片选。"
           }
         }
       }
