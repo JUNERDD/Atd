@@ -1,11 +1,13 @@
 import AtdAI
+import AtdModel
 import Foundation
 import ImageIO
 import Observation
 import UniformTypeIdentifiers
 
 /// One 问 Atd conversation: questions with their photos, answers streamed in, and the photos
-/// waiting to go with the next question. It lives only as long as the panel; nothing is saved.
+/// waiting to go with the next question. It lives only as long as the panel; nothing is saved,
+/// except the commands made from its answers (存为指令), which go to the library.
 @Observable
 final class AskConversation {
   struct Turn: Identifiable {
@@ -14,6 +16,14 @@ final class AskConversation {
     let photos: [ModelImage]
     var answer = ""
     var state = State.thinking
+    /// The command this answer was saved as.
+    var saved: SavedCommand?
+  }
+
+  /// A command made from an answer, as it was named when it was saved.
+  struct SavedCommand: Equatable {
+    let id: String
+    let name: String
   }
 
   enum State: Equatable {
@@ -63,6 +73,12 @@ final class AskConversation {
     stop()
     turns = []
     photos = []
+  }
+
+  /// Notes that the answer of turn `id` was saved as `command`, so the turn says so.
+  func markSaved(_ id: UUID, as command: Command) {
+    guard let index = turns.firstIndex(where: { $0.id == id }) else { return }
+    turns[index].saved = SavedCommand(id: command.id, name: command.displayName)
   }
 
   private func answer(runner: some TextGenerating, onFailure: @escaping (ModelFailure) -> Void) {

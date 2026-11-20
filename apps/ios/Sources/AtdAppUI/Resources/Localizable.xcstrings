@@ -109,6 +109,24 @@
         }
       }
     },
+    "ask.backToChat" : {
+      "comment" : "Accessibility label: the ‹ that leaves Save as Command and goes back to the Ask Atd conversation",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to Conversation"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回对话"
+          }
+        }
+      }
+    },
     "ask.camera" : {
       "comment" : "Ask Atd attachment: take a photo",
       "extractionState" : "manual",
@@ -253,20 +271,38 @@
         }
       }
     },
-    "ask.retry" : {
-      "comment" : "Button: asks again after a failure",
+    "ask.save" : {
+      "comment" : "Button under an answer in Ask Atd, and the panel's title while it drafts a command from that answer",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Retry"
+            "value" : "Save as Command"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重试"
+            "value" : "存为指令"
+          }
+        }
+      }
+    },
+    "ask.saved %@" : {
+      "comment" : "Under an answer that was saved as a command, and announced by VoiceOver; the command's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved as “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已存为「%@」"
           }
         }
       }
@@ -357,6 +393,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "问 Atd"
+          }
+        }
+      }
+    },
+    "ask.view" : {
+      "comment" : "Button beside “Saved as …”: closes Ask Atd and points the command out in Commands",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "查看"
           }
         }
       }

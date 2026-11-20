@@ -1,9 +1,11 @@
 import AtdAI
+import AtdModel
 import PhotosUI
 import SwiftUI
 
 /// 问 Atd: ask anything, with photos from the library or the camera, and read the answer as it
-/// streams in. The conversation lasts as long as the panel; 新对话 starts over.
+/// streams in. The conversation lasts as long as the panel; 新对话 starts over. 存为指令 turns an
+/// answer into a command in the same panel and comes back to the answer, which then names it.
 struct AskSheet: View {
   @Environment(AppStore.self) private var store
   @Environment(\.dismiss) private var dismiss
@@ -14,51 +16,38 @@ struct AskSheet: View {
   @State private var chosen: [PhotosPickerItem] = []
   @State private var shooting = false
   @State private var addingModel = false
+  /// The answer being made into a command; while there is one, the panel shows its draft.
+  @State private var saving: SavingAnswer?
+  /// The turn to bring back into view when the conversation shows again.
+  @State private var reveal: UUID?
   @FocusState private var fieldFocused: Bool
 
   var body: some View {
     VStack(spacing: 0) {
-      SheetHeader(title: AppText.string("ask.title")) {
-        CloseButton { dismiss() }
-      } trailing: {
-        if !conversation.turns.isEmpty {
-          Button {
-            conversation.reset()
-            fieldFocused = true
-          } label: {
-            Image(systemName: "square.and.pencil").font(.system(size: 17, weight: .semibold))
-          }
-          .buttonStyle(InkButtonStyle(form: .round))
-          .accessibilityLabel(AppText.string("ask.new"))
+      if let saving {
+        SavingHeader(flow: saving.flow, leave: leaveSaving) { finishSaving(saving) }
+        ScrollView {
+          CommandDraftBody(flow: saving.flow)
         }
+        .scrollDismissesKeyboard(.interactively)
+      } else {
+        header
+        transcript
+        AskDock(
+          conversation: conversation, draft: $draft, trayOpen: $trayOpen,
+          fieldFocused: $fieldFocused, choosePhotos: { choosingPhotos = true },
+          shoot: { shooting = true }, addModel: { addingModel = true })
       }
-      ScrollView {
-        if conversation.turns.isEmpty {
-          Text(AppText.string("ask.hello"))
-            .font(.title2.bold())
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.top, 24)
-        } else {
-          LazyVStack(alignment: .leading, spacing: 28) {
-            ForEach(conversation.turns) { turn in
-              AskTurnView(turn: turn) {
-                conversation.retry(runner: store.runner) { store.noteFailure($0) }
-              }
-            }
-          }
-          .padding(.horizontal, 20)
-          .padding(.vertical, 16)
-        }
-      }
-      .defaultScrollAnchor(.bottom, for: .sizeChanges)
-      .scrollDismissesKeyboard(.interactively)
-      dock
     }
     .presentationDetents([.large])
     .presentationBackground(InkColor.paper)
+    // A drafted command is lost on dismissal, so only the buttons leave it.
+    .interactiveDismissDisabled(saving?.flow.step == .review)
     .onAppear { fieldFocused = store.hasModel }
-    .onDisappear { conversation.stop() }
+    .onDisappear {
+      conversation.stop()
+      saving?.flow.cancel()
+    }
     .photosPicker(
       isPresented: $choosingPhotos, selection: $chosen,
       maxSelectionCount: AskConversation.photoLimit - conversation.photos.count,
@@ -86,6 +75,60 @@ struct AskSheet: View {
     }
   }
 
+  private var header: some View {
+    SheetHeader(title: AppText.string("ask.title")) {
+      CloseButton { dismiss() }
+    } trailing: {
+      if !conversation.turns.isEmpty {
+        Button {
+          conversation.reset()
+          fieldFocused = true
+        } label: {
+          Image(systemName: "square.and.pencil").font(.system(size: 17, weight: .semibold))
+        }
+        .buttonStyle(InkButtonStyle(form: .round))
+        .accessibilityLabel(AppText.string("ask.new"))
+      }
+    }
+  }
+
+  private var transcript: some View {
+    ScrollViewReader { scroller in
+      ScrollView {
+        if conversation.turns.isEmpty {
+          Text(AppText.string("ask.hello"))
+            .font(.title2.bold())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, 24)
+        } else {
+          LazyVStack(alignment: .leading, spacing: 28) {
+            ForEach(conversation.turns) { turn in
+              AskTurnView(
+                turn: turn,
+                retry: { conversation.retry(runner: store.runner) { store.noteFailure($0) } },
+                save: { startSaving(turn) },
+                showSaved: { show(turn.saved) }
+              )
+              .id(turn.id)
+            }
+          }
+          .padding(.horizontal, 20)
+          .padding(.vertical, 16)
+        }
+      }
+      .defaultScrollAnchor(.bottom, for: .initialOffset)
+      .defaultScrollAnchor(.bottom, for: .sizeChanges)
+      .scrollDismissesKeyboard(.interactively)
+      .onAppear {
+        // Back from 存为指令: the answer it started from, with what became of it, is in view.
+        guard let turn = reveal else { return }
+        reveal = nil
+        scroller.scrollTo(turn, anchor: .bottom)
+      }
+    }
+  }
+
   private func attach(_ data: Data) async {
     guard conversation.photos.count < AskConversation.photoLimit,
       let photo = await PhotoEncoder.encode(data)
@@ -93,115 +136,64 @@ struct AskSheet: View {
     conversation.photos.append(photo)
   }
 
-  /// The field and its buttons at the bottom; until a model is added, the way to add one.
-  @ViewBuilder private var dock: some View {
-    if !store.hasModel {
-      Button {
-        addingModel = true
-      } label: {
-        Label(AppText.string("models.add"), systemImage: "plus")
-      }
-      .buttonStyle(InkButtonStyle(kind: .filled, form: .block))
-      .padding(16)
-    } else {
-      VStack(alignment: .leading, spacing: 10) {
-        if !conversation.photos.isEmpty { attachments }
-        if trayOpen { tray }
-        HStack(alignment: .bottom, spacing: 8) {
-          Button {
-            trayOpen.toggle()
-          } label: {
-            Image(systemName: "plus").font(.system(size: 17, weight: .semibold))
-              .rotationEffect(.degrees(trayOpen ? 45 : 0))
-          }
-          .buttonStyle(InkButtonStyle(form: .round))
-          .accessibilityLabel(AppText.string("ask.attach"))
-          .disabled(conversation.photos.count >= AskConversation.photoLimit)
-          TextField(AppText.string("ask.title"), text: $draft, axis: .vertical)
-            .lineLimit(1...5)
-            .focused($fieldFocused)
-            .inkField(focused: fieldFocused)
-            .padding(.vertical, 2)
-          sendButton
-        }
-      }
-      .padding(.horizontal, 12)
-      .padding(.top, 8)
-      .padding(.bottom, 10)
-    }
+  /// 存为指令: the question becomes the sentence to draft from, and the answer goes with it as an
+  /// example of the result. A question not yet sent stays in the field.
+  private func startSaving(_ turn: AskConversation.Turn) {
+    fieldFocused = false
+    trayOpen = false
+    saving = SavingAnswer(
+      turn: turn.id, flow: CommandDraftFlow(text: turn.question, example: turn.answer))
   }
 
-  @ViewBuilder private var sendButton: some View {
-    if conversation.isAnswering {
-      Button {
-        conversation.stop()
-      } label: {
-        Image(systemName: "stop.fill").font(.system(size: 13, weight: .bold))
-      }
-      .buttonStyle(InkButtonStyle(kind: .filled, form: .round))
-      .accessibilityLabel(AppText.string("ask.stop"))
-    } else {
-      Button {
-        conversation.ask(draft, runner: store.runner) { store.noteFailure($0) }
-        draft = ""
-        trayOpen = false
-      } label: {
-        Image(systemName: "arrow.up").font(.system(size: 17, weight: .bold))
-      }
-      .buttonStyle(InkButtonStyle(kind: .filled, form: .round))
-      .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-      .accessibilityLabel(AppText.string("ask.send"))
-    }
+  /// Back to the conversation without a command.
+  private func leaveSaving() {
+    guard let saving else { return }
+    saving.flow.cancel()
+    reveal = saving.turn
+    self.saving = nil
   }
 
-  /// 拍照 and 照片; 拍照 only where there is a camera.
-  private var tray: some View {
-    HStack(spacing: 8) {
-      if CameraPicker.isAvailable {
-        Button {
-          trayOpen = false
-          shooting = true
-        } label: {
-          Label(AppText.string("ask.camera"), systemImage: "camera")
-        }
-        .buttonStyle(InkButtonStyle())
-      }
-      Button {
-        trayOpen = false
-        choosingPhotos = true
-      } label: {
-        Label(AppText.string("ask.photos"), systemImage: "photo")
-      }
-      .buttonStyle(InkButtonStyle())
-    }
+  /// ✓: saves the command and goes back to the answer, which now names it.
+  private func finishSaving(_ saving: SavingAnswer) {
+    let command = saving.flow.finished
+    guard store.add(command) else { return }
+    conversation.markSaved(saving.turn, as: command)
+    reveal = saving.turn
+    self.saving = nil
+    AccessibilityNotification.Announcement(AppText.string("ask.saved \(command.displayName)"))
+      .post()
   }
 
-  /// The photos waiting to be sent, each with a button that removes it.
-  private var attachments: some View {
-    ScrollView(.horizontal) {
-      HStack(spacing: 10) {
-        ForEach(conversation.photos.indices, id: \.self) { index in
-          PhotoThumbnail(photo: conversation.photos[index], side: 52)
-            .overlay(alignment: .topTrailing) {
-              Button {
-                conversation.photos.remove(at: index)
-              } label: {
-                Image(systemName: "xmark.circle.fill")
-                  .symbolRenderingMode(.palette)
-                  .foregroundStyle(InkColor.paper, Color.primary)
-                  .font(.system(size: 20))
-                  .frame(width: 44, height: 44)
-                  .contentShape(Rectangle())
-              }
-              .buttonStyle(.plain)
-              .offset(x: 16, y: -16)
-              .accessibilityLabel(AppText.string("ask.removePhoto"))
-            }
-        }
+  /// 查看: closes the panel and points the command out on the 指令 tab.
+  private func show(_ saved: AskConversation.SavedCommand?) {
+    guard let saved else { return }
+    CommandSpotlight.shared.show(saved.id)
+    dismiss()
+  }
+}
+
+/// An answer on its way to becoming a command.
+private struct SavingAnswer {
+  let turn: UUID
+  let flow: CommandDraftFlow
+}
+
+/// The head of the panel while an answer is made into a command: ‹ goes back to the conversation
+/// from the sentence and back to the sentence from the draft; ✓ saves.
+private struct SavingHeader: View {
+  let flow: CommandDraftFlow
+  let leave: () -> Void
+  let save: () -> Void
+
+  var body: some View {
+    SheetHeader(title: AppText.string("ask.save")) {
+      if flow.step == .describe {
+        BackButton(label: AppText.string("ask.backToChat"), action: leave)
+      } else {
+        BackButton(label: AppText.string("new.back")) { flow.back() }
       }
-      .padding(.top, 10)
-      .padding(.trailing, 16)
+    } trailing: {
+      DraftSaveButton(flow: flow, save: save)
     }
-    .scrollIndicators(.hidden)
   }
 }

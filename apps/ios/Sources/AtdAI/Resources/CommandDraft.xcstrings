@@ -1,0 +1,24 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "draft.example" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): introduces an answer from Ask Atd, sent after the person's sentence, as an example of the result the drafted command should give",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The result I want looks like this (the details differ each time):"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我想要的结果像这样（具体内容每次不同）："
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
