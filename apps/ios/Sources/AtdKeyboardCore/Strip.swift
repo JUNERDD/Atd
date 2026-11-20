@@ -21,6 +21,8 @@ public struct Tools: Equatable {
   /// commands for an older copy. Empty when a line takes their place.
   public var commands: [CommandChip]
   public var line: ToolLine?
+  /// The name of the command whose result 撤销 takes back (撤销润色); nil for a request.
+  public var undoName: String? = nil
 }
 
 public struct CommandChip: Equatable, Hashable {

@@ -110,6 +110,8 @@ struct Taken: Equatable {
   var original: String
   var result: String
   var documentID: UUID
+  /// The command that made it, for 撤销润色.
+  var name: String?
 }
 
 /// The ✦ line's own text and composition.

@@ -55,7 +55,7 @@ let package = Package(
     // The UIKit keyboard extension's controller, keys, strip and panels.
     .target(
       name: "AtdKeyboardUI", dependencies: ["AtdModel", "AtdAI", "AtdPinyin", "AtdKeyboardCore"],
-      swiftSettings: mainActorByDefault),
+      resources: [.process("Resources")], swiftSettings: mainActorByDefault),
     .testTarget(name: "AtdModelTests", dependencies: ["AtdModel"]),
     .testTarget(name: "AtdAITests", dependencies: ["AtdAI"]),
     .testTarget(name: "AtdPinyinTests", dependencies: ["AtdPinyin"]),

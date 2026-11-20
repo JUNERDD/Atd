@@ -107,7 +107,8 @@ public final class KeyboardSession<Engine: PinyinConverting> {
 
   var tools: Tools {
     let line = toolLine
-    return Tools(canUndo: taken != nil, commands: line == nil ? chips : [], line: line)
+    return Tools(
+      canUndo: taken != nil, commands: line == nil ? chips : [], line: line, undoName: taken?.name)
   }
 
   private var toolLine: ToolLine? {
@@ -124,6 +125,9 @@ public final class KeyboardSession<Engine: PinyinConverting> {
   }
 
   var canRunAI: Bool { hasFullAccess && hasModel }
+
+  /// The clipboard panel's 粘贴 has something to paste (checked without reading it).
+  public var canPaste: Bool { hasFullAccess && copied.hasText }
 
   // MARK: Host events
 

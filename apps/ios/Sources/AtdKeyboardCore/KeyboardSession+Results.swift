@@ -101,7 +101,9 @@ extension KeyboardSession {
     document.unmarkText()
     self.preview = nil
     if undoable, shown.recipe != nil {
-      taken = Taken(original: preview.original, result: shown.text, documentID: preview.documentID)
+      taken = Taken(
+        original: preview.original, result: shown.text, documentID: preview.documentID,
+        name: preview.command?.name)
     }
   }
 
