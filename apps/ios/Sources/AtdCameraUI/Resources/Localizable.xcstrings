@@ -235,24 +235,6 @@
         }
       }
     },
-    "viewfinder.title" : {
-      "comment" : "Name of Atd's camera, shown on its viewfinder",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Snap and Act"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "拍了就办"
-          }
-        }
-      }
-    },
     "viewfinder.unavailable" : {
       "comment" : "Viewfinder: no camera, or another app is using it",
       "extractionState" : "manual",
