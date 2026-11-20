@@ -70,17 +70,3 @@ extension CommandOutput.Action {
     }
   }
 }
-
-/// Text a trial run starts from, so a built-in command can be tried with one tap. Commands the
-/// person made start empty.
-enum TrialSample {
-  static func text(for command: Command) -> String {
-    switch command.id {
-    case BuiltinCommands.polishID: AppText.string("sample.polish")
-    case BuiltinCommands.replyID: AppText.string("sample.reply")
-    case BuiltinCommands.translateID: AppText.string("sample.translate")
-    case BuiltinCommands.shortenID: AppText.string("sample.shorten")
-    default: ""
-    }
-  }
-}
