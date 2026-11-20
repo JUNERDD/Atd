@@ -1,0 +1,402 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "card.agenda.allDay" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): in place of the time of an all-day event",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All day"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全天"
+          }
+        }
+      }
+    },
+    "card.agenda.day %@ %@" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): first line of the agenda sent for a briefing: the date and the weekday of the day it is for",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The day: %1$@ (%2$@)."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日期：%1$@（%2$@）。"
+          }
+        }
+      }
+    },
+    "card.agenda.events" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): heading of the agenda's events",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Events:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "日程："
+          }
+        }
+      }
+    },
+    "card.agenda.noCalendar" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the agenda's events when Atd has no access to the calendar",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd can’t read the calendar."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读取不到日历。"
+          }
+        }
+      }
+    },
+    "card.agenda.noReminders" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the agenda's reminders when Atd has no access to them",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd can’t read reminders."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读取不到提醒事项。"
+          }
+        }
+      }
+    },
+    "card.agenda.none" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): an agenda list with nothing in it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无"
+          }
+        }
+      }
+    },
+    "card.agenda.overdue" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): before the due date of a reminder that is past due",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overdue"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已逾期"
+          }
+        }
+      }
+    },
+    "card.agenda.reminders" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): heading of the agenda's reminders: those due by the end of its day, and earlier ones not done",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reminders due by the end of the day, overdue ones included:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到当天为止到期、还没完成的提醒："
+          }
+        }
+      }
+    },
+    "card.briefing.brief" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the key of a three-sentence briefing's JSON object; write it for the language this catalog is in",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write a briefing in English of the day in the agenda the person sends, with this key:\nsentences: an array of at most three short sentences, the most important first\nMention only what the agenda lists; never make up events, reminders or weather. When Atd cannot read a list, say so briefly."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "根据用户发来的那一天的安排，用中文写一份简报，用这个键：\nsentences：最多三句简短的话组成的数组，最重要的放前面\n只说安排里有的内容，不要编造日程、提醒或天气。读取不到的部分简单说明。"
+          }
+        }
+      }
+    },
+    "card.briefing.full" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the key of a full briefing's JSON object; write it for the language this catalog is in",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write a briefing in English of the day in the agenda the person sends, with this key:\nsentences: an array of short sentences that cover every event and reminder, the most important first, at most eight; this length overrides any the instructions give\nMention only what the agenda lists; never make up events, reminders or weather. When Atd cannot read a list, say so briefly."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "根据用户发来的那一天的安排，用中文写一份简报，用这个键：\nsentences：简短的句子组成的数组，覆盖每个日程和提醒，最重要的放前面，最多八句；以这里的长度为准，不按指令里的句数\n只说安排里有的内容，不要编造日程、提醒或天气。读取不到的部分简单说明。"
+          }
+        }
+      }
+    },
+    "card.event" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the keys of an event card's JSON object; keep the keys and values in quotes as they are",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find the one event the content is about and describe it with these keys:\ntitle: what it is, short, in the language of the content\nstart: when it starts, \"YYYY-MM-DDTHH:MM\" in local time, or \"YYYY-MM-DD\" for an event that lasts all day\nend: when it ends, in the same form (for an all-day event, its last day), or null when the content does not say\nlocation: where, as written, or null\nnotes: anything else worth keeping with the event (what to bring, whom to ask for), or null\nIf the content has no event, reply {\"found\": false}."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "找出内容所说的那一个事件，用这些键描述：\ntitle：事件是什么，简短，用内容的语言\nstart：开始时间，当地时间 \"YYYY-MM-DDTHH:MM\"；全天的事件写 \"YYYY-MM-DD\"\nend：结束时间，格式同上（全天的事件写最后一天）；内容没说就写 null\nlocation：地点，照原文写；没有就写 null\nnotes：值得和日程一起记下的其他信息（要带什么、到了找谁）；没有就写 null\n内容里没有事件时，回复 {\"found\": false}。"
+          }
+        }
+      }
+    },
+    "card.expense %@" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the keys of an expense card's JSON object; the placeholder is the currency code to assume (CNY); keep the keys and values in quotes as they are",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Find the one payment the content shows and describe it with these keys:\namount: the total paid, a number without a currency sign (46.5)\ncurrency: its ISO 4217 code, such as CNY, USD or JPY; %@ when the content shows none\nmerchant: the shop or service, as written, or null\ncategory: \"dining\", \"transport\", \"shopping\", \"home\" or \"other\"\nnote: what it was for, a few words in the language of the content, or null\ndate: when it was paid, \"YYYY-MM-DDTHH:MM\" in local time; the current time when the content does not show it\nIf the content shows no payment, reply {\"found\": false}."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "找出内容里的那一笔付款，用这些键描述：\namount：实付总额，数字，不带货币符号（46.5）\ncurrency：ISO 4217 货币代码，比如 CNY、USD、JPY；内容里看不出就写 %@\nmerchant：商家或服务，照原文写；没有就写 null\ncategory：\"dining\"（餐饮）、\"transport\"（交通）、\"shopping\"（购物）、\"home\"（居家）或 \"other\"（其他）\nnote：买了什么，用内容的语言写几个字；没有就写 null\ndate：付款时间，当地时间 \"YYYY-MM-DDTHH:MM\"；内容里看不出就写现在的时间\n内容里没有付款时，回复 {\"found\": false}。"
+          }
+        }
+      }
+    },
+    "card.inPhoto" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the person's message when they sent only a photo",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The content is in the photo."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内容在照片里。"
+          }
+        }
+      }
+    },
+    "card.json" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the rule every card answer follows",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reply with only one JSON object: no code fences, nothing before or after it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只回复一个 JSON 对象：不加代码块标记，前后不加任何文字。"
+          }
+        }
+      }
+    },
+    "card.notes" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the keys of a notes card's JSON object; keep the keys in quotes as they are",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Organize the content (a whiteboard, notes or a document) with these keys:\ntitle: a short title for the whole, or null\nsections: an array with one {\"heading\": …, \"bullets\": [short lines]} per topic, in the order they appear\ntodos: an array with one {\"text\": …, \"owner\": whom it is assigned to as written, or null} per action item\nWrite in the language of the content. If there is nothing to organize, reply {\"found\": false}."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整理内容（白板、笔记或文档），用这些键：\ntitle：整体的简短标题；没有就写 null\nsections：数组，每个话题一项 {\"heading\": …, \"bullets\": [简短的几行]}，按出现的顺序\ntodos：数组，每个待办一项 {\"text\": …, \"owner\": 照原文写的负责人，没有就写 null}\n用内容的语言写。没有可整理的内容时，回复 {\"found\": false}。"
+          }
+        }
+      }
+    },
+    "card.notes.sectionsOnly" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): when the person asked for notes only",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes only: leave todos an empty array."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只要笔记：todos 写空数组。"
+          }
+        }
+      }
+    },
+    "card.notes.todosOnly" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): when the person asked for to-dos only",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To-dos only: leave sections an empty array."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只要待办：sections 写空数组。"
+          }
+        }
+      }
+    },
+    "card.nothingFound.event" : {
+      "comment" : "One-line notice on a card: the shared content or photo has no event in it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No event found"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没找到日程"
+          }
+        }
+      }
+    },
+    "card.nothingFound.expense" : {
+      "comment" : "One-line notice on a card: the photo or shared content shows no amount paid",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No amount found"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没找到金额"
+          }
+        }
+      }
+    },
+    "card.nothingFound.notes" : {
+      "comment" : "One-line notice on a card: the photo has nothing to turn into notes or to-dos",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing to organize"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有可整理的内容"
+          }
+        }
+      }
+    },
+    "card.nothingFound.other" : {
+      "comment" : "One-line notice on a card: nothing of what the command looks for was found",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing found"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "什么也没找到"
+          }
+        }
+      }
+    },
+    "card.now %@ %@ %@" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the current date and time (2026-11-21 14:05), the weekday, and the time zone identifier",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It is now %1$@ (%2$@), time zone %3$@. Work out relative dates such as “tomorrow” or “next Friday” from this."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "现在是 %1$@（%2$@），时区 %3$@。“明天”“下周五”这类相对日期都从这里推算。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

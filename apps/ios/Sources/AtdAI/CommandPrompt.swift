@@ -33,11 +33,14 @@ public enum CommandPrompt {
   ///   - input: what the command works on: the selection, the field's text, the text before
   ///     the cursor, or the copied message. When it is empty, the instructions themselves become
   ///     the person's turn.
+  ///   - images: photos or screenshots the command works on as well (翻译 a shared screenshot),
+  ///     sent with the person's first turn.
   ///   - draft: for a command reading the copied message, what the person already typed in the
   ///     field: what the reply should say. The copied message is what it answers.
   ///   - refinements: earlier results and the change asked of each, oldest first.
   public static func request(
-    _ kind: Kind, input: String, draft: String? = nil, refinements: [Refinement] = []
+    _ kind: Kind, input: String, images: [ModelImage] = [], draft: String? = nil,
+    refinements: [Refinement] = []
   ) -> ModelRequest {
     var rules = [String(localized: "prompt.base", bundle: .module)]
     let draft = draft.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty }
@@ -54,7 +57,7 @@ public enum CommandPrompt {
       firstTurn = draft.map { framed(message: input, draft: $0) } ?? input
     }
 
-    var messages = [ModelMessage(.user, firstTurn)]
+    var messages = [ModelMessage(.user, firstTurn, images: images)]
     for refinement in refinements {
       messages.append(ModelMessage(.assistant, refinement.result))
       messages.append(ModelMessage(.user, refinement.request))
