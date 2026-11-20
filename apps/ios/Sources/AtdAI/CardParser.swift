@@ -20,8 +20,9 @@ public enum CardFailure: Error, Sendable, Equatable {
 
 /// Reads a model's answer to a `CardPrompt` request into a card.
 ///
-/// Reading is tolerant: the JSON object may sit in a code fence or among prose, amounts may be
-/// strings with a currency sign, and lists may come as one string. What it yields is checked
+/// Reading is tolerant: the JSON object may sit in a code fence or among prose, or be split into
+/// several objects (the card, then the caller's own keys), amounts may be strings with a currency
+/// sign, and lists may come as one string. What it yields is checked
 /// strictly: an event needs a title and a start and cannot end before it starts, an expense
 /// needs an amount above zero in a known currency, and a briefing or notes card needs content.
 /// An answer that fails throws `ModelFailure.unreadable(detail:)`, whose detail names the
@@ -64,12 +65,60 @@ public enum CardParser {
     object(in: answer).flatMap { try? JSONDecoder().decode(type, from: $0) }
   }
 
-  /// The JSON object in the answer, from its first brace to its last.
+  /// The answer's JSON object. When the answer holds several complete objects, their keys are
+  /// read as one object, the first object's value winning, so a card followed by a separate
+  /// object with the caller's keys still reads. When no object parses on its own, the text from
+  /// the first brace to the last goes to the decoder, which then says what is wrong with it.
   private static func object(in answer: String) -> Data? {
+    let objects = topLevelObjects(in: answer).compactMap { data -> (Data, [String: Any])? in
+      guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+        return nil
+      }
+      return (data, object)
+    }
+    if objects.count == 1 { return objects[0].0 }
+    if objects.count > 1 {
+      let merged = objects.reduce(into: [String: Any]()) { result, next in
+        result.merge(next.1) { kept, _ in kept }
+      }
+      return try? JSONSerialization.data(withJSONObject: merged)
+    }
     guard let start = answer.firstIndex(of: "{"), let end = answer.lastIndex(of: "}"),
       start < end
     else { return nil }
     return Data(answer[start...end].utf8)
+  }
+
+  /// Every complete top-level `{…}` in `text`, in order. Braces inside JSON strings do not count;
+  /// the bytes are read as UTF-8, where braces, quotes and backslashes are never part of another
+  /// character.
+  private static func topLevelObjects(in text: String) -> [Data] {
+    let bytes = Array(text.utf8)
+    var objects: [Data] = []
+    var depth = 0
+    var start = 0
+    var inString = false
+    var escaped = false
+    for (offset, byte) in bytes.enumerated() {
+      if inString {
+        if escaped {
+          escaped = false
+        } else if byte == UInt8(ascii: "\\") {
+          escaped = true
+        } else if byte == UInt8(ascii: "\"") {
+          inString = false
+        }
+      } else if byte == UInt8(ascii: "\"") {
+        inString = depth > 0
+      } else if byte == UInt8(ascii: "{") {
+        if depth == 0 { start = offset }
+        depth += 1
+      } else if byte == UInt8(ascii: "}"), depth > 0 {
+        depth -= 1
+        if depth == 0 { objects.append(Data(bytes[start...offset])) }
+      }
+    }
+    return objects
   }
 
   private static func decode<Raw: Decodable>(_ type: Raw.Type, _ answer: String, _ kind: CardKind)

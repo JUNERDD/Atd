@@ -234,4 +234,18 @@ import Testing
     #expect(CardParser.fields(Marks.self, in: #"{"title":"x"}"#) == nil)
     #expect(CardParser.fields(Marks.self, in: "no object") == nil)
   }
+
+  /// A model sometimes sends the card and the caller's keys as two objects.
+  @Test func anAnswerSplitIntoObjectsReadsAsOne() throws {
+    struct Marks: Decodable, Equatable {
+      var marks: [Int]
+    }
+    let answer = """
+      {"title":"周五市集筹备 {草稿}","sections":[],"todos":["联系摊主"]}
+      {"marks":[2],"title":"另一个"}
+      """
+    let notes = NotesCard(title: "周五市集筹备 {草稿}", sections: [], todos: [.init(text: "联系摊主")])
+    #expect(try card(answer, BuiltinCommands.whiteboardID) == .notes(notes))
+    #expect(CardParser.fields(Marks.self, in: answer) == Marks(marks: [2]))
+  }
 }
