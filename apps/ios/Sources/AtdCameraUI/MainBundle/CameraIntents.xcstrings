@@ -54,6 +54,60 @@
           }
         }
       }
+    },
+    "lens.mode" : {
+      "comment" : "Parameter of the Visual Intelligence open action: the camera mode",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模式"
+          }
+        }
+      }
+    },
+    "lens.open" : {
+      "comment" : "Visual Intelligence: opens Atd's camera in the chosen mode with what was seen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open in Atd’s Camera"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Atd 相机中打开"
+          }
+        }
+      }
+    },
+    "lens.type" : {
+      "comment" : "Visual Intelligence: the kind of result Atd offers, one of its camera modes",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera Mode"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相机模式"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
