@@ -1,4 +1,5 @@
 import AtdInk
+import AtdIntents
 import AtdModel
 import LockedCameraCapture
 import SwiftUI
@@ -15,6 +16,8 @@ public struct AtdRootView: View {
   @State private var tab = AppTab.commands
   @State private var ask: AskRequest?
   @State private var camera: CameraEntry?
+  /// A command a control ran in Atd (`CommandRunCenter`, A40).
+  @State private var run: CommandRunRequest?
   @Environment(\.scenePhase) private var scenePhase
   private let routes = RouteCenter.shared
 
@@ -52,6 +55,9 @@ public struct AtdRootView: View {
     .fullScreenCover(item: $camera) { entry in
       CameraScreen(entry: entry).environment(store)
     }
+    .sheet(item: $run) { request in
+      CommandRunSheet(request: request).environment(store)
+    }
     .alert(store.failure ?? "", isPresented: failureShown) {
       Button(AppText.string("action.ok"), role: .cancel) {}
     }
@@ -66,6 +72,13 @@ public struct AtdRootView: View {
     }
     .onChange(of: routes.pending, initial: true) { _, route in
       if let route { show(route) }
+    }
+    .onChange(of: CommandRunCenter.shared.pending, initial: true) { _, _ in
+      if let request = CommandRunCenter.shared.take() {
+        ask = nil
+        camera = nil
+        run = request
+      }
     }
   }
 
@@ -96,11 +109,13 @@ public struct AtdRootView: View {
     case .ask(let text):
       _ = routes.take { $0 }
       camera = nil
+      run = nil
       // An open panel keeps its conversation unless the route brings text to ask.
       if ask == nil || text?.isEmpty == false { ask = AskRequest(draft: text ?? "") }
     case .camera, .lockedCapture:
       guard camera == nil, let entry = routes.take(CameraEntry.init) else { return }
       ask = nil
+      run = nil
       camera = entry
     }
   }
@@ -110,6 +125,7 @@ public struct AtdRootView: View {
     guard let tab = AppTab(route) else { return }
     ask = nil
     camera = nil
+    run = nil
     self.tab = tab
   }
 

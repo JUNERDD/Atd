@@ -4,10 +4,10 @@ import SwiftUI
 import WidgetKit
 
 /// 今日简报 in Control Center, on the Lock Screen and on the Action button: runs the briefing in
-/// the background, with its progress in a Live Activity.
+/// the background, with its progress and its three sentences in a Live Activity.
 ///
-/// Stub (F0a): the control runs `BriefingIntent`, a `LiveActivityIntent`, which the system runs
-/// in the app's process without bringing it forward. WS-A replaces it.
+/// The control runs `BriefingIntent`, a `LiveActivityIntent`, which the system runs in the app's
+/// process without bringing it forward or unlocking.
 public struct BriefingControl: ControlWidget {
   public init() {}
 

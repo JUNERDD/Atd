@@ -9,10 +9,13 @@ import WidgetKit
 struct AtdWidgetsBundle: WidgetBundle {
   var body: some Widget {
     CommandsWidget()
-    LockScreenWidget()
+    AskLockWidget()
+    ExpenseLockWidget()
+    NextItemWidget()
     MiniAppWidget()
     AskControl()
     BriefingControl()
+    RunCommandControl()
     CaptureControl()
     ExpenseCaptureControl()
     BriefingActivityWidget()

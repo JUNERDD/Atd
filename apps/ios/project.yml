@@ -352,5 +352,6 @@ schemes:
         - package: AtdMobile/AtdKeyboardUITests
         - package: AtdMobile/AtdActionsTests
         - package: AtdMobile/AtdCameraTests
+        - package: AtdMobile/AtdIntentsTests
     archive:
       config: Release
