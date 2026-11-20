@@ -94,7 +94,8 @@ let package = Package(
     // Context automations that Shortcuts personal automations run, and their Live Activities.
     .target(
       name: "AtdAutomations", dependencies: ["AtdModel", "AtdAI", "AtdActions"],
-      resources: [.process("Resources")], swiftSettings: nonisolatedByDefault),
+      exclude: ["MainBundle"], resources: [.process("Resources")],
+      swiftSettings: nonisolatedByDefault),
     // The share extension's screens.
     .target(
       name: "AtdShareUI", dependencies: ["AtdModel", "AtdAI", "AtdActions"],
@@ -129,6 +130,9 @@ let package = Package(
       name: "AtdKeyboardCoreTests",
       dependencies: ["AtdKeyboardCore", "AtdModel", "AtdAI", "AtdPinyin"]),
     .testTarget(name: "AtdActionsTests", dependencies: ["AtdActions", "AtdModel"]),
+    .testTarget(
+      name: "AtdAutomationsTests",
+      dependencies: ["AtdAutomations", "AtdModel", "AtdAI", "AtdActions", "AtdWidgetsUI"]),
   ],
   swiftLanguageModes: [.v6]
 )
