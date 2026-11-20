@@ -42,17 +42,26 @@ let package = Package(
     .target(
       name: "AtdPinyin", resources: [.copy("Resources/pinyin.lexicon")],
       swiftSettings: nonisolatedByDefault),
+    // What the keyboard's keys and strip do to the host field: composition, previews of results,
+    // the ✦ line and the clipboard, behind protocols for the field and the pasteboard so it runs
+    // and is tested without UIKit.
+    .target(
+      name: "AtdKeyboardCore", dependencies: ["AtdModel", "AtdAI", "AtdPinyin"],
+      swiftSettings: nonisolatedByDefault),
     // The SwiftUI app: the 指令 and 我的 tabs, 问 Atd and the ink-and-paper style.
     .target(
       name: "AtdAppUI", dependencies: ["AtdModel", "AtdAI"], resources: [.process("Resources")],
       swiftSettings: mainActorByDefault),
     // The UIKit keyboard extension's controller, keys, strip and panels.
     .target(
-      name: "AtdKeyboardUI", dependencies: ["AtdModel", "AtdAI", "AtdPinyin"],
+      name: "AtdKeyboardUI", dependencies: ["AtdModel", "AtdAI", "AtdPinyin", "AtdKeyboardCore"],
       swiftSettings: mainActorByDefault),
     .testTarget(name: "AtdModelTests", dependencies: ["AtdModel"]),
     .testTarget(name: "AtdAITests", dependencies: ["AtdAI"]),
     .testTarget(name: "AtdPinyinTests", dependencies: ["AtdPinyin"]),
+    .testTarget(
+      name: "AtdKeyboardCoreTests",
+      dependencies: ["AtdKeyboardCore", "AtdModel", "AtdAI", "AtdPinyin"]),
   ],
   swiftLanguageModes: [.v6]
 )
