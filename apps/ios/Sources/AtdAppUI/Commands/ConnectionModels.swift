@@ -109,15 +109,21 @@ struct ConnectionModels: View {
     }
   }
 
+  /// Lists the models the way the connection's editor does: OpenCode's come from its catalog at a
+  /// route built from the preset, so the key never goes anywhere else.
   private func load() async {
     listing = .loading
     guard let key = store.key(for: connection.id), !key.isEmpty else {
       listing = .failed(.invalidKey)
       return
     }
-    let endpoint = ProviderEndpoint(api: connection.api, baseURL: connection.baseURL, key: key)
     do {
-      listing = .loaded(try await endpoint.models())
+      if let preset = ProviderPreset.preset(connection.presetID), preset.isOpenCode {
+        listing = .loaded(try await preset.openCodeModels(key: key))
+      } else {
+        let endpoint = ProviderEndpoint(api: connection.api, baseURL: connection.baseURL, key: key)
+        listing = .loaded(try await endpoint.models())
+      }
     } catch let failure as ModelFailure {
       listing = .failed(failure)
     } catch {
