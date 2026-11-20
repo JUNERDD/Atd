@@ -13,7 +13,19 @@
       "credentialUnreadable": "Credential unreadable · Re-enter key",
       "credentialMissing": "Credential missing · Re-enter key",
       "oauthUnreadable": "Sign-in unreadable · Sign in again",
-      "oauthMissing": "Sign-in missing · Sign in again"
+      "oauthMissing": "Sign-in missing · Sign in again",
+      "badge": {
+        "verified": "Verified",
+        "unverified": "Unverified",
+        "credentialIssue": "Re-enter key",
+        "oauthCredentialIssue": "Sign in again",
+        "disconnected": "Disconnected",
+        "oauth": "Signed in",
+        "noKey": "No key",
+        "ambient": "Cloud credentials",
+        "paused": "Paused",
+        "planDisabled": "Plan off"
+      }
     },
     "credentialIssue": {
       "apiKeyUnreadable": "The saved API key cannot be read from the OS keychain (common after an app update or signature change). Open this connection to re-enter it.",
@@ -30,7 +42,38 @@
     "refresh": "Refresh models",
     "disconnect": "Disconnect",
     "remove": "Remove connection",
-    "unavailableModel": "{{model}} is unavailable. Refresh models or choose another model."
+    "unavailableModel": "{{model}} is unavailable. Refresh models or choose another model.",
+    "usage": {
+      "action": "View usage",
+      "sectionTitle": "Usage",
+      "title": "{{name}} usage",
+      "description": "Allowance windows and balance reported by this provider.",
+      "loading": "Loading usage…",
+      "updated": "Updated {{time}}",
+      "saveFirst": "Save changes to refresh usage for the new credential.",
+      "unsupported": "This provider does not publish plan usage. Check its billing page for details.",
+      "unavailable": "This connection has no saved API key. Reconnect it to view usage.",
+      "empty": "The provider reported no allowance windows or balance.",
+      "error": "Usage is unavailable right now.",
+      "refreshFailed": "Couldn't refresh usage. Showing the last result.",
+      "details": "Error details",
+      "retry": "Refresh",
+      "close": "Done",
+      "resetsIn": "Resets {{time}}",
+      "balance": "Balance",
+      "balanceWith": "Balance {{amount}}",
+      "monthly": "{{used}} of {{limit}} this month",
+      "windows": {
+        "session": "Session (5 hours)",
+        "sessionShort": "Session",
+        "weekly": "Weekly",
+        "weeklyShort": "Weekly",
+        "monthly": "Monthly",
+        "monthlyShort": "Monthly",
+        "monthlyCode": "Monthly code",
+        "monthlyCodeShort": "Monthly code"
+      }
+    }
   },
   "catalog": {
     "title": "Add provider",

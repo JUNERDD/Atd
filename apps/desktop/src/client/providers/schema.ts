@@ -10,6 +10,7 @@ import {
   type ProviderContextsResponse,
   type ProviderLevelsResponse,
   type ProviderContextChoice,
+  type ProviderUsageResponse,
   type RunContextChoice,
 } from '@atd/agent-contracts';
 
@@ -46,6 +47,8 @@ export type ModelContexts = ProviderContextsResponse;
 export type ModelContextChoice = ProviderContextChoice;
 /** The levels one model offers, and the level it runs at when nothing names one. */
 export type ModelLevels = ProviderLevelsResponse;
+/** Provider-reported allowance windows and balance for one connection. */
+export type ProviderUsage = ProviderUsageResponse;
 
 export const ModelDefinitionSchema = Type.Object(
   {
@@ -278,6 +281,8 @@ export interface ProviderBridge {
   /** Probes stored credentials in the OS keyring for connected connections, no network. */
   checkStatuses: () => Promise<void>;
   verify: (reference: ModelReference) => Promise<void>;
+  /** Provider-reported allowance windows and balance; unsupported providers answer as such. */
+  usage: (connectionId: string, refresh?: boolean) => Promise<ProviderUsage>;
   login: (connectionId: string, request?: ProviderLoginRequest) => Promise<LoginState>;
   answer: (id: string, promptId: string, value: string) => Promise<void>;
   cancel: (id: string) => Promise<void>;

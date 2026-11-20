@@ -13,7 +13,19 @@
       "credentialUnreadable": "密钥无法读取 · 需重新输入",
       "credentialMissing": "未找到密钥 · 需重新输入",
       "oauthUnreadable": "登录凭据无法读取 · 需重新登录",
-      "oauthMissing": "未找到登录凭据 · 需重新登录"
+      "oauthMissing": "未找到登录凭据 · 需重新登录",
+      "badge": {
+        "verified": "已校验",
+        "unverified": "未校验",
+        "credentialIssue": "需重新输入",
+        "oauthCredentialIssue": "需重新登录",
+        "disconnected": "已断开",
+        "oauth": "已登录",
+        "noKey": "无密钥",
+        "ambient": "云凭据",
+        "paused": "已暂停",
+        "planDisabled": "未启用套餐"
+      }
     },
     "credentialIssue": {
       "apiKeyUnreadable": "无法从系统钥匙串读取已保存的 API 密钥（常见于应用更新或签名变更后），请点此行重新填写密钥。",
@@ -30,7 +42,38 @@
     "refresh": "刷新模型",
     "disconnect": "断开连接",
     "remove": "删除连接",
-    "unavailableModel": "{{model}} 不可用。请刷新模型或选择其他模型。"
+    "unavailableModel": "{{model}} 不可用。请刷新模型或选择其他模型。",
+    "usage": {
+      "action": "查看用量",
+      "sectionTitle": "用量",
+      "title": "{{name}} 用量",
+      "description": "该提供商为你的账号报告的额度窗口与余额。",
+      "loading": "正在加载用量…",
+      "updated": "更新于 {{time}}",
+      "saveFirst": "保存后会用新凭据刷新用量。",
+      "unsupported": "该提供商未公开套餐用量，请在其计费页面查看详情。",
+      "unavailable": "此连接没有可用的 API 密钥，请重新连接后查看用量。",
+      "empty": "提供商未返回额度窗口或余额。",
+      "error": "暂时无法获取用量。",
+      "refreshFailed": "无法刷新用量，显示的是上次结果。",
+      "details": "错误详情",
+      "retry": "刷新",
+      "close": "完成",
+      "resetsIn": "{{time}}重置",
+      "balance": "余额",
+      "balanceWith": "余额 {{amount}}",
+      "monthly": "本月已用 {{used}} / {{limit}}",
+      "windows": {
+        "session": "会话（5 小时）",
+        "sessionShort": "会话",
+        "weekly": "每周",
+        "weeklyShort": "每周",
+        "monthly": "每月",
+        "monthlyShort": "每月",
+        "monthlyCode": "每月代码额度",
+        "monthlyCodeShort": "每月代码"
+      }
+    }
   },
   "catalog": {
     "title": "添加提供商",

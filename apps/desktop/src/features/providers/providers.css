@@ -46,6 +46,15 @@
 .provider-connections {
   gap: 10px;
 }
+/* The usage summary is one grouped block rather than a list of rows: it keeps the card's 16px
+   inset on every edge, and its 20px corner stays concentric with the 8px meters inside it
+   (20px − 16px inset = 4px, the meter's own radius). The header sits 8px above its card. */
+.provider-usage-section.settings-fields {
+  gap: 8px;
+}
+.provider-usage-card[data-slot='card'] {
+  border-radius: calc(var(--radius) * 2);
+}
 .provider-connection-row {
   display: flex;
   flex-wrap: wrap;
@@ -102,6 +111,19 @@
 }
 .provider-model-trigger:hover {
   background: var(--input);
+}
+/* The check keeps the success hue; the label keeps the badge's foreground, which clears 4.5:1. */
+.provider-status-badge[data-tone='ok'] > svg {
+  color: var(--ata-status-progress);
+}
+.provider-status-badge[data-tone='warning'] {
+  color: var(--ata-status-warning);
+}
+.provider-status-badge[data-tone='danger'] {
+  color: var(--destructive);
+}
+.provider-status-badge[data-tone='muted'] {
+  color: var(--muted-foreground);
 }
 .provider-row-notice {
   flex-basis: 100%;

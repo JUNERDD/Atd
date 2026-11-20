@@ -15,8 +15,12 @@ import { GenerationClock, type GenerationEvent } from '../generation.js';
 import { childBySessionFile, hostForTask, parentForChildCwd } from './registry.js';
 import { registerChildTools } from './child-tools.js';
 import { imageBudgetExtension } from '../harness/image-budget.js';
+import { normalizeExtensionAPI } from '../providers/tool-schema.js';
 
-export default function serviceChildBridge(pi: ExtensionAPI): void {
+export default function serviceChildBridge(rawPi: ExtensionAPI): void {
+  // Child tools register on the raw API that Pi hands this module, outside the parent session's
+  // extension-factory wrapping. Normalize here so delegated runs get the same provider schemas.
+  const pi = normalizeExtensionAPI(rawPi);
   const generation = new GenerationClock();
   const timeMessage = (event: GenerationEvent): void => {
     for (const { customType, data } of generation.observe(event)) pi.appendEntry(customType, data);

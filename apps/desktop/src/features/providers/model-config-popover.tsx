@@ -22,6 +22,7 @@ import { providerPresentation } from './provider-services';
 import { applyDraftContext, useModelContexts } from './use-model-contexts';
 import { resolveSelectedThinkingLevel, useThinkingLevels } from './use-thinking-levels';
 import { ChatGPTPlan } from './chatgpt-plan';
+import { ProviderUsageSummary } from './provider-usage';
 
 function renderRowContent(label: string, value: string | null, nav = true, truncate = false) {
   return (
@@ -241,6 +242,7 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
               />
             )}
             <ChatGPTPlan connection={connection} variant="menu" />
+            {connection && <ProviderUsageSummary connection={connection} variant="menu" />}
             {contextChoice ? (
               <button
                 ref={contextRowRef}
