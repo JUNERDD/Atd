@@ -10,8 +10,9 @@ public struct RunCommandControl: ControlWidget {
   public init() {}
 
   public var body: some ControlWidgetConfiguration {
-    AppIntentControlConfiguration(kind: "run", intent: RunCommandControlConfiguration.self) {
-      configuration in
+    AppIntentControlConfiguration(
+      kind: EntryWidgetKind.runControl, intent: RunCommandControlConfiguration.self
+    ) { configuration in
       ControlWidgetButton(action: RunControlIntent(commandID: configuration.command?.id ?? "")) {
         Label {
           if let command = configuration.command {

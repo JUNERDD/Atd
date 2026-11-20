@@ -48,4 +48,6 @@ public struct GrantAgendaAccessIntent: AppIntent {
 /// The widget kinds an intent reloads, which the widget extension declares with the same names.
 public enum EntryWidgetKind {
   public static let nextItem = "lock.next"
+  /// The 运行指令 control, whose choices are the library's commands.
+  public static let runControl = "run"
 }

@@ -1,4 +1,5 @@
 import AtdAI
+import AtdIntents
 import AtdModel
 import Foundation
 import Observation
@@ -82,12 +83,13 @@ final class AppStore {
     write(CommandLibrary.self) { $0.remove(id) }.map(libraryChanged)
   }
 
-  /// Commands also show outside the app, in App Shortcuts and in widgets, which read the library
-  /// on their own; both are told when it changes.
+  /// Commands also show outside the app, in App Shortcuts, widgets and the 运行指令 control, which
+  /// read the library on their own; all of them are told when it changes.
   private func libraryChanged(_ library: CommandLibrary) {
     self.library = library
     AtdShortcuts.refresh()
     WidgetCenter.shared.reloadAllTimelines()
+    ControlCenter.shared.reloadControls(ofKind: EntryWidgetKind.runControl)
   }
 
   // MARK: Phrases
