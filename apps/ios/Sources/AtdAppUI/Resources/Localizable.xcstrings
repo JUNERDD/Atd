@@ -1981,6 +1981,24 @@
         }
       }
     },
+    "tab.automations" : {
+      "comment" : "Tab bar: what Atd does when a Shortcuts automation runs",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automations"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动化"
+          }
+        }
+      }
+    },
     "tab.commands" : {
       "comment" : "Tab bar: the command library",
       "extractionState" : "manual",
@@ -2013,6 +2031,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "我的"
+          }
+        }
+      }
+    },
+    "tab.miniApps" : {
+      "comment" : "Tab bar: the mini apps Atd built",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mini Apps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小应用"
           }
         }
       }

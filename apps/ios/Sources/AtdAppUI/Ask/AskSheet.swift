@@ -205,3 +205,12 @@ struct AskSheet: View {
     .scrollIndicators(.hidden)
   }
 }
+
+extension AskSheet {
+  /// 问 Atd with `draft` waiting in the field, for the `.ask(text:)` route (随手问 from a control,
+  /// a widget, Siri or Shortcuts). Nothing is sent until the person sends it.
+  init(draft: String) {
+    self.init()
+    _draft = State(initialValue: draft)
+  }
+}

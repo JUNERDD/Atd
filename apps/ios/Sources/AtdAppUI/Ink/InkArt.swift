@@ -6,7 +6,7 @@ import UIKit
 /// exported from the design assets of the prototype. Each illustration fills a 160 × 112 box.
 enum InkArt {
   enum Name: String, Hashable {
-    case commands, me
+    case commands, apps, automations, me
   }
 
   /// One stroke or shape of an illustration, in drawing order.
