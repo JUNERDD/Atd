@@ -106,7 +106,8 @@ const outputs = [
     52,
   ],
   [symbol, `${WEBSITE}/brand/atd-symbol.png`, 128],
-  [appIcon, `${WEBSITE}/favicon.png`, 64],
+  [appIcon, `${WEBSITE}/favicon.png`, 96],
+  [appIcon, `${WEBSITE}/icon-192.png`, 192],
   [appIcon, `${WEBSITE}/apple-touch-icon.png`, 180],
 ];
 

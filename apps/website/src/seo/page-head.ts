@@ -32,14 +32,14 @@ const shortcut = site.shortcut.join(' ');
 export const siteHeadCopy: Localized<SiteHeadCopy> = {
   en: {
     title: `${site.name} — Open-Source AI Desktop Agent for macOS`,
-    description: `${site.name} is a free, open-source macOS AI agent. Press ${shortcut} anywhere for coding, computer use, MCP tools, screenshots, and cloud or local models.`,
+    description: `${site.name} is a free, open-source AI desktop agent app for macOS. Press ${shortcut} for coding, computer use, MCP tools, screenshots, and cloud or local models.`,
     homeName: 'Home',
     imageAlt: `${site.name}, lit in white dots on a black LED panel`,
     ogLocale: 'en_US',
   },
   zh: {
     title: `${site.name} — 开源 macOS AI 桌面智能体，本地模型与电脑操作`,
-    description: `${site.name} 是一款免费开源的 macOS AI 智能体。按 ${shortcut} 随时唤起，支持编程、电脑操作、MCP 与技能扩展、长截图录屏，以及云端与本地模型。`,
+    description: `${site.name} 是一款免费开源的 macOS AI 桌面智能体应用。按 ${shortcut} 随时唤起，支持编程、电脑操作、MCP 与技能扩展、长截图录屏，以及云端与本地模型。`,
     homeName: '首页',
     imageAlt: `黑色 LED 面板上，以白色点阵点亮的 ${site.name}`,
     ogLocale: 'zh_CN',

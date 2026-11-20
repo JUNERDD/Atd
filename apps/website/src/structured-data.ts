@@ -5,7 +5,7 @@
  * graphs of other page families live in `seo/*-structured-data.ts`.
  */
 import { site } from './content/site.ts';
-import { htmlLang, LANGS, langPath, type Lang, type Localized } from './i18n/routes.ts';
+import { htmlLang, LANGS, langPath, pagePath, type Lang, type Localized } from './i18n/routes.ts';
 
 /** What one language's page says about itself, shared with its meta tags. */
 export interface PageFacts {
@@ -14,6 +14,42 @@ export interface PageFacts {
   /** The share image, an absolute URL. */
   image: string;
 }
+
+const SITE_ALTERNATE_NAMES = ['Atd App', 'Atd AI', 'Atd for macOS', 'atd.best'] as const;
+
+const SITE_DESCRIPTION =
+  'Atd (anything, anytime, anywhere, to do) is a free, open-source AI desktop agent for macOS.';
+
+const appAlternateNames: Localized<readonly string[]> = {
+  en: ['Atd App', 'Atd AI', 'Atd Agent', 'Atd for macOS', 'Anything, Anytime, Anywhere, To Do'],
+  zh: ['Atd AI', 'Atd 智能体', 'Atd macOS', 'Atd Mac', 'Anything, Anytime, Anywhere, To Do'],
+};
+
+const homeKeywords: Localized<readonly string[]> = {
+  en: [
+    'Atd',
+    'Atd AI',
+    'Atd agent',
+    'Atd app',
+    'Atd macOS',
+    'open-source macOS AI agent',
+    'AI desktop agent for Mac',
+    'Mac computer use agent',
+    'local LLM macOS',
+    'MCP client for Mac',
+  ],
+  zh: [
+    'Atd',
+    'Atd AI',
+    'Atd 智能体',
+    'Atd macOS',
+    'Atd Mac',
+    '开源 macOS AI 桌面智能体',
+    'Mac 电脑操作 AI',
+    '本地大模型 Mac 应用',
+    'MCP 客户端',
+  ],
+};
 
 const featureList: Localized<readonly string[]> = {
   en: [
@@ -57,7 +93,10 @@ export function baseNodes(siteUrl: string) {
       '@id': ids.website,
       url: ids.home,
       name: site.name,
+      alternateName: [...SITE_ALTERNATE_NAMES],
+      description: SITE_DESCRIPTION,
       inLanguage: LANGS.map((other) => htmlLang[other]),
+      about: { '@id': ids.app },
       publisher: { '@id': ids.author },
     },
     {
@@ -65,7 +104,7 @@ export function baseNodes(siteUrl: string) {
       '@id': ids.author,
       name: site.author,
       url: `https://github.com/${site.author}`,
-      sameAs: [`https://github.com/${site.author}`, site.repoUrl],
+      sameAs: [`https://github.com/${site.author}`],
     },
   ];
 }
@@ -105,6 +144,7 @@ export function homeStructuredData(lang: Lang, siteUrl: string, page: PageFacts)
   const ids = schemaIds(siteUrl);
   const minMacOS = Math.min(...site.downloads.map((download) => Number(download.minMacOS)));
   const url = `${siteUrl}${langPath[lang]}`;
+  const keywords = homeKeywords[lang].join(', ');
   return {
     '@context': 'https://schema.org',
     '@graph': [
@@ -116,14 +156,16 @@ export function homeStructuredData(lang: Lang, siteUrl: string, page: PageFacts)
         name: page.title,
         description: page.description,
         inLanguage: htmlLang[lang],
+        keywords,
         isPartOf: { '@id': ids.website },
         about: { '@id': ids.app },
         primaryImageOfPage: { '@type': 'ImageObject', url: page.image },
       },
       {
-        '@type': 'SoftwareApplication',
+        '@type': ['SoftwareApplication', 'SoftwareSourceCode'],
         '@id': ids.app,
         name: site.name,
+        alternateName: [...appAlternateNames[lang]],
         description: page.description,
         url: ids.home,
         image: page.image,
@@ -133,13 +175,18 @@ export function homeStructuredData(lang: Lang, siteUrl: string, page: PageFacts)
         processorRequirements: site.downloads.map((download) => download.chip[lang]).join(', '),
         softwareVersion: site.version,
         downloadUrl: site.downloads.map((download) => download.url),
-        releaseNotes: site.releasesUrl,
+        installUrl: `${url}#download`,
+        releaseNotes: `${siteUrl}${pagePath(lang, 'blog')}`,
+        softwareHelp: `${siteUrl}${pagePath(lang, 'faq')}`,
+        codeRepository: site.repoUrl,
+        programmingLanguage: ['TypeScript', 'Swift', 'Rust'],
         license: site.licenseUrl,
         isAccessibleForFree: true,
+        keywords,
         featureList: featureList[lang],
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
         author: { '@id': ids.author },
-        sameAs: [site.repoUrl],
+        sameAs: [...site.sameAs],
       },
     ],
   };
