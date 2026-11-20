@@ -4,34 +4,34 @@ import SwiftUI
 /// top-leading, top-trailing, bottom-trailing and bottom-leading corners, then the vertical ones,
 /// in the order CSS `border-radius` writes them. Relative radii are fractions of the box's width
 /// and height.
-nonisolated struct InkCorners: Sendable, Equatable {
-  var horizontal: [CGFloat]
-  var vertical: [CGFloat]
-  var relative = false
+public nonisolated struct InkCorners: Sendable, Equatable {
+  public var horizontal: [CGFloat]
+  public var vertical: [CGFloat]
+  public var relative = false
 
-  init(_ horizontal: [CGFloat], _ vertical: [CGFloat], relative: Bool = false) {
+  public init(_ horizontal: [CGFloat], _ vertical: [CGFloat], relative: Bool = false) {
     self.horizontal = horizontal
     self.vertical = vertical
     self.relative = relative
   }
 
   /// A capsule button.
-  static let capsule = InkCorners([24, 19, 26, 17], [19, 26, 17, 24])
+  public static let capsule = InkCorners([24, 19, 26, 17], [19, 26, 17, 24])
   /// A full-width button.
-  static let block = InkCorners([26, 17, 28, 15], [17, 28, 15, 26])
+  public static let block = InkCorners([26, 17, 28, 15], [17, 28, 15, 26])
   /// A round icon button.
-  static let round = InkCorners(
+  public static let round = InkCorners(
     [0.53, 0.47, 0.51, 0.45], [0.47, 0.54, 0.45, 0.52], relative: true)
-  static let card = InkCorners([26, 20, 28, 18], [20, 28, 18, 26])
-  static let field = InkCorners([16, 20, 15, 18], [18, 15, 20, 16])
-  static let chip = InkCorners([20, 15, 21, 14], [15, 21, 14, 20])
+  public static let card = InkCorners([26, 20, 28, 18], [20, 28, 18, 26])
+  public static let field = InkCorners([16, 20, 15, 18], [18, 15, 20, 16])
+  public static let chip = InkCorners([20, 15, 21, 14], [15, 21, 14, 20])
   /// A switch's track.
-  static let track = InkCorners([17, 14, 16, 13], [14, 17, 13, 16])
+  public static let track = InkCorners([17, 14, 16, 13], [14, 17, 13, 16])
   /// The frame of a segmented choice, and its chosen segment.
-  static let segments = InkCorners([19, 15, 20, 14], [15, 20, 14, 19])
-  static let segment = InkCorners([15, 11, 16, 10], [11, 16, 10, 15])
+  public static let segments = InkCorners([19, 15, 20, 14], [15, 20, 14, 19])
+  public static let segment = InkCorners([15, 11, 16, 10], [11, 16, 10, 15])
   /// The shapes a sticker's blob takes.
-  static let blobs = [
+  public static let blobs = [
     InkCorners([0.62, 0.38, 0.55, 0.45], [0.46, 0.58, 0.42, 0.54], relative: true),
     InkCorners([0.40, 0.60, 0.46, 0.54], [0.58, 0.42, 0.60, 0.40], relative: true),
     InkCorners([0.55, 0.45, 0.36, 0.64], [0.62, 0.50, 0.50, 0.38], relative: true),
@@ -57,13 +57,19 @@ nonisolated struct InkCorners: Sendable, Equatable {
 
 /// A box with hand-rounded corners whose edge strays a little from it, the same way every time
 /// for the same `seed`, like a line drawn with a pen.
-nonisolated struct InkShape: Shape {
-  var corners: InkCorners
+public nonisolated struct InkShape: Shape {
+  public var corners: InkCorners
   /// How far the edge strays, in points; 0 draws it clean.
-  var wobble: CGFloat = 0.7
-  var seed = 0
+  public var wobble: CGFloat
+  public var seed: Int
 
-  func path(in rect: CGRect) -> Path {
+  public init(corners: InkCorners, wobble: CGFloat = 0.7, seed: Int = 0) {
+    self.corners = corners
+    self.wobble = wobble
+    self.seed = seed
+  }
+
+  public func path(in rect: CGRect) -> Path {
     var points = Self.outline(rect, corners)
     if wobble > 0, points.count > 3 { points = stray(points) }
     var path = Path()
@@ -134,7 +140,7 @@ nonisolated struct InkShape: Shape {
 }
 
 /// A stable number for a string, so an item gets the same sticker shape and tilt everywhere.
-nonisolated func inkSeed(_ string: String) -> Int {
+public nonisolated func inkSeed(_ string: String) -> Int {
   var hash: UInt32 = 7
   for unit in string.utf16 { hash = hash &* 31 &+ UInt32(unit) }
   return Int(hash)

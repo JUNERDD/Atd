@@ -4,8 +4,8 @@ import UIKit
 
 /// The spot illustrations at the head of the tabs and the Atd mark, from `InkArt.json`: path data
 /// exported from the design assets of the prototype. Each illustration fills a 160 × 112 box.
-enum InkArt {
-  enum Name: String, Hashable {
+public enum InkArt {
+  public enum Name: String, Hashable {
     case commands, apps, automations, me
   }
 
@@ -27,7 +27,7 @@ enum InkArt {
   }
 
   /// The Atd mark (two drops) as a template image `side` points square, for the 问 Atd button.
-  static func markImage(side: CGFloat) -> UIImage {
+  public static func markImage(side: CGFloat) -> UIImage {
     // The mark is drawn in an 84-point box that starts at (18, 18).
     let transform = CGAffineTransform(translationX: -18, y: -18)
       .concatenating(CGAffineTransform(scaleX: side / 84, y: side / 84))
@@ -85,7 +85,7 @@ enum InkArt {
 
 /// A tab's spot illustration, inked on the paper. It draws itself in, stroke by stroke, the first
 /// time it appears in a session, and appears whole after that or with Reduce Motion on.
-struct Doodle: View {
+public struct Doodle: View {
   let name: InkArt.Name
   var width: CGFloat = 150
   @State private var drawn: Bool
@@ -94,13 +94,13 @@ struct Doodle: View {
   /// Illustrations already drawn in this session.
   private static var shown: Set<InkArt.Name> = []
 
-  init(_ name: InkArt.Name, width: CGFloat = 150) {
+  public init(_ name: InkArt.Name, width: CGFloat = 150) {
     self.name = name
     self.width = width
     _drawn = State(initialValue: Self.shown.contains(name))
   }
 
-  var body: some View {
+  public var body: some View {
     let scale = width / 160
     ZStack(alignment: .topLeading) {
       ForEach(InkArt.marks(name)) { mark in
@@ -156,13 +156,20 @@ private struct MarkView: View {
 
 /// How a command is told apart: its hue as a highlighter blob with its symbol inked on top. The
 /// blob's shape and a slight tilt come from `seed`, so a command looks the same everywhere.
-struct Sticker: View {
+public struct Sticker: View {
   let symbol: String
   let tint: CommandTint
   let seed: String
-  var size: CGFloat = 40
+  var size: CGFloat
 
-  var body: some View {
+  public init(symbol: String, tint: CommandTint, seed: String, size: CGFloat = 40) {
+    self.symbol = symbol
+    self.tint = tint
+    self.seed = seed
+    self.size = size
+  }
+
+  public var body: some View {
     let hash = inkSeed(seed + symbol + tint.rawValue)
     Image(systemName: symbol)
       .font(.system(size: size * 0.46, weight: .medium))
@@ -178,10 +185,14 @@ struct Sticker: View {
 }
 
 /// A plain inked symbol for a settings row: no color, because it identifies nothing.
-struct Glyph: View {
+public struct Glyph: View {
   let symbol: String
 
-  var body: some View {
+  public init(symbol: String) {
+    self.symbol = symbol
+  }
+
+  public var body: some View {
     Image(systemName: symbol)
       .font(.system(size: 19, weight: .regular))
       .foregroundStyle(.primary)

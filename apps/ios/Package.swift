@@ -63,52 +63,64 @@ let package = Package(
     .target(
       name: "AtdKeyboardCore", dependencies: ["AtdModel", "AtdAI", "AtdPinyin"],
       swiftSettings: nonisolatedByDefault),
+    // What card results do in the person's name: Calendar and Reminders through EventKit, behind
+    // protocols so the logic runs without permissions, and the expense ledger. Never linked by
+    // the keyboard.
+    .target(name: "AtdActions", dependencies: ["AtdModel"], swiftSettings: nonisolatedByDefault),
+    // The ink-and-paper look the app, its widgets, mini apps and the camera share: colors, shapes
+    // drawn by hand, stickers, doodles and the inked controls. SwiftUI only, so every extension
+    // that draws ink can link it.
+    .target(
+      name: "AtdInk", dependencies: ["AtdModel"], resources: [.process("Resources")],
+      swiftSettings: mainActorByDefault),
     // The intents the app and the widget extension both declare (controls, widget buttons, Live
     // Activity intents) and what they share with Siri and Shortcuts, plus the briefing's Live
     // Activity attributes.
     .target(
-      name: "AtdIntents", dependencies: ["AtdModel", "AtdAI"], exclude: ["MainBundle"],
-      resources: [.process("Resources")], swiftSettings: nonisolatedByDefault),
+      name: "AtdIntents", dependencies: ["AtdModel", "AtdAI", "AtdActions"],
+      exclude: ["MainBundle"], resources: [.process("Resources")],
+      swiftSettings: nonisolatedByDefault),
     // 拍了就办: the viewfinder the app and the Lock Screen capture extension show, and the
     // CameraCaptureIntent the app, the capture and the widget extensions all declare.
     .target(
-      name: "AtdCameraUI", dependencies: ["AtdModel"], exclude: ["MainBundle"],
+      name: "AtdCameraUI", dependencies: ["AtdModel", "AtdInk"], exclude: ["MainBundle"],
       resources: [.process("Resources")], swiftSettings: mainActorByDefault),
     // AI-built mini apps, the data their native widgets draw and the widgets' configuration
     // intent.
     .target(
-      name: "AtdMiniApps", dependencies: ["AtdModel", "AtdAI"], exclude: ["MainBundle"],
-      resources: [.process("Resources")], swiftSettings: nonisolatedByDefault),
+      name: "AtdMiniApps", dependencies: ["AtdModel", "AtdAI", "AtdActions", "AtdInk"],
+      exclude: ["MainBundle"], resources: [.process("Resources")],
+      swiftSettings: nonisolatedByDefault),
     // Context automations that Shortcuts personal automations run, and their Live Activities.
     .target(
-      name: "AtdAutomations", dependencies: ["AtdModel", "AtdAI"],
+      name: "AtdAutomations", dependencies: ["AtdModel", "AtdAI", "AtdActions"],
       resources: [.process("Resources")], swiftSettings: nonisolatedByDefault),
     // The share extension's screens.
     .target(
-      name: "AtdShareUI", dependencies: ["AtdModel", "AtdAI"], resources: [.process("Resources")],
-      swiftSettings: mainActorByDefault),
+      name: "AtdShareUI", dependencies: ["AtdModel", "AtdAI", "AtdActions"],
+      resources: [.process("Resources")], swiftSettings: mainActorByDefault),
     // The widget extension's widgets, controls and Live Activity views. No App Intents: the
     // app declares them too, so they live in modules it links.
     .target(
       name: "AtdWidgetsUI",
-      dependencies: ["AtdModel", "AtdIntents", "AtdMiniApps", "AtdAutomations", "AtdCameraUI"],
+      dependencies: [
+        "AtdModel", "AtdActions", "AtdInk", "AtdIntents", "AtdMiniApps", "AtdAutomations",
+        "AtdCameraUI",
+      ],
       resources: [.process("Resources")], swiftSettings: nonisolatedByDefault),
-    // The SwiftUI app: the four tabs, 问 Atd, the camera and the ink-and-paper style, and the
-    // intents only the app declares (Intents/).
+    // The SwiftUI app: the four tabs, 问 Atd, the camera and the ink pages, and the intents only
+    // the app declares (Intents/).
     .target(
       name: "AtdAppUI",
       dependencies: [
-        "AtdModel", "AtdAI", "AtdIntents", "AtdCameraUI", "AtdMiniApps", "AtdAutomations",
+        "AtdModel", "AtdAI", "AtdActions", "AtdInk", "AtdIntents", "AtdCameraUI", "AtdMiniApps",
+        "AtdAutomations",
       ],
       resources: [.process("Resources")], swiftSettings: mainActorByDefault),
     // The UIKit keyboard extension's controller, keys, strip and panels.
     .target(
       name: "AtdKeyboardUI", dependencies: ["AtdModel", "AtdAI", "AtdPinyin", "AtdKeyboardCore"],
       resources: [.process("Resources")], swiftSettings: mainActorByDefault),
-    // What card results do in the person's name: Calendar and Reminders through EventKit, behind
-    // protocols so the logic runs without permissions, and the expense ledger. Never linked by
-    // the keyboard.
-    .target(name: "AtdActions", dependencies: ["AtdModel"], swiftSettings: nonisolatedByDefault),
     .testTarget(name: "AtdModelTests", dependencies: ["AtdModel"]),
     .testTarget(name: "AtdAITests", dependencies: ["AtdAI"]),
     .testTarget(name: "AtdKeyboardUITests", dependencies: ["AtdKeyboardUI"]),

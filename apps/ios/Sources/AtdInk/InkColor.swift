@@ -11,36 +11,36 @@ import UIKit
 ///
 /// Nonisolated: UIKit may resolve a dynamic color on any thread, so the providers must not be
 /// tied to the main actor.
-nonisolated enum InkColor {
-  static let paper = dynamic(light: UIColor.white, dark: UIColor(white: 0.11, alpha: 1))
+public nonisolated enum InkColor {
+  public static let paper = dynamic(light: UIColor.white, dark: UIColor(white: 0.11, alpha: 1))
   /// The edge of controls drawn by hand.
-  static let line = Color(uiColor: .label).opacity(0.52)
+  public static let line = Color(uiColor: .label).opacity(0.52)
   /// The edge of a card, lighter than a control's.
-  static let cardLine = Color(uiColor: .label).opacity(0.24)
+  public static let cardLine = Color(uiColor: .label).opacity(0.24)
   /// A pressed control's fill.
-  static let press = Color(uiColor: .label).opacity(0.07)
+  public static let press = Color(uiColor: .label).opacity(0.07)
   /// The soft shade under an illustration.
-  static let shade = dynamic(
+  public static let shade = dynamic(
     light: UIColor(red: 0.945, green: 0.941, blue: 0.929, alpha: 1),
     dark: UIColor(red: 0.173, green: 0.173, blue: 0.18, alpha: 1))
   /// The deep fill of an illustration.
-  static let deep = dynamic(
+  public static let deep = dynamic(
     light: UIColor(red: 0.871, green: 0.863, blue: 0.843, alpha: 1),
     dark: UIColor(red: 0.282, green: 0.282, blue: 0.29, alpha: 1))
   /// A switch that is on: green highlighter.
-  static let on = highlighter(.systemGreen, light: 0.46, dark: 0.52)
+  public static let on = highlighter(.systemGreen, light: 0.46, dark: 0.52)
   /// The chosen option of a segmented choice: yellow highlighter.
-  static let chosen = highlighter(.systemYellow, light: 0.42, dark: 0.34)
+  public static let chosen = highlighter(.systemYellow, light: 0.42, dark: 0.34)
   /// Something that needs attention, such as a key a provider refused.
-  static let alert = Color(uiColor: .systemRed)
+  public static let alert = Color(uiColor: .systemRed)
 
   /// A command's sticker: its hue as a highlighter blob.
-  static func sticker(_ tint: CommandTint) -> Color {
+  public static func sticker(_ tint: CommandTint) -> Color {
     highlighter(tint.uiColor, light: 0.26, dark: 0.36)
   }
 
   /// The glyph inked on a sticker: the label color with a little of the hue.
-  static func stickerGlyph(_ tint: CommandTint) -> Color {
+  public static func stickerGlyph(_ tint: CommandTint) -> Color {
     Color(
       uiColor: UIColor { traits in
         let hue = tint.uiColor.resolvedColor(with: traits)
@@ -50,7 +50,7 @@ nonisolated enum InkColor {
   }
 
   /// `color` laid on the paper: mixed with white in light and with black in dark.
-  static func highlighter(_ color: UIColor, light: CGFloat, dark: CGFloat) -> Color {
+  public static func highlighter(_ color: UIColor, light: CGFloat, dark: CGFloat) -> Color {
     Color(
       uiColor: UIColor { traits in
         let hue = color.resolvedColor(with: traits)
@@ -78,7 +78,7 @@ nonisolated enum InkColor {
 
 extension CommandTint {
   /// The system hue this tint names.
-  nonisolated var uiColor: UIColor {
+  public nonisolated var uiColor: UIColor {
     switch self {
     case .red: .systemRed
     case .orange: .systemOrange

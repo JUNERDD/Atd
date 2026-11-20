@@ -2,12 +2,12 @@ import SwiftUI
 
 /// A button inked by hand on the paper: `bordered` is an outline, `filled` is solid ink (the one
 /// primary action of a screen). Each form keeps a 44-point hit area around what it draws.
-struct InkButtonStyle: ButtonStyle {
-  enum Kind {
+public struct InkButtonStyle: ButtonStyle {
+  public enum Kind {
     case bordered, filled
   }
 
-  enum Form {
+  public enum Form {
     /// A capsule that hugs its label, 36 points tall.
     case capsule
     /// A round icon button, 40 points across.
@@ -16,10 +16,15 @@ struct InkButtonStyle: ButtonStyle {
     case block
   }
 
-  var kind: Kind = .bordered
-  var form: Form = .capsule
+  public var kind: Kind
+  public var form: Form
 
-  func makeBody(configuration: Configuration) -> some View {
+  public init(kind: Kind = .bordered, form: Form = .capsule) {
+    self.kind = kind
+    self.form = form
+  }
+
+  public func makeBody(configuration: Configuration) -> some View {
     InkButton(configuration: configuration, kind: kind, form: form)
   }
 }
@@ -92,8 +97,10 @@ private struct InkLabelStyle: LabelStyle {
 
 /// A switch inked on the paper: a hand-drawn pill whose track fills with green highlighter when it
 /// is on. VoiceOver reads it as the system switch it stands for.
-struct InkToggleStyle: ToggleStyle {
-  func makeBody(configuration: Configuration) -> some View {
+public struct InkToggleStyle: ToggleStyle {
+  public init() {}
+
+  public func makeBody(configuration: Configuration) -> some View {
     InkSwitch(configuration: configuration)
   }
 }
@@ -144,14 +151,20 @@ private struct InkSwitch: View {
 
 /// One choice among a few, side by side in an inked frame; the chosen one is marked with yellow
 /// highlighter. The choices stack in a column when they do not fit side by side.
-struct InkSegmented: View {
+public struct InkSegmented: View {
   let label: String
   let choices: [String]
   @Binding var selection: String
   @Namespace private var marker
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-  var body: some View {
+  public init(label: String, choices: [String], selection: Binding<String>) {
+    self.label = label
+    self.choices = choices
+    _selection = selection
+  }
+
+  public var body: some View {
     ViewThatFits(in: .horizontal) {
       segments(HStackLayout(spacing: 0))
       segments(VStackLayout(spacing: 0))
@@ -199,7 +212,7 @@ struct InkSegmented: View {
 
 extension View {
   /// Frames a text field or editor by hand; the edge turns to ink while it has focus.
-  func inkField(focused: Bool = false) -> some View {
+  public func inkField(focused: Bool = false) -> some View {
     padding(.horizontal, 12)
       .padding(.vertical, 10)
       .background {
@@ -210,7 +223,7 @@ extension View {
   }
 
   /// A block that groups its own content, outlined by hand: no fill of its own and no shadow.
-  func inkCard(seed: Int = 0) -> some View {
+  public func inkCard(seed: Int = 0) -> some View {
     background {
       InkShape(corners: .card, seed: seed).stroke(InkColor.cardLine, lineWidth: 1)
     }
