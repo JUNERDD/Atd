@@ -8,6 +8,8 @@
     "test": "node scripts/test.mjs",
     "lint": "swiftlint lint --strict --quiet",
     "format": "swift format --in-place --recursive --parallel Package.swift App Keyboard Sources Tests",
-    "format:check": "swift format lint --strict --recursive --parallel Package.swift App Keyboard Sources Tests"
+    "format:check": "swift format lint --strict --recursive --parallel Package.swift App Keyboard Sources Tests",
+    "lexicon": "node scripts/lexicon.mjs",
+    "lexicon:check": "node scripts/lexicon.mjs --check"
   }
 }

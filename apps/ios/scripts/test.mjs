@@ -51,9 +51,10 @@ const read = (kind) =>
     }),
   );
 
-/** Prints each failed test with its failure messages. */
+/** Prints each failed test (and, for a parameterized one, its arguments) with its messages. */
 function printFailures(node, trail = []) {
-  const here = node.nodeType === 'Test Case' ? [...trail, node.name] : trail;
+  const named = node.nodeType === 'Test Case' || node.nodeType === 'Arguments';
+  const here = named ? [...trail, node.name] : trail;
   if (node.nodeType === 'Failure Message')
     process.stdout.write(`  ${trail.join(' › ')}: ${node.name}\n`);
   for (const child of node.children ?? []) printFailures(child, here);

@@ -150,5 +150,6 @@ schemes:
       targets:
         - package: AtdMobile/AtdModelTests
         - package: AtdMobile/AtdAITests
+        - package: AtdMobile/AtdPinyinTests
     archive:
       config: Release

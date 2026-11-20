@@ -2,7 +2,12 @@
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "semi": true,
   "singleQuote": true,
-  "ignorePatterns": ["pnpm-lock.yaml", "**/dist/**", "**/.artifacts/**"],
+  "ignorePatterns": [
+    "pnpm-lock.yaml",
+    "**/dist/**",
+    "**/.artifacts/**",
+    "apps/ios/Lexicon/pinyin_simp.dict.yaml"
+  ],
   "sortTailwindcss": {
     "stylesheet": "packages/ui/src/styles.css",
     "functions": ["cn", "cva"]
