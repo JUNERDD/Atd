@@ -19,26 +19,43 @@ let nonisolatedByDefault: [SwiftSetting] = [
 ]
 
 /// All of Atd for iPhone lives in this package; the XcodeGen targets in `project.yml` only link
-/// products (`AtdAppUI` and `AtdIntents`, whose intents the app's App Shortcuts name, for the app;
-/// `AtdKeyboardUI`, `AtdShareUI`, `AtdWidgetsUI` and `AtdCameraUI` for the extensions) and supply
-/// the bundles, Info.plists and entitlements. No third-party dependencies: the keyboard extension
-/// runs under a tight memory limit and links only what typing needs, so AtdModel, AtdAI, AtdPinyin
-/// and the keyboard targets never import EventKit, WidgetKit, ActivityKit, AVFoundation, WebKit or
-/// AppIntents.
+/// products (`AtdAppUI` for the app; `AtdKeyboardUI`, `AtdShareUI`, `AtdWidgetsUI` and
+/// `AtdCameraUI` for the extensions) and supply the bundles, Info.plists and entitlements. No
+/// third-party dependencies: the keyboard extension runs under a tight memory limit and links only
+/// what typing needs, so AtdModel, AtdAI, AtdPinyin and the keyboard targets never import EventKit,
+/// WidgetKit, ActivityKit, AVFoundation, WebKit or AppIntents.
 ///
-/// App Intents: an extension declares every intent of every module it links, and the app every
-/// intent of every module in its build, its extensions' included (`AtdIntentsPackage` has the
-/// rule), so intents live only in modules the app links. App Intents read their copy only from
-/// the main bundle: a module's `MainBundle/` tables are excluded here and compiled into every
-/// bundle that declares its intents (project.yml).
+/// App Intents: the build merges into an extension's `Metadata.appintents` the intents of every
+/// module it links, and into the app's those of every module in its build, its extensions'
+/// included. So every intent is the app's too and lives in a module the app links, or the app
+/// would declare an intent it cannot run; AtdWidgetsUI and AtdShareUI define none. The system
+/// picks the process by kind: a control or Shortcuts action that opens the app, and a
+/// `LiveActivityIntent`, run in the app; a widget button's plain intent runs in the widget
+/// extension. Yet the system may fetch an App Shortcut's intent from an extension that declares it
+/// too, which has no App Shortcuts ("Couldn't find AppShortcutsProvider"). So what Siri, Shortcuts
+/// and Spotlight run is the app's alone, in `AtdAppUI/Intents/`, and an intent an extension shares
+/// stays hidden from them (`isDiscoverable = false`), as the control's `AskControlIntent` beside
+/// `OpenAskIntent`. A widget's configuration intent goes in the module that owns its data.
+///
+/// The build reads `supportedModes` from its literal and records `.foreground(.immediate)`, which
+/// equals `.foreground` at run time, as `.background`: the system would run the intent without
+/// bringing the app forward. An intent that opens the app says `.foreground`.
+///
+/// Nothing declares an `AppIntentsPackage`. The merge needs none for these statically linked
+/// modules, and a target's `includedPackages` makes the system look for the modules as frameworks,
+/// fail, and register none of Atd's intents (linkd: "did not match any imported symbol").
+///
+/// App Intents read their copy only from the main bundle, and titles at build time: every title,
+/// parameter name and dialog is a literal `LocalizedStringResource("key", table:
+/// "<Feature>Intents")`, in a module's `MainBundle/` table, which is excluded here and compiled
+/// into every bundle that declares its intents (project.yml). Other copy goes in
+/// `Resources/<Feature>.xcstrings`.
 let package = Package(
   name: "AtdMobile",
   defaultLocalization: "en",
   platforms: [.iOS(.v26)],
   products: [
     .library(name: "AtdAppUI", targets: ["AtdAppUI"]),
-    .library(name: "AtdIntents", targets: ["AtdIntents"]),
-    .library(name: "AtdAutomations", targets: ["AtdAutomations"]),
     .library(name: "AtdKeyboardUI", targets: ["AtdKeyboardUI"]),
     .library(name: "AtdShareUI", targets: ["AtdShareUI"]),
     .library(name: "AtdWidgetsUI", targets: ["AtdWidgetsUI"]),

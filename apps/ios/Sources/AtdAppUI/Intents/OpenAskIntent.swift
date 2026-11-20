@@ -1,14 +1,12 @@
 import AppIntents
 import AtdModel
 
-/// 随手问: opens 问 Atd over the app, with `text` waiting in the field.
-///
-/// An intent that opens the app, such as a control's: it lives in AtdIntents so the widget
-/// extension (the control) and the app (which runs it) both declare it, and `supportedModes`
-/// brings the app forward, unlocking first, before `perform()` runs there.
+/// 随手问 for Siri, Shortcuts and the Action button: opens 问 Atd over the app, with `text`
+/// waiting in the field. `supportedModes` brings the app forward, unlocking first, before
+/// `perform()` runs. The control runs `AskControlIntent` instead (Package.swift has the rule).
 public struct OpenAskIntent: AppIntent {
   public static let title = LocalizedStringResource("openAsk.title", table: "EntryIntents")
-  public static let supportedModes: IntentModes = .foreground(.immediate)
+  public static let supportedModes: IntentModes = .foreground
 
   @Parameter(title: LocalizedStringResource("openAsk.text", table: "EntryIntents"))
   public var text: String?

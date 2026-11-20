@@ -6,7 +6,7 @@ import Foundation
 ///
 /// A configuration intent lives in a module both the app and the widget extension link: the app
 /// declares every intent in its build, the extension's included, so both must have the same type
-/// (`AtdIntentsPackage` has the rule). Its copy is in `MainBundle/MiniAppIntents.xcstrings`, which
+/// (Package.swift has the rule). Its copy is in `MainBundle/MiniAppIntents.xcstrings`, which
 /// project.yml compiles into both bundles. With no app chosen, the widget shows the mini app
 /// opened or created last (`MiniAppQuery.defaultResult()`), so saving an app and then adding the
 /// widget needs no configuring.
@@ -77,6 +77,3 @@ extension MiniAppStore {
     AppGroup.current().flatMap { MiniAppStore.appGroup($0) }
   }
 }
-
-/// This module's App Intents, listed by the app's and the widget extension's packages.
-public struct AtdMiniAppsPackage: AppIntentsPackage {}

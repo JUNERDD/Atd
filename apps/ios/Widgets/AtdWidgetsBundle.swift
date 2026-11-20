@@ -1,4 +1,3 @@
-import AppIntents
 import AtdWidgetsUI
 import SwiftUI
 import WidgetKit
@@ -21,12 +20,5 @@ struct AtdWidgetsBundle: WidgetBundle {
     BriefingActivityWidget()
     AutomationActivityWidget()
     FocusActivityWidget()
-  }
-}
-
-/// The App Intents this extension declares (AtdWidgetsUIPackage lists the modules).
-struct AtdWidgetsPackage: AppIntentsPackage {
-  static var includedPackages: [any AppIntentsPackage.Type] {
-    [AtdWidgetsUIPackage.self]
   }
 }

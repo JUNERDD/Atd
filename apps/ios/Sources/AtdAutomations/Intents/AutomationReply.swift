@@ -2,14 +2,14 @@ import Foundation
 
 /// What 运行自动化 says (Siri speaks it; a personal automation running immediately shows
 /// nothing) and returns, in the app's language.
-struct AutomationReply: Equatable {
+public struct AutomationReply: Equatable {
   /// One sentence about what happened.
-  let dialog: String
+  public let dialog: String
   /// What the run found, for the next action in the shortcut (朗读文本); the dialog when it
   /// found nothing.
-  let value: String
+  public let value: String
 
-  init(_ outcome: TriggerOutcome) {
+  public init(_ outcome: TriggerOutcome) {
     switch outcome {
     case .ran(let automation, let run):
       let dialog = Self.dialog(automation.name, run)

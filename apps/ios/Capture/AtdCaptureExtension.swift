@@ -1,4 +1,3 @@
-import AppIntents
 import AtdCameraUI
 import Foundation
 import LockedCameraCapture
@@ -17,12 +16,5 @@ struct AtdCaptureExtension: LockedCameraCaptureExtension {
         try await session.openApplication(for: activity)
       }
     }
-  }
-}
-
-/// The App Intents this extension declares: `CaptureIntent`.
-struct AtdCapturePackage: AppIntentsPackage {
-  static var includedPackages: [any AppIntentsPackage.Type] {
-    [AtdCameraUIPackage.self]
   }
 }

@@ -3,7 +3,7 @@ import Foundation
 
 /// AI-built mini apps (小应用): their files, their sandboxed pages' bridge and the data their
 /// native widgets draw. The app and the widget extension both link this module, so the widget
-/// configuration intent and the widget buttons' intents live here too (`AtdIntentsPackage` has the
+/// configuration intent and the widget buttons' intents live here too (Package.swift has the
 /// rule).
 ///
 /// A mini app is a page the model wrote (HTML, CSS and script, run in a sandboxed web view with no

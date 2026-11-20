@@ -68,11 +68,6 @@ targets:
     dependencies:
       - package: AtdMobile
         product: AtdAppUI
-      # The App Shortcuts in App/ name these modules' intents.
-      - package: AtdMobile
-        product: AtdIntents
-      - package: AtdMobile
-        product: AtdAutomations
       - target: AtdKeyboard
         embed: true
         codeSign: true

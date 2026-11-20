@@ -148,7 +148,3 @@ public nonisolated enum CameraMemory {
     set { UserDefaults.standard.set(newValue, forKey: key) }
   }
 }
-
-/// This module's App Intents, listed by the app's, the capture extension's and the widget
-/// extension's own packages.
-nonisolated public struct AtdCameraUIPackage: AppIntentsPackage {}

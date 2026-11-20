@@ -12,7 +12,7 @@ import WidgetKit
 public struct GrantAgendaAccessIntent: AppIntent {
   public static let title = LocalizedStringResource("grantAccess.title", table: "EntryIntents")
   public static let isDiscoverable = false
-  public static let supportedModes: IntentModes = .foreground(.immediate)
+  public static let supportedModes: IntentModes = .foreground
 
   public init() {}
 

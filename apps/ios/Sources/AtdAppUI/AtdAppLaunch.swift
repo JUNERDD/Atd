@@ -17,16 +17,3 @@ public enum AtdAppLaunch {
     MiniAppDebug.launch()
   }
 }
-
-/// The App Intents the app declares through the package: its own (`Intents/`) and the ones it
-/// shares with the widget extension (AtdIntents, AtdMiniApps) and the capture extension
-/// (AtdCameraUI). `App/AtdApp.swift` includes this package. A module that adds intents adds its
-/// own package here, and in `AtdWidgetsUIPackage` when the widget extension links it too.
-nonisolated public struct AtdAppUIPackage: AppIntentsPackage {
-  public static var includedPackages: [any AppIntentsPackage.Type] {
-    [
-      AtdIntentsPackage.self, AtdCameraUIPackage.self, AtdMiniAppsPackage.self,
-      AtdAutomationsPackage.self,
-    ]
-  }
-}
