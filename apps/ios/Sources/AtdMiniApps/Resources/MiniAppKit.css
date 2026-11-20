@@ -1,15 +1,70 @@
 /* Atd's ink-and-paper kit for mini app pages. The host puts it before every page, with the color
    tokens it resolves from the system colors (--paper, --ink, --line, --hl, --hl-<tint>, --on,
    --chosen), so a page drawn with these classes looks like the rest of the app: paper, inked
-   edges drawn by hand, highlighter marks. Text follows Dynamic Type through the system fonts. */
+   edges drawn by hand, highlighter marks. Text follows Dynamic Type through the system fonts.
+
+   Chinese text uses PingFang through a face limited to CJK ranges, listed before the system
+   font in --font: WebKit has drawn the system font's CJK fallback as missing glyphs (iOS 26.3
+   simulator), while a named font always draws. Every text style below sets
+   font-family: var(--font) after its font shorthand, which would otherwise reset the family. */
+
+@font-face {
+  font-family: 'Atd CJK';
+  font-weight: 100 399;
+  src: local('PingFangSC-Light');
+  unicode-range:
+    U+2E80-2FFF, U+3000-33FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF,
+    U+20000-2FA1F;
+}
+
+@font-face {
+  font-family: 'Atd CJK';
+  font-weight: 400 499;
+  src: local('PingFangSC-Regular');
+  unicode-range:
+    U+2E80-2FFF, U+3000-33FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF,
+    U+20000-2FA1F;
+}
+
+@font-face {
+  font-family: 'Atd CJK';
+  font-weight: 500 599;
+  src: local('PingFangSC-Medium');
+  unicode-range:
+    U+2E80-2FFF, U+3000-33FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF,
+    U+20000-2FA1F;
+}
+
+@font-face {
+  font-family: 'Atd CJK';
+  font-weight: 600 900;
+  src: local('PingFangSC-Semibold');
+  unicode-range:
+    U+2E80-2FFF, U+3000-33FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FE30-FE4F, U+FF00-FFEF,
+    U+20000-2FA1F;
+}
 
 :root {
   color-scheme: light dark;
   --gap: 14px;
+  --font: 'Atd CJK', -apple-system, sans-serif;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Controls take the page's fonts instead of the system control font. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+/* The kit's display rules must not show what a page hides. */
+[hidden] {
+  display: none !important;
 }
 
 html {
@@ -21,6 +76,7 @@ body {
   margin: 0;
   padding: 4px 16px 32px;
   font: -apple-system-body;
+  font-family: var(--font);
   color: var(--ink);
   background: var(--paper);
   -webkit-tap-highlight-color: transparent;
@@ -44,10 +100,12 @@ p {
 
 .title {
   font: -apple-system-headline;
+  font-family: var(--font);
 }
 
 .kicker {
   font: -apple-system-subheadline;
+  font-family: var(--font);
   color: var(--ink-2);
 }
 
@@ -69,12 +127,14 @@ p {
 
 .sub {
   font: -apple-system-subheadline;
+  font-family: var(--font);
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
 
 .meta {
   font: -apple-system-footnote;
+  font-family: var(--font);
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
@@ -137,6 +197,7 @@ p {
   border: 0;
   border-radius: 24px 19px 26px 17px / 19px 26px 17px 24px;
   font: -apple-system-subheadline;
+  font-family: var(--font);
   font-weight: 600;
   color: var(--ink);
   background: none;
@@ -175,6 +236,7 @@ p {
   width: 100%;
   min-height: 48px;
   font: -apple-system-body;
+  font-family: var(--font);
   font-weight: 600;
 }
 
@@ -208,6 +270,7 @@ p {
   border: 0;
   border-radius: 16px 20px 15px 18px / 18px 15px 20px 16px;
   font: -apple-system-body;
+  font-family: var(--font);
   color: var(--ink);
   background: transparent;
   outline: none;
@@ -221,6 +284,7 @@ p {
 
 .segmented {
   display: flex;
+  flex-wrap: wrap;
   padding: 4px;
   border-radius: 19px 15px 20px 14px / 15px 20px 14px 19px;
 }
@@ -247,6 +311,7 @@ p {
   padding: 0 10px;
   border-radius: 15px 11px 16px 10px / 11px 16px 10px 15px;
   font: -apple-system-subheadline;
+  font-family: var(--font);
   white-space: nowrap;
 }
 
@@ -270,6 +335,7 @@ p {
   padding: 8px 0;
   border: 0;
   font: -apple-system-body;
+  font-family: var(--font);
   color: var(--ink);
   text-align: start;
   background: none;
@@ -338,6 +404,7 @@ p {
   padding: 10px 14px;
   border-radius: 18px 14px 20px 13px / 14px 20px 13px 18px;
   font: -apple-system-subheadline;
+  font-family: var(--font);
   background: var(--on);
 }
 
@@ -352,15 +419,20 @@ p {
   mask: var(--sym) center / contain no-repeat;
 }
 
+/* A ring grows with the text inside it, up to the width it has; a page may set its width. */
 .ring {
   position: relative;
   display: inline-grid;
   place-items: center;
+  width: min(10em, 100%);
+  aspect-ratio: 1;
 }
 
 .ring > svg {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: visible;
   filter: url(#ink-rough);
 }
@@ -401,6 +473,7 @@ p {
 
 .bars small {
   font: -apple-system-caption2;
+  font-family: var(--font);
   color: var(--ink-2);
 }
 

@@ -1,8 +1,15 @@
 <style>
+  /* Amount and note side by side; stacked, each full width, once large text needs the room. */
   .add-row {
-    display: grid;
-    grid-template-columns: 7.5em minmax(0, 1fr);
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
+  }
+  .add-row > label {
+    flex: 999 1 8em;
+  }
+  .add-row > .amount {
+    flex: 1 0 7.5em;
   }
   .amount .unit {
     padding-inline-start: 12px;
@@ -38,6 +45,7 @@
   }
   .expense .grow small {
     font: -apple-system-footnote;
+    font-family: var(--font);
     color: var(--ink-2);
     white-space: nowrap;
     overflow: hidden;

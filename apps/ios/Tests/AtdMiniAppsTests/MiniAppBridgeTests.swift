@@ -166,6 +166,9 @@ import Testing
     #expect(!html.contains("content=\"\(MiniAppDocument.contentSecurityPolicy)\""))
     #expect(html.contains("window.atd") && html.contains("<p id=\"mine\">Hi</p>"))
     #expect(html.contains("lang=\"zh-Hans\""))
+    // Chinese text draws through a named face: WebKit's system font fallback has drawn it as
+    // missing glyphs.
+    #expect(html.contains("src: local('PingFangSC-Regular')"))
     // The data cannot close the boot script.
     #expect(!html.contains("</script><script>alert(1)"))
     let boot = try #require(html.range(of: "<script id=\"atd-boot\" type=\"application/json\">"))

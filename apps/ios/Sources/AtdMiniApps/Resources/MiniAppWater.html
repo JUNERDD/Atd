@@ -5,6 +5,9 @@
     padding-block: 22px;
     text-align: center;
   }
+  .water .ring {
+    width: min(10.6em, 100%);
+  }
   .water .num {
     font-size: 3.4em;
     font-weight: 700;
@@ -12,15 +15,22 @@
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
   }
+  /* Side by side; stacked, each full width, once large text no longer fits them on one line. */
   .water .actions {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     width: 100%;
   }
+  .water #less {
+    flex: 1 0 auto;
+  }
+  .water #more {
+    flex: 999 1 10em;
+  }
 </style>
 <section class="card water">
-  <div class="ring" id="ring" style="width: 180px; height: 180px"></div>
+  <div class="ring" id="ring"></div>
   <p class="sub" id="left" aria-live="polite"></p>
   <div class="actions">
     <button class="btn" id="less" type="button">
