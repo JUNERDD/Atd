@@ -17,7 +17,7 @@ struct TrialPhotoInput: View {
   @Binding var photo: TrialPhoto?
   @State private var item: PhotosPickerItem?
   @State private var picture: UIImage?
-  @ScaledMetric(relativeTo: .body) private var height: CGFloat = 132
+  @ScaledMetric(relativeTo: .body) private var height: CGFloat = 180
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -25,8 +25,10 @@ struct TrialPhotoInput: View {
         Image(uiImage: picture)
           .resizable()
           .scaledToFit()
-          .frame(maxHeight: min(height, 260), alignment: .leading)
+          .frame(maxHeight: min(height, 320), alignment: .leading)
           .clipShape(InkShape(corners: .chip, wobble: 0))
+          // A photo of white paper (a receipt, a screenshot) keeps an edge on the paper.
+          .overlay { InkShape(corners: .chip, wobble: 0).stroke(InkColor.cardLine, lineWidth: 1) }
           .accessibilityElement()
           .accessibilityLabel(
             photo?.isSample == true

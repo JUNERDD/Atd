@@ -31,17 +31,19 @@ enum TrialSample {
     return await ImageEncoding.modelImage(from: data)
   }
 
-  /// A café receipt with today's date under the shop's name.
+  /// A café receipt with today's date under the shop's name, cut where its last line ends so
+  /// its text stays legible in the trial's preview.
   private static func receipt() -> UIImage {
     var lines = AppText.string("sample.receipt").components(separatedBy: "\n")
     let date = Date.now.formatted(
       .dateTime.year().month(.twoDigits).day(.twoDigits).hour().minute())
     lines.insert(date, at: min(1, lines.count))
+    let heading = UIFont.monospacedSystemFont(ofSize: 52, weight: .bold)
+    let body = UIFont.monospacedSystemFont(ofSize: 40, weight: .regular)
+    let text = heading.lineHeight * 1.8 + body.lineHeight * 1.5 * CGFloat(lines.count - 1)
     return draw(
-      lines, size: CGSize(width: 720, height: 960), paper: .white,
-      ink: UIColor(white: 0.15, alpha: 1),
-      heading: .monospacedSystemFont(ofSize: 46, weight: .bold),
-      body: .monospacedSystemFont(ofSize: 34, weight: .regular))
+      lines, size: CGSize(width: 640, height: (2 * margin + text).rounded(.up)), paper: .white,
+      ink: UIColor(white: 0.15, alpha: 1), heading: heading, body: body)
   }
 
   /// A meeting room whiteboard in blue marker.
@@ -54,6 +56,9 @@ enum TrialSample {
     )
   }
 
+  /// The space around a sample's lines.
+  private static let margin: CGFloat = 64
+
   /// Lines top to bottom, the first as a heading; a tab in a line sets what follows it flush
   /// right, as a price is on a receipt.
   private static func draw(
@@ -64,7 +69,6 @@ enum TrialSample {
     return UIGraphicsImageRenderer(size: size, format: format).image { context in
       paper.setFill()
       context.fill(CGRect(origin: .zero, size: size))
-      let margin: CGFloat = 64
       var top = margin
       for (index, line) in lines.enumerated() {
         let font = index == 0 ? heading : body
