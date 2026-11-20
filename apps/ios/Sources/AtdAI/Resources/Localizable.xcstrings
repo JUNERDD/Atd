@@ -1,0 +1,384 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "failure.invalidKey" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: the provider rejected the API key (401/403)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid key"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "密钥无效"
+          }
+        }
+      }
+    },
+    "failure.noModel" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: no model connection is set up yet",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a model in Atd first"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先在 Atd 里添加模型"
+          }
+        }
+      }
+    },
+    "failure.notFound" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: 404, the model or address does not exist",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model or address not found"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "找不到模型或地址"
+          }
+        }
+      }
+    },
+    "failure.offline" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: no network, or the provider did not answer in time",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t connect"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没连上网络"
+          }
+        }
+      }
+    },
+    "failure.rateLimited" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: too many requests, or the account is out of credit",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Too many requests or out of credit. Try again later."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "太频繁或额度用完，稍后再试"
+          }
+        }
+      }
+    },
+    "failure.rateLimited.wait %lld" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: like failure.rateLimited, with the seconds to wait",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Too many requests or out of credit. Try again in %lld s."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "太频繁或额度用完，%lld 秒后再试"
+          }
+        }
+      }
+    },
+    "failure.refused" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: the model declined the content or it was filtered",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The model won’t process this"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这段内容模型不处理"
+          }
+        }
+      }
+    },
+    "failure.rejected" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: the provider rejected the request (another 4xx)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The provider rejected the request"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服务商拒绝了这次请求"
+          }
+        }
+      }
+    },
+    "failure.server" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: the provider returned a server error",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The provider had an error"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服务商出错"
+          }
+        }
+      }
+    },
+    "failure.truncated" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: the answer reached the length limit before finishing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The result was cut off"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "结果太长，没写完"
+          }
+        }
+      }
+    },
+    "failure.unreadable" : {
+      "comment" : "One-line failure notice under a result or on the keyboard strip: the response was not in the expected format",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t read the provider’s response"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读不懂服务商的回复"
+          }
+        }
+      }
+    },
+    "preset.custom" : {
+      "comment" : "Provider name: an OpenAI-compatible endpoint the person enters",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义"
+          }
+        }
+      }
+    },
+    "preset.qwen" : {
+      "comment" : "Provider name: Alibaba Cloud Qwen, international endpoint",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qwen International"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "通义千问国际版"
+          }
+        }
+      }
+    },
+    "prompt.ask" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): system prompt for Ask Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You are Atd, answering questions on a phone. Answer briefly and directly, in the language of the question."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你是 Atd，在手机上回答问题。回答简短直接，用提问用的语言。"
+          }
+        }
+      }
+    },
+    "prompt.base" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): the rule every command follows",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Output only the resulting text, without quotation marks or explanations. Unless the instructions say otherwise, keep the language of the original."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只输出结果文本，不加引号和解释；除非指令另有要求，保持原文的语言。"
+          }
+        }
+      }
+    },
+    "prompt.continue" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): instructions for continuing the text before the cursor",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue the text from where it ends. Output only the new part, without repeating what is already written."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从这段文字的结尾接着往下写，只输出新写的部分，不重复已有的内容。"
+          }
+        }
+      }
+    },
+    "prompt.draftRule" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): how to use the person's draft when replying to a copied message",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The reply should say what I want to say; where it conflicts with their message, follow what I want to say."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回复要表达“我想说的”；它和对方的消息有冲突时，以“我想说的”为准。"
+          }
+        }
+      }
+    },
+    "prompt.instructions %@" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): introduces the command's instructions",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instructions: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "要求：%@"
+          }
+        }
+      }
+    },
+    "prompt.myDraft" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): label before the person's draft of what to say",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What I want to say:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我想说的："
+          }
+        }
+      }
+    },
+    "prompt.option %@ %@" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): one command option, label then chosen value",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@: %2$@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@：%2$@"
+          }
+        }
+      }
+    },
+    "prompt.theirMessage" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): label before the copied message being replied to",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Their message:"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对方的消息："
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

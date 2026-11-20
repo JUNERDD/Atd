@@ -149,5 +149,6 @@ schemes:
       config: Debug
       targets:
         - package: AtdMobile/AtdModelTests
+        - package: AtdMobile/AtdAITests
     archive:
       config: Release

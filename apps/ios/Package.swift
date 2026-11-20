@@ -32,13 +32,21 @@ let package = Package(
     // Commands, phrases and settings, and the App Group files the app and the keyboard share.
     .target(
       name: "AtdModel", resources: [.process("Resources")], swiftSettings: nonisolatedByDefault),
+    // The person's own providers, called directly: the two wire protocols, their keys in the
+    // shared Keychain group, and the prompts every command and question is sent with.
+    .target(
+      name: "AtdAI", dependencies: ["AtdModel"], resources: [.process("Resources")],
+      swiftSettings: nonisolatedByDefault),
     // The SwiftUI app: the 指令 and 我的 tabs, 问 Atd and the ink-and-paper style.
     .target(
-      name: "AtdAppUI", dependencies: ["AtdModel"], resources: [.process("Resources")],
+      name: "AtdAppUI", dependencies: ["AtdModel", "AtdAI"], resources: [.process("Resources")],
       swiftSettings: mainActorByDefault),
     // The UIKit keyboard extension's controller, keys, strip and panels.
-    .target(name: "AtdKeyboardUI", dependencies: ["AtdModel"], swiftSettings: mainActorByDefault),
+    .target(
+      name: "AtdKeyboardUI", dependencies: ["AtdModel", "AtdAI"],
+      swiftSettings: mainActorByDefault),
     .testTarget(name: "AtdModelTests", dependencies: ["AtdModel"]),
+    .testTarget(name: "AtdAITests", dependencies: ["AtdAI"]),
   ],
   swiftLanguageModes: [.v6]
 )
