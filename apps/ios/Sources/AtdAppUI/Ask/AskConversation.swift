@@ -21,6 +21,14 @@ final class AskConversation {
     var saved: SavedCommand?
   }
 
+  /// A photo waiting to go with the next question. Its own id keeps its thumbnail and its ✕ with
+  /// it while photos are added, removed or sent; a position would point at another photo, or at
+  /// none once the list is cleared.
+  struct PendingPhoto: Identifiable {
+    let id = UUID()
+    let image: ModelImage
+  }
+
   /// A command made from an answer, as it was named when it was saved.
   struct SavedCommand: Equatable {
     let id: String
@@ -35,7 +43,7 @@ final class AskConversation {
   private var conversationID = UUID()
   private(set) var turns: [Turn] = []
   /// Photos to send with the next question, in the order they were added.
-  var photos: [ModelImage] = []
+  var photos: [PendingPhoto] = []
   /// What the conversation is about: it goes with the first question and stays in every request
   /// after it. Until then it can be left out.
   private(set) var context: AskContext?
@@ -58,7 +66,8 @@ final class AskConversation {
   ) {
     let question = question.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !question.isEmpty, !isAnswering else { return }
-    turns.append(Turn(question: question, photos: photos, context: turns.isEmpty ? context : nil))
+    turns.append(
+      Turn(question: question, photos: photos.map(\.image), context: turns.isEmpty ? context : nil))
     photos = []
     answer(runner: runner, onFailure: onFailure)
   }

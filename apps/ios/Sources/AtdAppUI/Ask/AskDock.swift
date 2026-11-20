@@ -103,11 +103,11 @@ struct AskDock: View {
   private var attachments: some View {
     ScrollView(.horizontal) {
       HStack(spacing: 10) {
-        ForEach(conversation.photos.indices, id: \.self) { index in
-          PhotoThumbnail(photo: conversation.photos[index], side: 52)
+        ForEach(conversation.photos) { photo in
+          PhotoThumbnail(photo: photo.image, side: 52)
             .overlay(alignment: .topTrailing) {
               Button {
-                conversation.photos.remove(at: index)
+                conversation.photos.removeAll { $0.id == photo.id }
               } label: {
                 Image(systemName: "xmark.circle.fill")
                   .symbolRenderingMode(.palette)
