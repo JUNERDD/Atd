@@ -68,7 +68,7 @@ struct MiniAppsPage: View {
     .sheet(item: $opened, onDismiss: model.flushWidgets) { opened in
       MiniAppSheet(model: model, appID: opened.id).environment(store)
     }
-    .sheet(isPresented: $creating) {
+    .sheet(isPresented: $creating, onDismiss: endDebugStart) {
       createSheet.environment(store)
     }
     .onChange(of: routes.pending, initial: true) {
@@ -81,12 +81,24 @@ struct MiniAppsPage: View {
       if phase == .active { model.reload() }
     }
     #if DEBUG
+      // The page can appear more than once while the launch selects its tab: only the first
+      // appearance finds the action.
       .task {
-        debugBuild = MiniAppDebug.take {
+        let build = MiniAppDebug.take {
           if case .build(let sentence, let save) = $0 { (sentence, save) } else { nil }
         }
-        if debugBuild != nil { creating = true }
+        if let build {
+          debugBuild = build
+          creating = true
+        }
       }
+    #endif
+  }
+
+  /// A launch's debug build runs once; 新建小应用 opened later starts empty.
+  private func endDebugStart() {
+    #if DEBUG
+      debugBuild = nil
     #endif
   }
 
