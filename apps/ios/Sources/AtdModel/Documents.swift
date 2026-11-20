@@ -21,9 +21,12 @@ extension SharedDocument {
 }
 
 /// The command library (`library.json`).
+///
+/// Schema 2 added the card commands (`CommandOutput.card`) and places beyond the keyboard;
+/// `migrate` upgrades a schema-1 library.
 public struct CommandLibrary: SharedDocument {
   public static let fileName = "library.json"
-  public static let schemaVersion = 1
+  public static let schemaVersion = 2
 
   public var commands: [Command]
 
@@ -35,11 +38,39 @@ public struct CommandLibrary: SharedDocument {
     CommandLibrary(commands: BuiltinCommands.all())
   }
 
+  /// A schema-1 library (the keyboard release) gains the built-in commands it lacks, after the
+  /// last built-in it has, in their order; and each built-in still placed only in the keyboard,
+  /// the one place schema 1 offered, moves to its schema-2 places. Nothing else changes: names,
+  /// instructions and option values stay as the person left them, and a built-in they took out
+  /// of the keyboard stays out of everywhere.
+  public static func migrate(_ file: Data, from version: Int) throws -> CommandLibrary {
+    guard version == 1 else {
+      throw SharedStoreError.unsupportedSchema(file: fileName, version: version)
+    }
+    let decoder = JSONDecoder()
+    decoder.dateDecodingStrategy = .iso8601
+    // Schema 1's body has the same shape; its outputs just have no `card`.
+    var library = try decoder.decode(Envelope<CommandLibrary>.self, from: file).body
+    let keyboardOnly = CommandPlacement(keyboard: true)
+    for builtin in BuiltinCommands.all() {
+      if let index = library.commands.firstIndex(where: { $0.id == builtin.id }) {
+        if library.commands[index].placement == keyboardOnly {
+          library.commands[index].placement = builtin.placement
+        }
+      } else {
+        let lastBuiltin = library.commands.lastIndex { BuiltinCommands.ids.contains($0.id) }
+        library.commands.insert(builtin, at: lastBuiltin.map { $0 + 1 } ?? 0)
+      }
+    }
+    return library
+  }
+
   public func command(_ id: String) -> Command? {
     commands.first { $0.id == id }
   }
 
-  /// The commands placed in the keyboard, in library order.
+  /// The commands placed in the keyboard, in library order. The keyboard further runs only those
+  /// that read text and write text back (AtdKeyboardCore's `CommandRanking`).
   public var keyboardCommands: [Command] {
     commands.filter(\.placement.keyboard)
   }

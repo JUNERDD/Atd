@@ -130,10 +130,21 @@ public struct CommandOutput: Codable, Sendable, Equatable, Hashable {
   public var action: Action
   /// Whether the result is previewed before it is written back (先预览再写回).
   public var review: Bool
+  /// The card a `.card` result is shown as; nil for every other action. Files written before
+  /// cards existed have no such field and read as nil.
+  public var card: CardKind?
 
-  public init(action: Action, review: Bool = true) {
+  public init(action: Action, review: Bool = true, card: CardKind? = nil) {
     self.action = action
     self.review = review
+    self.card = card
+  }
+
+  /// The card a surface that shows results (the share sheet, the camera, Siri) shows this one in:
+  /// a card command's own kind, `.text` for a card command that names none, and `.text` for a
+  /// command whose result otherwise goes back into a field.
+  public var cardKind: CardKind {
+    action == .card ? card ?? .text : .text
   }
 }
 
@@ -182,9 +193,10 @@ public struct CommandPlacement: Codable, Sendable, Equatable, Hashable {
 public enum Surface: String, Codable, Sendable, CaseIterable {
   case keyboard, share, camera, controls, siri
 
-  /// The entry points this build implements; the app offers only these, so a switch never
-  /// promises a place the command cannot appear yet.
-  public static let available: [Surface] = [.keyboard]
+  /// The entry points this build implements, which the app offers as places for a command. Each
+  /// surface still runs only what it can: the keyboard, for one, only commands that read text and
+  /// write text back.
+  public static let available: [Surface] = allCases
 }
 
 /// Which model runs a command.
