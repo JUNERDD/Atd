@@ -73,6 +73,24 @@
         }
       }
     },
+    "Run ${automation} with ${applicationName}" : {
+      "comment" : "Siri and Spotlight phrase: runs the named automation; ${automation} is its name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run ${automation} with ${applicationName}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用${applicationName}运行${automation}"
+          }
+        }
+      }
+    },
     "Run ${command} with ${applicationName}" : {
       "comment" : "Siri and Spotlight phrase: runs the named command; ${command} is its name",
       "extractionState" : "manual",

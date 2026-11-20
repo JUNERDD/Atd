@@ -38,6 +38,7 @@ let package = Package(
   products: [
     .library(name: "AtdAppUI", targets: ["AtdAppUI"]),
     .library(name: "AtdIntents", targets: ["AtdIntents"]),
+    .library(name: "AtdAutomations", targets: ["AtdAutomations"]),
     .library(name: "AtdKeyboardUI", targets: ["AtdKeyboardUI"]),
     .library(name: "AtdShareUI", targets: ["AtdShareUI"]),
     .library(name: "AtdWidgetsUI", targets: ["AtdWidgetsUI"]),
