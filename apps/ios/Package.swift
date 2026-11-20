@@ -30,7 +30,8 @@ let package = Package(
   ],
   targets: [
     // Commands, phrases and settings, and the App Group files the app and the keyboard share.
-    .target(name: "AtdModel", swiftSettings: nonisolatedByDefault),
+    .target(
+      name: "AtdModel", resources: [.process("Resources")], swiftSettings: nonisolatedByDefault),
     // The SwiftUI app: the 指令 and 我的 tabs, 问 Atd and the ink-and-paper style.
     .target(
       name: "AtdAppUI", dependencies: ["AtdModel"], resources: [.process("Resources")],
