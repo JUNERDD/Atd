@@ -29,14 +29,10 @@ struct NewAutomationSheet: View {
         if family == nil {
           CloseButton { dismiss() }
         } else {
-          Button {
+          BackButton(label: AutomationText.string("new.back")) {
             family = nil
             picked = []
-          } label: {
-            Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold))
           }
-          .buttonStyle(InkButtonStyle(form: .round))
-          .accessibilityLabel(AutomationText.string("new.back"))
         }
       } trailing: {
         Button(AutomationText.string("new.save"), action: save)

@@ -1,5 +1,6 @@
 import AtdAI
 import AtdInk
+import AtdMiniApps
 import AtdModel
 import SwiftUI
 
@@ -35,7 +36,7 @@ struct CameraExpenseCard: View {
           if CameraActions(store: store.store).unrecord(recorded) { self.recorded = nil }
         }
         Button {
-          RouteCenter.shared.open(.miniApp(id: CameraExpenseCard.ledgerID))
+          RouteCenter.shared.open(.miniApp(id: MiniAppBuiltins.ledgerID))
         } label: {
           Label(CameraCopy.string("camera.expense.view"), systemImage: "chevron.right")
             .labelStyle(TrailingIconLabelStyle())
@@ -51,9 +52,6 @@ struct CameraExpenseCard: View {
     }
     .sensoryFeedback(.success, trigger: recorded != nil) { _, now in now }
   }
-
-  /// The id of the built-in 记账本 mini app.
-  static let ledgerID = "ledger"
 
   /// 今天 15:20 · <note>: the time first, next to its mark's number.
   private var subtitle: String {

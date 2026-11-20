@@ -3,9 +3,9 @@ import Foundation
 
 #if DEBUG
   /// Launch arguments that check mini apps on the simulator, which cannot tap (A7, A44). Only
-  /// `-AtdDebug miniapp …` is read; other areas' `-AtdDebug` arguments are theirs.
+  /// `-AtdDebug miniapp …` is read; other areas' `-AtdDebug` arguments are theirs, and a mini
+  /// app's link opens through `EntryDebug`'s `-AtdDebug url <url>`, like any other link.
   ///
-  ///     -AtdDebug miniapp open <url>              shows a route through the real URL parser
   ///     -AtdDebug miniapp build <sentence> [save] 新建小应用 with the sentence, generating at
   ///                                               once; `save` keeps it shortly after its preview
   ///     -AtdDebug miniapp refine <id> <request>   改一改 on the app, started at once
@@ -32,8 +32,6 @@ import Foundation
       let values = Array(arguments[(flag + 3)...])
       let routes = RouteCenter.shared
       switch verb {
-      case "open":
-        if let text = values.first, let url = URL(string: text) { routes.open(url) }
       case "build":
         guard let sentence = values.first else { return }
         pending = .build(sentence, save: values.dropFirst().first == "save")
