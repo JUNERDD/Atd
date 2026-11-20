@@ -2,6 +2,7 @@ import AtdAI
 import AtdModel
 import Foundation
 import Observation
+import WidgetKit
 
 /// What the app shows and edits: the command library, the phrases, the model connections and what
 /// the keyboard last reported, kept in the App Group's files so the keyboard reads the same.
@@ -74,11 +75,19 @@ final class AppStore {
       guard stored != command else { return }
       command.revision = stored.revision + 1
     }
-    write(CommandLibrary.self) { $0.upsert(command) }.map { library = $0 }
+    write(CommandLibrary.self) { $0.upsert(command) }.map(libraryChanged)
   }
 
   func removeCommand(_ id: String) {
-    write(CommandLibrary.self) { $0.remove(id) }.map { library = $0 }
+    write(CommandLibrary.self) { $0.remove(id) }.map(libraryChanged)
+  }
+
+  /// Commands also show outside the app, in App Shortcuts and in widgets, which read the library
+  /// on their own; both are told when it changes.
+  private func libraryChanged(_ library: CommandLibrary) {
+    self.library = library
+    AtdShortcuts.refresh()
+    WidgetCenter.shared.reloadAllTimelines()
   }
 
   // MARK: Phrases
