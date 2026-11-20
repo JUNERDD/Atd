@@ -28,6 +28,7 @@ final class ScreenshotTaker {
     case notPermitted
     case confirmed(Confirmed)
     case saved(CaptureConfirmation, destination: URL?)
+    case pinned(CaptureConfirmation)
     case record(CaptureRecordRequest)
     case longScreenshot(LongScreenshotImage)
     /// A long screenshot for the clipboard: nothing to attach either.
@@ -41,6 +42,7 @@ final class ScreenshotTaker {
   /// What takes over once a session's claim and overlays are gone.
   private enum Handoff {
     case save(CaptureConfirmation, destination: URL?)
+    case pinned(CaptureConfirmation)
     case record(CaptureRecordRequest)
     case longScreenshot(LongScreenshotImage)
     case copyLongScreenshot(LongScreenshotImage)
@@ -65,6 +67,8 @@ final class ScreenshotTaker {
   let arbiter: DeviceArbiter
   /// The running session; a quit or a display change ends it through ``cancel()``.
   var session: CaptureSession?
+  /// Floating desktop pins retained independently of any ephemeral capture session.
+  var pinnedWindows: [CapturePinnedWindow] = []
   /// One capture or edit at a time: a second call is refused rather than queued, because each
   /// call starts an interactive session the user would otherwise face twice.
   private(set) var isCapturing = false {
@@ -118,14 +122,19 @@ final class ScreenshotTaker {
   var saveFolderURL: () -> URL? = { ScreenshotPreferences.shared.currentSaveFolderURL() }
   /// Prompts for a file URL when saving a live long screenshot with `saveFolderURL() == nil`.
   var chooseSaveFile: ((String, UTType) async -> URL?)?
-  /// Whether confirming a toolbar screenshot capture also writes it silently to the clipboard.
-  var copyOnConfirm: () -> Bool = { ScreenshotPreferences.shared.copyOnConfirm }
+  /// What confirming a toolbar screenshot capture (`✓` / Return / double-click) does for a
+  /// session started from the composer (`true`) or from a shortcut / mini panel (`false`).
+  var confirmAction: (_ fromComposer: Bool) -> ScreenshotPreferencesSetPost.ConfirmAction = {
+    ScreenshotPreferences.shared.effectiveConfirmAction(fromComposer: $0)
+  }
   /// What confirming a live long screenshot does.
   var longScreenshotConfirm: () -> CaptureSessionOptions.LongScreenshotConfirm = {
     ScreenshotPreferences.shared.longScreenshotConfirm
   }
   /// More's last row was picked: the session ends and the settings open after it.
   var opensCommandSettings = false
+  /// Optional 10s live-probe observer (`nil` when idle = 0 overhead).
+  var onLiveProbeCapture: ((String) -> Void)?
 
   init(
     library: CaptureLibrary, panel: PanelWindowController, targeting: any ElementTargeting,
@@ -165,6 +174,8 @@ final class ScreenshotTaker {
     switch handoff {
     case .save(let capture, let destination):
       save(capture.image, scale: capture.pixelScale, long: false, destination: destination)
+    case .pinned(let capture):
+      presentPinnedWindow(capture)
     case .record(let recording): recorder?.begin(recording)
     case .longScreenshot(let shot): longScreenshots?.show(shot)
     case .copyLongScreenshot(let shot): copy(shot)
@@ -185,7 +196,11 @@ final class ScreenshotTaker {
   /// a download that fails rejects the call without a session.
   func edit(resourceId: String) async throws(BridgeError) -> ScreenshotEditResult {
     let screen = try claim()
-    defer { release(screen) }
+    var pinnedCapture: CaptureConfirmation?
+    defer {
+      release(screen)
+      if let pinnedCapture { presentPinnedWindow(pinnedCapture) }
+    }
     guard CGPreflightScreenCaptureAccess() else {
       guard await ShortcutRelease.waitForHandoff() else {
         throw BridgeError("The screenshot was cancelled.")
@@ -195,6 +210,9 @@ final class ScreenshotTaker {
     }
     let base = try await library.base(for: resourceId)
     switch try await runSession(reopening: base, request: .image, writeTargets: nil) {
+    case .pinned(let capture):
+      pinnedCapture = capture
+      return .notOk(.init(reason: .cancelled))
     case .cancelled, .saved, .record, .longScreenshot, .copiedLongScreenshot, .savedLongScreenshot,
       .textResult:
       return .notOk(.init(reason: .cancelled))
@@ -223,6 +241,8 @@ final class ScreenshotTaker {
       return (.notPermitted, nil)
     case .saved(let capture, let destination):
       return (.cancelled, .save(capture, destination: destination))
+    case .pinned(let capture):
+      return (.cancelled, .pinned(capture))
     case .record(let recording):
       return (.recording, .record(recording))
     case .longScreenshot(let shot):
@@ -237,9 +257,18 @@ final class ScreenshotTaker {
       let capture = confirmed.capture
       regions.remember(
         capture.selection, displayID: capture.displayID, displayFrame: capture.displayFrame)
+      let action: ScreenshotPreferencesSetPost.ConfirmAction =
+        request.toolbar && confirmed.launch == nil
+        ? confirmAction(request.fromComposer) : .attach
+      if action == .copy {
+        if arbiter.writeClipboard(as: .screenshot, { CaptureExport.copy(capture, to: $0) }) {
+          showCopied?()
+        }
+        return (.cancelled, nil)
+      }
       let imported = try await library.importCapture(
         capture, capturedAt: confirmed.capturedAt, snapshot: confirmed.snapshot)
-      if request.toolbar, confirmed.launch == nil, copyOnConfirm() {
+      if action == .attachAndCopy {
         _ = arbiter.writeClipboard(as: .screenshot) { CaptureExport.copy(capture, to: $0) }
       }
       return (

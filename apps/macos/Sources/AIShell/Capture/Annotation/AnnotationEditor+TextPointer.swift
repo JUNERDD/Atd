@@ -63,7 +63,10 @@ extension AnnotationEditor: AnnotationCanvasPointer {
     refreshOriginals()
   }
 
-  func cursor(at point: CGPoint) -> NSCursor? { textCursor(at: point) }
+  func cursor(at point: CGPoint) -> NSCursor? {
+    if isInteractiveBadgeAt?(point) == true { return PointerRole.action.cursor }
+    return textCursor(at: point)
+  }
 
   func optionChanged(_ down: Bool) {
     let shows = down && interaction.tool == nil

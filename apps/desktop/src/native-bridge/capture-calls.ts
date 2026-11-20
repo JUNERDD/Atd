@@ -104,20 +104,25 @@ export const NativeCaptureCalls = {
    *
    * Every caller chooses its purpose explicitly. `capture` opens the full screenshot/recording
    * session in `mode`, including the screenshot toolbar (`screenshotToolbar.set`): the composer,
-   * global capture shortcuts and mini panel use it. `image` supplies a screenshot to an existing
-   * command input or attachment destination; it cannot launch commands or switch to recording,
-   * so `launch`, `target` and `recording` never answer. `launch`: the capture ended on the toolbar,
-   * with a command or a question to run on the image. `target`: the text field focused in the app
-   * in front before the capture, recorded only with a `launch`, which an answer typed at the
-   * cursor goes into. `recording`: the user started a recording from the overlay, which the shell
-   * now runs on its own; the page adds and shows nothing. `longScreenshot`: the user took a long
-   * (scrolling) screenshot, which the shell shows on the island's result card; the page adds and
-   * shows nothing.
+   * global capture shortcuts and mini panel use it (`fromComposer` marks captures started from the
+   * composer's `+ › Screenshot` menu so the shell applies `screenshotPreferences.confirmInComposer`).
+   * `image` supplies a screenshot to an existing command input or attachment destination; it cannot
+   * launch commands or switch to recording, so `launch`, `target` and `recording` never answer.
+   * `launch`: the capture ended on the toolbar, with a command or a question to run on the image.
+   * `target`: the text field focused in the app in front before the capture, recorded only with a
+   * `launch`, which an answer typed at the cursor goes into. `recording`: the user started a
+   * recording from the overlay, which the shell now runs on its own; the page adds and shows
+   * nothing. `longScreenshot`: the user took a long (scrolling) screenshot, which the shell shows
+   * on the island's result card; the page adds and shows nothing.
    */
   'screenshot.capture': {
     params: Type.Union([
       Type.Object(
-        { purpose: Type.Literal('capture'), mode: CaptureModeSchema },
+        {
+          purpose: Type.Literal('capture'),
+          mode: CaptureModeSchema,
+          fromComposer: Type.Optional(Type.Boolean()),
+        },
         { additionalProperties: false },
       ),
       Type.Object({ purpose: Type.Literal('image') }, { additionalProperties: false }),

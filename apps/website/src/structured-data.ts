@@ -1,5 +1,11 @@
+/**
+ * The schema.org vocabulary every page's graph shares (stable node ids, the `WebSite` and
+ * `Person` nodes, breadcrumbs, questions) and the homepage's graph, which alone defines the
+ * `SoftwareApplication` node that other pages reference by `@id` as what they are about. The
+ * graphs of other page families live in `seo/*-structured-data.ts`.
+ */
 import { site } from './content/site.ts';
-import { htmlLang, LANGS, langPath, pagePath, type Lang, type Localized } from './i18n/routes.ts';
+import { htmlLang, LANGS, langPath, type Lang, type Localized } from './i18n/routes.ts';
 
 /** What one language's page says about itself, shared with its meta tags. */
 export interface PageFacts {
@@ -7,23 +13,6 @@ export interface PageFacts {
   description: string;
   /** The share image, an absolute URL. */
   image: string;
-}
-
-/** Minimal post metadata used on blog index structured data. */
-export interface BlogIndexPostData {
-  slug: string;
-  version: string;
-  title: string;
-  description: string;
-  published: string;
-  image?: string;
-}
-
-/** Full release post facts for `BlogPosting` schema.org markup. */
-export interface PostFacts extends PageFacts {
-  version: string;
-  published: string;
-  keywords?: readonly string[];
 }
 
 const featureList: Localized<readonly string[]> = {
@@ -45,7 +34,11 @@ const featureList: Localized<readonly string[]> = {
   ],
 };
 
-function schemaIds(siteUrl: string) {
+/**
+ * The `@id`s of the site-wide nodes. They stay stable across pages and builds so every page's
+ * graph can point at the same website, author and app.
+ */
+export function schemaIds(siteUrl: string) {
   const home = `${siteUrl}/`;
   return {
     home,
@@ -55,7 +48,8 @@ function schemaIds(siteUrl: string) {
   };
 }
 
-function baseNodes(siteUrl: string) {
+/** The `WebSite` and `Person` nodes every page's graph starts with. */
+export function baseNodes(siteUrl: string) {
   const ids = schemaIds(siteUrl);
   return [
     {
@@ -76,7 +70,12 @@ function baseNodes(siteUrl: string) {
   ];
 }
 
-function breadcrumbList(id: string, items: readonly { name: string; item: string }[]) {
+/** The localized home page as a breadcrumb trail's first step. */
+export function homeCrumb(lang: Lang, siteUrl: string, homeName: string) {
+  return { name: homeName, item: `${siteUrl}${langPath[lang]}` };
+}
+
+export function breadcrumbList(id: string, items: readonly { name: string; item: string }[]) {
   return {
     '@type': 'BreadcrumbList',
     '@id': id,
@@ -86,6 +85,15 @@ function breadcrumbList(id: string, items: readonly { name: string; item: string
       name: entry.name,
       item: entry.item,
     })),
+  };
+}
+
+/** One question and its plain-text answer, as an `FAQPage`'s `mainEntity` lists it. */
+export function questionNode(question: string, answer: string) {
+  return {
+    '@type': 'Question',
+    name: question,
+    acceptedAnswer: { '@type': 'Answer', text: answer },
   };
 }
 
@@ -133,110 +141,6 @@ export function homeStructuredData(lang: Lang, siteUrl: string, page: PageFacts)
         author: { '@id': ids.author },
         sameAs: [site.repoUrl],
       },
-    ],
-  };
-}
-
-/**
- * Schema.org graph for `/blog` and `/zh/blog`: `Blog` collection and `BreadcrumbList`.
- */
-export function blogStructuredData(
-  lang: Lang,
-  siteUrl: string,
-  homeName: string,
-  blogName: string,
-  page: PageFacts,
-  posts: readonly BlogIndexPostData[],
-): object {
-  const ids = schemaIds(siteUrl);
-  const url = `${siteUrl}${pagePath(lang, 'blog')}`;
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [
-      ...baseNodes(siteUrl),
-      {
-        '@type': 'Blog',
-        '@id': `${url}#blog`,
-        url,
-        name: page.title,
-        description: page.description,
-        inLanguage: htmlLang[lang],
-        isPartOf: { '@id': ids.website },
-        publisher: { '@id': ids.author },
-        about: { '@id': ids.app },
-        blogPost: posts.map((post) => ({
-          '@type': 'BlogPosting',
-          headline: post.title,
-          description: post.description,
-          url: `${siteUrl}${pagePath(lang, `blog/${post.slug}`)}`,
-          datePublished: post.published,
-          inLanguage: htmlLang[lang],
-          ...(post.image ? { image: post.image } : {}),
-        })),
-      },
-      breadcrumbList(`${url}#breadcrumb`, [
-        { name: homeName, item: `${siteUrl}${langPath[lang]}` },
-        { name: blogName, item: url },
-      ]),
-    ],
-  };
-}
-
-/**
- * Schema.org graph for an individual release post: `WebPage`, `BlogPosting`, and `BreadcrumbList`.
- */
-export function postStructuredData(
-  lang: Lang,
-  siteUrl: string,
-  homeName: string,
-  blogName: string,
-  slug: string,
-  pageTitle: string,
-  post: PostFacts,
-): object {
-  const ids = schemaIds(siteUrl);
-  const blogUrl = `${siteUrl}${pagePath(lang, 'blog')}`;
-  const url = `${siteUrl}${pagePath(lang, `blog/${slug}`)}`;
-  const webpageId = `${url}#webpage`;
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [
-      ...baseNodes(siteUrl),
-      {
-        '@type': 'WebPage',
-        '@id': webpageId,
-        url,
-        name: pageTitle,
-        description: post.description,
-        inLanguage: htmlLang[lang],
-        isPartOf: { '@id': ids.website },
-        breadcrumb: { '@id': `${url}#breadcrumb` },
-        primaryImageOfPage: { '@type': 'ImageObject', url: post.image },
-      },
-      {
-        '@type': 'BlogPosting',
-        '@id': `${url}#article`,
-        headline: post.title,
-        description: post.description,
-        datePublished: post.published,
-        dateModified: post.published,
-        url,
-        inLanguage: htmlLang[lang],
-        image: { '@type': 'ImageObject', url: post.image },
-        author: { '@id': ids.author },
-        publisher: { '@id': ids.author },
-        isPartOf: { '@id': `${blogUrl}#blog` },
-        about: { '@id': ids.app },
-        mainEntityOfPage: { '@id': webpageId },
-        ...(post.keywords && post.keywords.length > 0
-          ? { keywords: post.keywords.join(', ') }
-          : {}),
-      },
-      breadcrumbList(`${url}#breadcrumb`, [
-        { name: homeName, item: `${siteUrl}${langPath[lang]}` },
-        { name: blogName, item: blogUrl },
-        { name: post.title, item: url },
-      ]),
     ],
   };
 }

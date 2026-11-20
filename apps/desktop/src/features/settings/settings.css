@@ -91,10 +91,18 @@
   gap: 4px;
   padding: 3px;
 }
-/* About sits at the bottom of the card while the list leaves room, and follows the list when it
- * scrolls. The sidebar and drawer share the same order. */
-.settings-navigation .settings-nav-button:not([data-footer]) + [data-footer] {
+/* The footer row sits at the bottom of the card while the list leaves room, and follows the list
+ * when it scrolls: About fills it, with Diagnostics as an icon button at its trailing end, one row
+ * high and the list's gap apart. The sidebar and drawer share the same order. */
+.settings-nav-footer {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
   margin-top: auto;
+}
+.settings-navigation .settings-nav-footer > .settings-nav-button {
+  flex: 1;
+  min-width: 0;
 }
 /* Results have no footer to pin, so a search's list keeps its own height and the empty state below
  * it stays right under the search field. */
@@ -113,7 +121,7 @@
   flex-shrink: 0;
 }
 /* Labels read at full contrast; the icons stay secondary until their row is the one shown. */
-.settings-navigation .settings-nav-button > svg {
+.settings-navigation :is(.settings-nav-button, .settings-nav-icon-button) > svg {
   color: var(--ata-text-secondary);
 }
 .settings-nav-label {
@@ -121,12 +129,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.settings-navigation .settings-nav-button[aria-current='page'] {
+.settings-navigation :is(.settings-nav-button, .settings-nav-icon-button)[aria-current='page'] {
   background-color: var(--ata-material-selected);
   color: var(--foreground);
   font-weight: 600;
 }
-.settings-navigation .settings-nav-button[aria-current='page'] > svg {
+.settings-navigation
+  :is(.settings-nav-button, .settings-nav-icon-button)[aria-current='page']
+  > svg {
   color: var(--foreground);
 }
 /* A section label stacks over a hidden semibold copy of itself, so it is always as wide as its

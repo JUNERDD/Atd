@@ -268,7 +268,8 @@
       "value": "{{label}}：{{value}}",
       "on": "开",
       "off": "关",
-      "appDefaultModel": "应用默认模型"
+      "appDefaultModel": "应用默认模型",
+      "missingAlias": "模型别名不可用"
     },
     "row": {
       "noKeys": "未设置按键",
@@ -343,6 +344,8 @@
     "useAppDefault": "使用应用默认值",
     "useFixedModel": "使用固定模型",
     "fixedModel": "固定的命令模型",
+    "aliasGroup": "模型别名",
+    "unavailableAlias": "模型别名不可用",
     "thinkingLevel": "推理强度",
     "thinkingLevelInherit": "使用连接默认值",
     "thinkingLevelHint": "模型回答前推理的程度，无论由哪个模型运行此命令。强度越低，速度越快、成本越低。每次运行会按所用模型支持的强度进行调整。",

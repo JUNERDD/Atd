@@ -1,13 +1,18 @@
 import { renderToString } from 'react-dom/server';
 import posts from 'virtual:atd-blog';
 import { App } from './app';
-import { renderHead, type HeadOptions, type PostHead } from './head';
+import { featurePages } from './content/features';
+import { renderHead } from './head';
 import { htmlLang, LANGS, pagePath, postSlugOf, type Lang, type Page } from './i18n/routes';
 import { GITHUB_STARS_FALLBACK, STAR_META_NAME } from './lib/github-stars';
-import type { BlogIndexPostData } from './structured-data';
+import type { BlogIndexPostData } from './seo/blog-structured-data';
+import type { HeadOptions, PostHead } from './seo/page-head';
 
 const pages: Page[] = [
   'home',
+  'features',
+  ...featurePages.map((feature) => `features/${feature.slug}` as const),
+  'faq',
   'blog',
   ...posts.map((post) => `blog/${post.slug}` as const),
   'debug',

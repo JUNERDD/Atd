@@ -40,7 +40,8 @@ enum LongScreenshotStatics {
     var right = columnRun(frame, reference, order: Array((0..<columns).reversed()))
     left = bounded(left, staying: staying, columns: columns, fromRight: false)
     right = bounded(right, staying: staying.reversed(), columns: columns, fromRight: true)
-    if left + right > columns * 3 / 4 {
+    let minMovingColumns = max(24, columns / 10)
+    if left + right > columns - minMovingColumns {
       left = 0
       right = 0
     }

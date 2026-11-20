@@ -104,6 +104,19 @@ class WpsSelectionBridge {
   }
 }
 
+const bridgesByDataDir = new Map<string, WpsSelectionBridge>();
+
+/** Passive readonly snapshot of the WPS selection bridge for diagnostics. */
+export function getWpsSelectionDiagnostics(dataDir: string): {
+  connected: boolean;
+  hasError: boolean;
+} {
+  const bridge = bridgesByDataDir.get(dataDir);
+  if (!bridge) return { connected: false, hasError: false };
+  const status = bridge.state();
+  return { connected: status.connected, hasError: Boolean(status.error) };
+}
+
 export function registerWpsSelectionRoutes(
   app: FastifyInstance,
   deps: { dataDir: string; addons: AddonRegistry; settings: SettingsStore },
@@ -111,6 +124,7 @@ export function registerWpsSelectionRoutes(
   const bridge = new WpsSelectionBridge(deps.dataDir, deps.addons, deps.settings, () =>
     invalidateOffRoute(app, { type: 'invalidate', scope: 'addons' }),
   );
+  bridgesByDataDir.set(deps.dataDir, bridge);
   const stop = deps.addons.onChange(() => {
     void bridge.refresh();
   });
@@ -118,6 +132,7 @@ export function registerWpsSelectionRoutes(
     void bridge.refresh();
   });
   app.addHook('onClose', async () => {
+    if (bridgesByDataDir.get(deps.dataDir) === bridge) bridgesByDataDir.delete(deps.dataDir);
     stop();
     await bridge.stop();
   });

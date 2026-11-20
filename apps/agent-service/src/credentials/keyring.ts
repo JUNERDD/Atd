@@ -118,6 +118,51 @@ export function __setKeyringModuleForTests(module: KeyringModule | null | undefi
   resetKeyringCache(module !== undefined);
 }
 
+/** Checks whether the native keyring module is loadable without touching the OS credential store. */
+export async function hasKeyringModule(): Promise<boolean> {
+  return (await loadKeyring()) !== null;
+}
+
+/** Non-mutating, gate-free passive probe for `isTestMode()` in-memory keyrings. */
+export async function probeTestKeyringPassive(
+  serviceId: string,
+  timeoutMs: number,
+): Promise<KeyringStatus> {
+  const module = await loadKeyring();
+  if (!module) return { available: false, backend: 'unavailable', detail: 'Module missing.' };
+  const backend: KeyringStatus['backend'] =
+    process.platform === 'darwin'
+      ? 'keychain'
+      : process.platform === 'win32'
+        ? 'credential-manager'
+        : 'secret-service';
+  try {
+    const entry = new module.AsyncEntry(
+      keyringServiceName(serviceId),
+      'probe:passive',
+      entryOptions(),
+    );
+    const ok = entry.getPassword(null).then((): KeyringStatus => ({
+      available: true,
+      backend,
+      detail: 'Passive read check succeeded.',
+    }));
+    const timeout = new Promise<KeyringStatus>((resolve) =>
+      setTimeout(
+        () => resolve({ available: false, backend: 'unavailable', detail: 'Timed out.' }),
+        timeoutMs,
+      ),
+    );
+    return await Promise.race([ok, timeout]);
+  } catch (error) {
+    return {
+      available: false,
+      backend: 'unavailable',
+      detail: error instanceof Error ? error.message : 'Passive check failed.',
+    };
+  }
+}
+
 function entryOptions(): { linux?: { store?: 'secret-service' | 'keyutils' } } | undefined {
   // Linux-only pin; ignored on macOS/Windows. Requiring secret-service throws
   // instead of silently falling back to the in-memory keyutils store.

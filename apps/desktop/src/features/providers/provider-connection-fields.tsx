@@ -136,25 +136,29 @@ export function ProviderConnectionFields({
               <ChevronDown />
             </Button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="pt-3">
-            <div className="settings-field">
-              <Label htmlFor="provider-endpoint">
-                {draft.provider === 'azure' ? t('form.resourceEndpoint') : t('form.baseUrl')}
-              </Label>
-              <Input
-                id="provider-endpoint"
-                type="url"
-                value={draft.baseUrl}
-                readOnly={!custom && draft.provider !== 'azure'}
-                onChange={(event) => change({ baseUrl: event.target.value })}
-                placeholder="https://your-provider.example/v1"
-              />
-              {isInsecureEndpoint(draft.baseUrl) && (
-                <output className="provider-transport-warning">
-                  <TriangleAlert aria-hidden="true" />
-                  <span>{t('form.insecureHttpWarning')}</span>
-                </output>
-              )}
+          {/* The gap above the field sits inside a bare wrapper: on the content itself it would
+              hold the closing row open, then snap shut (agent.css). */}
+          <CollapsibleContent>
+            <div>
+              <div className="settings-field pt-3">
+                <Label htmlFor="provider-endpoint">
+                  {draft.provider === 'azure' ? t('form.resourceEndpoint') : t('form.baseUrl')}
+                </Label>
+                <Input
+                  id="provider-endpoint"
+                  type="url"
+                  value={draft.baseUrl}
+                  readOnly={!custom && draft.provider !== 'azure'}
+                  onChange={(event) => change({ baseUrl: event.target.value })}
+                  placeholder="https://your-provider.example/v1"
+                />
+                {isInsecureEndpoint(draft.baseUrl) && (
+                  <output className="provider-transport-warning">
+                    <TriangleAlert aria-hidden="true" />
+                    <span>{t('form.insecureHttpWarning')}</span>
+                  </output>
+                )}
+              </div>
             </div>
           </CollapsibleContent>
         </Collapsible>

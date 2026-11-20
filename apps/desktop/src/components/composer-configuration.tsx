@@ -6,6 +6,8 @@ import type { Connection, ModelReference } from '../client/providers/schema';
 import { ContextUsageRing } from '../features/agent/compaction/context-usage-ring';
 import { MessageEntry } from '../features/agent/message-dial/message-entry';
 import { PermissionTierControl } from '../features/agent/permission-tier-control';
+import { withPolicyContext } from '../features/agent/panel-run';
+import type { PanelAliasState } from '../features/agent/use-panel-aliases';
 import { ModelConfigPopover } from '../features/providers/model-config-popover';
 import '../features/providers/providers.css';
 
@@ -14,6 +16,7 @@ interface ComposerConfigurationProps {
   onPolicyChange: (policy: RunPolicy) => void;
   connections: Connection[];
   model: ModelReference | null;
+  aliasState?: PanelAliasState | undefined;
   onOpenSettings: () => void;
   taskId: string | null;
   task: AgentTask | null;
@@ -24,6 +27,7 @@ interface ComposerConfigurationProps {
 export function ComposerConfiguration({
   connections,
   model,
+  aliasState,
   onOpenSettings,
   policy,
   onPolicyChange,
@@ -52,6 +56,17 @@ export function ComposerConfiguration({
           onModelChange={(next) => onPolicyChange({ ...policy, model: next })}
           onThinkingLevelChange={(thinkingLevel) => onPolicyChange({ ...policy, thinkingLevel })}
           onOpenProviders={onOpenSettings}
+          aliases={aliasState?.aliases}
+          activeAliasId={aliasState?.activeAlias?.id ?? null}
+          aliasModified={aliasState?.aliasModified}
+          cycleShortcut={aliasState?.cycleShortcut}
+          onSelectAlias={aliasState?.onSelectAlias}
+          onRestoreAlias={aliasState?.onRestoreAlias}
+          onSaveAsAlias={aliasState?.onSaveAsAlias}
+          draftContextChoice={policy.contextChoice}
+          onContextChoiceChange={(contextChoice) =>
+            onPolicyChange(withPolicyContext(policy, contextChoice))
+          }
         />
       </div>
     </div>

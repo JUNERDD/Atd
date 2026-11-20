@@ -1,4 +1,5 @@
 import { Settings2 } from 'lucide-react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Command,
@@ -9,7 +10,7 @@ import {
   CommandList,
 } from '@atd/ui/components/command';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
-import { useCompositionQuery } from '@atd/ui/lib/ime';
+import { isComposingKey, useCompositionQuery } from '@atd/ui/lib/ime';
 import type { Connection, ModelReference } from '../../client/providers/schema';
 import { IconButton } from '../../components/icon-button';
 import { useRevealMore } from '../../components/use-reveal-more';
@@ -88,9 +89,37 @@ export function ModelList({
   const groups = rankConnections(connections, search.query, scoped);
   const total = groups.reduce((sum, group) => sum + group.models.length, 0);
   // Catalogs hold up to thousands of models: mount a batch and the next as the end comes into view.
-  const { count, sentinel } = useRevealMore(total, MODEL_BATCH, search.query);
+  const { count, sentinel, revealAll } = useRevealMore(total, MODEL_BATCH, search.query);
+  const selectedValue =
+    value &&
+    groups.some(
+      (group) =>
+        (scoped || group.connection.connected) &&
+        group.connection.connectionId === value.connectionId &&
+        group.models.some(({ item }) => item.id === value.modelId),
+    )
+      ? JSON.stringify([value.connectionId, value.modelId])
+      : undefined;
   return (
-    <Command shouldFilter={false} className="min-h-0 bg-transparent">
+    <Command
+      shouldFilter={false}
+      {...(selectedValue !== undefined ? { defaultValue: selectedValue } : {})}
+      className="min-h-0 bg-transparent"
+      onKeyDownCapture={(event) => {
+        if (count >= total || isComposingKey(event)) return;
+        const firstEnabled = event.currentTarget.querySelector(
+          '[cmdk-item]:not([aria-disabled="true"])',
+        );
+        const shouldReveal =
+          event.key === 'End' ||
+          (event.key === 'ArrowDown' && event.metaKey) ||
+          (event.key === 'ArrowUp' &&
+            !event.altKey &&
+            !event.metaKey &&
+            firstEnabled?.getAttribute('aria-selected') === 'true');
+        if (shouldReveal) flushSync(() => revealAll());
+      }}
+    >
       <CommandInput
         value={search.text}
         onValueChange={search.change}

@@ -5,20 +5,42 @@ import AppKit
 /// selected annotation and the style bar's size, and the key equivalents taken ahead of the Edit
 /// menu.
 extension AnnotationCanvasView {
+  override func keyDown(with event: NSEvent) {
+    if textEditor.isEditing, !textEditor.isHosted(in: self) {
+      textEditor.type(event)
+      return
+    }
+    if handleKey(event) { return }
+    super.keyDown(with: event)
+  }
+
+  override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    keyEquivalent(event) ?? super.performKeyEquivalent(with: event)
+  }
+
+  /// ⌥ shows the originals of translated text while it is held; the host still hears it, for a
+  /// drag reshaped with Shift.
+  override func flagsChanged(with event: NSEvent) {
+    pointerOwner?.optionChanged(event.modifierFlags.contains(.option))
+    super.flagsChanged(with: event)
+  }
+
   func handleKey(_ event: NSEvent) -> Bool {
     let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
     guard modifiers.isDisjoint(with: [.command, .control, .option]) else { return false }
     switch Int(event.keyCode) {
     case 53:  // Esc
       return onEscape?() ?? false
+    case 48:  // Tab
+      return !textEditor.isEditing && (onTab?(modifiers.contains(.shift)) ?? false)
     case 36, 76:  // Return, keypad Enter
-      guard isActive else { return false }
+      guard isActive || !store.selectedIDs.isEmpty else { return false }
       onConfirm?()
       return true
     case 51, 117:  // Delete, forward delete
-      return isActive && interaction.deleteSelection()
+      return !store.selectedIDs.isEmpty && interaction.deleteSelection()
     case 123, 124, 125, 126:  // ← → ↓ ↑
-      guard isActive else { return false }
+      guard !store.selectedIDs.isEmpty else { return false }
       let step: CGFloat = modifiers.contains(.shift) ? 10 : 1
       let offset: CGVector =
         switch Int(event.keyCode) {
@@ -32,7 +54,15 @@ extension AnnotationCanvasView {
       let characters = event.charactersIgnoringModifiers ?? ""
       // `[` `]`, and PixPin's wheel keys `-` `=` (with Shift `_` `+`).
       if let step = ["[": -1, "-": -1, "_": -1, "]": 1, "=": 1, "+": 1][characters] {
-        return onStepStroke?(step) ?? false
+        guard onStepStroke?(step) == true else { return false }
+        if let text = onStepSizeHUD?() {
+          showSizeHud(text)
+        }
+        return true
+      }
+      if characters.lowercased() == "i", let onToggleEyedropper {
+        onToggleEyedropper()
+        return true
       }
       if characters == "/" { return onAsk?() ?? false }
       guard let tool = AnnotationTool(key: characters) else { return false }
@@ -41,13 +71,10 @@ extension AnnotationCanvasView {
     }
   }
 
-  /// ⌘Z and ⇧⌘Z undo the document, or the typing while text is open; ⌘Delete clears it; ⌘C
-  /// copies (``onCopy`` decides what), except while text is open, where it copies the text
-  /// selected in it; ⌘A picks every paragraph in text mode; ⌘↩ is the result card's primary
-  /// action; ⌥⌘I shows or hides the result card once a run started. They are taken here rather
-  /// than through the Edit menu, whose `undo:` would reach the window's undo manager, and ahead
-  /// of an open text view's own handling of the keys. Nil leaves the event to the rest of the
-  /// window.
+  /// ⌘Z and ⇧⌘Z undo the document, or the typing while text is open; ⌘Delete clears all;
+  /// ⌘C keeps screenshot / Live Text / result card copy, while ⇧⌘C copies selected annotations;
+  /// ⌘D duplicates, ⌘V pastes, ⌘]/⌘[ reorder z-order, ⌘P pins, ⌘A picks Live Text paragraphs
+  /// or all annotations, ⌘↩ is the result card's primary action, and ⌥⌘I toggles the card.
   func keyEquivalent(_ event: NSEvent) -> Bool? {
     if let editor = window?.firstResponder as? NSTextView, editor.hasMarkedText() {
       return nil
@@ -66,15 +93,11 @@ extension AnnotationCanvasView {
     guard event.type == .keyDown, window?.isKeyWindow == true else { return nil }
     let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
     let key = event.charactersIgnoringModifiers?.lowercased()
-    if modifiers == .command, key == "c", !textEditor.isEditing, let onCopy {
-      onCopy()
-      return true
+    if !textEditor.isEditing, let handled = handleCommandShortcut(modifiers: modifiers, key: key) {
+      return handled
     }
     if modifiers == .command, key == "s", let onSave {
       onSave()
-      return true
-    }
-    if modifiers == .command, key == "a", !textEditor.isEditing, onSelectAll?() == true {
       return true
     }
     if modifiers == .command, [36, 76].contains(Int(event.keyCode)), !textEditor.isEditing,
@@ -94,5 +117,41 @@ extension AnnotationCanvasView {
       store.undo()
     }
     return true
+  }
+
+  private func handleCommandShortcut(modifiers: NSEvent.ModifierFlags, key: String?) -> Bool? {
+    if modifiers == [.command, .shift], key == "c", !store.selectedIDs.isEmpty,
+      interaction.copySelectedAnnotations()
+    {
+      showSizeHud(ShellStrings.shared.text(CaptureToolsStringKey.toastCopiedAnnotation))
+      return true
+    }
+    guard modifiers == .command else { return nil }
+    switch key {
+    case "p":
+      guard let onPin else { return nil }
+      onPin()
+      return true
+    case "d":
+      return interaction.duplicateSelection() ? true : nil
+    case "]":
+      return interaction.bringSelectionToFront() ? true : nil
+    case "[":
+      return interaction.sendSelectionToBack() ? true : nil
+    case "c":
+      if onCopySelectionText?() == true { return true }
+      if let onCopy {
+        onCopy()
+        return true
+      }
+      return nil
+    case "v":
+      return interaction.pasteCopiedAnnotations() ? true : nil
+    case "a":
+      if onSelectAll?() == true { return true }
+      return interaction.selectAllAnnotations() ? true : nil
+    default:
+      return nil
+    }
   }
 }

@@ -96,24 +96,37 @@ public struct ResultMarkdownSetPost: Codable, Equatable, Sendable {
 
 /// Params of the `screenshotPreferences.set` post.
 public struct ScreenshotPreferencesSetPost: Codable, Equatable, Sendable {
-  public let copyOnConfirm: Bool
+  public let confirmAction: ConfirmAction
+  public let confirmInComposer: Bool
   public let longScreenshotConfirmAction: LongScreenshotConfirmAction
 
-  public init(copyOnConfirm: Bool, longScreenshotConfirmAction: LongScreenshotConfirmAction) {
-    self.copyOnConfirm = copyOnConfirm
+  public init(
+    confirmAction: ConfirmAction, confirmInComposer: Bool,
+    longScreenshotConfirmAction: LongScreenshotConfirmAction
+  ) {
+    self.confirmAction = confirmAction
+    self.confirmInComposer = confirmInComposer
     self.longScreenshotConfirmAction = longScreenshotConfirmAction
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    copyOnConfirm = try container.boolean(.copyOnConfirm)
+    confirmAction = try container.value(.confirmAction, ConfirmAction.self)
+    confirmInComposer = try container.boolean(.confirmInComposer)
     longScreenshotConfirmAction = try container.value(
       .longScreenshotConfirmAction, LongScreenshotConfirmAction.self)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case copyOnConfirm
+    case confirmAction
+    case confirmInComposer
     case longScreenshotConfirmAction
+  }
+
+  public enum ConfirmAction: String, Codable, Equatable, Sendable {
+    case attachAndCopy
+    case attach
+    case copy
   }
 
   public enum LongScreenshotConfirmAction: String, Codable, Equatable, Sendable {

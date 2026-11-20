@@ -132,4 +132,32 @@ struct CaptureAskSlotTests {
     editor.store.undo()
     #expect(editor.text.mode.available == [0])
   }
+
+  @Test("Mosaic brush strokes feed editor mosaics and mask Live Text")
+  func mosaicBrushMasksLiveTextAndMosaics() {
+    _ = NSApplication.shared
+    let editor = AnnotationEditor()
+    let box = ScreenContext.TextBox(
+      text: "Private token", box: CGRect(x: 40, y: 40, width: 120, height: 20))
+    editor.recognizedText = CaptureText(boxes: [box], sensitive: [], glyphs: .empty)
+    #expect(editor.text.mode.available == [0])
+
+    let stroke = Annotation(
+      shape: .mosaicBrush([CGPoint(x: 50, y: 50), CGPoint(x: 110, y: 50)]),
+      style: AnnotationStyle())
+    var doc = editor.store.document
+    doc.add(stroke)
+    editor.store.commit(doc)
+    editor.refreshSlot()
+
+    #expect(editor.mosaics.count == 1)
+    #expect(editor.mosaics[0].intersects(box.box))
+    #expect(editor.text.mode.available.isEmpty)
+
+    let cleared = editor.clearAll()
+    #expect(cleared)
+    editor.refreshSlot()
+    #expect(editor.mosaics.isEmpty)
+    #expect(editor.text.mode.available == [0])
+  }
 }

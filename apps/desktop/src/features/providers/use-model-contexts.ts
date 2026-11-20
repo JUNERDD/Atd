@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { RunContextChoice } from '@atd/agent-contracts';
 import type { TFunction } from 'i18next';
 import type {
   Connection,
@@ -25,16 +26,44 @@ const NONE: ModelContexts = {
 /** One request per connection revision and model definition; concurrent consumers share it. */
 const pending = new Map<string, Promise<ModelContexts>>();
 
+type CachedContexts = { version: string; contexts: ModelContexts };
+
+/** Resolved contexts cached per provider bridge so remounting dialogs reuse settled answers. */
+const resolved = new WeakMap<object, Map<string, CachedContexts>>();
+
+function cacheFor(bridge: object | undefined): Map<string, CachedContexts> | undefined {
+  if (!bridge) return undefined;
+  let cache = resolved.get(bridge);
+  if (!cache) {
+    cache = new Map();
+    resolved.set(bridge, cache);
+  }
+  return cache;
+}
+
 /**
  * The model's context windows from the main process. Never rejects to the caller: a missing
  * bridge, an unknown model, or a failed request all resolve to no windows, which keeps the
  * Context row read-only.
  */
-function loadContexts(reference: ModelReference, key: string): Promise<ModelContexts> {
+function loadContexts(
+  reference: ModelReference,
+  model: string,
+  version: string,
+): Promise<ModelContexts> {
+  const key = `${model}:${version}`;
   const inflight = pending.get(key);
   if (inflight) return inflight;
   const bridge = window.desktop?.settings.providers;
-  const request = bridge ? bridge.contexts(reference).catch(() => NONE) : Promise.resolve(NONE);
+  const request = bridge
+    ? bridge
+        .contexts(reference)
+        .then((contexts) => {
+          cacheFor(bridge)?.set(model, { version, contexts });
+          return contexts;
+        })
+        .catch(() => NONE)
+    : Promise.resolve(NONE);
   pending.set(key, request);
   void request.finally(() => pending.delete(key));
   return request;
@@ -74,20 +103,20 @@ export function useModelContexts(
     connected && connectionId && modelId && revision ? `${connectionId}:${modelId}` : null;
   const version =
     model && modelId ? `${revision}:${modelDefinitionKey(connection, modelId)}` : null;
-  const [answers, setAnswers] = useState<
-    ReadonlyMap<string, { version: string; contexts: ModelContexts }>
-  >(() => new Map());
+  const cached = model ? cacheFor(window.desktop?.settings.providers)?.get(model) : undefined;
+  const [answers, setAnswers] = useState<ReadonlyMap<string, CachedContexts>>(() => new Map());
+  const answer = (model ? answers.get(model) : undefined) ?? cached;
+  const answerVersion = answer?.version;
   useEffect(() => {
-    if (!model || !version || !connectionId || !modelId) return;
+    if (!model || !version || !connectionId || !modelId || answerVersion === version) return;
     let active = true;
-    void loadContexts({ connectionId, modelId }, `${model}:${version}`).then((contexts) => {
+    void loadContexts({ connectionId, modelId }, model, version).then((contexts) => {
       if (active) setAnswers((current) => new Map(current).set(model, { version, contexts }));
     });
     return () => {
       active = false;
     };
-  }, [model, version, connectionId, modelId]);
-  const answer = model ? answers.get(model) : undefined;
+  }, [model, version, connectionId, modelId, answerVersion]);
   const contexts = answer?.contexts ?? NONE;
   const options = contexts.options.length === 2 ? contexts.options : [];
   const tier = options.find((option) => option.tier === contexts.selected);
@@ -186,6 +215,85 @@ export function contextRows(contexts: ModelContextState): ContextRow[] {
         ]
       : [];
   return [...base, ...offered, ...legacy];
+}
+
+export interface DraftContextRow extends ContextRow {
+  runChoice: RunContextChoice | undefined;
+  changed: boolean;
+}
+
+/** True when two optional run context choices express the same literal tier or token window. */
+export function sameRunContextChoice(
+  a: RunContextChoice | undefined,
+  b: RunContextChoice | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if ('tier' in a && 'tier' in b) return a.tier === b.tier;
+  if ('contextWindow' in a && 'contextWindow' in b) return a.contextWindow === b.contextWindow;
+  return false;
+}
+
+/** Projects a draft/alias `RunContextChoice` onto connection contexts without mutating them. */
+export function applyDraftContext(
+  contexts: ModelContextState,
+  draftChoice: RunContextChoice | undefined,
+): ModelContextState {
+  if (!draftChoice) return contexts;
+  if ('tier' in draftChoice) {
+    if (contexts.options.length !== 2) return contexts;
+    const matched = contexts.options.find((option) => option.tier === draftChoice.tier);
+    return {
+      ...contexts,
+      selected: draftChoice.tier,
+      custom: null,
+      window: matched?.contextWindow ?? contexts.window,
+    };
+  }
+  if (contexts.options.length !== 2 && draftChoice.contextWindow === contexts.catalogWindow) {
+    return { ...contexts, custom: null, window: contexts.catalogWindow };
+  }
+  return { ...contexts, custom: draftChoice.contextWindow, window: draftChoice.contextWindow };
+}
+
+/** Context rows for draft selection: emits `RunContextChoice | undefined` without connection writes. */
+export function contextDraftRows(
+  baseContexts: ModelContextState,
+  draftChoice: RunContextChoice | undefined,
+): DraftContextRow[] {
+  const effective = applyDraftContext(baseContexts, draftChoice);
+  return contextRows(effective).map((row) => {
+    if (row.checked || row.kind === 'custom') {
+      return { ...row, runChoice: undefined, changed: false };
+    }
+    let runChoice: RunContextChoice | undefined;
+    if (row.kind === 'standard' || row.kind === 'long') {
+      runChoice = { tier: row.kind };
+    } else if (row.kind === 'choice') {
+      runChoice = { contextWindow: row.window };
+    } else {
+      // Clearing back to model default only removes draftChoice when connection has no override.
+      runChoice = baseContexts.custom !== null ? { contextWindow: row.window } : undefined;
+    }
+    return { ...row, runChoice, changed: true };
+  });
+}
+
+/** True when a draft context choice resolves differently from an alias's saved context choice. */
+export function contextDiverges(
+  draftChoice: RunContextChoice | undefined,
+  aliasChoice: RunContextChoice | undefined,
+  baseContexts: ModelContextState,
+): boolean {
+  if (sameRunContextChoice(draftChoice, aliasChoice)) return false;
+  if (baseContexts.catalogWindow === null || baseContexts.loading) return true;
+  const draftState = applyDraftContext(baseContexts, draftChoice);
+  const aliasState = applyDraftContext(baseContexts, aliasChoice);
+  return (
+    draftState.window !== aliasState.window ||
+    draftState.selected !== aliasState.selected ||
+    draftState.custom !== aliasState.custom
+  );
 }
 
 /**

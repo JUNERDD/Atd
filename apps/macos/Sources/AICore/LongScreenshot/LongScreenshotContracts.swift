@@ -97,7 +97,7 @@ public struct LongScreenshotProgress: Equatable, Sendable {
 /// What the status row under the control bar says; nil while there is nothing to do, nothing went
 /// wrong and the page's end is not in the image.
 public enum LongScreenshotMessage: Equatable, Sendable {
-  /// Before the page first moves: scroll inside the selection to keep capturing.
+  /// Before the page first moves: scroll to keep capturing.
   case start
   /// ``LongScreenshotProgress/lost``: scrolled too fast, scroll back a little.
   case lost

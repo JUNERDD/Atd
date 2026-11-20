@@ -82,7 +82,7 @@ final class ComputerMonitorWindow: NSObject, NSWindowDelegate {
   private func makeWindow() -> NSWindow {
     let area = NSRect(Screens.workAreaUnderCursor())
     let size = CGSize(width: min(960, area.width), height: min(640, area.height))
-    let window = NSWindow(
+    let window = ShellForegroundWindow(
       contentRect: CGRect(
         x: area.midX - size.width / 2, y: area.midY - size.height / 2,
         width: size.width, height: size.height),

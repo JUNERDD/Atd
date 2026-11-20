@@ -93,6 +93,40 @@ public enum LongScreenshotChromeLayout {
     return candidates.first(where: fits) ?? plain
   }
 
+  /// A point inside `band` (desktop/overlay points) clear of `obstacles` (floating bars, preview
+  /// strip, size label) where synthetic scroll events pass through the selection's transparent
+  /// cutout to the app beneath; falls back to `band`'s centre when every candidate is covered.
+  public static func scrollPoint(in band: CGRect, avoiding obstacles: [CGRect]) -> CGPoint {
+    let box = band.standardized
+    guard !box.isNull, !box.isEmpty else { return CGPoint(x: band.midX, y: band.midY) }
+    // Keep away from the selection border stroke so scroll events pass cleanly through the cutout.
+    let dx = min(2, box.width * 0.25)
+    let dy = min(2, box.height * 0.25)
+    let interior = box.insetBy(dx: dx, dy: dy)
+    let blocked = obstacles.filter { !$0.isNull && !$0.isEmpty }.map { $0.insetBy(dx: -1, dy: -1) }
+    func isClear(_ point: CGPoint) -> Bool {
+      !blocked.contains { $0.contains(point) }
+    }
+    let center = CGPoint(x: interior.midX, y: interior.midY)
+    if isClear(center) { return center }
+    let fractions: [CGFloat] = [0.5, 0.35, 0.65, 0.2, 0.8, 0.08, 0.92]
+    let candidates = fractions.flatMap { fx in
+      fractions.map { fy in
+        CGPoint(
+          x: interior.minX + interior.width * fx,
+          y: interior.minY + interior.height * fy)
+      }
+    }
+    let sorted = candidates.sorted { lhs, rhs in
+      let lhsDX = lhs.x - center.x
+      let lhsDY = lhs.y - center.y
+      let rhsDX = rhs.x - center.x
+      let rhsDY = rhs.y - center.y
+      return lhsDX * lhsDX + lhsDY * lhsDY < rhsDX * rhsDX + rhsDY * rhsDY
+    }
+    return sorted.first(where: isClear) ?? center
+  }
+
   /// `display` with its left or right edge moved in; an inverted range leaves it empty.
   private static func narrowed(
     _ display: CGRect, minX: CGFloat? = nil, maxX: CGFloat? = nil

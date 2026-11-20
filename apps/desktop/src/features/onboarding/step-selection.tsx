@@ -3,6 +3,7 @@ import { Card } from '@atd/ui/components/card';
 import { ItemGroup } from '@atd/ui/components/item';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { SelectionToolbarActivationRows } from '../settings/selection-toolbar-activation';
+import { SelectionToolbarAppearanceRows } from '../settings/selection-toolbar-appearance';
 import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import {
   activationAccelerator,
@@ -77,6 +78,7 @@ export function SelectionStep({ snapshot, goals, focusHeading, saveProgress }: S
             onCheckedChange={settings.setEnabled}
           />
           <SelectionToolbarActivationRows settings={settings} compact />
+          <SelectionToolbarAppearanceRows settings={settings} compact />
         </ItemGroup>
       </Card>
     </OnboardingStep>

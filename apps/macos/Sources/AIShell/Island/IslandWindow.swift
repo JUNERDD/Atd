@@ -63,8 +63,7 @@ final class IslandWindow: ActiveGlassPanel, FloatingHoverHost {
     contentView = content
   }
 
-  override var canBecomeKey: Bool { keyCapable }
-  override var canBecomeMain: Bool { false }
+  override var acceptsKeyFocus: Bool { keyCapable }
 
   /// Where the owner puts it: a borderless window is otherwise kept below the menu bar.
   override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {

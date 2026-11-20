@@ -13,6 +13,7 @@ struct AppMenuActions {
   var checkForUpdates: (() -> Void)?
   var restartService: () async throws -> Void
   var showServiceLogs: () async throws -> Void
+  var exportDiagnostics: () async throws -> Void
   /// Undo or Redo for the key window's page (`edit.command`).
   var editCommand: (_ command: EditCommandEvent.Command) -> Void
   /// A Debug build waiting for `pnpm dev`: the status menu says so first.
@@ -57,10 +58,22 @@ enum AppMenus {
       .separator(),
       ActionMenuItem(strings.text(.menuRestartService)) {
         reportFailure(
-          actions.restartService, .errorRestartServiceTitle, .errorRestartServiceMessage)
+          actions.restartService,
+          title: { ShellStrings.shared.text(.errorRestartServiceTitle) },
+          fallback: { ShellStrings.shared.text(.errorRestartServiceMessage) })
       },
       ActionMenuItem(strings.text(.menuShowServiceLogs)) {
-        reportFailure(actions.showServiceLogs, .errorShowLogsTitle, .errorShowLogsMessage)
+        reportFailure(
+          actions.showServiceLogs,
+          title: { ShellStrings.shared.text(.errorShowLogsTitle) },
+          fallback: { ShellStrings.shared.text(.errorShowLogsMessage) })
+      },
+      ActionMenuItem(strings.text(DiagnosticsStringKey.menuExportDiagnostics)) {
+        reportFailure(
+          actions.exportDiagnostics,
+          title: { ShellStrings.shared.text(DiagnosticsStringKey.errorExportDiagnosticsTitle) },
+          fallback: { ShellStrings.shared.text(DiagnosticsStringKey.errorExportDiagnosticsMessage) }
+        )
       },
       .separator(),
       quit,
@@ -158,8 +171,9 @@ enum AppMenus {
 
   /// Runs a service action and shows an alert when it fails.
   private static func reportFailure(
-    _ action: @escaping () async throws -> Void, _ title: ShellStringKey,
-    _ fallback: ShellStringKey
+    _ action: @escaping () async throws -> Void,
+    title: @escaping () -> String,
+    fallback: @escaping () -> String
   ) {
     Task {
       do {
@@ -167,9 +181,9 @@ enum AppMenus {
       } catch {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = ShellStrings.shared.text(title)
+        alert.messageText = title()
         let message = (error as? LocalizedError)?.errorDescription
-        alert.informativeText = message ?? ShellStrings.shared.text(fallback)
+        alert.informativeText = message ?? fallback()
         NSApp.activate()
         _ = await NestedRunLoop.runModal(alert)
       }
@@ -236,7 +250,8 @@ extension AppMenuActions {
   static var inert: AppMenuActions {
     AppMenuActions(
       showPanel: {}, hidePanel: {}, openSettings: {}, openOnboarding: {}, openPanelModals: nil,
-      checkForUpdates: nil, restartService: {}, showServiceLogs: {}, editCommand: { _ in },
+      checkForUpdates: nil, restartService: {}, showServiceLogs: {}, exportDiagnostics: {},
+      editCommand: { _ in },
       developmentHint: { false }, selectionListening: { nil }, setSelectionListening: { _ in },
       miniPanelShown: { false }, setMiniPanelShown: { _ in }, showLastRecording: nil)
   }

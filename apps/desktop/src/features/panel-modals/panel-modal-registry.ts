@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { NotarizationReauthModal } from './notarization-reauth-modal';
+import { lazyWithPreload } from '../../lib/lazy-with-preload';
 import {
   afterOnboarding,
   allRules,
@@ -15,6 +15,21 @@ import {
   whenModelCredentialsHealthy,
   type PanelModalDefinition,
 } from './panel-modal-rules';
+
+const panelModal = lazyWithPreload(() =>
+  import('./panel-modal').then((module) => module.PanelModal),
+);
+const notarizationReauth = lazyWithPreload(() =>
+  import('./notarization-reauth-modal').then((module) => module.NotarizationReauthModal),
+);
+
+export const PanelModal = panelModal.Component;
+const NotarizationReauthModal = notarizationReauth.Component;
+
+/** Preloads the modal carousel shell and slide chunks after the panel's first frame settles. */
+export function preloadPanelModals(): Promise<unknown> {
+  return Promise.all([panelModal.preload(), notarizationReauth.preload()]);
+}
 
 /**
  * Declarative registry of main-panel feature modals. Add new modals here and tune their popup

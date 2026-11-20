@@ -5,22 +5,24 @@ import AppKit
 /// engine where the page was asked to go, the evidence for its ends (D6).
 ///
 /// Atd scrolls in a closed loop that ``LongScreenshotAutoScroll`` paces from what the stitched
-/// frames show: each step is posted as a continuous pixel scroll-wheel event inside the band at
-/// the HID level, and the next waits until the page answered it. The events come from a private
-/// source and carry ``scrollEventMarker``, so monitors can leave them out
-/// (``isSynthesized(_:)``).
+/// frames show: each step is delivered as a window-routed continuous pixel scroll-wheel event
+/// through ``LongScreenshotAutoScroller`` without moving the real cursor, and the next waits until
+/// the page answered it. Events carry ``scrollEventMarker`` or the computer-driver tag, so
+/// monitors can leave them out (``isSynthesized(_:)``).
 extension LongScreenshotCapture {
-  /// "ATDSCROL" in ASCII: the marker in `eventSourceUserData` of every scroll event Atd posts.
+  /// "ATDSCROL" in ASCII: the marker in `eventSourceUserData` of fallback scroll events Atd posts.
   nonisolated static let scrollEventMarker: Int64 = 0x4154_4453_4352_4F4C
   /// How often the loop looks at the stitch again: under half a frame of the stream.
   static let pollInterval = Duration.milliseconds(30)
 
-  /// Whether `event`, as an event monitor received it, is one auto-scroll posted: it carries the
-  /// marker, or Atd's process posted it, whichever of the two fields it kept on its way (as
-  /// ``KeyPress/isSynthesized(_:)`` reads them).
+  /// Whether `event`, as an event monitor received it, is one auto-scroll posted (either by the
+  /// `atd-computer-driver` helper or directly by Atd's fallback): it carries ``scrollEventMarker``
+  /// or the driver's tag, or Atd's process posted it.
   nonisolated static func isSynthesized(_ event: NSEvent) -> Bool {
     guard let event = event.cgEvent else { return false }
-    return event.getIntegerValueField(.eventSourceUserData) == scrollEventMarker
+    let marker = event.getIntegerValueField(.eventSourceUserData)
+    return marker == scrollEventMarker
+      || (UInt64(bitPattern: marker) & 0xFFFF_FFFF_0000_0000) == 0x0A1D_0000_0000_0000
       || event.getIntegerValueField(.eventSourceUnixProcessID) == Int64(getpid())
   }
 
@@ -31,6 +33,7 @@ extension LongScreenshotCapture {
     if progress.reachedLimit { return .atLimit }
     guard CGPreflightPostEventAccess() else { return .needsPermission }
     guard autoScroll == nil, !ended else { return .started }
+    acceptsUserMomentum = false
     autoScroll = Task { [weak self] in
       await self?.scrollToEnd()
       // A cancelled loop was already ended by whoever cancelled it, and a newer one may run.
@@ -49,20 +52,32 @@ extension LongScreenshotCapture {
     autoScrollEnded()
   }
 
-  /// The user scrolled over the selection by `deltaY` points, positive towards the page's
-  /// start (AppKit's `scrollingDeltaY`, natural scrolling already applied; lines converted to
-  /// points by the caller). Atd's own scrolling stops: the user took over.
-  func userScrolled(deltaY: CGFloat) {
-    guard deltaY != 0, !ended, let engine else { return }
-    stopAutoScroll()
-    engine.request(
-      deltaY > 0 ? .up : .down, points: abs(deltaY), auto: false, at: Self.now)
+  /// The user scrolled the live page by `deltaY` points, positive towards the page's start
+  /// (AppKit's `scrollingDeltaY`, natural scrolling already applied; lines converted to points by
+  /// the caller). Atd's own scrolling stops on intentional manual input: the user took over.
+  func directUserScrolled(_ event: NSEvent, deltaY: CGFloat) {
+    guard !ended else { return }
+    if let driverPID = autoScroller.driverPID,
+      event.cgEvent?.getIntegerValueField(.eventSourceUnixProcessID) == Int64(driverPID)
+    {
+      return
+    }
+    if event.momentumPhase != [] {
+      guard acceptsUserMomentum, autoScroll == nil else { return }
+    } else if event.phase == .began || deltaY != 0 {
+      stopAutoScroll()
+      acceptsUserMomentum = true
+    }
+    guard deltaY != 0, let engine else { return }
+    engine.request(deltaY > 0 ? .up : .down, points: abs(deltaY), auto: false, at: Self.now)
     checkEdges()
   }
 
   // MARK: Private
 
   private static var now: Double { ProcessInfo.processInfo.systemUptime }
+
+  private var resolvedScrollLocation: CGPoint { scrollLocation?() ?? bandCenter }
 
   /// The band in Quartz points: where scroll events go.
   private var bandCenter: CGPoint {
@@ -76,7 +91,10 @@ extension LongScreenshotCapture {
   /// waits (a step then would scroll away the start the selection framed), and the engine may
   /// not exist yet.
   private func scrollToEnd() async {
-    let location = bandCenter
+    if target.windowID != nil {
+      _ = await autoScroller.prepare()
+      guard !Task.isCancelled, !ended else { return }
+    }
     var pacer = LongScreenshotAutoScroll(at: Self.now)
     while !Task.isCancelled, !ended {
       engine?.tick(at: Self.now)
@@ -85,7 +103,13 @@ extension LongScreenshotCapture {
       case .wait:
         try? await Task.sleep(for: Self.pollInterval)
       case .scroll(let direction, let points):
-        guard let engine, Self.post(direction, points: points, at: location) else { return }
+        let location = resolvedScrollLocation
+        guard let pid = target.pid,
+          await autoScroller.scroll(
+            pid: pid, windowID: target.windowID, direction: direction, points: points,
+            at: location),
+          !Task.isCancelled, !ended, let engine
+        else { return }
         engine.request(direction, points: points, auto: true, at: Self.now)
       case .stop:
         return
@@ -112,27 +136,5 @@ extension LongScreenshotCapture {
         engine.tick(at: Self.now)
       }
     }
-  }
-
-  /// One continuous scroll of `points` towards `direction`'s edge of the page at `location`
-  /// (Quartz), from a private source at the HID level, marked. False when the event cannot be
-  /// made.
-  private static func post(
-    _ direction: LongScreenshotDirection, points: CGFloat, at location: CGPoint
-  ) -> Bool {
-    // Negative wheel deltas scroll towards the end (content moves up), unaffected by natural
-    // scrolling, which applies to devices only.
-    let delta = Int32(points.rounded())
-    guard let source = CGEventSource(stateID: .privateState),
-      let event = CGEvent(
-        scrollWheelEvent2Source: source, units: .pixel, wheelCount: 1,
-        wheel1: direction == .down ? -delta : delta, wheel2: 0, wheel3: 0)
-    else { return false }
-    event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-    event.setIntegerValueField(.eventSourceUserData, value: scrollEventMarker)
-    event.location = location
-    event.flags = []
-    event.post(tap: .cghidEventTap)
-    return true
   }
 }

@@ -2,6 +2,8 @@ import { Type, type Static } from 'typebox';
 import {
   ChatGPTConsentSchema,
   ChatGPTConsentRequestSchema,
+  type ModelAlias,
+  type ModelAliasDraft,
   type ProviderCredentialIssue,
   type ProviderLoginRequest,
   type ProviderLoginDiagnostic,
@@ -9,7 +11,10 @@ import {
   type ProviderLevelsResponse,
   type ProviderContextChoice,
   type ProviderUsageResponse,
+  type RunContextChoice,
 } from '@atd/agent-contracts';
+
+export type { ModelAlias, ModelAliasDraft, RunContextChoice };
 
 const text = Type.String({ maxLength: 2048 });
 const id = Type.String({ minLength: 1, maxLength: 256 });
@@ -252,6 +257,14 @@ export interface ProviderBridge {
     choice: ModelContextChoice,
     revision: number,
   ) => Promise<void>;
+  /** Saves a new model alias on the service and returns the created alias. */
+  createAlias: (draft: ModelAliasDraft) => Promise<ModelAlias>;
+  /** Replaces an existing model alias and returns the updated alias. */
+  updateAlias: (aliasId: string, draft: ModelAliasDraft) => Promise<ModelAlias>;
+  /** Removes a saved model alias (clearing defaultAliasId when matched). */
+  removeAlias: (aliasId: string) => Promise<void>;
+  /** Sets or clears the default fallback model alias id. */
+  setDefaultAlias: (defaultAliasId: string | null) => Promise<void>;
   disconnect: (connectionId: string, revision: number) => Promise<void>;
   /**
    * Removes a connection with its credential and model files; revision-guarded. Removing the

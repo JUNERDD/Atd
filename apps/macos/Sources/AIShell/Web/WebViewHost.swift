@@ -12,13 +12,16 @@ final class WebViewHost: NSObject {
   let role: WebViewRole
   /// The view windows embed; the web view fills it and is swapped inside it on a rebuild.
   let container = NSView()
-  private(set) var webView: ShellWebView
+  var webView: ShellWebView
   /// The current page's stream connections; replaced with the web view.
   private(set) var pipe: VirtualSocketPipe?
   /// Counts committed documents, so a call's answer never reaches a later page.
   private(set) var document = 0
+  private(set) var chromeReady = false
   var onDocumentUnload: (() -> Void)?
   var onDragRegionsReady: (() -> Void)?
+  var onDragRegionsReset: (() -> Void)?
+  var onCrashLoopExhausted: (() -> Void)?
 
   /// Receives dropped and pasted file URLs; the panel imports them as attachments.
   var onFiles: ((_ files: [URL], _ source: String) -> Void)? {
@@ -39,16 +42,16 @@ final class WebViewHost: NSObject {
     didSet { webView.onPastedImage = onPastedImage }
   }
 
-  private let fragment: String?
-  private let services: ShellServices
-  private let bridge: ShellBridge
-  private var isClosed = false
+  let fragment: String?
+  let services: ShellServices
+  let bridge: ShellBridge
+  var isClosed = false
   private var outbox = BridgeOutbox()
   private var backlog = FrameBacklog()
-  private var crashes: [ContinuousClock.Instant] = []
+  var crashes: [ContinuousClock.Instant] = []
   private var reduceTransparency: ReduceTransparencyObserver?
   private var systemAppearance: SystemAppearanceObserver?
-  private static let log = Logger(subsystem: "com.junerdd.ai", category: "web")
+  static let log = Logger(subsystem: "com.junerdd.ai", category: "web")
 
   init(role: WebViewRole, fragment: String?, services: ShellServices, bridge: ShellBridge) {
     self.role = role
@@ -82,8 +85,11 @@ final class WebViewHost: NSObject {
     // Stop delivery before teardown callbacks can enqueue more work for the departing page.
     isClosed = true
     document += 1
+    chromeReady = false
     outbox = BridgeOutbox()
     onDragRegionsReady = nil
+    onDragRegionsReset = nil
+    onCrashLoopExhausted = nil
     reduceTransparency?.stop()
     reduceTransparency = nil
     systemAppearance?.stop()
@@ -92,9 +98,10 @@ final class WebViewHost: NSObject {
   }
 
   /// Takes the current web view down: its stream connections and its bridge handler.
-  private func tearDown(notifyUnload: Bool = true) {
+  func tearDown(notifyUnload: Bool = true) {
     if notifyUnload {
       bridge.shell?.cancelShortcutRecording(from: self)
+      services.liveProbes.windowDidClose(host: self)
       onDocumentUnload?()
     }
     pipe?.invalidate()
@@ -136,11 +143,13 @@ final class WebViewHost: NSObject {
     act(outbox.pageDidBecomeReady())
   }
 
-  func setDragRegions(_ rects: [WindowDragRegionsPost.Rect]) {
-    webView.dragRegions = rects.filter { $0.width > 0 && $0.height > 0 }.map {
+  func setDragRegions(_ post: WindowDragRegionsPost) {
+    webView.dragRegions = post.rects.filter { $0.width > 0 && $0.height > 0 }.map {
       CGRect(x: $0.x, y: $0.y, width: $0.width, height: $0.height)
     }
-    if !webView.dragRegions.isEmpty { onDragRegionsReady?() }
+    let ready = post.chrome ?? !webView.dragRegions.isEmpty
+    chromeReady = ready
+    if ready { onDragRegionsReady?() }
   }
 
   private func post(frame: SocketFrame) {
@@ -201,7 +210,7 @@ final class WebViewHost: NSObject {
 
   // MARK: Building
 
-  private static func makeWebView(
+  static func makeWebView(
     role: WebViewRole, services: ShellServices, handler: BridgeMessageHandler
   ) -> ShellWebView {
     let configuration = WKWebViewConfiguration()
@@ -234,7 +243,7 @@ final class WebViewHost: NSObject {
     return webView
   }
 
-  private func install(_ webView: ShellWebView) {
+  func install(_ webView: ShellWebView) {
     webView.navigationDelegate = self
     webView.uiDelegate = self
     webView.onFiles = onFiles
@@ -247,35 +256,16 @@ final class WebViewHost: NSObject {
   }
 
   /// The page went away: its sockets close, and results and frames meant for it are dropped.
-  private func pageDidUnload() {
+  func pageDidUnload() {
     bridge.shell?.cancelShortcutRecording(from: self)
+    services.liveProbes.windowDidClose(host: self)
     onDocumentUnload?()
     document += 1
+    chromeReady = false
     webView.dragRegions = []
+    onDragRegionsReset?()
     pipe?.resetForNewDocument()
     outbox.pageDidUnload()
-  }
-
-  /// Rebuilds the web view after its WebContent process died, keeping queued events for the
-  /// new page. Three crashes within a minute stop the rebuilds so a page that crashes on load
-  /// cannot spin.
-  private func rebuild() {
-    let now = ContinuousClock.now
-    crashes = crashes.filter { now - $0 < .seconds(60) } + [now]
-    guard crashes.count <= 3 else {
-      Self.log.fault("The \(self.role.rawValue) page keeps crashing; not rebuilding it again.")
-      return
-    }
-    let old = webView
-    let wasFirstResponder = old.window?.firstResponder === old
-    tearDown(notifyUnload: false)
-    let handler = BridgeMessageHandler(bridge: bridge)
-    let replacement = Self.makeWebView(role: role, services: services, handler: handler)
-    handler.host = self
-    webView = replacement
-    install(replacement)
-    if wasFirstResponder { replacement.window?.makeFirstResponder(replacement) }
-    load()
   }
 }
 

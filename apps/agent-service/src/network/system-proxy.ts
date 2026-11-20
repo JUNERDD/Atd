@@ -27,6 +27,14 @@ type ProxyRuntime = {
   original: { dispatcher: Dispatcher; http: http.Agent; https: https.Agent };
 };
 
+export interface SystemProxyDiagnostics {
+  mode: 'direct' | 'http' | 'env_override' | 'skipped_invalid';
+  httpConfigured: boolean;
+  httpsConfigured: boolean;
+  exceptionsCount: number;
+  skippedBypassCount: number;
+}
+
 /** Owns process-wide networking; native control frames replace the rules without replacing callers. */
 export class SystemProxy {
   private readonly enabled: boolean;
@@ -35,6 +43,11 @@ export class SystemProxy {
   private snapshot: string | undefined;
   private pending = Promise.resolve();
   private closed = false;
+  private lastInvalid = false;
+  private httpConfigured = false;
+  private httpsConfigured = false;
+  private exceptionsCount = 0;
+  private skippedBypassCount = 0;
 
   constructor(private readonly log: Logger) {
     this.enabled =
@@ -44,9 +57,38 @@ export class SystemProxy {
       log.info('System proxy inheritance skipped because an explicit proxy environment is set.');
   }
 
+  /** Readonly proxy summary without raw proxy hostnames or credentials. */
+  diagnosticsStatus(): SystemProxyDiagnostics {
+    const mode = !this.enabled
+      ? 'env_override'
+      : this.lastInvalid
+        ? 'skipped_invalid'
+        : this.httpConfigured || this.httpsConfigured
+          ? 'http'
+          : 'direct';
+    return {
+      mode,
+      httpConfigured: this.httpConfigured,
+      httpsConfigured: this.httpsConfigured,
+      exceptionsCount: this.exceptionsCount,
+      skippedBypassCount: this.skippedBypassCount,
+    };
+  }
+
+  /** Records that an initial launch snapshot failed validation. */
+  markInvalidSnapshot(): void {
+    this.lastInvalid = true;
+  }
+
   /** Validate before applying; serialize updates even while the first one loads Undici. */
   async update(raw: unknown): Promise<boolean> {
-    const settings = readSystemProxySettings(raw);
+    let settings: SystemProxySettings;
+    try {
+      settings = readSystemProxySettings(raw);
+    } catch (error) {
+      this.lastInvalid = true;
+      throw error;
+    }
     const update = this.pending.then(async () => {
       if (!this.enabled || this.closed) return false;
       await this.apply(settings);
@@ -64,6 +106,11 @@ export class SystemProxy {
     const snapshot = JSON.stringify(settings);
     if (snapshot === this.snapshot) return;
     const { resolve, skipped } = systemProxyResolver(settings);
+    this.lastInvalid = false;
+    this.httpConfigured = Boolean(settings.http);
+    this.httpsConfigured = Boolean(settings.https);
+    this.exceptionsCount = settings.exceptions.length;
+    this.skippedBypassCount = skipped;
     if (!this.runtime) {
       // Install on the first native snapshot, even proxy-off, so clients that cache these
       // routing agents also follow a later proxy-on update. Headless hosts stay untouched.
@@ -128,6 +175,7 @@ export async function createSystemProxy(log: Logger): Promise<SystemProxy> {
     try {
       await proxy.update(JSON.parse(raw));
     } catch {
+      proxy.markInvalidSnapshot();
       log.warn(
         'Could not apply the macOS system proxy snapshot; inherited networking is unchanged.',
       );

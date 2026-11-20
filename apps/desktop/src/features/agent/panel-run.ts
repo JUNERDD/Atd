@@ -1,5 +1,9 @@
-import { runModelSelection, type RunModelSources } from '@atd/agent-contracts';
-import type { PreparedCommand } from '../../client/agent/bridge';
+import {
+  runModelSelection,
+  type RunContextChoice,
+  type RunModelSources,
+} from '@atd/agent-contracts';
+import type { PreparedCommand, TaskDetail } from '../../client/agent/bridge';
 import type { RunPolicy } from '../../client/agent/run-policy';
 import type { TaskRun } from '../../client/agent/task-schema';
 import type { ModelReference } from '../../client/providers/schema';
@@ -29,12 +33,18 @@ export function defaultRunPolicy(
  */
 export function panelRunModel(
   snapshot: SettingsSnapshot | null,
-  sources: Omit<RunModelSources, 'hasConnection'>,
+  sources: Omit<
+    RunModelSources,
+    'hasConnection' | 'aliases' | 'defaultAliasId' | 'isConnectionUsable'
+  >,
 ): ModelReference | null {
   const connections = snapshot?.connections ?? [];
   const selected = runModelSelection({
     ...sources,
+    ...(snapshot ? { aliases: snapshot.aliases, defaultAliasId: snapshot.defaultAliasId } : {}),
     hasConnection: (connectionId) => connections.some((item) => item.connectionId === connectionId),
+    isConnectionUsable: (connectionId) =>
+      connections.some((item) => item.connectionId === connectionId && item.connected),
   });
   if (selected) return selected;
   const fallback = connections.find(
@@ -43,4 +53,37 @@ export function panelRunModel(
   return fallback?.defaultModel
     ? { connectionId: fallback.connectionId, modelId: fallback.defaultModel }
     : null;
+}
+
+/** Header title matching the active panel view and task/command state. */
+export function panelViewTitle(
+  view: 'new' | 'history' | 'apps' | 'task' | 'input',
+  prepared: PreparedCommand | null,
+  detail: TaskDetail | null,
+  t: (
+    key: 'titles.tasks' | 'titles.apps' | 'titles.commandInput' | 'titles.task' | 'titles.newTask',
+  ) => string,
+): string {
+  switch (view) {
+    case 'history':
+      return t('titles.tasks');
+    case 'apps':
+      return t('titles.apps');
+    case 'input':
+      return prepared?.command.name ?? t('titles.commandInput');
+    case 'task':
+      return detail?.task.title ?? t('titles.task');
+    case 'new':
+      return t('titles.newTask');
+  }
+}
+
+/** Updates `policy.contextChoice` cleanly under `exactOptionalPropertyTypes`. */
+export function withPolicyContext(
+  policy: RunPolicy,
+  contextChoice: RunContextChoice | undefined,
+): RunPolicy {
+  if (contextChoice) return { ...policy, contextChoice };
+  const { contextChoice: _, ...rest } = policy;
+  return rest;
 }

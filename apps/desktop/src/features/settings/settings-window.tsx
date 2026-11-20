@@ -25,6 +25,7 @@ import {
   AutomationSettings,
   CommandSettings,
   ComputerSettings,
+  DiagnosticsSettings,
   MemorySettings,
   PermissionsSettings,
   preloadSettingsSection,
@@ -247,7 +248,13 @@ export function SettingsWindow() {
                               {page('permissions', <PermissionsSettings snapshot={snapshot} />)}
                               {page('computer', <ComputerSettings snapshot={snapshot} />)}
                               {page('extensions', <ServiceSettings activeItem={extensionTarget} />)}
-                              {page('providers', <ProviderSettingsForm snapshot={snapshot} />)}
+                              {page(
+                                'providers',
+                                <ProviderSettingsForm
+                                  snapshot={snapshot}
+                                  activePage={pageTarget}
+                                />,
+                              )}
                               {page(
                                 'commands',
                                 // A command's "Automate…" opens a new automation that runs it.
@@ -273,6 +280,7 @@ export function SettingsWindow() {
                                 </SettingsExtensionLinkContext>,
                               )}
                               {page('apps', <AppSettings />)}
+                              {page('diagnostics', <DiagnosticsSettings />)}
                               {page('about', <AboutSettings />)}
                               {page('agent', <AgentSettings snapshot={snapshot} />)}
                               {page(

@@ -1,8 +1,5 @@
-import type {
-  SelectionToolbarKey,
-  SelectionToolbarSettings,
-  ShortcutBindingsWire,
-} from './workspace.js';
+import type { SelectionToolbarKey, SelectionToolbarSettings } from './selection-toolbar.js';
+import type { ShortcutBindingsWire } from './workspace.js';
 
 /**
  * Electron accelerator grammar and shortcut ownership rules, shared by the desktop (global
@@ -15,6 +12,7 @@ export const DEFAULT_SHORTCUTS = {
   togglePanel: 'CommandOrControl+Shift+Space',
   captureScreenshot: 'CommandOrControl+Shift+2',
   recordScreen: 'CommandOrControl+Shift+3',
+  cycleModelAlias: 'CommandOrControl+Shift+M',
   newConversation: 'CommandOrControl+N',
   openSettings: 'CommandOrControl+,',
   sendMessage: 'Enter',
@@ -27,9 +25,10 @@ export const DEFAULT_SHORTCUTS = {
  * without them where its default is taken (`withTakenAddedShortcutsReleased`) and registers
  * nothing until the person records keys for it. The other actions always have keys.
  */
-export const ADDED_SHORTCUT_ACTIONS = ['recordScreen'] as const satisfies ReadonlyArray<
-  keyof ShortcutBindingsWire
->;
+export const ADDED_SHORTCUT_ACTIONS = [
+  'recordScreen',
+  'cycleModelAlias',
+] as const satisfies ReadonlyArray<keyof ShortcutBindingsWire>;
 
 const MODIFIERS = ['CommandOrControl', 'Command', 'Control', 'Super', 'Alt', 'Shift'];
 const SYMBOL_KEYS = new Set([',', '.', '/', ';', "'", '\\', '[', ']', '`', '-', '=']);
@@ -164,6 +163,7 @@ export function parseShortcutBindings(value: unknown, platform: string): Shortcu
     !('togglePanel' in value) ||
     !('captureScreenshot' in value) ||
     !('recordScreen' in value) ||
+    !('cycleModelAlias' in value) ||
     !('newConversation' in value) ||
     !('openSettings' in value) ||
     !('sendMessage' in value) ||
@@ -178,6 +178,8 @@ export function parseShortcutBindings(value: unknown, platform: string): Shortcu
     captureScreenshot: parseAccelerator(value.captureScreenshot, true, platform, global),
     recordScreen:
       value.recordScreen === '' ? '' : parseAccelerator(value.recordScreen, true, platform, global),
+    cycleModelAlias:
+      value.cycleModelAlias === '' ? '' : parseAccelerator(value.cycleModelAlias, true, platform),
     newConversation: parseAccelerator(value.newConversation, true, platform),
     openSettings: parseAccelerator(value.openSettings, true, platform),
     sendMessage: parseAccelerator(value.sendMessage, false, platform),

@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { ChatGPTConsentSchema } from './chatgpt.js';
+import { MAX_MODEL_ALIASES, ModelAliasSchema } from './model-aliases.js';
 import {
   ContextTierSchema,
   CustomContextWindowSchema,
@@ -122,6 +123,8 @@ export const ServiceConnectionsFileSchema = Type.Object(
     version: Type.Literal(1),
     defaultConnectionId: Type.Union([Identifier, Type.Null()]),
     connections: Type.Array(ServiceConnectionSchema, { maxItems: 100 }),
+    defaultAliasId: Type.Optional(Type.Union([Identifier, Type.Null()])),
+    aliases: Type.Optional(Type.Array(ModelAliasSchema, { maxItems: MAX_MODEL_ALIASES })),
   },
   { additionalProperties: false },
 );

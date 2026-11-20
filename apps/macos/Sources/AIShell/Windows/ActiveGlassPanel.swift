@@ -17,11 +17,27 @@ import AppKit
 /// background's blur and refraction (``GlassTuner``); none holds a page whose glass would have to
 /// stay the system's.
 class ActiveGlassPanel: NSPanel {
+  /// Whether this non-activating panel may accept key focus outside keyboard-return passes.
+  var acceptsKeyFocus: Bool { false }
+
+  final override var canBecomeKey: Bool {
+    acceptsKeyFocus && !PanelKeyboard.isReturningToFrontmostApp
+  }
+
+  final override var canBecomeMain: Bool { false }
+
   @objc func _hasActiveAppearance() -> Bool { true }
 
   override var contentView: NSView? {
     didSet {
       if let contentView { GlassTuner.shared.track(contentView) }
+    }
+  }
+
+  override func close() {
+    performReturningOrderOut {
+      orderOut(nil)
+      super.close()
     }
   }
 }

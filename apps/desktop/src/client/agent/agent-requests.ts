@@ -56,7 +56,7 @@ export interface CommandCatalog {
   /** Saves the order of the user's commands; `ids` names each of them once. */
   reorder(ids: string[]): Promise<void>;
   /** Reloads the list from the service (connect, or another client changed it). */
-  refreshFromService(): Promise<void>;
+  refreshFromService(fresh?: boolean): Promise<void>;
 }
 
 /** What only the host can do: native pickers, clipboard, links and artifact operations. */
@@ -153,7 +153,7 @@ export class AgentRequests<S> {
   async onInvalidate(frame: InvalidateFrame): Promise<void> {
     switch (frame.scope) {
       case 'commands':
-        await this.commands.refreshFromService().catch(() => undefined);
+        await this.commands.refreshFromService(true).catch(() => undefined);
         return;
       case 'memory':
         await this.handle({ action: 'memory' }).catch(() => undefined);

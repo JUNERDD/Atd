@@ -13,8 +13,28 @@ export const LongScreenshotConfirmActionSchema = Type.Union([
   Type.Literal('save'),
 ]);
 
-/** Copy the screenshot to the clipboard as well when confirming it to the composer. */
-export const DEFAULT_SCREENSHOT_COPY_ON_CONFIRM = true;
+/**
+ * What clicking ✓, pressing Return, or double-clicking a screenshot selection on the toolbar
+ * does: open the main panel and attach to the composer while copying to the clipboard
+ * (`attachAndCopy`, the default), open the main panel and attach to the composer only (`attach`),
+ * or copy to the clipboard without opening the main panel (`copy`).
+ */
+export const SCREENSHOT_CONFIRM_ACTIONS = ['attachAndCopy', 'attach', 'copy'] as const;
+export type ScreenshotConfirmAction = (typeof SCREENSHOT_CONFIRM_ACTIONS)[number];
+export const ScreenshotConfirmActionSchema = Type.Union([
+  Type.Literal('attachAndCopy'),
+  Type.Literal('attach'),
+  Type.Literal('copy'),
+]);
+
+/** Default screenshot confirmation action: attach to the composer and copy to the clipboard. */
+export const DEFAULT_SCREENSHOT_CONFIRM_ACTION: ScreenshotConfirmAction = 'attachAndCopy';
+
+/**
+ * Whether `screenshotConfirmAction` also applies when confirming a screenshot started from the
+ * composer's "+ › Screenshot" menu; false keeps ✓ attaching to the current composer.
+ */
+export const DEFAULT_SCREENSHOT_CONFIRM_IN_COMPOSER = false;
 
 /** Default long-screenshot Done action: open the result card. */
 export const DEFAULT_LONG_SCREENSHOT_CONFIRM_ACTION: LongScreenshotConfirmAction = 'card';

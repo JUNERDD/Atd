@@ -40,7 +40,9 @@ extension ShellController {
       await self?.systemPanels.chooseSaveFile(
         suggestedName: suggestedName, contentType: contentType, aboveIsland: true)
     }
-    screenshots.copyOnConfirm = { ScreenshotPreferences.shared.copyOnConfirm }
+    screenshots.confirmAction = { fromComposer in
+      ScreenshotPreferences.shared.effectiveConfirmAction(fromComposer: fromComposer)
+    }
     screenshots.longScreenshotConfirm = {
       ScreenshotPreferences.shared.longScreenshotConfirm
     }

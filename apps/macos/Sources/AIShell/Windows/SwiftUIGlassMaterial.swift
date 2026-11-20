@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import SwiftUI
 
 /// SwiftUI glass's material on macOS 15: an `NSVisualEffectView` blurring the desktop behind the
@@ -6,16 +7,12 @@ import SwiftUI
 /// ``GlassSurface/appearance``, and framed and masked to `shape` so it never covers transparent
 /// canvas regions (such as the island's bottom Dock inset) or stays attached under Reduce
 /// Transparency. It lies under the surface's fill and content and takes no clicks or VoiceOver
-/// focus, as the glass takes none.
-struct SwiftUIGlassMaterial: View, Animatable {
-  var shape: AnyShape
-  var dark: Bool?
+/// focus, as the glass takes none. `shape` is a presentation snapshot supplied by the surface;
+/// this bridge must not start an independent interpolation of the erased shape.
+struct SwiftUIGlassMaterial: View {
+  let shape: AnyShape
+  let dark: Bool?
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-  var animatableData: AnyShape.AnimatableData {
-    get { shape.animatableData }
-    set { shape.animatableData = newValue }
-  }
 
   var body: some View {
     SwiftUIGlassEffect(
@@ -88,6 +85,12 @@ private final class SwiftUIGlassContainer: NSView {
   }
 
   private func applyShape() {
+    // The surface has already interpolated this frame. Commit the native material's frame and
+    // mask together, with no implicit Core Animation transition behind the SwiftUI clip.
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    defer { CATransaction.commit() }
+
     guard !reduceTransparency,
       bounds.width.isFinite, bounds.height.isFinite,
       bounds.width >= 1, bounds.height >= 1
@@ -119,7 +122,7 @@ private final class SwiftUIGlassContainer: NSView {
     if effect.superview !== self {
       addSubview(effect)
     }
-    effect.frame = rect
+    if effect.frame != rect { effect.frame = rect }
 
     var translation = CGAffineTransform(translationX: -rect.minX, y: -rect.minY)
     let maskPath = path.cgPath.copy(using: &translation) ?? path.cgPath

@@ -24,9 +24,12 @@ public struct LongScreenshotStitch: Sendable {
 
   /// What the shell does after describing a frame, an idle frame or the passing of time.
   public struct Update: Equatable, Sendable {
-    /// Band rows of the frame to add above the stitched rows, top to bottom, and below them.
+    /// Band-relative rows of the current frame (or the previous matched area) to add above or
+    /// below the stitched rows, top to bottom.
     public var above: Range<Int>?
     public var below: Range<Int>?
+    public var previousAbove: Range<Int>?
+    public var previousBelow: Range<Int>?
     /// The page's edge lay inside what was stitched (an elastic overshoot): strips keep only the
     /// document rows from `keepFrom` and those before `keepBefore`.
     public var keepFrom: Int?
@@ -44,29 +47,31 @@ public struct LongScreenshotStitch: Sendable {
     public var isEmpty: Bool { self == Update() }
   }
 
-  private struct Reference: Sendable {
+  struct Reference: Sendable {
     let signature: LongScreenshotSignature
+    let area: LongScreenshotSignature?
     let position: Int
   }
 
   public let geometry: LongScreenshotGeometry
   /// The sticky header and pinned footer as moving pairs have shown them, the smallest seen (a
   /// row that moved in any pair is not static); nil before the page first moved.
-  public private(set) var statics: LongScreenshotMatcher.Static?
+  public internal(set) var statics: LongScreenshotMatcher.Static?
+  var areaStatics: LongScreenshotMatcher.Static?
   /// Each side's fixed columns: how many pairs saw some, and the fewest any of them saw. A side
   /// counts once two pairs saw it; a pair that saw none there proves nothing (its segments may
   /// have been blank).
-  private var leftSide = (pairs: 0, columns: 0)
-  private var rightSide = (pairs: 0, columns: 0)
+  var leftSide = (pairs: 0, columns: 0)
+  var rightSide = (pairs: 0, columns: 0)
   /// The latest matched frame's position.
-  public private(set) var position = 0
+  public internal(set) var position = 0
   /// Document rows held as strips above the first frame's rows, and below them.
   public internal(set) var stripsAbove: Range<Int>?
   public internal(set) var stripsBelow: Range<Int>?
   public internal(set) var lost: LongScreenshotDirection?
   /// Since when frames have matched nothing while the page was scrolled, and where it was most
   /// likely heading: what becomes ``lost`` after ``lostAfter``.
-  private var drift: (since: Double, heading: LongScreenshotDirection)?
+  var drift: (since: Double, heading: LongScreenshotDirection)?
   public private(set) var scrolled = false
   /// The image holds the page's end, or its start, until the page grows past it.
   public internal(set) var reachedEnd = false
@@ -74,8 +79,10 @@ public struct LongScreenshotStitch: Sendable {
   /// The image is as tall as it may be (``LongScreenshotGeometry/maxRows``): nothing more is
   /// stitched either way. Stays.
   public internal(set) var reachedLimit = false
-  /// The rows past the band above it joined the image when the page reached its start.
-  public internal(set) var addedHead = false
+  /// The page reached its start with rows of the scroll area above the band that fit the image.
+  public internal(set) var offersHead = false
+  /// Off until asked, so the image starts where the selection does.
+  public var includesHead = false
   /// The page reached its end with rows of the scroll area below the band that fit the image:
   /// the shell keeps them, and they join the image while ``includesTail``.
   public internal(set) var offersTail = false
@@ -85,23 +92,28 @@ public struct LongScreenshotStitch: Sendable {
   /// Where the latest frame was when each edge was reached.
   var endPosition: Int?
   var startPosition: Int?
-  private var current: Reference
+  var current: Reference
   /// The frame that matched before ``current``; nil until a second one did.
-  private var previous: Reference?
-  private var low: Reference
-  private var high: Reference
-  private var edges: LongScreenshotEdges
+  var previous: Reference?
+  var low: Reference
+  var high: Reference
+  var waypoints: [Reference]
+  var edges: LongScreenshotEdges
+  var clamp = ClampState()
+  var reversedWhileUnmatched = false
 
   /// Starts from the first frame. `scrollValue` is the scroll area's vertical value before the
   /// phase, when Accessibility reported one.
   public init(
-    geometry: LongScreenshotGeometry, first: LongScreenshotSignature, scrollValue: Double?
+    geometry: LongScreenshotGeometry, first: LongScreenshotSignature,
+    firstArea: LongScreenshotSignature? = nil, scrollValue: Double?
   ) {
     self.geometry = geometry
-    let reference = Reference(signature: first, position: 0)
+    let reference = Reference(signature: first, area: firstArea, position: 0)
     current = reference
     low = reference
     high = reference
+    waypoints = [reference]
     edges = LongScreenshotEdges(scrollValue: scrollValue)
   }
 
@@ -110,7 +122,8 @@ public struct LongScreenshotStitch: Sendable {
 
   /// The band's height in rows.
   public var bandHeight: Int { geometry.bandRows.count }
-  /// The rows below the band are in the image.
+  /// The rows above or below the band are in the image.
+  public var addedHead: Bool { offersHead && includesHead }
   public var addedTail: Bool { offersTail && includesTail }
   /// The latest frame matched nothing while the page was scrolled: stitching waits for one that
   /// does, and the page should not be scrolled further meanwhile.
@@ -134,51 +147,85 @@ public struct LongScreenshotStitch: Sendable {
   public mutating func request(
     _ direction: LongScreenshotDirection, points: CGFloat, auto: Bool, at time: Double
   ) {
-    edges.request(direction, points: points, auto: auto, at: time)
+    guard edges.request(direction, points: points, auto: auto, at: time) else { return }
+    noteClampRequest(direction, points: points, auto: auto, at: time)
+    if let heading = lost ?? drift?.heading, direction != heading {
+      reversedWhileUnmatched = true
+    }
   }
 
   /// A new complete frame.
-  public mutating func add(_ frame: LongScreenshotSignature, at time: Double) -> Update {
-    var outcome = LongScreenshotMatcher.match(frame, to: current.signature, known: applied)
-    var reference = current
-    if outcome == .unmatched {
-      for end in [previous, high, low].compactMap(\.self)
-      where end.position != current.position {
-        let retry = LongScreenshotMatcher.match(frame, to: end.signature, known: applied)
-        guard retry != .unmatched else { continue }
-        outcome = retry
-        reference = end
-        break
-      }
-    }
+  public mutating func add(
+    _ frame: LongScreenshotSignature, area: LongScreenshotSignature? = nil,
+    previousAreaPosition: Int? = nil, at time: Double
+  ) -> Update {
+    let matched = matchFrame(frame, area: area, at: time)
+    let outcome = matched.outcome
+    let reference = matched.reference
+    let hasArea = area != nil
     var update = Update()
     switch outcome {
     case .moved(let offset, let pair):
       drift = nil
-      adopt(pair)
+      resetClamp()
+      if matched.matchedArea {
+        adoptArea(pair)
+        if abs(offset) <= movingRows.count - LongScreenshotMatcher.minimumOverlap {
+          adopt(
+            LongScreenshotStatics.detect(frame, reference.signature, offset: offset, known: applied)
+          )
+        }
+      } else {
+        adopt(pair)
+        if let area, let refArea = reference.area {
+          adoptArea(LongScreenshotStatics.detect(area, refArea, offset: offset, known: areaApplied))
+        }
+      }
       scrolled = true
-      edges.moved(offset, at: time)
       let newPosition = reference.position + offset
-      guard let grown = grow(at: newPosition) else {
-        // It matched a frame, but lies past what is stitched (a static part shrank since, or
-        // the page grew past an edge too far at once): it waits, as a gap does.
-        lost = offset > 0 ? .down : .up
+      let delta = newPosition - position
+      edges.moved(delta, at: time)
+      guard
+        let grown = grow(
+          at: newPosition, hasArea: hasArea, previousAreaPosition: previousAreaPosition)
+      else {
+        // It matched a frame, but lies past what is stitched: it waits, as a gap does.
+        lost = delta >= 0 ? .down : .up
         return update
       }
       lost = nil
+      reversedWhileUnmatched = false
       update = grown
-      remember(Reference(signature: frame, position: newPosition))
+      remember(Reference(signature: frame, area: area, position: newPosition))
     case .still:
+      let delta = reference.position - position
+      if delta != 0 {
+        guard
+          let grown = grow(
+            at: reference.position, hasArea: hasArea, previousAreaPosition: previousAreaPosition)
+        else {
+          lost = delta > 0 ? .down : .up
+          return update
+        }
+        resetClamp()
+        update = grown
+        if matched.reanchoredStill {
+          edges.still(at: time)
+        } else {
+          edges.moved(delta, at: time)
+        }
+      } else {
+        clearTransientClamp()
+        edges.still(at: time)
+      }
       lost = nil
       drift = nil
+      reversedWhileUnmatched = false
       position = reference.position
-      current = reference
-      edges.still(at: time)
+      current = Reference(
+        signature: reference.signature, area: reference.area ?? area, position: reference.position)
     case .unmatched:
-      if lost == nil, drift == nil, edges.isActive(at: time) {
-        drift = (time, edges.heading(at: time))
-      }
-      edges.unmatched()
+      noteUnmatched(frame, at: time)
     }
     return update.merged(with: tick(at: time))
   }
@@ -186,60 +233,19 @@ public struct LongScreenshotStitch: Sendable {
   /// A frame ScreenCaptureKit reported as unchanged: the page still where the latest frame
   /// showed it, matched or not.
   public mutating func idle(at time: Double) -> Update {
-    if lost == nil, drift == nil { edges.still(at: time) }
+    if lost == nil, drift == nil, clamp.probe == nil { edges.still(at: time) }
     return tick(at: time)
   }
 
   /// The passing of time: frames that kept matching nothing make stitching lost, and an
   /// unanswered request may now show an edge.
   public mutating func tick(at time: Double) -> Update {
+    if let clamped = checkClamp(at: time) { return clamped }
     if lost == nil, let drift, time - drift.since >= Self.lostAfter {
       lost = drift.heading
       self.drift = nil
     }
     guard lost == nil, drift == nil, let edge = edges.edge(at: time) else { return Update() }
     return reach(edge)
-  }
-
-  private mutating func remember(_ frame: Reference) {
-    position = frame.position
-    previous = current
-    current = frame
-    if frame.position <= low.position { low = frame }
-    if frame.position >= high.position { high = frame }
-  }
-
-  /// Takes in a moving pair's static parts: each only ever shrinks, since a row or column that
-  /// moved once is not static.
-  private mutating func adopt(_ pair: LongScreenshotMatcher.Static) {
-    if var known = statics {
-      known.top = min(known.top, pair.top)
-      known.bottom = min(known.bottom, pair.bottom)
-      statics = known
-    } else {
-      statics = LongScreenshotMatcher.Static(
-        top: pair.top, bottom: pair.bottom, left: 0, right: 0)
-    }
-    Self.count(pair.left, into: &leftSide)
-    Self.count(pair.right, into: &rightSide)
-  }
-
-  private static func count(_ columns: Int, into side: inout (pairs: Int, columns: Int)) {
-    guard columns > 0 else { return }
-    side = side.pairs == 0 ? (1, columns) : (side.pairs + 1, min(side.columns, columns))
-  }
-}
-
-extension LongScreenshotStitch.Update {
-  func merged(with other: Self) -> Self {
-    var merged = self
-    merged.above = merged.above ?? other.above
-    merged.below = merged.below ?? other.below
-    merged.keepFrom = other.keepFrom ?? merged.keepFrom
-    merged.keepBefore = other.keepBefore ?? merged.keepBefore
-    merged.reached = other.reached ?? merged.reached
-    merged.dropsHead = merged.dropsHead || other.dropsHead
-    merged.dropsTail = merged.dropsTail || other.dropsTail
-    return merged
   }
 }

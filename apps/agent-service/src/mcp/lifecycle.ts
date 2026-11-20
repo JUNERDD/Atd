@@ -15,13 +15,22 @@ import type { McpStateSink } from './errors.js';
  * profile in `dataDir` (changes.ts) and clients reload those rows.
  */
 
+const activeStatesByDataDir = new Map<string, McpConnectionStates>();
+
+/** Passive readonly getter returning live MCP connection states when an authority is loaded. */
+export function getActiveMcpConnectionStates(dataDir: string): McpConnectionStates | null {
+  return activeStatesByDataDir.get(dataDir) ?? null;
+}
+
 export class McpConnectionStates implements McpStateSink {
   private readonly states = new Map<string, { state: McpConnectionState; lastError: string }>();
 
   constructor(
     private readonly log: Logger,
     private readonly dataDir: string,
-  ) {}
+  ) {
+    activeStatesByDataDir.set(dataDir, this);
+  }
 
   set(serverId: string, state: McpConnectionState, lastError = ''): void {
     const before = this.states.get(serverId);

@@ -74,7 +74,7 @@ final class RendererAssets {
     request.httpMethod = method
     let accept = responder.request?.value(forHTTPHeaderField: "Accept")
     request.setValue(accept, forHTTPHeaderField: "Accept")
-    let task = RelaySession.shared.dataTask(with: request) { data, response, error in
+    let task = RelaySession.devAssets.dataTask(with: request) { data, response, error in
       MainActor.assumeIsolated {
         guard responder.isLive else { return }
         guard let http = response as? HTTPURLResponse, let data, error == nil else {

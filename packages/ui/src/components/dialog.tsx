@@ -40,12 +40,18 @@ function DialogOverlay({
   );
 }
 
+/**
+ * The dialog surface. `material` defaults to `backdrop` so the glass sits on a childless layer
+ * behind the content (`glass-host`) instead of hosting interactive controls, scrollbars, and
+ * changing footer labels inside WebKit's `WKMaterialHostingSupport` view (`surface` remains
+ * available for static childless surfaces).
+ */
 function DialogContent({
   className,
   children,
   showCloseButton = true,
   overlayClassName,
-  material = 'surface',
+  material = 'backdrop',
   onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
@@ -60,7 +66,7 @@ function DialogContent({
         data-slot="dialog-content"
         data-has-close={showCloseButton}
         className={cn(
-          'group/dialog-content fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-6 rounded-[min(var(--radius-4xl),24px)] p-6 text-sm text-popover-foreground duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 [:root[data-window-visible=false]_&]:data-closed:animate-none',
+          'group/dialog-content fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-6 overflow-hidden rounded-[min(var(--radius-4xl),24px)] p-6 text-sm text-popover-foreground duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 [:root[data-window-visible=false]_&]:data-closed:animate-none',
           material === 'surface' ? 'surface-glass' : 'glass-host',
           className,
         )}

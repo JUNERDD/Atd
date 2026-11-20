@@ -1,14 +1,14 @@
 import CoreGraphics
 import Foundation
 
-/// A grip on a selected annotation: the eight frame grips of a box shape, or the two ends of an
-/// arrow or line.
+/// A grip on a selected annotation: the eight frame grips of a box shape, the ends or curve bend
+/// of an arrow or line, or a rectangle/spotlight corner radius grip.
 public enum AnnotationHandle: CaseIterable, Sendable {
   case topLeft, top, topRight, right, bottomRight, bottom, bottomLeft, left
-  case start, end
+  case start, end, bend, cornerRadius
 
   /// The selection handle at the same place on a box, whose frame-resize cursor the grip shows;
-  /// nil for the ends of arrows and lines.
+  /// nil for line/arrow grips and the corner-radius handle.
   public var boxHandle: SelectionHandle? {
     switch self {
     case .topLeft: .topLeft
@@ -19,7 +19,7 @@ public enum AnnotationHandle: CaseIterable, Sendable {
     case .bottom: .bottom
     case .bottomLeft: .bottomLeft
     case .left: .left
-    case .start, .end: nil
+    case .start, .end, .bend, .cornerRadius: nil
     }
   }
 }
@@ -31,13 +31,19 @@ extension Annotation {
     switch shape {
     case .rectangle(let rect), .ellipse(let rect):
       return rect.insetBy(dx: -width / 2, dy: -width / 2)
-    case .arrow(let from, let to):
+    case .arrow(let from, let to, let bend):
       // The head is wider than the shaft (``AnnotationPath.arrowHead``).
       let outset = max(width / 2, AnnotationPath.arrowHeadLength(lineWidth: width))
-      return AnnotationMath.rect(corners: from, to).insetBy(dx: -outset, dy: -outset)
-    case .line(let from, let to):
-      return AnnotationMath.rect(corners: from, to).insetBy(dx: -width / 2, dy: -width / 2)
-    case .pen(let points), .highlighter(let points):
+      let span =
+        bend.map { AnnotationMath.quadBounds(from: from, control: $0, to: to) }
+        ?? AnnotationMath.rect(corners: from, to)
+      return span.insetBy(dx: -outset, dy: -outset)
+    case .line(let from, let to, let bend):
+      let span =
+        bend.map { AnnotationMath.quadBounds(from: from, control: $0, to: to) }
+        ?? AnnotationMath.rect(corners: from, to)
+      return span.insetBy(dx: -width / 2, dy: -width / 2)
+    case .pen(let points), .highlighter(let points), .mosaicBrush(let points):
       return AnnotationMath.rect(enclosing: points).insetBy(dx: -width / 2, dy: -width / 2)
     case .text(_, let frame):
       guard style.hasTextPlate else { return frame }
@@ -59,7 +65,7 @@ extension Annotation {
   /// The width the shape's stroke paints with (0 for filled shapes).
   public var paintedWidth: CGFloat {
     switch shape {
-    case .highlighter: style.stroke.highlighterWidth
+    case .highlighter, .mosaicBrush: style.stroke.highlighterWidth
     case .text, .mosaic, .step, .spotlight: 0
     default: style.stroke.lineWidth
     }
@@ -89,9 +95,12 @@ extension Annotation {
       return outer.contains(point) && (inner.isNull || !inner.contains(point))
     case .ellipse(let rect):
       return Self.ellipseDistance(from: point, to: rect) <= reach
-    case .arrow(let from, let to), .line(let from, let to):
+    case .arrow(let from, let to, let bend), .line(let from, let to, let bend):
+      if let bend {
+        return AnnotationMath.distance(point, toQuadFrom: from, control: bend, to: to) <= reach
+      }
       return AnnotationMath.distance(point, toSegment: from, to) <= reach
-    case .pen(let points), .highlighter(let points):
+    case .pen(let points), .highlighter(let points), .mosaicBrush(let points):
       return Self.polylineDistance(from: point, to: points) <= reach
     case .text:
       return bounds.insetBy(dx: -tolerance, dy: -tolerance).contains(point)
@@ -118,11 +127,11 @@ extension Annotation {
       return Self.boxHandles(rect)
     case .text where style.fixedWidth:
       return Self.boxHandles(bounds)
-    case .arrow(let from, let to), .line(let from, let to):
+    case .arrow(let from, let to, _), .line(let from, let to, _):
       return [(.start, from), (.end, to)]
     case .step(let center, let tip?):
       return [(.start, center), (.end, tip)]
-    case .pen, .highlighter, .text, .step:
+    case .pen, .highlighter, .mosaicBrush, .text, .step:
       return []
     }
   }
@@ -159,10 +168,13 @@ extension Annotation {
     case .mosaic(let rect): copy.shape = .mosaic(rect.offsetBy(dx: offset.dx, dy: offset.dy))
     case .spotlight(let rect):
       copy.shape = .spotlight(rect.offsetBy(dx: offset.dx, dy: offset.dy))
-    case .arrow(let from, let to): copy.shape = .arrow(from: shift(from), to: shift(to))
-    case .line(let from, let to): copy.shape = .line(from: shift(from), to: shift(to))
+    case .arrow(let from, let to, let bend):
+      copy.shape = .arrow(from: shift(from), to: shift(to), bend: bend.map(shift))
+    case .line(let from, let to, let bend):
+      copy.shape = .line(from: shift(from), to: shift(to), bend: bend.map(shift))
     case .pen(let points): copy.shape = .pen(points.map(shift))
     case .highlighter(let points): copy.shape = .highlighter(points.map(shift))
+    case .mosaicBrush(let points): copy.shape = .mosaicBrush(points.map(shift))
     case .text(let string, let frame):
       copy.shape = .text(string, frame: frame.offsetBy(dx: offset.dx, dy: offset.dy))
     case .step(let center, let tip): copy.shape = .step(center: shift(center), tip: tip.map(shift))
@@ -176,6 +188,7 @@ extension Annotation {
   /// ``minimumTextBoxWidth`` font sizes wide; its lines then wrap to the new width, and the shell
   /// grows the frame to the height they take.
   public func resized(_ handle: AnnotationHandle, to point: CGPoint) -> Annotation {
+    guard handle != .cornerRadius else { return self }
     var copy = self
     switch shape {
     case .text(let string, _) where style.fixedWidth:
@@ -184,14 +197,18 @@ extension Annotation {
     case .ellipse(let rect): copy.shape = .ellipse(Self.resize(rect, handle, to: point))
     case .mosaic(let rect): copy.shape = .mosaic(Self.resize(rect, handle, to: point))
     case .spotlight(let rect): copy.shape = .spotlight(Self.resize(rect, handle, to: point))
-    case .arrow(let from, let to):
-      copy.shape = handle == .start ? .arrow(from: point, to: to) : .arrow(from: from, to: point)
-    case .line(let from, let to):
-      copy.shape = handle == .start ? .line(from: point, to: to) : .line(from: from, to: point)
+    case .arrow(let from, let to, let bend):
+      copy.shape =
+        handle == .start
+        ? .arrow(from: point, to: to, bend: bend) : .arrow(from: from, to: point, bend: bend)
+    case .line(let from, let to, let bend):
+      copy.shape =
+        handle == .start
+        ? .line(from: point, to: to, bend: bend) : .line(from: from, to: point, bend: bend)
     case .step(let center, let tip?):
       copy.shape =
         handle == .start ? .step(center: point, tip: tip) : .step(center: center, tip: point)
-    case .pen, .highlighter, .text, .step:
+    case .pen, .highlighter, .mosaicBrush, .text, .step:
       break
     }
     return copy
@@ -216,14 +233,41 @@ extension Annotation {
     switch handle {
     case .topLeft, .left, .bottomLeft: minX = point.x
     case .topRight, .right, .bottomRight: maxX = point.x
-    case .top, .bottom, .start, .end: break
+    case .top, .bottom, .start, .end, .bend, .cornerRadius: break
     }
     switch handle {
     case .topLeft, .top, .topRight: minY = point.y
     case .bottomLeft, .bottom, .bottomRight: maxY = point.y
-    case .left, .right, .start, .end: break
+    case .left, .right, .start, .end, .bend, .cornerRadius: break
     }
     return AnnotationMath.rect(corners: CGPoint(x: minX, y: minY), CGPoint(x: maxX, y: maxY))
+  }
+
+  /// Top-left inset grip for adjusting corner radius on rectangles and sharp spotlights.
+  public func cornerRadiusHandlePoint() -> CGPoint? {
+    let rect: CGRect
+    switch shape {
+    case .rectangle(let r):
+      rect = r
+    case .spotlight(let r) where style.spotlightShape == .sharp:
+      rect = r
+    default:
+      return nil
+    }
+    let minSide = min(rect.width, rect.height)
+    guard minSide >= 36 else { return nil }
+    let r = style.cornerRadius(for: rect)
+    let inset = min(max(10, r), minSide / 2)
+    return CGPoint(x: rect.minX + inset, y: rect.minY + inset)
+  }
+
+  /// Corner radius in points corresponding to dragging the corner-radius handle to `point`.
+  public static func draggedCornerRadius(in rect: CGRect, to point: CGPoint) -> CGFloat {
+    let dx = max(0, point.x - rect.minX)
+    let dy = max(0, point.y - rect.minY)
+    let maxRadius = max(0, min(rect.width, rect.height) / 2)
+    let radius = min((dx + dy) / 2, maxRadius)
+    return radius < 0.5 ? 0 : (radius * 100).rounded() / 100
   }
 
   /// Approximate distance from `point` to the outline of the ellipse inscribed in `rect`: the

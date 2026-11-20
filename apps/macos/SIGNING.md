@@ -8,7 +8,15 @@ Keychain storage. No shell-profile or `.env` changes are needed.
 ## Set up a Mac
 
 1. Import the backed-up `.p12` into a dedicated keychain in Keychain Access. Enter the
-   export password, then unlock that keychain. A `.cer` alone lacks the private key.
+   export password, then unlock that keychain. A `.cer` alone lacks the private key. To keep
+   the dedicated keychain unlocked across long builds and allow `codesign` without per-binary
+   prompts, run in your terminal:
+
+   ```sh
+   security set-keychain-settings "$HOME/Library/Keychains/Atd Signing.keychain-db"
+   security set-key-partition-list -S apple-tool:,apple:,codesign: -s "$HOME/Library/Keychains/Atd Signing.keychain-db"
+   ```
+
 2. Find the identity with `security find-identity -v -p codesigning`. Use its exact SHA-1
    fingerprint, since an old certificate may have the same display name.
 3. From either checkout, configure the identity and its Team ID:
@@ -41,8 +49,12 @@ configured identity fails instead of silently selecting a different certificate.
 
 ## Build and distribute
 
-- `pnpm dev` / `pnpm --filter @atd/macos build`: uses the shared Developer ID identity when
-  configured. Debug builds keep their separate bundle ID and never submit for notarization.
+- `pnpm dev` / `pnpm --filter @atd/macos build`: uses the dedicated local development certificate
+  (`Atd Local Development` in
+  `~/Library/Application Support/Atd Development/Signing/development.keychain-db`) rather than
+  loading `Atd Signing/config.json`. Explicit `AI_CODE_SIGN_IDENTITY` (with
+  `AI_DEVELOPMENT_TEAM` for Apple-issued certificates, and optional `AI_SIGNING_KEYCHAIN`) still
+  overrides it. Debug builds keep their separate bundle ID and never submit for notarization.
 - `pnpm --filter @atd/macos build:release`: builds and signs every nested Mach-O and code
   bundle, then signs the enclosing app with secure timestamps and hardened runtime.
 - `pnpm --filter @atd/macos dist:release`: additionally notarizes and staples the app, packages

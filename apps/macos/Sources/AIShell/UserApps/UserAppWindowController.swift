@@ -32,7 +32,8 @@ final class UserAppWindowController: NSObject, NSWindowDelegate {
     if glass { style.insert(.fullSizeContentView) }
     if let remembered = storage.frame(appId: host.appId) {
       let workArea = Screens.workArea(containing: remembered)
-      window = NSWindow(contentRect: .zero, styleMask: style, backing: .buffered, defer: false)
+      window = ShellForegroundWindow(
+        contentRect: .zero, styleMask: style, backing: .buffered, defer: false)
       window.setFrame(
         NSRect(UserAppGeometry.frame(remembered: remembered, window: runtime.window, in: workArea)),
         display: false)
@@ -41,7 +42,7 @@ final class UserAppWindowController: NSObject, NSWindowDelegate {
       // top, or the whole glass window. Then the frame is fitted into the work area.
       let workArea = Screens.workAreaUnderCursor()
       let content = UserAppGeometry.frame(remembered: nil, window: runtime.window, in: workArea)
-      window = NSWindow(
+      window = ShellForegroundWindow(
         contentRect: NSRect(content), styleMask: style, backing: .buffered, defer: false)
       let fitted = PanelGeometry.constrain(ScreenRect(window.frame), to: workArea)
       window.setFrame(NSRect(fitted), display: false)
@@ -85,7 +86,10 @@ final class UserAppWindowController: NSObject, NSWindowDelegate {
     applyMinimumSize()
   }
 
-  func close() { window.close() }
+  func close(steppingAside: Bool = true) {
+    (window as? ShellForegroundWindow)?.stepsAsideOnClose = steppingAside
+    window.close()
+  }
 
   func windowWillClose(_ notification: Notification) {
     remember()

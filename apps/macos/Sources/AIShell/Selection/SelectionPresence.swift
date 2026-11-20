@@ -31,46 +31,92 @@ package nonisolated struct SelectionPresence: Sendable {
   /// A toolbar gesture supplies its starting point in Quartz screen coordinates. Focus-only
   /// checks (such as the answer card's write target) do not depend on the pointer.
   package func probe(gestureAt origin: CGPoint? = nil) -> SelectionProbe {
-    probe(gestureAt: origin, wps: nil)
+    probe(gestureAt: origin, wps: nil).probe
   }
 
-  func probe(gestureAt origin: CGPoint?, wps: WpsSelectionEvidence?) -> SelectionProbe {
+  func probe(
+    gestureAt origin: CGPoint?,
+    wps: WpsSelectionEvidence?
+  ) -> (probe: SelectionProbe, trace: SelectionProbeTrace) {
+    let startNs = MonotonicTimestampAnchor.nowUptimeNs()
+    var trace = SelectionProbeTrace()
+    func finish(_ outcome: SelectionProbe) -> (probe: SelectionProbe, trace: SelectionProbeTrace) {
+      let elapsedUs = (MonotonicTimestampAnchor.nowUptimeNs() &- startNs) / 1_000
+      trace.elapsedUs = UInt16(clamping: elapsedUs)
+      return (outcome, trace)
+    }
+
     let app = AXUIElementCreateApplication(pid)
     AXUIElementSetMessagingTimeout(app, Self.messagingTimeout)
-    Self.wakeWebContent(app)
-    guard let focused: AXUIElement = Self.copy(app, kAXFocusedUIElementAttribute) else {
-      return .none
+    let wakeError = Self.wakeWebContent(app)
+    if Self.isAbnormalAxError(wakeError) {
+      trace.lastAxError = Int16(clamping: wakeError.rawValue)
     }
+    var focusedValue: CFTypeRef?
+    let focusError = AXUIElementCopyAttributeValue(
+      app, kAXFocusedUIElementAttribute as CFString, &focusedValue)
+    guard focusError == .success, let focusedValue,
+      CFGetTypeID(focusedValue) == AXUIElementGetTypeID()
+    else {
+      if Self.isAbnormalAxError(focusError) {
+        trace.lastAxError = Int16(clamping: focusError.rawValue)
+      }
+      return finish(.none)
+    }
+    let focused = focusedValue as! AXUIElement
     AXUIElementSetMessagingTimeout(focused, Self.messagingTimeout)
     let secure = kAXSecureTextFieldSubrole as String
     let role: String? = Self.copy(focused, kAXRoleAttribute)
     let subrole: String? = Self.copy(focused, kAXSubroleAttribute)
-    if role == secure || subrole == secure { return .secureField }
+    if role == secure || subrole == secure {
+      trace.roleCode = 8
+      trace.lastAxError = 0
+      return finish(.secureField)
+    }
 
     let surface = SelectionSurface(focused)
-    if let probe = SelectionTextProbe.probe(focused, surface: surface, in: app) { return probe }
-    if let wps, let probe = WpsSelectionProbe.probe(app: app, evidence: wps) { return probe }
+    trace.roleCode = Self.encodeRole(role)
+    trace.webAttrsMask = Self.encodeSurfaceMask(surface)
+
+    if let probe = SelectionTextProbe.probe(focused, surface: surface, in: app) {
+      if probe != .none { trace.lastAxError = 0 }
+      return finish(probe)
+    }
+    if let wps, let probe = WpsSelectionProbe.probe(app: app, evidence: wps) {
+      trace.lastAxError = 0
+      return finish(probe)
+    }
     if let table = surface.selectedCellContainer() {
-      if let origin, !gestureTargets(table, at: origin, in: app) { return .none }
-      return .cells
+      if let origin, !gestureTargets(table, at: origin, in: app) { return finish(.none) }
+      trace.lastAxError = 0
+      return finish(.cells)
     }
     // Some editors focus a wrapper and expose the text selection on a child or ancestor.
     // Keep this search local and bounded, as SelectionReader does for an explicit read.
     let deadline = ContinuousClock.now + .milliseconds(150)
     let children: [AXUIElement] = Self.copy(focused, kAXChildrenAttribute) ?? []
     for child in children.prefix(20) where ContinuousClock.now < deadline {
-      if let probe = SelectionTextProbe.probe(child, in: app) { return probe }
+      if let probe = SelectionTextProbe.probe(child, in: app) {
+        if probe != .none { trace.lastAxError = 0 }
+        return finish(probe)
+      }
     }
     var current = focused
     for _ in 0..<6 where ContinuousClock.now < deadline {
       guard let parent: AXUIElement = Self.copy(current, kAXParentAttribute) else { break }
-      let role: String? = Self.copy(parent, kAXRoleAttribute)
-      if role == kAXWindowRole || role == kAXApplicationRole { break }
-      if let probe = SelectionTextProbe.probe(parent, in: app) { return probe }
+      let parentRole: String? = Self.copy(parent, kAXRoleAttribute)
+      if parentRole == kAXWindowRole || parentRole == kAXApplicationRole { break }
+      if let probe = SelectionTextProbe.probe(parent, in: app) {
+        if probe != .none { trace.lastAxError = 0 }
+        return finish(probe)
+      }
       current = parent
     }
-    return surface.opaqueEditor && SelectionEditMenu(focused)?.hasSelection == true
+    let fallback: SelectionProbe =
+      surface.opaqueEditor && SelectionEditMenu(focused)?.hasSelection == true
       ? .unmeasured : .none
+    if fallback != .none { trace.lastAxError = 0 }
+    return finish(fallback)
   }
 
   /// Clicking blank space or a menu can leave another view focused. Its retained cell
@@ -84,8 +130,6 @@ package nonisolated struct SelectionPresence: Sendable {
       var current = hit
     else { return false }
     let deadline = ContinuousClock.now + .milliseconds(150)
-    // Hit testing can land much deeper than the focused cell. Bound the walk by time and
-    // the window boundary, not by the number of wrappers inside that cell.
     while ContinuousClock.now < deadline {
       if CFEqual(current, table) { return true }
       AXUIElementSetMessagingTimeout(current, Self.messagingTimeout)
@@ -97,18 +141,11 @@ package nonisolated struct SelectionPresence: Sendable {
     return false
   }
 
-  /// Asks the application for its `AXRole`. Chromium's and Electron's `accessibilityRole`
-  /// override treats that as Apple recommends for assistive tools such as Voice Control: an app
-  /// with no accessibility mode yet turns on its basic one (native elements and web content)
-  /// and builds the tree asynchronously. Setting `AXManualAccessibility` would turn on the
-  /// complete mode instead, which VS Code and Cursor take for a screen reader: they prompt,
-  /// switch the editor to screen-reader mode, and a "No" writes a user setting. Other apps just
-  /// answer. Electron keeps the basic mode for the life of the process, so repeating the read
-  /// costs one message. The write target's capture and the answer card's focus check wake the
-  /// app the same way before they ask for its focus.
-  static func wakeWebContent(_ app: AXUIElement) {
+  /// Asks the application for its `AXRole` so Chromium/Electron wake their basic web AX tree.
+  @discardableResult
+  static func wakeWebContent(_ app: AXUIElement) -> AXError {
     var role: CFTypeRef?
-    _ = AXUIElementCopyAttributeValue(app, kAXRoleAttribute as CFString, &role)
+    return AXUIElementCopyAttributeValue(app, kAXRoleAttribute as CFString, &role)
   }
 
   private static func copy<T>(_ element: AXUIElement, _ attribute: String) -> T? {
@@ -117,27 +154,68 @@ package nonisolated struct SelectionPresence: Sendable {
     else { return nil }
     return value as? T
   }
+
+  private static func isAbnormalAxError(_ error: AXError) -> Bool {
+    switch error {
+    case .apiDisabled, .cannotComplete, .failure, .invalidUIElement, .notImplemented:
+      true
+    default:
+      false
+    }
+  }
+
+  static func encodeRole(_ role: String?) -> UInt8 {
+    guard let role else { return 0 }
+    return switch role {
+    case kAXTextFieldRole: 1
+    case kAXTextAreaRole: 2
+    case "AXWebArea": 3
+    case kAXStaticTextRole: 4
+    case kAXComboBoxRole: 5
+    case kAXTableRole: 6
+    case kAXGroupRole, kAXSplitGroupRole, "AXLayoutArea": 7
+    case kAXSecureTextFieldSubrole: 8
+    default: 9
+    }
+  }
+
+  static func roleName(forCode code: UInt8) -> String? {
+    switch code {
+    case 0: nil
+    case 1: kAXTextFieldRole
+    case 2: kAXTextAreaRole
+    case 3: "AXWebArea"
+    case 4: kAXStaticTextRole
+    case 5: kAXComboBoxRole
+    case 6: kAXTableRole
+    case 7: kAXGroupRole
+    case 8: kAXSecureTextFieldSubrole
+    default: "AXElement"
+    }
+  }
+
+  private static func encodeSurfaceMask(_ surface: SelectionSurface) -> UInt8 {
+    var mask: UInt8 = 0
+    if surface.advertisesTextRange { mask |= 1 << 0 }
+    if surface.attributes.contains("AXSelectedTextMarkerRange") { mask |= 1 << 1 }
+    if surface.attributes.contains("AXDOMClassList")
+      || surface.attributes.contains("AXStartTextMarker")
+    {
+      mask |= 1 << 2
+    }
+    if surface.attributes.contains("AXSelectedCells") { mask |= 1 << 3 }
+    if surface.opaqueEditor { mask |= 1 << 4 }
+    return mask
+  }
 }
 
 extension SelectionPresence {
-  /// Where probes run: a serial queue of their own, so a blocking AX read never holds one of
-  /// Swift concurrency's few cooperative threads while an unresponsive app runs out its
-  /// timeouts.
   private nonisolated static let queue = DispatchQueue(
     label: "com.junerdd.ai.selection-presence", qos: .userInitiated)
-  /// A probe is running; a gesture meanwhile is not asked about (the app is still answering
-  /// the last one, and the caller drops stale answers anyway).
   private nonisolated static let busy = Mutex(false)
-
-  /// Where ``prepare(pid:bundleURL:)`` runs, apart from the probes' queue so preparing a slow
-  /// app never holds up a selection check.
   private nonisolated static let prepareQueue = DispatchQueue(
     label: "com.junerdd.ai.selection-prepare", qos: .utility)
 
-  /// Prepares editing-menu handles and wakes Electron's web content ahead of the first selection:
-  /// discovery can take longer than a quick gesture gives the first probe. Only apps that ship
-  /// Electron's framework have their web content woken early, so merely bringing a browser
-  /// forward never changes its accessibility state.
   nonisolated static func prepare(pid: pid_t, bundleURL: URL?) {
     guard let bundleURL else { return }
     prepareQueue.async {
@@ -151,9 +229,6 @@ extension SelectionPresence {
     }
   }
 
-  /// Wakes the web content of the app a command is summoned from, off the main thread, as soon
-  /// as the shortcut fires: a browser that had no accessibility mode yet builds its tree while
-  /// the selection is read, so its focused field answers by the time the write target is.
   nonisolated static func wake(pid: pid_t) {
     prepareQueue.async {
       let app = AXUIElementCreateApplication(pid)
@@ -162,28 +237,28 @@ extension SelectionPresence {
     }
   }
 
-  /// Checks off the main thread and gives up after `limit`, a net under the per-message
-  /// timeouts; a late answer is dropped.
   static func check(
     pid: pid_t, gestureAt origin: CGPoint, wps: WpsSelectionEvidence? = nil,
     limit: Duration = .milliseconds(300)
-  )
-    async
-    -> SelectionProbe
-  {
+  ) async -> (probe: SelectionProbe, trace: SelectionProbeTrace) {
     let claimed = busy.withLock { busy in
       guard !busy else { return false }
       busy = true
       return true
     }
-    guard claimed else { return .none }
+    guard claimed else {
+      return (.none, SelectionProbeTrace(busyMutexSkipped: true))
+    }
     let presence = SelectionPresence(pid: pid)
-    return await Deadline.value(within: limit, fallback: .none) {
+    let timeoutTrace = SelectionProbeTrace(
+      lastAxError: Int16(clamping: AXError.cannotComplete.rawValue),
+      elapsedUs: UInt16.max)
+    return await Deadline.value(within: limit, fallback: (.none, timeoutTrace)) {
       await withCheckedContinuation { continuation in
         queue.async {
-          let probe = presence.probe(gestureAt: origin, wps: wps)
+          let outcome = presence.probe(gestureAt: origin, wps: wps)
           busy.withLock { $0 = false }
-          continuation.resume(returning: probe)
+          continuation.resume(returning: outcome)
         }
       }
     }

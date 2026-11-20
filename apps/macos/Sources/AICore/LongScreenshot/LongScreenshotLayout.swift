@@ -3,8 +3,9 @@ import Foundation
 /// How a long screenshot's image is put together from its pixels, top to bottom:
 ///
 /// 1. The top: the first frame from the selection's top to the end of the sticky header; once
-///    the page reached its start, the scroll area's rows above the band (the head, from the
-///    frame at the start) and then the header.
+///    the page reached its start and the user added the part above the selection
+///    (``LongScreenshotStitch/addedHead``), the scroll area's rows above the band (the head, from
+///    the frame at the start) and then the header.
 /// 2. The stitched document rows: strips and the first frame's moving rows in the live columns;
 ///    the other columns (outside the scroll area, its scroll bar lane, fixed side columns) are
 ///    the first frame's, its first and last moving rows continued where the stitched rows reach
@@ -120,9 +121,16 @@ extension LongScreenshotStitch {
     }
 
     // Where the selection's top would sit if the latest frame were laid on the image: its first
-    // moving row is document row `position + moving.lowerBound`.
+    // moving row is document row `viewPosition + moving.lowerBound`, anchored at the reached edge
+    // while lost or clamped so recovery never jumps the preview backwards.
+    let viewPosition: Int =
+      switch lost {
+      case .down: max(position, hi - moving.upperBound)
+      case .up: min(position, lo - moving.lowerBound)
+      case nil: clamp.atEnd ? max(position, hi - moving.upperBound) : position
+      }
     let viewTop =
-      top + position + moving.lowerBound - lo - (headerEnd - selection.lowerBound)
+      top + viewPosition + moving.lowerBound - lo - (headerEnd - selection.lowerBound)
     let viewRows = selection.count
     let clampedTop = min(max(0, viewTop), max(0, bottom - viewRows))
     return LongScreenshotLayout(

@@ -12,6 +12,7 @@ import {
 } from '@atd/ui/components/item';
 import i18n from '../../i18n';
 import { isAppLanguage } from '../../client/settings-contract';
+import { AppearanceRow } from '../settings/appearance-row';
 import { LanguageSelector } from '../settings/language-selector';
 import { OnboardingStep } from './onboarding-step';
 import type { GoalStepId, StepRenderProps } from './onboarding-types';
@@ -72,6 +73,7 @@ export function WelcomeStep({ snapshot, focusHeading }: StepRenderProps) {
               </ItemActions>
             </li>
           </Item>
+          <AppearanceRow snapshot={snapshot} compact />
         </ItemGroup>
       </Card>
     </OnboardingStep>

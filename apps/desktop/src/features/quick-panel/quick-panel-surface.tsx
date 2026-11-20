@@ -89,15 +89,16 @@ export function QuickPanelSurface({
   // Only the trailing "Browse files…" group has no heading; it is an action, not a result.
   const empty = sections.length > 0 ? null : view.empty;
   const scroller = useRef<SectionScroller>(null);
-  const { activeValue, activeSection, hover, jumpTo, list, setList, trackOption } = useQuickPanel({
-    open,
-    query: view.query,
-    groups,
-    sections,
-    scroller,
-    handleRef,
-    onAriaChange,
-  });
+  const { activeValue, activeSection, hover, jumpTo, list, pointerGate, setList, trackOption } =
+    useQuickPanel({
+      open,
+      query: view.query,
+      groups,
+      sections,
+      scroller,
+      handleRef,
+      onAriaChange,
+    });
 
   return (
     <Popover
@@ -127,6 +128,7 @@ export function QuickPanelSurface({
       >
         <Command
           shouldFilter={false}
+          pointerGate={pointerGate}
           value={activeValue || NO_OPTION}
           onValueChange={hover}
           className="min-h-0 bg-transparent"

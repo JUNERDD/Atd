@@ -1,9 +1,11 @@
+import { useContext } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
 import { showErrorToast } from '../../components/toast-store';
 import { openReleaseNotes, releaseNotesUrl } from '../updates/release-notes';
 import { aboutLinks } from './about-links';
+import { SettingsNavigationContext } from './settings-navigation';
 import { useAppAbout } from './use-app-about';
 import './about-settings.css';
 
@@ -20,6 +22,7 @@ const NO_BREAK_SPACE = String.fromCharCode(0xa0);
  */
 export function AboutSettings() {
   const { t, i18n } = useTranslation('settings');
+  const navigate = useContext(SettingsNavigationContext);
   const app = useAppAbout();
   const about = app.state === 'ready' ? app.about : null;
   const notesUrl = about && releaseNotesUrl(about.version, i18n.language);
@@ -99,6 +102,17 @@ export function AboutSettings() {
             </a>
           </Button>
         )}
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          onClick={() => {
+            if (navigate) navigate('diagnostics');
+            else void window.desktop?.settings?.openSection('diagnostics').catch(showErrorToast);
+          }}
+        >
+          {t('about.openDiagnostics')}
+        </Button>
       </nav>
     </div>
   );

@@ -3,12 +3,13 @@ import AppKit
 
 /// The long screenshot's live phase (decisions D1, D4, D6, D10). ⌘↓ or the toolbar's button turns
 /// a screenshot selection over scrolling content into a window onto the live screen: the frozen
-/// image and the loupe hide, so nothing is drawn over the selection and the dim around it lies
-/// over the live screen. The user's scrolls and clicks inside reach the app under it, presses
-/// around it do nothing, and the engine (``LongScreenshotCapture``) stitches the selection as the
-/// page moves, or scrolls it itself while auto-scroll runs (Space). The selection, its outline
-/// and the chrome beside it (``LongScreenshotChromeHosting``: preview strip, control bar, status
-/// row) stay put however the page scrolls; the size label follows the stitched height.
+/// image, the loupe, and the overlay's own chrome hide, while the dim, selection outline, size
+/// label, and preview strip sit in a mouse-ignoring backdrop (``LongScreenshotBackdrop``) beneath
+/// the overlay so real scroll events reach the live screen anywhere without moving the cursor. The
+/// control bar and status row (``LongScreenshotChromeHosting``) stay interactive above it, and the
+/// engine (``LongScreenshotCapture``) stitches the selection as the page moves or scrolls it
+/// itself while auto-scroll runs (Space). The selection, its outline and the chrome beside it stay
+/// put however the page scrolls; the size label follows the stitched height.
 ///
 /// A click through the selection activates the app under it, which would end the session and
 /// take the keyboard: the phase keeps the session (``passesInputThrough``) and takes the keyboard
@@ -17,9 +18,6 @@ import AppKit
 /// the session with the stitched image (``Outcome/longScreenshot(_:)``), which the island's
 /// result card shows once the overlays are gone.
 extension CaptureSession {
-  /// Points per line of a wheel without precise deltas, which reports lines.
-  static let longScreenshotWheelLine: CGFloat = 16
-
   /// Input passes through the selection to the app under it.
   var passesInputThrough: Bool {
     if case .longScreenshot = phase { true } else { false }
@@ -28,27 +26,40 @@ extension CaptureSession {
   /// ⌘↓ or the toolbar's button: the live phase over the selection, clamped to the display
   /// holding it, or a beep where the selection does not offer it.
   func startLongScreenshot() {
-    guard case .selected(let rect) = phase, longScreenshotAvailability(for: rect) == .available,
+    guard case .selected(let rect) = phase else { return NSSound.beep() }
+    let availability = longScreenshotAvailability(for: rect)
+    if availability == .checking, longScreenshot.lastSettled == .available {
+      longScreenshot.startWhenReady = true
+      return
+    }
+    guard availability == .available,
       let primary = desktop.geometry.primary(for: rect), let owner = primaryOverlay(for: rect)
     else { return NSSound.beep() }
     let part = rect.intersection(desktop.geometry.frame(of: primary))
     guard !part.isNull, part.width >= 1, part.height >= 1 else { return NSSound.beep() }
     keepAnnotations(of: rect)
     let chrome = LongScreenshotChrome()
+    let backdrops = overlays.compactMap(LongScreenshotBackdrop.init(overlay:))
     let live = CaptureLongScreenshot.Live(
       selection: part,
       capture: LongScreenshotCapture(target: longScreenshotTarget(for: rect, part, on: primary)),
-      chrome: chrome)
+      chrome: chrome,
+      backdrops: backdrops)
     longScreenshot.begin(live)
     // The phase first, so the cursors the editor's removal refreshes are the phase's.
     phase = .longScreenshot(rect)
     unhost()
     // The selection's open hand goes; the app under it sets its own once the pointer moves.
     NSCursor.arrow.set()
-    for overlay in overlays { overlay.showsFrozenScreen = false }
-    show(rect, handles: false, label: longScreenshotLabel(height: part.height, of: live))
+    for overlay in overlays {
+      overlay.showsFrozenScreen = false
+      overlay.chrome.isHidden = true
+    }
+    let label = longScreenshotLabel(height: part.height, of: live)
+    show(rect, handles: false, label: label)
+    live.updateBackdrops(area: rect, label: label, primaryID: primary.id)
     refreshBars()
-    hostChrome(of: live, on: owner, keepClear: keepClear(for: rect))
+    hostChrome(of: live, on: owner, primaryID: primary.id, keepClear: keepClear(for: rect))
     live.previewSize = chrome.previewSize
     if hasKeyboard { owner.window?.makeKey() }
     owner.window?.makeFirstResponder(owner)
@@ -99,7 +110,7 @@ extension CaptureSession {
     case .save: finishLongScreenshot(action: .save)
     case .toggleAutoScroll: toggleAutoScroll()
     case .walk, .nudge, .resize, .resizeLeading, .selectDisplay, .recall, .toggleWindowsOnly,
-      .mode, .requestAccessibility, .longScreenshot:
+      .mode, .requestAccessibility, .longScreenshot, .pin, .copyColor:
       break
     }
   }
@@ -110,7 +121,11 @@ extension CaptureSession {
   func leaveLongScreenshot() {
     guard case .longScreenshot(let rect) = phase else { return }
     longScreenshot.endLive()
-    for overlay in overlays { overlay.showsFrozenScreen = true }
+    for overlay in overlays {
+      overlay.annotationHost.scroll = nil
+      overlay.chrome.isHidden = false
+      overlay.showsFrozenScreen = true
+    }
     if hasKeyboard { NSApp.activate() }
     phase = .selected(rect)
     show(rect, handles: true)
@@ -180,15 +195,27 @@ extension CaptureSession {
   /// each for this phase only. Leaving the phase hosts the editor, which sets its own.
   private func hostChrome(
     of live: CaptureLongScreenshot.Live, on owner: CaptureOverlayView,
-    keepClear: AnnotationToolbarLayout.KeepClear
+    primaryID: CGDirectDisplayID, keepClear: AnnotationToolbarLayout.KeepClear
   ) {
     live.chrome.onAutoScroll = { [weak self] in self?.toggleAutoScroll() }
     live.chrome.onBack = { [weak self] in self?.leaveLongScreenshot() }
     live.chrome.onDone = { [weak self] in self?.finishLongScreenshot() }
     live.chrome.onTail = { [weak self] in self?.toggleTail() }
-    live.chrome.show(in: owner.annotationHost, selection: live.selection, keepClear: keepClear)
+    let backdrop = live.backdrops.first { $0.displayID == primaryID }?.content
+    live.chrome.show(
+      in: owner.annotationHost, backdrop: backdrop, selection: live.selection,
+      keepClear: keepClear)
     owner.annotationHost.passThrough = { [weak live] point in
       !(live?.chrome.frames.contains { $0.contains(point) } ?? false)
+    }
+    for overlay in overlays {
+      overlay.annotationHost.scroll = { [weak self] event in
+        self?.overlayScrolledInLongScreenshot(event) ?? false
+      }
+    }
+    live.capture.scrollLocation = { [weak self, weak live] in
+      guard let self, let live else { return nil }
+      return self.scrollTargetLocation(in: live)
     }
     live.capture.onChange = { [weak self, weak live] progress in
       guard let self, let live else { return }
@@ -204,11 +231,15 @@ extension CaptureSession {
   }
 
   /// The engine moved on: the size label, the bottom bar's auto-scroll label and the chrome.
-  private func longScreenshotChanged(
+  func longScreenshotChanged(
     _ progress: LongScreenshotProgress, in live: CaptureLongScreenshot.Live
   ) {
     guard longScreenshot.live === live, case .longScreenshot(let rect) = phase else { return }
-    show(rect, handles: false, label: longScreenshotLabel(height: progress.height, of: live))
+    let label = longScreenshotLabel(height: progress.height, of: live)
+    show(rect, handles: false, label: label)
+    if let primaryID = desktop.geometry.primary(for: rect)?.id {
+      live.updateBackdrops(area: rect, label: label, primaryID: primaryID)
+    }
     refreshBars()
     live.chrome.update(
       progress, message: message(for: progress),
@@ -259,25 +290,6 @@ extension CaptureSession {
     window.makeFirstResponder(owner)
   }
 
-  /// The user scrolled the app under the selection's scroll area; the engine hears of it, in
-  /// points, positive towards the page's start (AppKit's sign, natural scrolling already applied).
-  private func userScrolled(_ event: NSEvent) {
-    guard case .longScreenshot(let rect) = phase, let live = longScreenshot.live,
-      !live.finishing, let owner = primaryOverlay(for: rect), let window = owner.window
-    else { return }
-    let point = owner.convert(window.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil)
-    // Only scrolling over the band the page scrolls in counts: a wheel over a part of the
-    // selection outside the scroll area moves nothing and would read as the page's end.
-    let band = longScreenshot.answer(for: rect)?.area.map {
-      live.selection.intersection(desktop.geometry.desktopRect($0.frame))
-    }
-    guard (band ?? live.selection).contains(point) else { return }
-    let delta =
-      event.hasPreciseScrollingDeltas
-      ? event.scrollingDeltaY : event.scrollingDeltaY * Self.longScreenshotWheelLine
-    if delta != 0 { live.capture.userScrolled(deltaY: delta) }
-  }
-
   /// What the engine captures: `part` (the selection `rect` on `primary`) in that display's
   /// points, the scroll area found under `rect` there, and the app and window it lies over.
   private func longScreenshotTarget(
@@ -289,13 +301,17 @@ extension CaptureSession {
     let quartz = geometry.quartzRect(part)
     let center = CGPoint(x: quartz.midX, y: quartz.midY)
     let area = longScreenshot.answer(for: rect)?.area
+    let band = area.map { $0.frame.intersection(quartz) }
+    let aimRect = band.flatMap { $0.isNull || $0.isEmpty ? nil : $0 } ?? quartz
+    let aim = CGPoint(x: aimRect.midX, y: aimRect.midY)
     let snapshot = longScreenshot.snapshot
+    let window = snapshot.window(at: aim) ?? snapshot.window(at: center)
     let described = snapshot.describe(at: center)
     return LongScreenshotCapture.Target(
       displayID: primary.id, displayFrame: primary.quartzFrame,
       selection: part.offsetBy(dx: -display.minX, dy: -display.minY),
       scrollArea: area.map { $0.frame.offsetBy(dx: -origin.x, dy: -origin.y) },
-      scrollValue: area?.verticalValue, pid: snapshot.pid(at: center), appName: described.app,
-      windowTitle: described.window)
+      scrollValue: area?.verticalValue, pid: window?.pid ?? snapshot.pid(at: center),
+      windowID: window?.windowID, appName: described.app, windowTitle: described.window)
   }
 }

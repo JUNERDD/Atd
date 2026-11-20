@@ -23,7 +23,7 @@ import { Type } from 'typebox';
 import { CommandStore } from '../commands/store.js';
 import { ConflictError } from '../errors.js';
 import type { Logger } from '../logging.js';
-import { McpAuthority } from '../mcp/index.js';
+import type { McpAuthority } from '../mcp/authority.js';
 import { logMemoryEvents, MemoryAuthority } from '../memory/index.js';
 import { findInstalled, findPlugin, pluginDetail, toSummary } from './detail.js';
 import { duplicateItem } from './duplicate.js';
@@ -105,6 +105,7 @@ export function registerPluginRoutes(app: FastifyInstance, ctx: PluginRouteConte
     };
   };
   const changed = async (): Promise<void> => {
+    const { McpAuthority } = await import('../mcp/authority.js');
     await McpAuthority.refreshPlugins(ctx.dataDir);
     CommandStore.announce(ctx.dataDir);
   };

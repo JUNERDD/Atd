@@ -15,6 +15,13 @@ import { CaptureResultSchema, NativeCaptureTextCalls } from './capture-text-call
 import { NativeCommandOptionsCalls } from './command-options.ts';
 import { NativeComputerCalls } from './computer-calls.ts';
 import { NativeComputerPreviewCalls } from './computer-preview-calls.ts';
+import {
+  BundlePreviewFileSchema,
+  DecisionRingSummarySchema,
+  NativeDiagnosticsCalls,
+  RendererBreadcrumbsPayloadSchema,
+  ShellDoctorCheckSchema,
+} from './diagnostics-calls.ts';
 import { NativeFileCalls } from './file-calls.ts';
 import { NativeNotificationCalls } from './notification-calls.ts';
 import { NativePanelModalCalls } from './panel-modal-calls.ts';
@@ -27,6 +34,12 @@ import { NativeWindowCalls } from './window-calls.ts';
 import { Empty, MAX_CAPTURE_LENGTH, MAX_NATIVE_TEXT_LENGTH, Text } from './primitives.ts';
 
 export { CaptureResultSchema };
+export {
+  BundlePreviewFileSchema,
+  DecisionRingSummarySchema,
+  RendererBreadcrumbsPayloadSchema,
+  ShellDoctorCheckSchema,
+};
 export {
   MAX_SAVE_PNG_BASE64_LENGTH,
   NativeFileRefSchema,
@@ -279,4 +292,5 @@ export const NativeCalls = {
   ...NativeRecordingCalls,
   ...NativeCaptureTextCalls,
   ...NativePanelModalCalls,
+  ...NativeDiagnosticsCalls,
 } satisfies Record<string, { params: TSchema; result: TSchema }>;

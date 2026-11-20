@@ -31,9 +31,16 @@ const OPTIONS = [SYSTEM, ...APP_APPEARANCES] as const;
 /**
  * General › Appearance: the color scheme, following the system until the user pins light or dark.
  * It saves on its own with its own pending state and error, which leaving the section clears; the
- * select wraps below the text at narrow widths, like the other settings rows' actions.
+ * select wraps below the text at narrow widths, like the other settings rows' actions. `compact`
+ * (the welcome guide) omits the description and settings anchor.
  */
-export function AppearanceRow({ snapshot }: { snapshot: SettingsSnapshot | null }) {
+export function AppearanceRow({
+  snapshot,
+  compact = false,
+}: {
+  snapshot: SettingsSnapshot | null;
+  compact?: boolean;
+}) {
   const { t } = useTranslation('settings');
   const setAppearance = window.desktop?.settings.setAppearance;
   const [pending, setPending] = useState(false);
@@ -59,13 +66,15 @@ export function AppearanceRow({ snapshot }: { snapshot: SettingsSnapshot | null 
 
   return (
     <Item asChild size="sm" className="settings-card-row">
-      <li data-settings-anchor="settings-appearance">
+      <li data-settings-anchor={compact ? undefined : 'settings-appearance'}>
         {/* Wide enough that the select wraps below a long description in a narrow column. */}
-        <ItemContent className="min-w-[min(200px,100%)]">
+        <ItemContent className={compact ? 'min-w-0' : 'min-w-[min(200px,100%)]'}>
           <ItemTitle className="whitespace-normal">{t('shortcuts.appearance.title')}</ItemTitle>
-          <ItemDescription className="whitespace-normal">
-            {t('shortcuts.appearance.description')}
-          </ItemDescription>
+          {!compact && (
+            <ItemDescription className="whitespace-normal">
+              {t('shortcuts.appearance.description')}
+            </ItemDescription>
+          )}
         </ItemContent>
         <ItemActions className="ml-auto flex-wrap justify-end">
           <Select

@@ -1,5 +1,6 @@
-import { InMemoryCredentialStore, type Api, type Model } from '@earendil-works/pi-ai';
-import { ModelRuntime } from '@earendil-works/pi-coding-agent';
+import type { Api, Model } from '@earendil-works/pi-ai';
+import { builtinProviders } from '@earendil-works/pi-ai/providers/all';
+import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
 import type { ServiceCatalogEntry, ServiceModelDefinition } from '@atd/agent-contracts';
 import { LLAMA_PROVIDER } from './llama.js';
 import { ACCOUNT_PROVIDERS } from './auth-policy.js';
@@ -33,6 +34,23 @@ const PROVIDER_NAMES: Partial<Record<string, string>> = {
 /** Local and custom endpoints: the connection supplies the models, not the Pi directory. */
 export function isLocalProvider(providerId: string): boolean {
   return LOCAL_PROVIDERS.some((provider) => provider.id === providerId);
+}
+
+let defaultBaseUrls: ReadonlyMap<string, string> | null = null;
+
+/** Built-in catalog default base URL for `providerId`, or `''` when none is fixed. */
+export function catalogDefaultBaseUrl(providerId: string): string {
+  if (!defaultBaseUrls) {
+    const map = new Map<string, string>();
+    for (const provider of builtinProviders()) {
+      if (provider.baseUrl) map.set(provider.id, provider.baseUrl);
+    }
+    for (const provider of LOCAL_PROVIDERS) {
+      if (provider.baseUrl) map.set(provider.id, provider.baseUrl);
+    }
+    defaultBaseUrls = map;
+  }
+  return defaultBaseUrls.get(providerId) ?? '';
 }
 
 function isCloud(providerId: string): boolean {
@@ -88,11 +106,16 @@ let directory: Promise<ModelRuntime> | null = null;
 
 function getDirectory(): Promise<ModelRuntime> {
   if (!directory) {
-    directory = ModelRuntime.create({
-      credentials: new InMemoryCredentialStore(),
-      modelsPath: null,
-      refreshOnCreate: false,
-    });
+    directory = Promise.all([
+      import('@earendil-works/pi-ai'),
+      import('@earendil-works/pi-coding-agent'),
+    ]).then(([{ InMemoryCredentialStore }, { ModelRuntime }]) =>
+      ModelRuntime.create({
+        credentials: new InMemoryCredentialStore(),
+        modelsPath: null,
+        refreshOnCreate: false,
+      }),
+    );
   }
   return directory;
 }

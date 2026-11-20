@@ -16,6 +16,10 @@ extension ScreenshotTaker {
   func options(for request: ScreenshotRequest, reopening: ReopenBase?) -> CaptureSessionOptions {
     var options = CaptureSessionOptions()
     options.copyShortcut = copyShortcut()
+    options.decisionRing = arbiter.decisionRing
+    options.onLiveProbeCapture = onLiveProbeCapture
+    let arbiter = arbiter
+    options.copyText = { text in arbiter.writeClipboard(text, as: .screenshot) }
     options.reopening = reopening != nil
     if reopening != nil { return options }
     options.saveFolder = saveFolderURL().map { SaveFolderDisplay.name(for: $0) }
@@ -26,7 +30,6 @@ extension ScreenshotTaker {
     // A long screenshot goes to the island's result card; a caller waiting for an image gets none.
     options.offersLongScreenshot = true
     options.longScreenshotConfirm = longScreenshotConfirm()
-    let arbiter = arbiter
     options.commands = CaptureCommandRowSetup(
       commands: toolbarCommands, catalog: commandOptions(),
       onPick: { [weak self] id, values in self?.onCommandOptionsPicked?(id, values) },
@@ -117,8 +120,8 @@ extension ScreenshotTaker {
     switch outcome {
     case .confirmed, .launched, .textResult(.insert):
       presented.target = await targetRead?.value
-    case .cancelled, .wantsAccessibility, .failed, .copied, .saved, .record, .longScreenshot,
-      .copiedLongScreenshot, .savedLongScreenshot, .textResult(.open):
+    case .cancelled, .wantsAccessibility, .failed, .copied, .saved, .pinned, .record,
+      .longScreenshot, .copiedLongScreenshot, .savedLongScreenshot, .textResult(.open):
       targetRead?.cancel()
     }
     // The previous app gets activation back before the panel reappears, so a panel that had the
@@ -171,6 +174,12 @@ extension ScreenshotTaker {
           capture.selection, displayID: capture.displayID, displayFrame: capture.displayFrame)
       }
       return .saved(capture, destination: destination)
+    case .pinned(let capture):
+      if !editing {
+        regions.remember(
+          capture.selection, displayID: capture.displayID, displayFrame: capture.displayFrame)
+      }
+      return .pinned(capture)
     case .record(let request):
       regions.remember(
         request.rect, displayID: request.displayID, displayFrame: request.displayFrame)
@@ -250,5 +259,42 @@ extension ScreenshotTaker {
   private func requestTrust() {
     trustRequested = true
     SelectionReader.requestTrust()
+  }
+
+  /// Opens a lightweight floating pin window holding only the cropped capture after the session
+  /// tears down its full-screen overlays.
+  func presentPinnedWindow(_ capture: CaptureConfirmation) {
+    let logicalSize = capture.selection.size
+    let quartz = capture.selection.offsetBy(
+      dx: capture.displayFrame.minX, dy: capture.displayFrame.minY)
+    let primaryHeight =
+      NSScreen.screens.first(where: { $0.frame.origin == .zero })?.frame.height
+      ?? NSScreen.screens.first?.frame.height ?? NSScreen.main?.frame.height ?? 0
+    var origin: CGPoint? =
+      primaryHeight > 0
+      ? CaptureCoordinates.flip(quartz, primaryHeight: primaryHeight).origin
+      : nil
+    if let current = origin,
+      pinnedWindows.contains(where: {
+        abs($0.frame.minX - current.x) < 4 && abs($0.frame.minY - current.y) < 4
+      })
+    {
+      origin = CGPoint(x: current.x + 16, y: current.y - 16)
+    }
+    let cgImage = capture.image
+    let pixelScale = capture.pixelScale
+    let window = CapturePinnedWindow(
+      image: NSImage(cgImage: cgImage, size: logicalSize), logicalSize: logicalSize, origin: origin,
+      onCopy: { [weak self] in
+        guard let self else { return false }
+        return arbiter.writeClipboard(as: .screenshot) {
+          CaptureExport.copy(cgImage, pixelScale: pixelScale, to: $0)
+        }
+      },
+      onClose: { [weak self] closed in
+        self?.pinnedWindows.removeAll { $0 === closed }
+      })
+    pinnedWindows.append(window)
+    window.orderFrontRegardless()
   }
 }

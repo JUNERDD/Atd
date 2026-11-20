@@ -9,6 +9,7 @@ import {
   type AgentClientOptions,
 } from '@atd/agent-client';
 import type {
+  ModelAlias,
   ProviderCredential,
   ProviderCredentialChange,
   ProviderCredentialIssue,
@@ -76,16 +77,24 @@ export async function fetchCatalog(options: AgentClientOptions): Promise<Provide
   return catalog.map(toCatalogEntry);
 }
 
-export async function fetchLiveProviders(options: AgentClientOptions): Promise<{
+export interface LiveProvidersSnapshot {
   defaultConnectionId: string | null;
+  defaultAliasId: string | null;
   connections: Connection[];
-}> {
+  aliases: ModelAlias[];
+}
+
+export async function fetchLiveProviders(
+  options: AgentClientOptions,
+): Promise<LiveProvidersSnapshot> {
   const listed = await listProviders(options);
   return {
     defaultConnectionId: listed.defaultConnectionId,
+    defaultAliasId: listed.defaultAliasId,
     connections: listed.connections.map((connection) =>
       toDesktopConnection(connection, listed.credentialIssues?.[connection.connectionId]),
     ),
+    aliases: listed.aliases,
   };
 }
 

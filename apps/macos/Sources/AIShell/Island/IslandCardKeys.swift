@@ -58,8 +58,11 @@ extension CommandProgressController {
     update(card)
     switch response {
     case .ignored: return field == nil
-    case .handled: return true
+    case .handled:
+      island.model.cardKeyPointer = NSEvent.mouseLocation
+      return true
     case .outcome(let outcome):
+      island.model.cardKeyPointer = nil
       finish(outcome, card: card)
       return true
     }
@@ -69,19 +72,28 @@ extension CommandProgressController {
     guard showsCard, var card = island.model.card else { return }
     switch event {
     case .hover(let row):
+      let pointer = NSEvent.mouseLocation
+      if let locked = island.model.cardKeyPointer {
+        guard pointer != locked else { return }
+        island.model.cardKeyPointer = nil
+      }
       card.hover(row)
       update(card)
     case .click(let row):
+      island.model.cardKeyPointer = nil
       let response = card.click(row)
       update(card)
       if case .outcome(let outcome) = response { finish(outcome, card: card) }
     case .run:
+      island.model.cardKeyPointer = nil
       let outcome = card.runButton()
       update(card)
       if let outcome { finish(outcome, card: card) }
     case .filter(let text):
+      let changed = text != card.filter
       card.setFilter(text)
       update(card)
+      if changed { island.model.cardKeyPointer = NSEvent.mouseLocation }
     }
   }
 
@@ -105,7 +117,13 @@ extension CommandProgressController {
     guard reviewSheetOpen, var card = island.model.card else { return }
     let response = card.handle(.escape)
     update(card)
-    if case .outcome(let outcome) = response { finish(outcome, card: card) }
+    switch response {
+    case .ignored: break
+    case .handled: island.model.cardKeyPointer = NSEvent.mouseLocation
+    case .outcome(let outcome):
+      island.model.cardKeyPointer = nil
+      finish(outcome, card: card)
+    }
   }
 
   /// A scroll over the card moves its rows a row at a time.

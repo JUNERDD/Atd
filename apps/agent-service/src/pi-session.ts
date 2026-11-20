@@ -4,7 +4,7 @@ import {
   type AgentSession,
   type SessionManager,
 } from '@earendil-works/pi-coding-agent';
-import type { RunStatus, TaskRun } from '@atd/agent-contracts';
+import { CAPTURE_ANSWER_TOOL, type RunStatus, type TaskRun } from '@atd/agent-contracts';
 import { codemodeExtension } from './codemode/extension.js';
 import { captureAnswerExtension } from './commands/capture-tool.js';
 import { compactionSettings } from './compaction/policy.js';
@@ -143,6 +143,11 @@ export async function createLiveState(
   state = await buildRunSession(deps, run, base, {
     systemPrompt: [
       SERVICE_SYSTEM_PROMPT,
+      ...(binding.tools.includes(CAPTURE_ANSWER_TOOL)
+        ? [
+            'When <run_material> directs delivering the answer on a screenshot via mark_screenshot, apply any command content rules inside mark_screenshot items (or plain text when <run_material> says no marks are needed) with no surrounding conversational text.',
+          ]
+        : []),
       ...DEFERRED_SERVICE_TOOLS.filter((name) => binding.tools.includes(name)).map(
         (name) =>
           `The ${name} management tool loads on demand: if it is not declared, use tool_search with query: "${name}" and limit: 1 before managing ${name === 'command' ? 'saved commands' : 'automations'}.`,

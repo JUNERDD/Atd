@@ -75,7 +75,7 @@ export function ComposerAttachMenu({
   async function capture() {
     setBusy(true);
     try {
-      const shot = await captureScreen('screenshot');
+      const shot = await captureScreen('screenshot', { fromComposer: true });
       if (shot) {
         const current = latest.current;
         if (current.room < 1) showErrorToast(t('composer.attachLimit'));

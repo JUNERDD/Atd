@@ -14,10 +14,10 @@ import { showPanel } from './use-panel-window';
  * capture ended: a screenshot goes into the composer's draft (with its screen context while there
  * is room) and the panel shows with the composer on screen (`showComposer` leaves a view that has
  * none or covers it). `captureScreen` dispatches toolbar questions and commands for every entry;
- * a cancelled capture, or
- * one that became a recording, leaves the panel as it was. Only a screenshot that would go into the
- * draft needs room there, so a full draft refuses it once the capture ends that way, never before
- * the overlay opens; a failure shows the panel with its error.
+ * a cancelled capture, a copy-only screenshot confirm, or one that became a recording, leaves the
+ * panel as it was. Only a screenshot that would go into the draft needs room there, so a full draft
+ * refuses it once the capture ends that way, never before the overlay opens; a failure shows the
+ * panel with its error.
  */
 export function useScreenshotShortcut({
   draft,

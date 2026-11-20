@@ -86,8 +86,66 @@ async function nativeContext() {
     ['xcrun', ['--show-sdk-version']],
     ['xcrun', ['clang', '--version']],
   ];
-  const identities = await Promise.allSettled(
-    commands.map(async ([command, args]) => {
+  const cachedTools = await readCachedTools(cwd);
+  if (cachedTools) {
+    return {
+      ...base,
+      enabled: true,
+      tools: cachedTools,
+    };
+  }
+  const [identities, probes] = await Promise.all([
+    Promise.allSettled(
+      commands.map(async ([command, args]) => {
+        const { stdout } = await exec(command, args, {
+          cwd,
+          encoding: 'utf8',
+          timeout: 3000,
+          killSignal: 'SIGKILL',
+          maxBuffer: 64 * 1024,
+        });
+        if (!stdout.trim()) throw new Error('Missing tool identity.');
+        return { command, args, identity: stdout.trim() };
+      }),
+    ),
+    probeToolPaths(cwd),
+  ]);
+  if (identities.some((result) => result.status === 'rejected'))
+    return disabled('compiler or SDK identity is unavailable');
+  const tools = identities.map((result) => result.value);
+  await writeCachedTools(tools, probes).catch(() => {});
+  return {
+    ...base,
+    enabled: true,
+    tools,
+  };
+}
+
+const TOOLCHAIN_CACHE_VERSION = 1;
+const toolchainCacheFile = path.join(repository, '.turbo/dev/native-tools-cache.json');
+
+async function statStamp(filePath) {
+  const stat = await lstat(filePath, { bigint: true });
+  return `${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`;
+}
+
+async function resolveOnPath(name) {
+  const entries = (process.env.PATH ?? '').split(path.delimiter).filter(Boolean);
+  for (const dir of entries) {
+    const candidate = path.join(dir, name);
+    try {
+      const stat = await lstat(candidate);
+      if (stat.isFile() || stat.isSymbolicLink()) return await realpath(candidate);
+    } catch {
+      // keep searching
+    }
+  }
+  return null;
+}
+
+async function probeToolPaths(cwd) {
+  const run = async (command, args) => {
+    try {
       const { stdout } = await exec(command, args, {
         cwd,
         encoding: 'utf8',
@@ -95,17 +153,70 @@ async function nativeContext() {
         killSignal: 'SIGKILL',
         maxBuffer: 64 * 1024,
       });
-      if (!stdout.trim()) throw new Error('Missing tool identity.');
-      return { command, args, identity: stdout.trim() };
-    }),
-  );
-  if (identities.some((result) => result.status === 'rejected'))
-    return disabled('compiler or SDK identity is unavailable');
-  return {
-    ...base,
-    enabled: true,
-    tools: identities.map((result) => result.value),
+      return stdout.trim() || null;
+    } catch {
+      return null;
+    }
   };
+  const [rustcPath, cargoPath, sysroot, developerDir, clangPath] = await Promise.all([
+    resolveOnPath('rustc'),
+    resolveOnPath('cargo'),
+    run('rustc', ['--print', 'sysroot']),
+    run('xcode-select', ['-p']),
+    run('xcrun', ['--find', 'clang']),
+  ]);
+  return { rustcPath, cargoPath, sysroot, developerDir, clangPath };
+}
+
+async function readCachedTools(cwd) {
+  try {
+    const cached = JSON.parse(await readFile(toolchainCacheFile, 'utf8'));
+    if (cached?.version !== TOOLCHAIN_CACHE_VERSION || cached.pathEnv !== (process.env.PATH ?? ''))
+      return null;
+    if (!Array.isArray(cached.tools) || !Array.isArray(cached.watched) || !cached.developerDir)
+      return null;
+    const { stdout: currentDevDir } = await exec('xcode-select', ['-p'], {
+      cwd,
+      encoding: 'utf8',
+      timeout: 2000,
+    });
+    if (currentDevDir.trim() !== cached.developerDir) return null;
+    const checks = await Promise.all(
+      cached.watched.map(async ([file, expected]) => (await statStamp(file)) === expected),
+    );
+    return checks.every(Boolean) ? cached.tools : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCachedTools(tools, probes) {
+  const sdkPath = tools.find(
+    (t) => t.command === 'xcrun' && t.args[0] === '--show-sdk-path',
+  )?.identity;
+  if (!probes.rustcPath || !probes.cargoPath || !probes.sysroot || !probes.developerDir || !sdkPath)
+    return;
+  const watchFiles = [
+    path.join(repository, 'rust-toolchain.toml'),
+    probes.rustcPath,
+    probes.cargoPath,
+    path.join(probes.sysroot, 'bin/rustc'),
+    path.join(probes.sysroot, 'bin/cargo'),
+    '/usr/bin/xcrun',
+    path.join(sdkPath, 'SDKSettings.plist'),
+    ...(probes.clangPath ? [probes.clangPath] : []),
+  ];
+  const watched = await Promise.all(
+    [...new Set(watchFiles)].map(async (file) => [file, await statStamp(file)]),
+  );
+  await mkdir(path.dirname(toolchainCacheFile), { recursive: true, mode: 0o700 });
+  await writeAtomic(toolchainCacheFile, {
+    version: TOOLCHAIN_CACHE_VERSION,
+    pathEnv: process.env.PATH ?? '',
+    developerDir: probes.developerDir,
+    watched,
+    tools,
+  });
 }
 
 function isCompilerOverride(name) {

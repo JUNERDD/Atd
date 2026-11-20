@@ -1,8 +1,7 @@
 import { execFile } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import type { PluginAPI, PluginObject } from '@babel/core';
-import type { Connect, Plugin, ViteDevServer } from 'vite';
+import { parseSync, type Connect, type Plugin, type ViteDevServer } from 'vite';
 
 export interface ComponentInspectorOptions {
   enabled?: boolean;
@@ -13,7 +12,24 @@ interface EditorLaunch {
   args: string[];
 }
 
+interface AstNode {
+  type?: unknown;
+  start?: unknown;
+  end?: unknown;
+  id?: unknown;
+  name?: unknown;
+  attributes?: unknown;
+  selfClosing?: unknown;
+  [key: string]: unknown;
+}
+
+interface Splice {
+  offset: number;
+  text: string;
+}
+
 const CLIENT_ENTRY = '/src/dev/component-inspector/index.ts';
+const JSX_SOURCE_PATTERN = /\/src\/.*\.(?:tsx|jsx)(?:\?|$)/;
 
 function launch(executable: string, args: string[]): EditorLaunch {
   return { executable, args };
@@ -85,70 +101,144 @@ async function openInEditor(
   console.warn(`[component-inspector] Failed to open in ${editor}:`, lastError?.message);
 }
 
+function isAstNode(value: unknown): value is AstNode {
+  return typeof value === 'object' && value !== null && typeof (value as AstNode).type === 'string';
+}
+
+function identifierName(node: unknown): string {
+  return isAstNode(node) && node.type === 'JSXIdentifier' && typeof node.name === 'string'
+    ? node.name
+    : '';
+}
+
+function bindingName(node: unknown): string {
+  return isAstNode(node) && node.type === 'Identifier' && typeof node.name === 'string'
+    ? node.name
+    : '';
+}
+
+function fileFallbackComponent(filename: string): string {
+  const base =
+    filename
+      .split('/')
+      .pop()
+      ?.replace(/\.[^.]+$/, '') ?? '';
+  return /^[A-Z]/.test(base) ? base : '';
+}
+
+function lineOffsets(code: string): number[] {
+  const starts = [0];
+  for (let index = 0; index < code.length; index += 1) {
+    if (code.charCodeAt(index) === 10) starts.push(index + 1);
+  }
+  return starts;
+}
+
+function positionAt(starts: readonly number[], offset: number): { line: number; col: number } {
+  let low = 0;
+  let high = starts.length - 1;
+  while (low < high) {
+    const mid = (low + high + 1) >> 1;
+    if ((starts[mid] ?? 0) <= offset) low = mid;
+    else high = mid - 1;
+  }
+  return { line: low + 1, col: offset - (starts[low] ?? 0) + 1 };
+}
+
+function jsxAttrValue(value: string): string {
+  return !value.includes('"') && !value.includes('\n') && !value.includes('\r')
+    ? `"${value}"`
+    : `{${JSON.stringify(value)}}`;
+}
+
+function hasInspectorAttr(attributes: unknown): boolean {
+  if (!Array.isArray(attributes)) return false;
+  return attributes.some(
+    (attr) =>
+      isAstNode(attr) &&
+      attr.type === 'JSXAttribute' &&
+      identifierName(attr.name) === 'data-insp-file',
+  );
+}
+
 /**
- * Tags every JSX opening element with the source location and owning component
- * so the dev-only client inspector can resolve a DOM node back to its file.
+ * Tags every JSX opening element with its source location and owning component using Vite's
+ * native OXC parser so dev transforms skip Babel's JS parser/generator overhead.
  */
-export function componentInspectorBabelPlugin({ types: t }: PluginAPI): PluginObject {
-  return {
-    visitor: {
-      JSXOpeningElement(path, state) {
-        const filename = state.file.opts.filename;
-        if (!filename || !filename.includes('/src/')) return;
-        const loc = path.node.loc;
-        if (!loc) return;
+export function transformComponentInspector(code: string, id: string): string | null {
+  const filename = id.split('?', 1)[0] ?? '';
+  if (!JSX_SOURCE_PATTERN.test(filename) || !code.includes('<')) return null;
 
-        // The nearest named function or variable declarator owns the element. The ancestry
-        // starts at the element itself, which is neither.
-        let comp = '';
-        for (const { node } of path.getAncestry()) {
-          if ((t.isFunctionDeclaration(node) || t.isFunctionExpression(node)) && node.id) {
-            comp = node.id.name;
-            break;
-          }
-          if (t.isVariableDeclarator(node) && t.isIdentifier(node.id)) {
-            comp = node.id.name;
-            break;
-          }
-        }
+  const parsed = parseSync(filename, code);
+  if (parsed.errors.length > 0) return null;
 
-        if (!comp) {
-          const base =
-            filename
-              .split('/')
-              .pop()
-              ?.replace(/\.[^.]+$/, '') ?? '';
-          if (/^[A-Z]/.test(base)) {
-            comp = base;
-          }
-        }
+  const starts = lineOffsets(code);
+  const fileFallback = fileFallbackComponent(filename);
+  const encodedFile = jsxAttrValue(filename);
+  const names: string[] = [];
+  const splices: Splice[] = [];
 
-        // The transform can see already-instrumented code on a re-transform.
-        // Never emit a second set of attributes for the same element.
-        const alreadyTagged = path.node.attributes.some(
-          (attribute) =>
-            t.isJSXAttribute(attribute) &&
-            t.isJSXIdentifier(attribute.name, { name: 'data-insp-file' }),
-        );
-        if (alreadyTagged) return;
+  const visit = (node: unknown): void => {
+    if (!isAstNode(node)) return;
+    const type = node.type;
+    let pushed = false;
+    if (
+      type === 'FunctionDeclaration' ||
+      type === 'FunctionExpression' ||
+      type === 'VariableDeclarator'
+    ) {
+      const name = bindingName(node.id);
+      if (name) {
+        names.push(name);
+        pushed = true;
+      }
+    }
 
-        const tagName = t.isJSXIdentifier(path.node.name) ? path.node.name.name : '';
+    if (
+      type === 'JSXOpeningElement' &&
+      typeof node.start === 'number' &&
+      typeof node.end === 'number' &&
+      !hasInspectorAttr(node.attributes)
+    ) {
+      const selfClosing = node.selfClosing === true;
+      const offset = selfClosing ? node.end - 2 : node.end - 1;
+      const expected = selfClosing ? '/' : '>';
+      if (code[offset] === expected) {
+        const { line, col } = positionAt(starts, node.start);
+        const owner = names.at(-1) || fileFallback || identifierName(node.name);
+        splices.push({
+          offset,
+          text:
+            ` data-insp-file=${encodedFile}` +
+            ` data-insp-line="${line}"` +
+            ` data-insp-col="${col}"` +
+            ` data-insp-comp=${jsxAttrValue(owner)}`,
+        });
+      }
+    }
 
-        path.node.attributes.push(
-          t.jsxAttribute(t.jsxIdentifier('data-insp-file'), t.stringLiteral(filename)),
-          t.jsxAttribute(
-            t.jsxIdentifier('data-insp-line'),
-            t.stringLiteral(String(loc.start.line)),
-          ),
-          t.jsxAttribute(
-            t.jsxIdentifier('data-insp-col'),
-            t.stringLiteral(String(loc.start.column + 1)),
-          ),
-          t.jsxAttribute(t.jsxIdentifier('data-insp-comp'), t.stringLiteral(comp || tagName)),
-        );
-      },
-    },
+    for (const key of Object.keys(node)) {
+      if (key === 'type' || key === 'start' || key === 'end') continue;
+      const value = node[key];
+      if (Array.isArray(value)) {
+        for (const child of value) visit(child);
+      } else if (isAstNode(value)) {
+        visit(value);
+      }
+    }
+
+    if (pushed) names.pop();
   };
+
+  visit(parsed.program);
+  if (splices.length === 0) return null;
+
+  splices.sort((a, b) => b.offset - a.offset);
+  let output = code;
+  for (const splice of splices) {
+    output = `${output.slice(0, splice.offset)}${splice.text}${output.slice(splice.offset)}`;
+  }
+  return output;
 }
 
 export function componentInspector(options?: ComponentInspectorOptions): Plugin {
@@ -157,6 +247,15 @@ export function componentInspector(options?: ComponentInspectorOptions): Plugin 
   return {
     name: 'vite-plugin-component-inspector',
     apply: 'serve',
+    enforce: 'pre',
+    transform: {
+      filter: { id: JSX_SOURCE_PATTERN },
+      handler(code, id) {
+        if (!enabled) return null;
+        const transformed = transformComponentInspector(code, id);
+        return transformed === null ? null : { code: transformed, map: null };
+      },
+    },
     transformIndexHtml() {
       if (!enabled) return;
       return [

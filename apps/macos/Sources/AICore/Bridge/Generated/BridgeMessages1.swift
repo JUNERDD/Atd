@@ -106,6 +106,12 @@ public enum NativeCall: Equatable, Sendable {
   case recordingAnswer(RecordingAnswerParams)
   case captureTextProgress(CaptureTextProgressParams)
   case panelModalSetAvailable(PanelModalSetAvailableParams)
+  case diagnosticsShellReport(DiagnosticsShellReportParams)
+  case diagnosticsLiveProbeStart(DiagnosticsLiveProbeStartParams)
+  case diagnosticsLiveProbeStop(DiagnosticsLiveProbeStopParams)
+  case diagnosticsPreviewBundle(DiagnosticsPreviewBundleParams)
+  case diagnosticsExportBundle(DiagnosticsExportBundleParams)
+  case diagnosticsRestartService(DiagnosticsRestartServiceParams)
 
   /// The contract name.
   public var name: String {
@@ -180,6 +186,12 @@ public enum NativeCall: Equatable, Sendable {
     case .recordingAnswer: "recording.answer"
     case .captureTextProgress: "captureText.progress"
     case .panelModalSetAvailable: "panelModal.setAvailable"
+    case .diagnosticsShellReport: "diagnostics.shellReport"
+    case .diagnosticsLiveProbeStart: "diagnostics.liveProbe.start"
+    case .diagnosticsLiveProbeStop: "diagnostics.liveProbe.stop"
+    case .diagnosticsPreviewBundle: "diagnostics.previewBundle"
+    case .diagnosticsExportBundle: "diagnostics.exportBundle"
+    case .diagnosticsRestartService: "diagnostics.restartService"
     }
   }
 }

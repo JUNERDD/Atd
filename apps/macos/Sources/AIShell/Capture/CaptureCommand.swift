@@ -29,6 +29,10 @@ enum CaptureCommand: Equatable {
   case toggleAutoScroll
   /// ⌘S: saves the screenshot or live long screenshot locally to the configured save folder.
   case save
+  /// ⌘P: pins the selected screenshot region as a floating desktop panel.
+  case pin
+  /// `C` / `⇧C` while the loupe is visible: copies the hovered pixel's `#HEX` or `rgb(...)`.
+  case copyColor(asRGB: Bool)
 
   /// The command a key press means on an overlay, or nil for a key the overlay leaves alone.
   /// Arrows nudge the selection (Shift: 10 points), Option-arrows move its trailing edges and
@@ -43,6 +47,10 @@ enum CaptureCommand: Equatable {
     }
     if flags == .command, key == "s" {
       self = .save
+      return
+    }
+    if flags == .command, key == "p" {
+      self = .pin
       return
     }
     if flags == .command, let mode = [18: CaptureMode.screenshot, 19: .record][event.keyCode] {
@@ -68,6 +76,10 @@ enum CaptureCommand: Equatable {
     case 48: self = .walk(flags.contains(.shift) ? -1 : 1)
     case 49 where flags.isEmpty: self = .toggleAutoScroll
     default:
+      if flags.subtracting(.shift).isEmpty, key == "c" {
+        self = .copyColor(asRGB: flags.contains(.shift))
+        return
+      }
       guard flags.isEmpty else { return nil }
       switch key {
       case "r": self = .recall
@@ -93,11 +105,17 @@ enum CaptureCommand: Equatable {
 protocol CaptureOverlayDelegate: AnyObject {
   func overlay(_ overlay: CaptureOverlayView, pointerAt point: CGPoint)
   func overlay(_ overlay: CaptureOverlayView, mouseDownAt point: CGPoint, clickCount: Int)
-  /// `square` is Shift's state: a free selection being created is held to a square.
-  func overlay(_ overlay: CaptureOverlayView, mouseDraggedTo point: CGPoint, square: Bool)
-  func overlay(_ overlay: CaptureOverlayView, mouseUpAt point: CGPoint, square: Bool)
+  /// `constrained` is Shift's state (`1:1` or active aspect ratio); `centered` is Option's state.
+  func overlay(
+    _ overlay: CaptureOverlayView, mouseDraggedTo point: CGPoint, constrained: Bool, centered: Bool
+  )
+  func overlay(
+    _ overlay: CaptureOverlayView, mouseUpAt point: CGPoint, constrained: Bool, centered: Bool)
+  func overlay(_ overlay: CaptureOverlayView, spacePanChanged active: Bool, at point: CGPoint)
   func overlayRightClicked(_ overlay: CaptureOverlayView)
   func overlay(_ overlay: CaptureOverlayView, perform command: CaptureCommand)
+  func overlayCanClickBadge(_ overlay: CaptureOverlayView) -> Bool
+  func overlay(_ overlay: CaptureOverlayView, didClickBadgeWith event: NSEvent)
   /// The cursor at `point`, or nil to leave it to whatever the annotation editor shows there.
   func overlay(_ overlay: CaptureOverlayView, cursorAt point: CGPoint) -> NSCursor?
 }

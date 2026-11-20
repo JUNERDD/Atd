@@ -1,9 +1,63 @@
+import {
+  recordNormalizedError,
+  type BreadcrumbCategory,
+} from '../features/diagnostics/breadcrumbs';
+
 /** A caught rejection's own message, or a generic one for a value that is not an Error. */
 export function messageOf(error: unknown) {
   return error instanceof Error ? error.message : 'The operation could not finish.';
 }
 
 const toastTextLimit = 80;
+
+const DIAGNOSABLE_CODES = new Set([
+  'internal',
+  'service_starting',
+  'service_start_failed',
+  'service_stopped_too_often',
+  'service_not_running',
+  'desktop_unavailable',
+]);
+
+const DIAGNOSABLE_DIRECT_TOKENS = [
+  'native shell',
+  'bridge',
+  'request failed with status 500',
+  'request failed with status 503',
+] as const;
+
+const DIAGNOSABLE_SERVICE_SUFFIXES = [
+  'disconnected',
+  'not available',
+  'not running',
+  'unavailable',
+] as const;
+
+/** Returns true when an error indicates service disconnection, 500/503 failure, or bridge refusal. */
+export function isDiagnosableError(error: unknown): boolean {
+  if (typeof error === 'object' && error !== null) {
+    const record = error as Record<string, unknown>;
+    if (typeof record.code === 'string' && DIAGNOSABLE_CODES.has(record.code)) return true;
+    if (record.status === 500 || record.status === 503) return true;
+  }
+  const text = typeof error === 'string' ? error : error instanceof Error ? error.message : '';
+  if (!text) return false;
+  const sample = text.slice(0, 2048).toLowerCase();
+  if (DIAGNOSABLE_DIRECT_TOKENS.some((token) => sample.includes(token))) return true;
+  const serviceIdx = sample.indexOf('service');
+  if (serviceIdx === -1) return false;
+  const afterService = serviceIdx + 'service'.length;
+  return DIAGNOSABLE_SERVICE_SUFFIXES.some((suffix) => sample.includes(suffix, afterService));
+}
+
+/** Records a detached `<= 320`-char normalized breadcrumb before toast truncation runs. */
+export function recordErrorBreadcrumb(
+  category: Exclude<BreadcrumbCategory, 'stream_state'>,
+  error: unknown,
+  fallbackCode: string | null = null,
+): void {
+  recordNormalizedError(category, error, fallbackCode);
+}
 
 /**
  * Toast copy stays short: first sentence only, then a hard length cap. A sentence ends at a

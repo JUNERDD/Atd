@@ -53,13 +53,15 @@ final class EventFactory: @unchecked Sendable {
     return event
   }
 
-  func makeScroll(deltaX: Int32, deltaY: Int32) -> CGEvent? {
+  func makeScroll(deltaX: Int32, deltaY: Int32, pixels: Bool = false) -> CGEvent? {
     guard
       let event = CGEvent(
-        scrollWheelEvent2Source: source, units: .line, wheelCount: 2, wheel1: deltaY,
-        wheel2: deltaX,
-        wheel3: 0)
+        scrollWheelEvent2Source: source, units: pixels ? .pixel : .line, wheelCount: 2,
+        wheel1: deltaY, wheel2: deltaX, wheel3: 0)
     else { return nil }
+    if pixels {
+      event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+    }
     event.flags = []
     mark(event)
     return event

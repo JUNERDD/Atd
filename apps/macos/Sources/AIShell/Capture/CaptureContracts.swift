@@ -114,6 +114,12 @@ protocol AnnotationEditing: AnyObject {
   var onCopy: (() -> Void)? { get set }
   /// The user asked to save the result to a local folder (toolbar or ⌘S); nil when editing.
   var onSave: (() -> Void)? { get set }
+  /// The user asked to pin the selection onto the desktop (toolbar or ⌘P).
+  var onPin: (() -> Void)? { get set }
+  /// False while a popover, menu, inline text edit, or canvas gesture prevents badge clicks.
+  var allowsBadgeInteraction: Bool { get }
+  /// Queries the session whether `desktopPoint` hits an interactive size/aspect badge.
+  var isInteractiveBadgeAt: ((CGPoint) -> Bool)? { get set }
   /// Display name of the current save folder for the Save button's tooltip; nil uses a generic label.
   var saveFolder: String? { get set }
   /// True while a tool is chosen or text mode is on: presses inside the selection (away from its

@@ -49,7 +49,8 @@ export function preferencePusher(native: NativeBridge): (next: SettingsSnapshot)
       native.post('resultMarkdown.set', { enabled: next.resultMarkdown });
     }
     const screenshotPreferences = {
-      copyOnConfirm: next.screenshotCopyOnConfirm,
+      confirmAction: next.screenshotConfirmAction,
+      confirmInComposer: next.screenshotConfirmInComposer,
       longScreenshotConfirmAction: next.longScreenshotConfirmAction,
     };
     if (JSON.stringify(screenshotPreferences) !== pushedScreenshotPreferences) {

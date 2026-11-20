@@ -30,6 +30,12 @@ struct CaptureSessionOptions {
   var offersLongScreenshot = false
   /// What confirming a live long screenshot does: open the result card, copy, or save locally.
   var longScreenshotConfirm = LongScreenshotConfirm.card
+  /// Writes copied text (loupe colors, selection copy) to the pasteboard when set.
+  var copyText: ((String) -> Bool)?
+  /// Coarse capture/arbiter decision ring (0 pixels retained).
+  var decisionRing: CaptureAndArbiterRing?
+  /// Live-probe callback invoked only while the 10s capture probe is armed (`nil` when idle).
+  var onLiveProbeCapture: ((String) -> Void)?
 }
 
 /// The session's two modes on one selection (architecture C1): ⌘1 / ⌘2 or the bottom bar's
@@ -105,9 +111,13 @@ extension CaptureSession {
     editor.onConfirm = { [weak self] in self?.confirm() }
     editor.onCancel = { [weak self] in self?.cancel() }
     editor.onCopy = { [weak self] in self?.copy() }
+    editor.onPin = { [weak self] in self?.pin() }
     editor.onSave = options.reopening ? nil : { [weak self] in self?.save() }
     editor.saveFolder = options.saveFolder
     editor.onLaunch = { [weak self] in self?.launch($0) }
+    editor.isInteractiveBadgeAt = { [weak self] point in
+      self?.isInteractiveBadge(at: point) ?? false
+    }
     editor.onInteriorClaimChange = { [weak self] claimed in
       guard let self else { return }
       interiorClaimed = claimed
@@ -117,7 +127,7 @@ extension CaptureSession {
       await self?.elementTargets(at: point) ?? []
     }
     editor.commandRow = options.commands
-    editor.longScreenshot = longScreenshotAvailability(for: rect)
+    editor.longScreenshot = displayedLongScreenshotAvailability(for: rect)
     editor.onLongScreenshot = { [weak self] in self?.startLongScreenshot() }
     editor.renderSelection = { [weak self] in self?.shootSelection() }
     editor.onTextResult = { [weak self] in self?.finish(.textResult($0)) }

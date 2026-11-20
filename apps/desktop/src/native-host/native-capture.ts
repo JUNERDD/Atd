@@ -57,8 +57,15 @@ export function nativeCapture(
   launch: (launch: CommandLaunch) => void,
   events: CaptureEvents,
 ): CaptureBridge {
-  async function capture(mode: CaptureMode): Promise<CaptureOutcome> {
-    const result = await native.call('screenshot.capture', { purpose: 'capture', mode });
+  async function capture(
+    mode: CaptureMode,
+    options?: { fromComposer?: boolean },
+  ): Promise<CaptureOutcome> {
+    const result = await native.call('screenshot.capture', {
+      purpose: 'capture',
+      mode,
+      ...(options?.fromComposer ? { fromComposer: true } : {}),
+    });
     const shot = shotOf(result);
     if (!shot || !result.ok) return { kind: 'none' };
     if (!result.launch) return { kind: 'attach', shot };

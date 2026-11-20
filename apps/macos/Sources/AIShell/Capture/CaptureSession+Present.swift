@@ -22,9 +22,18 @@ extension CaptureSession {
     arrange(quartzBounds: freezer.quartzBounds)
     let capturedAt = Date.now
     var preselection: (displayID: CGDirectDisplayID, rect: CGRect)?
+    let screenCount = NSScreen.screens.count
     for target in freezer.targets {
       guard !isFinished else { break }
-      guard var frozen = try await freezer.freeze(target) else { continue }
+      let freezeStartNs = MonotonicTimestampAnchor.nowUptimeNs()
+      let rawFrozen = try await freezer.freeze(target)
+      let freezeMs = UInt16(
+        clamping: (MonotonicTimestampAnchor.nowUptimeNs() &- freezeStartNs) / 1_000_000)
+      recordDisplayFreeze(
+        elapsedMs: freezeMs, sdrValid: rawFrozen != nil, targetCount: freezer.targets.count,
+        screenCount: screenCount,
+        imageSize: rawFrozen.map { ($0.image.width, $0.image.height) })
+      guard var frozen = rawFrozen else { continue }
       if let reopening, preselection == nil {
         guard let composed = await reopening.compose(over: frozen) else {
           throw BridgeError("The screenshot could not be opened for editing.")
@@ -59,7 +68,7 @@ extension CaptureSession {
         })
         guard !Task.isCancelled, let self, !self.isFinished else { return }
         guard released else {
-          self.cancel()
+          self.cancel(source: .shortcutHandoffAborted)
           return
         }
         self.activateKeyboard()
@@ -141,5 +150,38 @@ extension CaptureSession {
     commit(rect.offsetBy(dx: owner.bounds.minX, dy: owner.bounds.minY))
     if !document.isEmpty { editor?.restore(document) }
     owner.refreshCursor()
+  }
+
+  func applyCaptureCornerRadius(_ radius: CGFloat) {
+    guard radius.isFinite else { return }
+    let clamped =
+      radius < 0.25
+      ? 0
+      : min(max(0, (radius * 100).rounded() / 100), CaptureCornerRadiusMemory.maxRadius)
+    guard abs(clamped - captureCornerRadius) > 0.005 else { return }
+    storeCaptureCornerRadius(clamped)
+    if let openOverlay = overlays.first(where: \.hasOpenCornerPopover),
+      openOverlay.cornerControl.shouldCoalesceCornerRadiusSave
+    {
+      openOverlay.cornerControl.scheduleCornerRadiusSave { [weak self] in
+        guard let self else { return }
+        CaptureCornerRadiusMemory.save(self.captureCornerRadius, to: self.defaults)
+      }
+    } else {
+      for overlay in overlays { overlay.cornerControl.clearPendingCornerRadiusSave() }
+      CaptureCornerRadiusMemory.save(clamped, to: defaults)
+    }
+    for overlay in overlays {
+      overlay.selectionCornerRadius = clamped
+    }
+  }
+
+  func renderedCapture() -> CaptureExport.Rendered? {
+    guard case .selected(let rect) = phase,
+      !desktop.geometry.displays(overlapping: rect).isEmpty
+    else { return nil }
+    let radius = mode == .screenshot ? captureCornerRadius : 0
+    return CaptureExport.render(
+      selection: rect, desktop: desktop, editor: editor, cornerRadius: radius)
   }
 }

@@ -90,62 +90,152 @@ export async function createDevCache({ packageRoot, builtApp, installedApp, sign
     write: writeReceipt,
   });
   const context = await contextReady;
+  const nativeInputNames = [
+    ...nativeDirectories,
+    ...nativeRootFiles,
+    ...nativeBuildScripts.map((script) => `scripts/${script}`),
+    // Changes to receipt/install policy require a fresh validated installation.
+    'scripts/dev-cache.mjs',
+    'scripts/dev-inputs.mjs',
+    'scripts/dev-install.mjs',
+  ];
+  // In-process stat snapshot of the last cryptographically verified inputs and bundles so
+  // post-readiness re-checks avoid re-reading 270MB of unchanged .app bundles seconds later.
+  let lastInputs = null;
+  let verified = null;
+
+  const computeInputs = () => {
+    const hash = createHash('sha256').update(JSON.stringify(context ?? null));
+    const stamp = createHash('sha256');
+    for (const name of nativeInputNames) {
+      hashTree(hash, packageRoot, name, isNativeOutput, stamp);
+    }
+    const content = hash.digest('hex');
+    lastInputs = { content, stamp: stamp.digest('hex') };
+    return content;
+  };
+  const inputsStatStamp = () => {
+    try {
+      const stamp = createHash('sha256');
+      for (const name of nativeInputNames) {
+        statTree(stamp, packageRoot, name, isNativeOutput);
+      }
+      return stamp.digest('hex');
+    } catch {
+      return null;
+    }
+  };
+  const lookupFull = (inputs) => {
+    const receipt = readReceipt();
+    if (!context || receipt?.inputs !== inputs || !receipt.built) {
+      verified = null;
+      return { built: false, installed: false };
+    }
+    const builtInfo = bundleDigestWithStamp(builtApp);
+    if (!builtInfo || receipt.built !== builtInfo.digest) {
+      verified = null;
+      return { built: false, installed: false };
+    }
+    const currentBuildStamp = buildStamp();
+    let installedInfo = null;
+    const installed = Boolean(
+      receipt.installed &&
+      receipt.buildStamp &&
+      receipt.buildStamp === currentBuildStamp &&
+      (installedInfo = bundleDigestWithStamp(installedApp)) &&
+      receipt.installed === installedInfo.digest,
+    );
+    verified = {
+      inputs,
+      builtStamp: builtInfo.stamp,
+      buildStamp: currentBuildStamp,
+      installed,
+      installedStamp: installed ? installedInfo.stamp : null,
+    };
+    return { built: true, installed };
+  };
+
   return {
     codegen,
-    inputs() {
-      const hash = createHash('sha256').update(JSON.stringify(context ?? null));
-      for (const name of [
-        ...nativeDirectories,
-        ...nativeRootFiles,
-        ...nativeBuildScripts.map((script) => `scripts/${script}`),
-        // Changes to receipt/install policy require a fresh validated installation.
-        'scripts/dev-cache.mjs',
-        'scripts/dev-inputs.mjs',
-        'scripts/dev-install.mjs',
-      ]) {
-        hashTree(hash, packageRoot, name, isNativeOutput);
+    inputs: computeInputs,
+    lookup: lookupFull,
+    reverify(inputs) {
+      const inputsCurrent =
+        (lastInputs?.content === inputs && inputsStatStamp() === lastInputs.stamp) ||
+        computeInputs() === inputs;
+      if (!inputsCurrent) return { inputsCurrent: false, built: false, installed: false };
+      if (verified?.inputs === inputs) {
+        const builtStamp = bundleStatStamp(builtApp);
+        if (builtStamp && builtStamp === verified.builtStamp) {
+          if (verified.installed) {
+            const currentBuildStamp = buildStamp();
+            const installedStamp = bundleStatStamp(installedApp);
+            if (
+              verified.buildStamp &&
+              verified.buildStamp === currentBuildStamp &&
+              installedStamp &&
+              installedStamp === verified.installedStamp
+            ) {
+              return { inputsCurrent: true, built: true, installed: true };
+            }
+          } else {
+            return { inputsCurrent: true, built: true, installed: false };
+          }
+        }
       }
-      return hash.digest('hex');
-    },
-    lookup(inputs) {
-      const receipt = readReceipt();
-      if (
-        !context ||
-        receipt?.inputs !== inputs ||
-        !receipt.built ||
-        receipt.built !== bundleDigest(builtApp)
-      )
-        return { built: false, installed: false };
-      return {
-        built: true,
-        installed: Boolean(
-          receipt.installed &&
-          receipt.buildStamp &&
-          receipt.buildStamp === buildStamp() &&
-          receipt.installed === bundleDigest(installedApp),
-        ),
-      };
+      return { inputsCurrent: true, ...lookupFull(inputs) };
     },
     invalidate() {
+      verified = null;
       writeReceipt({ codegen: readReceipt()?.codegen });
     },
     recordBuild(inputs) {
       if (!context) return;
-      const built = bundleDigest(builtApp);
-      if (built)
+      const builtInfo = bundleDigestWithStamp(builtApp);
+      if (builtInfo) {
+        const currentBuildStamp = buildStamp();
         writeReceipt({
           codegen: readReceipt()?.codegen,
           inputs,
-          built,
-          buildStamp: buildStamp(),
+          built: builtInfo.digest,
+          buildStamp: currentBuildStamp,
           installed: null,
         });
+        verified = {
+          inputs,
+          builtStamp: builtInfo.stamp,
+          buildStamp: currentBuildStamp,
+          installed: false,
+          installedStamp: null,
+        };
+      }
     },
     recordInstall(inputs) {
       const receipt = readReceipt();
-      if (receipt?.inputs !== inputs || receipt.built !== bundleDigest(builtApp)) return;
-      const installed = bundleDigest(installedApp);
-      if (installed) writeReceipt({ ...receipt, buildStamp: buildStamp(), installed });
+      if (receipt?.inputs !== inputs) return;
+      const builtMatches =
+        (verified?.inputs === inputs &&
+          verified.builtStamp &&
+          bundleStatStamp(builtApp) === verified.builtStamp) ||
+        receipt.built === bundleDigest(builtApp);
+      if (!builtMatches) return;
+      const installedInfo = bundleDigestWithStamp(installedApp);
+      if (installedInfo) {
+        const currentBuildStamp = buildStamp();
+        writeReceipt({
+          ...receipt,
+          buildStamp: currentBuildStamp,
+          installed: installedInfo.digest,
+        });
+        if (verified?.inputs === inputs) {
+          verified = {
+            ...verified,
+            buildStamp: currentBuildStamp,
+            installed: true,
+            installedStamp: installedInfo.stamp,
+          };
+        }
+      }
     },
   };
 }
@@ -166,8 +256,13 @@ async function buildContext(packageRoot, signal) {
     ['which', ['xcodegen']],
     ['xcodegen', ['--version']],
   ];
-  if (process.env.AI_CODE_SIGN_IDENTITY?.trim() && process.env.AI_CODE_SIGN_IDENTITY !== '-')
-    commands.push(['security', ['find-identity', '-p', 'codesigning']]);
+  if (process.env.AI_CODE_SIGN_IDENTITY?.trim() && process.env.AI_CODE_SIGN_IDENTITY !== '-') {
+    const keychain = process.env.AI_SIGNING_KEYCHAIN?.trim();
+    commands.push([
+      'security',
+      ['find-identity', '-p', 'codesigning', ...(keychain ? [keychain] : [])],
+    ]);
+  }
   const tools = await Promise.all(
     commands.map(async ([command, args]) => {
       const { stdout } = await run(command, args, { encoding: 'utf8', signal, timeout: 5000 });
@@ -183,6 +278,7 @@ async function buildContext(packageRoot, signal) {
       [
         'AI_CODE_SIGN_IDENTITY',
         'AI_DEVELOPMENT_TEAM',
+        'AI_SIGNING_KEYCHAIN',
         'DEVELOPER_DIR',
         'TOOLCHAINS',
         'SDKROOT',
@@ -193,34 +289,76 @@ async function buildContext(packageRoot, signal) {
 }
 
 function bundleDigest(bundle) {
+  return bundleDigestWithStamp(bundle)?.digest ?? null;
+}
+
+function bundleDigestWithStamp(bundle) {
   try {
     const executable = lstatSync(path.join(bundle, 'Contents/MacOS/Atd'));
     if (!executable.isFile() || !(executable.mode & 0o111)) return null;
     const hash = createHash('sha256');
-    hashTree(hash, bundle, '', () => false);
+    const stamp = createHash('sha256');
+    hashTree(hash, bundle, '', () => false, stamp);
     // Replacement with identical bytes still needs registration/indexing. Ignore ctime: macOS
     // updates bundle extended attributes after first launch without changing signed contents.
     const stat = lstatSync(bundle, { bigint: true });
     hash.update(String(stat.ino));
-    return hash.digest('hex');
+    stamp.update(String(stat.ino));
+    return { digest: hash.digest('hex'), stamp: stamp.digest('hex') };
   } catch {
     return null;
   }
 }
 
-function hashTree(hash, root, name, ignore) {
+function bundleStatStamp(bundle) {
+  try {
+    const executable = lstatSync(path.join(bundle, 'Contents/MacOS/Atd'));
+    if (!executable.isFile() || !(executable.mode & 0o111)) return null;
+    const stamp = createHash('sha256');
+    statTree(stamp, bundle, '', () => false);
+    const stat = lstatSync(bundle, { bigint: true });
+    stamp.update(String(stat.ino));
+    return stamp.digest('hex');
+  } catch {
+    return null;
+  }
+}
+
+function hashTree(hash, root, name, ignore, stamp) {
   if (ignore(name)) return;
   const file = path.join(root, name);
-  const stat = lstatSync(file);
-  hash.update(JSON.stringify([name, stat.mode]));
+  const stat = lstatSync(file, { bigint: true });
+  hash.update(JSON.stringify([name, Number(stat.mode)]));
   if (stat.isSymbolicLink()) {
     // Framework symlinks point to entries included elsewhere in the same bundle tree.
-    hash.update(JSON.stringify(readlinkSync(file)));
+    const link = readlinkSync(file);
+    hash.update(JSON.stringify(link));
+    stamp?.update(`l:${name}:${stat.mode}:${stat.ino}:${stat.mtimeNs}:${link}\0`);
   } else if (stat.isDirectory()) {
+    stamp?.update(`d:${name}:${stat.mode}:${stat.ino}:${stat.mtimeNs}\0`);
     for (const child of readdirSync(file).sort())
-      hashTree(hash, root, path.join(name, child), ignore);
+      hashTree(hash, root, path.join(name, child), ignore, stamp);
   } else if (stat.isFile()) {
     hash.update(String(stat.size)).update('\0').update(readFileSync(file));
+    stamp?.update(`f:${name}:${stat.mode}:${stat.ino}:${stat.size}:${stat.mtimeNs}\0`);
+  } else {
+    throw new Error(`Unsupported native input: ${name}`);
+  }
+}
+
+function statTree(stamp, root, name, ignore) {
+  if (ignore(name)) return;
+  const file = path.join(root, name);
+  const stat = lstatSync(file, { bigint: true });
+  if (stat.isSymbolicLink()) {
+    const link = readlinkSync(file);
+    stamp.update(`l:${name}:${stat.mode}:${stat.ino}:${stat.mtimeNs}:${link}\0`);
+  } else if (stat.isDirectory()) {
+    stamp.update(`d:${name}:${stat.mode}:${stat.ino}:${stat.mtimeNs}\0`);
+    for (const child of readdirSync(file).sort())
+      statTree(stamp, root, path.join(name, child), ignore);
+  } else if (stat.isFile()) {
+    stamp.update(`f:${name}:${stat.mode}:${stat.ino}:${stat.size}:${stat.mtimeNs}\0`);
   } else {
     throw new Error(`Unsupported native input: ${name}`);
   }

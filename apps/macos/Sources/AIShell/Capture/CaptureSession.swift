@@ -31,6 +31,8 @@ final class CaptureSession {
     case copied(CaptureConfirmation)
     /// The same result as `confirmed`, saved locally to the user's configured folder or chosen file.
     case saved(CaptureConfirmation, destination: URL?)
+    /// The same result as `confirmed`, pinned on desktop as a floating window (`⌘P`).
+    case pinned(CaptureConfirmation)
     /// The same result as `confirmed`, with a command or a question to run on it (S1, S3).
     case launched(CaptureConfirmation, CaptureLaunch)
     /// Record mode's Start: the selection to record. The overlays are gone by the time the caller
@@ -118,6 +120,11 @@ final class CaptureSession {
   /// the editor's. The selection itself stays adjustable either way (D14).
   var interiorClaimed = false
   var editor: (any AnnotationEditing)?
+  var aspectPreset: SelectionAspectPreset = .free
+  let defaults: UserDefaults
+  private(set) var captureCornerRadius: CGFloat
+  var spacePanAnchor: CGPoint?
+  var aspectMenuTarget: AnyObject?
   private(set) var detection: ElementDetection?
   /// Detection was started; only then is it ended (and asked to describe a pick).
   private var began = false
@@ -131,48 +138,31 @@ final class CaptureSession {
   var hoverInFlight = false
   /// True while the app-modal save panel is open for "Ask each time" screenshot saving.
   var choosingSaveDestination = false
-  private var savePanel: CaptureSavePanel?
+  var savePanel: CaptureSavePanel?
   private var beginTask: Task<Void, Never>?
   var handoffTask: Task<Void, Never>?
   var targetTask: Task<Void, Never>?
   private var outcome: Outcome?
   private var continuation: CheckedContinuation<Outcome, Never>?
-  private var observers: [any NSObjectProtocol] = []
+  var observers: [any NSObjectProtocol] = []
+  var cancelSource = CancelSource.user
 
   init(
     targeting: any ElementTargeting, offersTrustRequest: Bool, regions: CaptureRegionMemory,
     options: CaptureSessionOptions = CaptureSessionOptions(),
+    defaults: UserDefaults = .standard,
     makeEditor: @escaping @MainActor () -> any AnnotationEditing
   ) {
     self.targeting = targeting
     self.offersTrustRequest = offersTrustRequest
     self.regions = regions
     self.options = options
+    self.defaults = defaults
+    self.captureCornerRadius = CaptureCornerRadiusMemory.load(from: defaults)
     self.makeEditor = makeEditor
     mode = options.canRecord ? options.mode : .screenshot
     reader.onChange = { [weak self] text in self?.editor?.recognizedText = text }
-    // A frozen image no longer matches a rearranged display, and an app switch takes the
-    // keyboard away from the overlays: both end the session. A live long screenshot passes
-    // clicks through to the app under it, which then becomes active: that switch is its own.
-    let center = NotificationCenter.default
-    for name in [
-      NSApplication.didChangeScreenParametersNotification,
-      NSApplication.didResignActiveNotification,
-    ] {
-      let resigns = name == NSApplication.didResignActiveNotification
-      observers.append(
-        center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-          MainActor.assumeIsolated {
-            guard let self,
-              !resigns
-                || (self.hasKeyboard && !self.passesInputThrough && !self.choosingSaveDestination)
-            else {
-              return
-            }
-            self.cancel()
-          }
-        })
-    }
+    installLifecycleObservers()
   }
 
   var isFinished: Bool { outcome != nil }
@@ -205,6 +195,15 @@ final class CaptureSession {
     model = desktop.geometry.selectionModel
     let view = CaptureOverlayView(display: display, frame: desktop.frame(of: display))
     view.delegate = self
+    if let copyText = options.copyText { view.setLoupeCopyText(copyText) }
+    view.configureCornerRadius(
+      radius: captureCornerRadius,
+      allowed: { [weak self] in
+        guard let self, self.mode == .screenshot else { return false }
+        if case .longScreenshot = self.phase { return false }
+        return true
+      },
+      onChange: { [weak self] radius in self?.applyCaptureCornerRadius(radius) })
     let panel = CaptureOverlayPanel(screen: screen, content: view)
     panel.orderFrontRegardless()
     overlays.append(view)
@@ -234,7 +233,7 @@ final class CaptureSession {
     case .confirmed(let confirmation): outcome = .confirmed(await described(confirmation))
     case .launched(let confirmation, let launch):
       outcome = .launched(await described(confirmation), launch)
-    case .cancelled, .wantsAccessibility, .copied, .saved, .record, .longScreenshot,
+    case .cancelled, .wantsAccessibility, .copied, .saved, .pinned, .record, .longScreenshot,
       .copiedLongScreenshot, .savedLongScreenshot, .textResult, .failed:
       break
     }
@@ -254,35 +253,6 @@ final class CaptureSession {
   /// Ends the session like ``confirm()``, with the result meant for the clipboard.
   func copy() { end(as: Outcome.copied) }
 
-  /// Ends the session like ``confirm()``, with the result saved locally to a folder or chosen file.
-  func save() {
-    if options.saveFolder != nil {
-      end { .saved($0, destination: nil) }
-      return
-    }
-    editor?.endText()
-    guard case .selected(let rect) = phase,
-      !desktop.geometry.displays(overlapping: rect).isEmpty,
-      !choosingSaveDestination
-    else { return }
-    choosingSaveDestination = true
-    let suggestedName = ScreenshotRules.fileName(capturedAt: Date(), encoding: .png)
-    Task { @MainActor [weak self] in
-      guard let self, !isFinished, choosingSaveDestination else { return }
-      let panel = CaptureSavePanel()
-      savePanel = panel
-      let destination = panel.choose(suggestedName: suggestedName, contentType: .png)
-      savePanel = nil
-      choosingSaveDestination = false
-      guard !isFinished else { return }
-      if let destination {
-        end { .saved($0, destination: destination) }
-      } else if hasKeyboard, case .selected(let currentRect) = phase {
-        primaryOverlay(for: currentRect)?.window?.makeKey()
-      }
-    }
-  }
-
   /// Ends the session like ``confirm()``, with `launch` to run on the result.
   func launch(_ launch: CaptureLaunch) { end { .launched($0, launch) } }
 
@@ -290,13 +260,13 @@ final class CaptureSession {
   /// confirmation names the display holding most of the selection, with the selection in its
   /// view points. A selection moved wholly into a gap between displays holds no pixels and
   /// confirms nothing.
-  private func end(as outcome: (CaptureConfirmation) -> Outcome) {
+  func end(as outcome: (CaptureConfirmation) -> Outcome) {
     editor?.endText()
     guard case .selected(let rect) = phase,
       !desktop.geometry.displays(overlapping: rect).isEmpty
     else { return }
     guard
-      let rendered = CaptureExport.render(selection: rect, desktop: desktop, editor: editor),
+      let rendered = renderedCapture(),
       let primary = desktop.geometry.primary(for: rect)
     else { return finish(.failed) }
     let origin = desktop.geometry.desktopPoint(primary.quartzFrame.origin)
@@ -309,9 +279,13 @@ final class CaptureSession {
     finish(outcome(confirmation))
   }
 
+  func storeCaptureCornerRadius(_ value: CGFloat) { captureCornerRadius = value }
+
   func finish(_ outcome: Outcome) {
     guard self.outcome == nil else { return }
     self.outcome = outcome
+    recordSessionFinish(outcome)
+    dismissOverlayPopovers()
     choosingSaveDestination = false
     savePanel?.cancel()
     savePanel = nil
@@ -322,6 +296,7 @@ final class CaptureSession {
     phase = .idle
     editor?.hide()
     editor = nil
+    closeOwnedColorPanel()
     accessory?.hide()
     accessory = nil
     reader.cancel()

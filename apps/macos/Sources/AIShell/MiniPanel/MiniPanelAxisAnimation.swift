@@ -16,13 +16,10 @@ import SwiftUI
 /// already running, measured: a card retargeted as it grows (a write offer arriving as it
 /// enters) settled with no bounce at all.
 ///
-/// The content gets the shape itself and moves per axis. `glassEffect(in:)` erases the shape it
-/// is given, so the glass's change arrives as opaque data, which moves as a whole on the length's
-/// spring; the clip takes the shape erased alike (``View/clippedGlass(in:clear:)``), so the
-/// surface fill it bounds moves with the glass's rim rather than sliding off it per axis. Drawing
-/// the glass from a per-axis shape every frame instead (an animatable modifier) costs about 1 ms
-/// more of the main thread per frame, measured: SwiftUI interpolates the erased shape without
-/// updating the view graph.
+/// The surface interpolates its concrete outline before handing it to `glassEffect(in:)`,
+/// which erases shape types. Glass, clipping and the content's follow effects therefore all
+/// supply `MiniPanelGlassRect` here and keep the same axis springs. Other values, including
+/// the island's combined reflow/layout payload, move as a whole on the length spring.
 ///
 /// A change ends once it can no longer move anything by more than ``restTolerance`` (perf-v2):
 /// SwiftUI's own estimate for a spring at rest runs a bouncy spring's sub-pixel tail, redrawing
@@ -67,8 +64,8 @@ nonisolated struct MiniPanelAxisAnimation: CustomAnimation {
     let (thickness, length) = (motion.thickness.spring, motion.length.spring)
     let across = Self.progress(thickness, after: motion.thicknessDelay, at: time)
     let along = Self.progress(length, after: motion.lengthDelay, at: time)
-    // The glass's erased shape, or anything else in the scope, moves with the length as a whole,
-    // its change in points at most its magnitude.
+    // A combined layout payload moves with the length as a whole, its change in points at most
+    // its magnitude. The surface must interpolate concrete geometry before type erasure.
     guard let shape = change as? MiniPanelGlassRect else {
       let extent = change.magnitudeSquared.squareRoot()
       guard !Self.rests(length, after: motion.lengthDelay, change: extent, at: time) else {

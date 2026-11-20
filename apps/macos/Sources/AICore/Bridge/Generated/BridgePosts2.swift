@@ -7,18 +7,28 @@ import Foundation
 /// Params of the `window.dragRegions` post.
 public struct WindowDragRegionsPost: Codable, Equatable, Sendable {
   public let rects: [Rect]
+  public let chrome: Bool?
 
-  public init(rects: [Rect]) {
+  public init(rects: [Rect], chrome: Bool?) {
     self.rects = rects
+    self.chrome = chrome
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
     rects = try container.array(.rects, of: Rect.self, maxItems: 64)
+    chrome = try container.optional(.chrome) { try container.boolean($0) }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(rects, forKey: .rects)
+    try container.encodeIfPresent(chrome, forKey: .chrome)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case rects
+    case chrome
   }
 
   public struct Rect: Codable, Equatable, Sendable {
@@ -226,24 +236,6 @@ public typealias UpdateInstallPost = NativeEmpty
 
 /// Params of the `update.releaseNotesShown` post.
 public struct UpdateReleaseNotesShownPost: Codable, Equatable, Sendable {
-  public let version: String
-
-  public init(version: String) {
-    self.version = version
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    version = try container.string(.version, maxLength: 64)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case version
-  }
-}
-
-/// Params of the `update.dismissReleaseNotes` post.
-public struct UpdateDismissReleaseNotesPost: Codable, Equatable, Sendable {
   public let version: String
 
   public init(version: String) {

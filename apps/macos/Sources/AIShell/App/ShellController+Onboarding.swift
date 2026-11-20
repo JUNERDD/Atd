@@ -64,7 +64,7 @@ extension ShellController {
 
   /// Closes the guide; `summon` then shows the panel as `window.show` does.
   func closeOnboarding(summon: Bool) {
-    onboarding.close()
+    onboarding.close(steppingAside: !summon)
     if summon { showPanel() }
   }
 }

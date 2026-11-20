@@ -1,6 +1,7 @@
 import {
   DEFAULT_RUN_TOOLS,
   isCaptureInput,
+  resolveAliasDefaults,
   type AgentTask,
   type ModelSelection,
   type RunComputer,
@@ -17,6 +18,7 @@ import {
   loadRunCatalog,
   resolveRunModel,
   resolveRunThinkingLevel,
+  selectRunDefaults,
   selectRunModel,
   type RunCatalog,
 } from './run-selection.js';
@@ -75,9 +77,22 @@ export function freezeRunSnapshot(
     !trigger &&
     (internal.fromCapture === true || captureOutput !== undefined || isCaptureInput(request.input));
   const last = task?.runs.at(-1);
-  const model = resolveRunModel(connections, submitModelSelection(connections, request, last));
-  const thinkingLevel = resolveRunThinkingLevel(connections, model, request.thinkingLevel, catalog);
-  const contextWindow = catalog.contextWindow(model);
+  const { selection, alias } = selectRunDefaults(connections, {
+    requested: request.model ?? null,
+    last: last?.snapshot.model ?? null,
+  });
+  const model = resolveRunModel(connections, selection);
+  const aliasDefaults = resolveAliasDefaults(alias);
+  const thinkingLevel = resolveRunThinkingLevel(
+    connections,
+    model,
+    request.thinkingLevel ?? aliasDefaults.thinkingLevel,
+    catalog,
+  );
+  const contextWindow = catalog.contextWindow(
+    model,
+    request.contextChoice ?? aliasDefaults.contextChoice,
+  );
   const computer = runComputer(request, last, internal);
   const snapshot: RunSnapshot = {
     input: request.input,

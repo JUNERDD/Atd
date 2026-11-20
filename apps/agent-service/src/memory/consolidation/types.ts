@@ -1,4 +1,4 @@
-import type { ModelSelection, ThinkingLevel } from '@atd/agent-contracts';
+import type { ModelSelection, RunContextChoice, ThinkingLevel } from '@atd/agent-contracts';
 
 /**
  * The contract between the automation engine, which decides when memory is consolidated, and the
@@ -7,9 +7,10 @@ import type { ModelSelection, ThinkingLevel } from '@atd/agent-contracts';
  */
 
 export interface ConsolidationRequest {
-  /** The automation's model; absent: the default connection's default model. */
+  /** The automation's model; absent: the default alias, else the default connection's default model. */
   model?: ModelSelection;
   thinkingLevel?: ThinkingLevel;
+  contextChoice?: RunContextChoice;
   /** Aborted when the person stops the run, the run times out, or the service stops. */
   signal: AbortSignal;
   /** The automation and run record this consolidation serves, for logs and unit history. */

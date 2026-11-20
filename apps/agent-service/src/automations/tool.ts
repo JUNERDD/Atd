@@ -158,7 +158,10 @@ export async function runAutomationCall(
     const check = service.checkContext();
     const commandId = draft.action.kind === 'command' ? draft.action.commandId : null;
     const command = commandId ? await check.lookups.command(commandId) : null;
-    const detail = `${note}${automationDetail(draft, check, command?.name ?? null, scope)}`;
+    const aliasName = draft.policy.aliasId
+      ? ((await check.lookups.aliasName?.(draft.policy.aliasId)) ?? null)
+      : null;
+    const detail = `${note}${automationDetail(draft, check, command?.name ?? null, scope, aliasName)}`;
     await ctx.gate({
       toolCallId,
       scope: { tool: 'automation' },

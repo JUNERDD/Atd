@@ -13,12 +13,12 @@ import AppKit
 /// it covered.
 final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
   private struct Session {
-    let view: NSTextView
+    let view: AnnotationEditorTextView
     let id: UUID
     let existing: Bool
     var style: AnnotationStyle
     /// A box's frame as the edit began: its width and the least height it keeps.
-    let box: CGRect?
+    var box: CGRect?
   }
 
   private let store: AnnotationStore
@@ -43,12 +43,14 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
   /// Whether the open text is typed on `canvas` (it opens on one canvas of several).
   func isHosted(in canvas: NSView) -> Bool { session?.view.superview === canvas }
 
-  /// Opens the editor on `existing`, or for new text with its first line centred on `point`.
+  /// Opens the editor on `existing`, or for new text with its first line centred on `point`
+  /// (or at top-left with `boxWidth` when dragged into a fixed-width box).
   func begin(
-    at point: CGPoint, editing existing: Annotation?, style: AnnotationStyle, in canvas: NSView
+    at point: CGPoint, boxWidth: CGFloat? = nil, editing existing: Annotation?,
+    style: AnnotationStyle, in canvas: NSView
   ) {
     end()
-    let view = NSTextView(usingTextLayoutManager: false)
+    let view = AnnotationEditorTextView.make()
     var origin = point
     var text = ""
     var style = style
@@ -56,6 +58,9 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
     if let existing, case .text(let string, let frame) = existing.shape {
       (origin, text, style) = (frame.origin, string, existing.style)
       if style.fixedWidth { box = frame }
+    } else if let boxWidth {
+      style.fixedWidth = true
+      box = CGRect(origin: origin, size: CGSize(width: max(boxWidth, 24), height: 0))
     } else {
       origin.y -= Self.lineHeight(style, in: view) / 2
     }
@@ -71,6 +76,7 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
     canvas.addSubview(view)
     let id = existing?.id ?? UUID()
     session = Session(view: view, id: id, existing: existing != nil, style: style, box: box)
+    view.onLayoutNeeded = { [weak self] in self?.fit() }
     store.selectedID = nil
     store.editingID = id
     fit()
@@ -89,15 +95,66 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
     view.keyDown(with: event)
   }
 
-  /// Restyles the whole text being edited (colour, size or background from the style bar).
+  /// Restyles the whole text being edited (colour, size, font, or plate from the style bar).
   func setStyle(_ style: AnnotationStyle) {
     guard let view = session?.view, let storage = view.textStorage else { return }
     session?.style = style
+    let savedRange = view.selectedRange()
     let attributes = AnnotationRenderer.textAttributes(style)
+    let markedKeys: [NSAttributedString.Key] = [
+      .underlineStyle, .underlineColor, .markedClauseSegment,
+    ]
+    var preservedMarked: [(NSRange, [NSAttributedString.Key: Any])] = []
+    if view.hasMarkedText() {
+      let marked = view.markedRange()
+      if marked.location != NSNotFound, marked.length > 0,
+        marked.location <= storage.length, marked.length <= storage.length - marked.location
+      {
+        storage.enumerateAttributes(in: marked, options: []) { attrs, range, _ in
+          var kept: [NSAttributedString.Key: Any] = [:]
+          for key in markedKeys {
+            if let value = attrs[key] { kept[key] = value }
+          }
+          if !kept.isEmpty { preservedMarked.append((range, kept)) }
+        }
+      }
+    }
+    storage.beginEditing()
     storage.setAttributes(attributes, range: NSRange(location: 0, length: storage.length))
+    for (range, kept) in preservedMarked {
+      storage.addAttributes(kept, range: range)
+    }
+    storage.endEditing()
+    let clampedLoc = min(savedRange.location, storage.length)
+    let clampedLen = min(savedRange.length, storage.length - clampedLoc)
+    view.setSelectedRange(NSRange(location: clampedLoc, length: clampedLen))
     view.typingAttributes = attributes
+    view.font = attributes[.font] as? NSFont
     view.insertionPointColor = AnnotationRenderer.textColor(style)
     fit()
+  }
+
+  /// Updates the open editor's fixed wrapping width during east/west box drags and reflows lines.
+  func resizeBoxWidth(to width: CGFloat) {
+    guard var active = session else { return }
+    let clamped = max(width, 24)
+    active.style.fixedWidth = true
+    if var box = active.box {
+      box.size.width = clamped
+      active.box = box
+    } else {
+      active.box = CGRect(
+        origin: active.view.frame.origin, size: CGSize(width: clamped, height: 0))
+    }
+    session = active
+    active.view.textContainer?.containerSize.width = clamped
+    fit()
+  }
+
+  /// Recomputes font attributes and line layout for open text (e.g. after a web font loads).
+  func refreshLayout() {
+    guard let style = session?.style else { return }
+    setStyle(style)
   }
 
   /// The selection moved or resized under open text: the text keeps its place on the screen
@@ -135,6 +192,10 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
   }
 
   private func close() {
+    if session?.view.hasMarkedText() == true {
+      session?.view.inputContext?.discardMarkedText()
+    }
+    session?.view.onLayoutNeeded = nil
     session?.view.removeFromSuperview()
     session = nil
     typingUndo.removeAllActions()
@@ -155,7 +216,9 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
     view.textContainerInset = .zero
     view.isHorizontallyResizable = false
     view.isVerticallyResizable = false
-    view.typingAttributes = AnnotationRenderer.textAttributes(style)
+    let attributes = AnnotationRenderer.textAttributes(style)
+    view.typingAttributes = attributes
+    view.font = attributes[.font] as? NSFont
     view.insertionPointColor = AnnotationRenderer.textColor(style)
     // The text wraps at the selection's right edge (``selectionDidChange()`` keeps it there), a
     // box at its own width; ``fit`` sizes the view to what is typed.
@@ -166,26 +229,35 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
       width: max(width, 24), height: .greatestFiniteMagnitude)
   }
 
-  /// Sizes the view to the laid-out text (one empty line at least). The width keeps 2 pt for
-  /// the caret; lines never get wider than the container, so the renderer, wrapping at this
-  /// width, breaks lines where the editor did. A box stays its width and at least its height.
+  /// Sizes the view to the laid-out text (one empty line at least). The width keeps 4 pt for
+  /// the caret and marked text; lines never get wider than the container, so the renderer, wrapping
+  /// at this width, breaks lines where the editor did. A box stays its width and at least its
+  /// height.
   private func fit() {
     guard let session, let container = session.view.textContainer,
       let layout = session.view.layoutManager
     else { return }
     layout.ensureLayout(for: container)
-    let used = layout.usedRect(for: container)
+    if let storage = session.view.textStorage, storage.length > 0 {
+      layout.ensureLayout(forCharacterRange: NSRange(location: 0, length: storage.length))
+      layout.ensureLayout(for: container)
+    }
+    var rect = layout.usedRect(for: container)
+    if layout.extraLineFragmentTextContainer === container {
+      rect = rect.union(layout.extraLineFragmentUsedRect)
+    }
     let width =
-      session.box?.width ?? min(ceil(used.width) + 2, container.containerSize.width)
+      session.box?.width ?? min(max(ceil(rect.maxX) + 4, 8), container.containerSize.width)
     let height = max(
-      ceil(used.height), Self.lineHeight(session.style, in: session.view),
+      ceil(rect.maxY), Self.lineHeight(session.style, in: session.view),
       session.box?.height ?? 0)
     session.view.setFrameSize(CGSize(width: width, height: height))
     session.view.superview?.needsDisplay = true
   }
 
   private static func lineHeight(_ style: AnnotationStyle, in view: NSTextView) -> CGFloat {
-    let font = NSFont.systemFont(ofSize: style.textFontSize, weight: .semibold)
+    let font = CaptureFontCatalog.shared.font(
+      family: style.fontFamily, size: style.textFontSize, weight: .semibold)
     return ceil(view.layoutManager?.defaultLineHeight(for: font) ?? style.textFontSize * 1.2)
   }
 
@@ -205,5 +277,50 @@ final class AnnotationTextEditor: NSObject, NSTextViewDelegate {
 
   func undoManager(for view: NSTextView) -> UndoManager? {
     typingUndo
+  }
+}
+
+/// TextKit 1 text view that notifies the editor immediately on IME composition changes
+/// (`setMarkedText` / `unmarkText` do not emit `NSTextViewDelegate.textDidChange`).
+private final class AnnotationEditorTextView: NSTextView {
+  var onLayoutNeeded: (() -> Void)?
+
+  static func make() -> AnnotationEditorTextView {
+    let storage = NSTextStorage()
+    let layout = NSLayoutManager()
+    let container = NSTextContainer()
+    storage.addLayoutManager(layout)
+    layout.addTextContainer(container)
+    return AnnotationEditorTextView(frame: .zero, textContainer: container)
+  }
+
+  override init(frame frameRect: NSRect, textContainer container: NSTextContainer?) {
+    super.init(frame: frameRect, textContainer: container)
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) is not supported")
+  }
+
+  override func setMarkedText(
+    _ string: Any, selectedRange: NSRange, replacementRange: NSRange
+  ) {
+    super.setMarkedText(string, selectedRange: selectedRange, replacementRange: replacementRange)
+    onLayoutNeeded?()
+  }
+
+  override func unmarkText() {
+    super.unmarkText()
+    onLayoutNeeded?()
+  }
+
+  override func insertText(_ string: Any, replacementRange: NSRange) {
+    super.insertText(string, replacementRange: replacementRange)
+    onLayoutNeeded?()
+  }
+
+  override func didChangeText() {
+    super.didChangeText()
+    onLayoutNeeded?()
   }
 }

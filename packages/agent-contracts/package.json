@@ -17,8 +17,9 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "oxlint src"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p test/tsconfig.json",
+    "lint": "oxlint src test",
+    "test": "tsc -p tsconfig.json && tsc -p test/tsconfig.json && node --import ./test/register-source.mjs --test 'test/**/*.test.ts'"
   },
   "dependencies": {
     "@atd/plugin-kit": "workspace:*",

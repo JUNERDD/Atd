@@ -20,11 +20,18 @@ final class HotKeyRegistrar {
     }
   }
 
+  private static let allowedModifierFlags: NSEvent.ModifierFlags = [
+    .command, .option, .control, .shift, .function,
+  ]
+
+  let decisionRing: HotKeyDecisionRing?
+  var onLiveProbeShortcut:
+    ((_ shortcutId: String?, _ modifierMask: Int, _ outcome: String) -> Void)?
+
   private let carbon = CarbonHotKeys()
-  private let remoteModifiers = RemoteModifierRepair()
-  private let taps: ModifierTapMonitor
+  let remoteModifiers = RemoteModifierRepair()
+  private var taps: ModifierTapMonitor!
   private var registered: [String: Registration] = [:]
-  /// The set last pushed, which ``reapply()`` registers again.
   private var desired: [ShortcutRegistration] = []
   private var recording: [ObjectIdentifier: Set<Int>] = [:]
   private var resuming: Task<Void, Never>?
@@ -37,18 +44,23 @@ final class HotKeyRegistrar {
   private var localKeys: Any?
   private var externalReleases: Any?
 
-  /// `onPress` receives the id of the pressed entry, `onRelease` that of the entry whose key
-  /// came back up. `canWatchKeyboard`: whether the app has Accessibility trust, without which a
-  /// double-tap cannot be detected.
+  var hasGlobalMonitor: Bool { externalReleases != nil }
+  var uuremoteTapInstallFailed: Bool { remoteModifiers.tapInstallFailed }
+
   init(
     canWatchKeyboard: @escaping () -> Bool,
+    decisionRing: HotKeyDecisionRing? = nil,
     onPress: @escaping @MainActor (String) -> Void,
     onRelease: @escaping @MainActor (String) -> Void
   ) {
     self.canWatchKeyboard = canWatchKeyboard
+    self.decisionRing = decisionRing
     self.onPress = onPress
     self.onRelease = onRelease
-    taps = ModifierTapMonitor(onPress: onPress, onRelease: onRelease)
+    remoteModifiers.decisionRing = decisionRing
+    taps = ModifierTapMonitor(
+      onPress: { [weak self] id in self?.handleTriggeredPress(id, isDoubleTap: true) },
+      onRelease: onRelease)
     watchKeys()
   }
 
@@ -59,9 +71,6 @@ final class HotKeyRegistrar {
     ShortcutRelease.setModifierObservation(active: false)
   }
 
-  /// Records a chord's actual press before renderer recording completes. Ordinary typing and
-  /// repeats after recording ended never become keys a later handoff waits for. Releases still
-  /// clear known keys after completion or focus loss; only virtual codes are retained.
   private func watchKeys() {
     if localKeys == nil {
       localKeys = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) {
@@ -101,13 +110,9 @@ final class HotKeyRegistrar {
     refreshRemoteModifiers()
   }
 
-  /// Registers the difference to `desired` and reports every entry once, in order. The page
-  /// words failures by reason; the details go to the log.
   func apply(_ desired: [ShortcutRegistration]) async -> [ShortcutResult] {
     self.desired = desired
     guard recording.isEmpty, resuming == nil else {
-      // Do not claim registration succeeded while listeners are suspended. Each caller gets the
-      // real OS result after recording ends; the last request remains the desired set.
       return await withCheckedContinuation { pending.append((desired, $0)) }
     }
     return register(desired)
@@ -127,7 +132,8 @@ final class HotKeyRegistrar {
       switch trigger {
       case .chord(let combination):
         let registration = carbon.register(
-          combination, onPress: { [onPress] in onPress(id) },
+          combination,
+          onPress: { [weak self] in self?.handleTriggeredPress(id, isDoubleTap: false) },
           onRelease: { [onRelease] in onRelease(id) })
         switch registration {
         case .success(let token): registered[id] = .chord(combination, token: token)
@@ -148,19 +154,18 @@ final class HotKeyRegistrar {
       guard let failure = failures[request.id] else { return .registered(.init(id: request.id)) }
       Self.log.info(
         "Shortcut \(request.id, privacy: .public) not registered: \(Self.detail(failure))")
+      recordDecision(
+        eventKind: 2, outcome: 2, elapsedMs: 0, flags: Self.failureCode(failure),
+        subject: request.id)
       return .notRegistered(.init(id: request.id, reason: failure.reason))
     }
   }
 
-  /// Registers the last pushed set again, as when Accessibility trust changed: a double-tap
-  /// registers once the app is trusted and is released when it no longer is. The page learns
-  /// the outcome from its own next push.
   func reapply() {
     watchKeys()
     if recording.isEmpty, resuming == nil { _ = register(desired) }
   }
 
-  /// Hints describe an active registration, never an unavailable default or failed binding.
   func displayLabel(for id: String) -> String? {
     guard registered[id] != nil,
       let accelerator = desired.first(where: { $0.id == id })?.accelerator
@@ -168,11 +173,13 @@ final class HotKeyRegistrar {
     return try? Accelerator.label(accelerator)
   }
 
-  /// Multiple recorders/windows can coexist; only releasing the last one restores shortcuts.
   func startRecording(owner: ObjectIdentifier, session: Int) {
     resuming?.cancel()
     resuming = nil
-    if recording.isEmpty { unregisterAll() }
+    if recording.isEmpty {
+      unregisterAll()
+      recordDecision(eventKind: 3, outcome: 0, elapsedMs: 0, flags: 0, subject: "recording_suspend")
+    }
     recording[owner, default: []].insert(session)
   }
 
@@ -198,8 +205,16 @@ final class HotKeyRegistrar {
   private func resumeIfReady() -> Bool {
     guard recording.isEmpty else { return false }
     resuming?.cancel()
+    let startedNs = MonotonicTimestampAnchor.nowUptimeNs()
     resuming = Task { [weak self] in
-      guard await ShortcutRelease.waitForHandoff(), let self else { return }
+      let settled = await ShortcutRelease.waitForHandoff()
+      guard !Task.isCancelled, let self else { return }
+      let ms = UInt16(
+        clamping: (MonotonicTimestampAnchor.nowUptimeNs() &- startedNs) / 1_000_000)
+      self.recordDecision(
+        eventKind: 4, outcome: settled ? 0 : 2, elapsedMs: ms, flags: 0,
+        subject: settled ? "recording_resumed" : "handoff_aborted")
+      guard settled else { return }
       resuming = nil
       resumeRegistrations()
     }
@@ -215,7 +230,49 @@ final class HotKeyRegistrar {
     }
   }
 
+  func handleTriggeredPress(_ id: String, isDoubleTap: Bool) {
+    let modMask = Self.sanitizedModifierMask(NSEvent.modifierFlags)
+    recordDecision(
+      eventKind: 1, outcome: 0, elapsedMs: 0, flags: isDoubleTap ? 2 : 1, subject: id,
+      modifierMask: modMask)
+    onLiveProbeShortcut?(id, Int(modMask), isDoubleTap ? "double_tap_triggered" : "chord_triggered")
+    onPress(id)
+  }
+
+  static func sanitizedModifierMask(_ flags: NSEvent.ModifierFlags) -> UInt32 {
+    UInt32(truncatingIfNeeded: flags.intersection(allowedModifierFlags).rawValue)
+  }
+
+  @inline(__always)
+  private func recordDecision(
+    eventKind: UInt8, outcome: UInt8, elapsedMs: UInt16, flags: UInt8, subject: String,
+    modifierMask: UInt32? = nil
+  ) {
+    guard let decisionRing else { return }
+    var entry = HotKeyDecisionEntry()
+    entry.uptimeNs = MonotonicTimestampAnchor.nowUptimeNs()
+    entry.subjectOrBundleId = InlineText64(truncatingUTF8: subject)
+    entry.frontmostPid = NSWorkspace.shared.frontmostApplication?.processIdentifier ?? 0
+    entry.modifierFlagsMask = modifierMask ?? Self.sanitizedModifierMask(NSEvent.modifierFlags)
+    entry.elapsedMs = elapsedMs
+    entry.tapDisabledCount = remoteModifiers.tapDisabledCount
+    entry.eventKind = eventKind
+    entry.outcome = outcome
+    entry.flags = flags
+    decisionRing.append(entry)
+  }
+
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "hotkeys")
+
+  private static func failureCode(_ failure: HotKeyFailure) -> UInt8 {
+    switch failure {
+    case .invalidAccelerator: 1
+    case .reservedBySystem: 2
+    case .sameCombination: 3
+    case .registrationFailed: 4
+    case .needsAccessibility: 5
+    }
+  }
 
   private static func detail(_ failure: HotKeyFailure) -> String {
     switch failure {

@@ -108,6 +108,29 @@ export interface CaptureAnswer {
 }
 
 const SELECTION_HEADER = /^\[([A-Za-z0-9_-]+)(?:\s*@\s*(\d+),(\d+),(\d+),(\d+))?\]$/;
+const HEADER_ECHO =
+  /^(?:\[\s*([A-Za-z0-9_-]+)(?:\s*@[^\]]*)?\s*\]|([A-Za-z0-9_-]+)\s*@\s*-?\d+(?:\s*,\s*-?\d+)*)$/;
+
+/**
+ * Resolves a model-supplied `paragraph` string against known `byId` keys, tolerating echoed
+ * `[<id>]`, `[<id> @ x1,y1,x2,y2]`, or `<id> @ ...` headers and case mismatches when they
+ * unambiguously map to an existing paragraph id. Unknown ids are returned trimmed so validation
+ * still rejects them.
+ */
+export function resolveCaptureParagraphId(
+  raw: string,
+  byId: ReadonlyMap<string, CaptureParagraph>,
+): string {
+  const trimmed = raw.trim();
+  if (!trimmed || byId.has(trimmed)) return trimmed;
+  const match = HEADER_ECHO.exec(trimmed);
+  const candidate = match?.[1] ?? match?.[2] ?? trimmed;
+  if (byId.has(candidate)) return candidate;
+  const lower = candidate.toLowerCase();
+  if (byId.has(lower)) return lower;
+  for (const key of byId.keys()) if (key.toLowerCase() === lower) return key;
+  return trimmed;
+}
 
 /** Header line of a recognized screenshot paragraph, with optional `0..1000` spatial bounds. */
 export function formatCaptureHeader(p: Pick<CaptureParagraph, 'id' | 'bounds'>): string {

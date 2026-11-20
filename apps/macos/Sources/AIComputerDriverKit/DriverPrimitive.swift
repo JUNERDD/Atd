@@ -47,7 +47,7 @@ public enum DriverPrimitive: Equatable, Sendable {
   case axMenu(path: [String])
   case axScroll(element: String?, kind: DriverScrollKind)
   case pointer(point: DriverPoint, clickCount: Int)
-  case scroll(point: DriverPoint, deltaX: Double, deltaY: Double)
+  case scroll(point: DriverPoint, deltaX: Double, deltaY: Double, pixels: Bool = false)
   case keys(chord: String)
   case text(text: String)
   case drag(from: DriverPoint, to: DriverPoint)
@@ -56,7 +56,7 @@ public enum DriverPrimitive: Equatable, Sendable {
 extension DriverPrimitive: Codable {
   private enum CodingKeys: String, CodingKey {
     case op, element, action, value, text, replaceRange, path, kind, point, from, to
-    case clickCount, deltaX, deltaY, chord
+    case clickCount, deltaX, deltaY, pixels, chord
   }
 
   /// The discriminator written to `op`. Kept identical to the case names so the spec reads 1:1.
@@ -95,11 +95,12 @@ extension DriverPrimitive: Codable {
       try c.encode(Op.pointer, forKey: .op)
       try c.encode(point, forKey: .point)
       try c.encode(clickCount, forKey: .clickCount)
-    case .scroll(let point, let deltaX, let deltaY):
+    case .scroll(let point, let deltaX, let deltaY, let pixels):
       try c.encode(Op.scroll, forKey: .op)
       try c.encode(point, forKey: .point)
       try c.encode(deltaX, forKey: .deltaX)
       try c.encode(deltaY, forKey: .deltaY)
+      if pixels { try c.encode(true, forKey: .pixels) }
     case .keys(let chord):
       try c.encode(Op.keys, forKey: .op)
       try c.encode(chord, forKey: .chord)
@@ -145,7 +146,8 @@ extension DriverPrimitive: Codable {
       self = .scroll(
         point: try c.decode(DriverPoint.self, forKey: .point),
         deltaX: try c.decode(Double.self, forKey: .deltaX),
-        deltaY: try c.decode(Double.self, forKey: .deltaY))
+        deltaY: try c.decode(Double.self, forKey: .deltaY),
+        pixels: try c.decodeIfPresent(Bool.self, forKey: .pixels) ?? false)
     case .keys:
       self = .keys(chord: try c.decode(String.self, forKey: .chord))
     case .text:

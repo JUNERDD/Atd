@@ -1,6 +1,7 @@
 import type {
   ContextTier,
   ProviderContextsResponse,
+  RunContextChoice,
   ServiceConnection,
   ServiceModelDefinition,
 } from '@atd/agent-contracts';
@@ -193,4 +194,25 @@ export function contextsResponse(
     selected: selectedTier(connection, modelId, derived),
     ...windows,
   };
+}
+
+/**
+ * Resolves a per-run context choice (`tier` or explicit `contextWindow`) for `modelId` on
+ * `connection` without mutating `connection.contextTiers` or `connection.contextWindows`.
+ */
+export function resolveRunContextWindow(
+  choice: RunContextChoice | undefined,
+  connection: ServiceConnection,
+  modelId: string,
+  modelContextWindow: number | undefined,
+  catalog: readonly ServiceModelDefinition[] = connection.catalog ?? [],
+): number | undefined {
+  if (!choice) return effectiveContextWindow(connection, catalog, modelId);
+  if ('contextWindow' in choice) return choice.contextWindow;
+  const derived = connectionModelTiers(connection, catalog, modelId);
+  if (!derived) return modelContextWindow;
+  return (
+    derived.options.find((option) => option.tier === choice.tier)?.contextWindow ??
+    modelContextWindow
+  );
 }

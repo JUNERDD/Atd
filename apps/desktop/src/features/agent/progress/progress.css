@@ -181,14 +181,21 @@ span.composer-progress-part {
   list-style: none;
 }
 
-/* A row that opens something is an xs Item as a button: a pointer, and the glass wash on hover
-   (`--muted` is the wash inside glass) unless it is the current row, whose stronger wash stays. */
+/* A row that opens something is an xs Item as a button: a pointer, and the glass wash when
+   active/focused (`--muted` is the wash inside glass) unless it is the current row, whose
+   stronger wash stays. Keyboard focus and pointer hover share one fill with no focus ring. */
 .composer-status-row:enabled {
   cursor: pointer;
 }
 
-.composer-status-row:enabled:hover:not([aria-current='true']) {
+.composer-status-row:enabled:focus:not([aria-current='true']) {
   background-color: var(--muted);
+}
+
+.composer-status-row:enabled:is(:focus, :focus-visible) {
+  border-color: transparent;
+  box-shadow: none;
+  outline: none;
 }
 
 /* A task text that reads alike until late may take a second line before it is cut. */

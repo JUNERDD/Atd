@@ -14,6 +14,19 @@ export const CompactRefusalSchema = Type.Union([
 ]);
 export type CompactRefusal = Static<typeof CompactRefusalSchema>;
 
+/**
+ * 503 from the shell relay when the supervised or development service is not ready to answer.
+ * Distinct from `internal` so the renderer can explain startup failures, crash backoff, and
+ * missing `pnpm dev` sessions and offer recovery actions.
+ */
+export const ServiceUnavailableCodeSchema = Type.Union([
+  Type.Literal('service_starting'),
+  Type.Literal('service_start_failed'),
+  Type.Literal('service_stopped_too_often'),
+  Type.Literal('service_not_running'),
+]);
+export type ServiceUnavailableCode = Static<typeof ServiceUnavailableCodeSchema>;
+
 /** Machine-readable error codes; `owner` on 501 names the responsible todo. */
 export const ErrorCodeSchema = Type.Union([
   Type.Literal('bad_request'),
@@ -32,6 +45,11 @@ export const ErrorCodeSchema = Type.Union([
   Type.Literal('approval_changed'),
   Type.Literal('desktop_unavailable'),
   Type.Literal('draining'),
+  /** 503: structured shell-relay unavailability codes (`ServiceUnavailableCodeSchema`). */
+  Type.Literal('service_starting'),
+  Type.Literal('service_start_failed'),
+  Type.Literal('service_stopped_too_often'),
+  Type.Literal('service_not_running'),
   /** 502: a model provider the service called on the user's behalf failed. */
   Type.Literal('upstream_failed'),
   /** 404: no user app has the id. */

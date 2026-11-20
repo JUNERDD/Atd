@@ -6,6 +6,7 @@ export * from './skills-client.js';
 export * from './atd-agents-client.js';
 export * from './mcp-client.js';
 export * from './mcp-records-client.js';
+export * from './model-aliases-client.js';
 export * from './providers-client.js';
 export * from './provider-manage-client.js';
 export * from './commands-client.js';

@@ -13,6 +13,7 @@ final class CaptureLongScreenshot {
     let selection: CGRect
     let capture: LongScreenshotCapture
     let chrome: any LongScreenshotChromeHosting
+    let backdrops: [LongScreenshotBackdrop]
     let passThrough = LongScreenshotPassThrough()
     /// The size, in points, the chrome's preview strip shows the stitched image at; set once the
     /// chrome is shown.
@@ -23,17 +24,27 @@ final class CaptureLongScreenshot {
     var finished = false
 
     init(
-      selection: CGRect, capture: LongScreenshotCapture, chrome: any LongScreenshotChromeHosting
+      selection: CGRect, capture: LongScreenshotCapture, chrome: any LongScreenshotChromeHosting,
+      backdrops: [LongScreenshotBackdrop]
     ) {
       self.selection = selection
       self.capture = capture
       self.chrome = chrome
+      self.backdrops = backdrops
     }
 
-    /// Removes the monitors and the chrome and stops the engine unless it finished.
+    func updateBackdrops(area: CGRect?, label: String?, primaryID: CGDirectDisplayID) {
+      for backdrop in backdrops {
+        backdrop.update(area: area, label: backdrop.displayID == primaryID ? label : nil)
+      }
+    }
+
+    /// Removes the monitors, the chrome, and the backdrop panels, and stops the engine unless it
+    /// finished.
     fileprivate func stop() {
       passThrough.stop()
       chrome.remove()
+      for backdrop in backdrops { backdrop.close() }
       capture.onChange = nil
       capture.onStop = nil
       if !finished { capture.cancel() }
@@ -59,9 +70,12 @@ final class CaptureLongScreenshot {
   private(set) var live: Live?
   /// Auto-scroll was refused for its permission: the status row says so until it next starts.
   var needsPermission = false
-  /// The bottom bar named ⌘↓ for the last selection whose answer was known; it keeps doing so
-  /// while a moved selection is looked at again.
-  var namedInBar = false
+  /// The last settled availability for a single-display selection; held across `.checking` while a
+  /// moved or resized selection is looked at again so neither the toolbar button nor the bottom
+  /// bar flickers on nudges or drags.
+  var lastSettled: LongScreenshotAvailability?
+  /// ⌘↓ or the toolbar button was pressed while a re-probe was in flight; starts once it settles.
+  var startWhenReady = false
   /// Accessibility is to be asked for once the overlays are gone, as the Accessibility hint's
   /// request is: the system's prompt would open beneath them.
   var asksForTrust = false
@@ -90,10 +104,17 @@ final class CaptureLongScreenshot {
     live.stop()
   }
 
-  /// The session ended.
-  func end() {
+  /// Clears per-selection probe state when returning to idle or ending the session.
+  func resetSelection() {
     probe?.cancel()
     probe = nil
+    lastSettled = nil
+    startWhenReady = false
+  }
+
+  /// The session ended.
+  func end() {
+    resetSelection()
     endLive()
     answers = []
   }

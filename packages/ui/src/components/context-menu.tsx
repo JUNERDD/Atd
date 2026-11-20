@@ -3,9 +3,17 @@
 import * as React from 'react';
 import { cn } from '@atd/ui/lib/utils';
 import { ignoreComposingEscape } from '@atd/ui/lib/ime';
+import {
+  createPointerGate,
+  gateMenuKeyDownCapture,
+  gateItemPointerProps,
+  type PointerGate,
+} from '@atd/ui/lib/pointer-gate';
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui';
 import { ChevronRightIcon, CheckIcon } from 'lucide-react';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
+
+const ContextPointerGateContext = React.createContext<PointerGate | null>(null);
 
 function ContextMenu({ ...props }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />;
@@ -45,29 +53,35 @@ function ContextMenuRadioGroup({
 function ContextMenuContent({
   className,
   collisionPadding = 8,
+  loop = true,
   children,
   onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
+  const [gate] = React.useState(() => createPointerGate(true));
   return (
     <ContextMenuPrimitive.Portal>
       <ContextMenuPrimitive.Content
         data-slot="context-menu-content"
         collisionPadding={collisionPadding}
+        loop={loop}
         className={cn(
           'z-50 max-h-(--radix-context-menu-content-available-height) w-max min-w-[min(8rem,var(--radix-context-menu-content-available-width))] max-w-(--radix-context-menu-content-available-width) origin-(--radix-context-menu-content-transform-origin) overflow-hidden rounded-2xl surface-glass p-1 wrap-anywhere text-popover-foreground duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
           className,
         )}
         {...props}
+        onKeyDownCapture={gateMenuKeyDownCapture(gate, props.onKeyDownCapture)}
         onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
       >
-        <ScrollArea
-          className="max-h-[calc(var(--radix-context-menu-content-available-height)-8px)]"
-          viewportClassName="max-h-[inherit]"
-          gutter="none"
-        >
-          {children}
-        </ScrollArea>
+        <ContextPointerGateContext.Provider value={gate}>
+          <ScrollArea
+            className="max-h-[calc(var(--radix-context-menu-content-available-height)-8px)]"
+            viewportClassName="max-h-[inherit]"
+            gutter="none"
+          >
+            {children}
+          </ScrollArea>
+        </ContextPointerGateContext.Provider>
       </ContextMenuPrimitive.Content>
     </ContextMenuPrimitive.Portal>
   );
@@ -82,6 +96,7 @@ function ContextMenuItem({
   inset?: boolean;
   variant?: 'default' | 'destructive';
 }) {
+  const gate = React.useContext(ContextPointerGateContext);
   return (
     <ContextMenuPrimitive.Item
       data-slot="context-menu-item"
@@ -92,6 +107,7 @@ function ContextMenuItem({
         className,
       )}
       {...props}
+      {...gateItemPointerProps(gate, props.onPointerMove, props.onPointerLeave)}
     />
   );
 }
@@ -104,6 +120,7 @@ function ContextMenuSubTrigger({
 }: React.ComponentProps<typeof ContextMenuPrimitive.SubTrigger> & {
   inset?: boolean;
 }) {
+  const gate = React.useContext(ContextPointerGateContext);
   return (
     <ContextMenuPrimitive.SubTrigger
       data-slot="context-menu-sub-trigger"
@@ -113,6 +130,7 @@ function ContextMenuSubTrigger({
         className,
       )}
       {...props}
+      {...gateItemPointerProps(gate, props.onPointerMove, props.onPointerLeave, false)}
     >
       {children}
       <ChevronRightIcon className="ml-auto" />
@@ -123,28 +141,34 @@ function ContextMenuSubTrigger({
 function ContextMenuSubContent({
   className,
   collisionPadding = 8,
+  loop = true,
   children,
   onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.SubContent>) {
+  const [gate] = React.useState(() => createPointerGate(true));
   return (
     <ContextMenuPrimitive.SubContent
       data-slot="context-menu-sub-content"
       collisionPadding={collisionPadding}
+      loop={loop}
       className={cn(
         'z-50 w-max min-w-[min(8rem,var(--radix-context-menu-content-available-width))] max-w-(--radix-context-menu-content-available-width) origin-(--radix-context-menu-content-transform-origin) overflow-hidden rounded-2xl surface-glass p-1 wrap-anywhere text-popover-foreground duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
         className,
       )}
       {...props}
+      onKeyDownCapture={gateMenuKeyDownCapture(gate, props.onKeyDownCapture)}
       onEscapeKeyDown={ignoreComposingEscape(onEscapeKeyDown)}
     >
-      <ScrollArea
-        className="max-h-[calc(var(--radix-context-menu-content-available-height)-8px)]"
-        viewportClassName="max-h-[inherit]"
-        gutter="none"
-      >
-        {children}
-      </ScrollArea>
+      <ContextPointerGateContext.Provider value={gate}>
+        <ScrollArea
+          className="max-h-[calc(var(--radix-context-menu-content-available-height)-8px)]"
+          viewportClassName="max-h-[inherit]"
+          gutter="none"
+        >
+          {children}
+        </ScrollArea>
+      </ContextPointerGateContext.Provider>
     </ContextMenuPrimitive.SubContent>
   );
 }
@@ -157,6 +181,7 @@ function ContextMenuCheckboxItem({
 }: React.ComponentProps<typeof ContextMenuPrimitive.CheckboxItem> & {
   inset?: boolean;
 }) {
+  const gate = React.useContext(ContextPointerGateContext);
   return (
     <ContextMenuPrimitive.CheckboxItem
       data-slot="context-menu-checkbox-item"
@@ -166,6 +191,7 @@ function ContextMenuCheckboxItem({
         className,
       )}
       {...props}
+      {...gateItemPointerProps(gate, props.onPointerMove, props.onPointerLeave)}
     >
       <span className="pointer-events-none absolute right-2 flex items-center justify-center">
         <ContextMenuPrimitive.ItemIndicator>
@@ -185,6 +211,7 @@ function ContextMenuRadioItem({
 }: React.ComponentProps<typeof ContextMenuPrimitive.RadioItem> & {
   inset?: boolean;
 }) {
+  const gate = React.useContext(ContextPointerGateContext);
   return (
     <ContextMenuPrimitive.RadioItem
       data-slot="context-menu-radio-item"
@@ -194,6 +221,7 @@ function ContextMenuRadioItem({
         className,
       )}
       {...props}
+      {...gateItemPointerProps(gate, props.onPointerMove, props.onPointerLeave)}
     >
       <span className="pointer-events-none absolute right-2 flex items-center justify-center">
         <ContextMenuPrimitive.ItemIndicator>

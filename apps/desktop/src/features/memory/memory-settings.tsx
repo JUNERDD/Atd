@@ -15,6 +15,7 @@ import { useOpenSettingsExtension, useSettingsSectionExit } from '../settings/se
 import { SettingsEditorPlaceholder } from '../settings/settings-page-placeholder';
 import { useSettingsPageHistory } from '../settings/use-settings-page-history';
 import { MemoryDeleteDialog } from './memory-delete-dialog';
+import type { MemoryGroup } from './memory-groups';
 import { MemoryOverview } from './memory-overview';
 import { MemoryPage } from './memory-page';
 import { useMemoryWrites } from './memory-writes';
@@ -46,6 +47,7 @@ export function MemorySettings({
   const { snapshot } = useMemorySnapshot();
   const writes = useMemoryWrites();
   const search = useCompositionQuery();
+  const [group, setGroup] = useState<MemoryGroup>('all');
   const openExtension = useOpenSettingsExtension();
   const units = snapshot?.units ?? [];
   const history = useSettingsPageHistory<MemoryRoute>(
@@ -67,7 +69,10 @@ export function MemorySettings({
   /** The unit the open page is deleting: its going is that delete, not one made elsewhere. */
   const [removing, setRemoving] = useState<string | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
-  useSettingsSectionExit(() => search.change(''));
+  useSettingsSectionExit(() => {
+    setGroup('all');
+    search.change('');
+  });
 
   /**
    * Leaves the page `from` once its write succeeds and says so; `to` first swaps it for the page
@@ -171,10 +176,12 @@ export function MemorySettings({
     <section className="memory-settings">
       <MemoryOverview
         snapshot={snapshot}
+        group={group}
         search={search}
         searchRef={searchInput}
         writes={writes}
         feedback={feedback}
+        onGroupChange={setGroup}
         onClearSearch={() => {
           search.change('');
           searchInput.current?.focus();

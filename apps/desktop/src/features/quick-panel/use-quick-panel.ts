@@ -7,6 +7,7 @@ import {
   type RefCallback,
   type RefObject,
 } from 'react';
+import { createPointerGate } from '@atd/ui/lib/pointer-gate';
 import type { QuickGroup } from './quick-options';
 import type { TriggerState } from './trigger';
 import type { QuickSection, SectionScroller } from './use-section-pin';
@@ -28,10 +29,10 @@ export interface QuickPanelHandle {
   select(): boolean;
   /**
    * Moves the active option to the first selectable option of the next or previous section that
-   * has one, counting from the active option's section (the heading-less trailing group comes after
-   * the last), without wrapping, and scrolls that section's heading into the pinned slot. False
-   * only when closed: with nowhere to go it is still true, so ⌘↑ / ⌘↓ never move the caret while
-   * the panel is open.
+   * has one, counting from the active option's section (the heading-less trailing group wraps from
+   * either end) and wrapping across ends, and scrolls that section's heading into the pinned slot.
+   * False only when closed: with nowhere to go it is still true, so ⌘↑ / ⌘↓ never move the caret
+   * while the panel is open.
    */
   jump(delta: 1 | -1): boolean;
 }
@@ -95,10 +96,19 @@ function signatureOf(groups: readonly QuickGroup[]): string {
     .join('|');
 }
 
-/** The nearest section past `from` in direction `delta` with a selectable option; null at the ends. */
+/** The next section from `from` in direction `delta` (wrapping around) with a selectable option. */
 function nextSection(sections: readonly QuickSection[], from: number, delta: 1 | -1) {
-  for (let index = from + delta; index >= 0 && index < sections.length; index += delta)
-    if (sections[index]?.options.some((option) => !option.disabled)) return index;
+  if (sections.length === 0) return null;
+  for (let step = 1; step <= sections.length; step++) {
+    const index =
+      from < 0 || from >= sections.length
+        ? delta === 1
+          ? step - 1
+          : sections.length - step
+        : (from + delta * step + sections.length * 2) % sections.length;
+    if (sections[index]?.options.some((option) => !option.disabled))
+      return index === from ? null : index;
+  }
   return null;
 }
 
@@ -164,6 +174,13 @@ export function useQuickPanel({
   const reveal = chosen === undefined || selection.reveal;
   const section = active ? sections.findIndex((item) => item.options.includes(active)) : -1;
 
+  const [pointerGate] = useState(() => createPointerGate(true));
+  const wasOpen = useRef(false);
+  useLayoutEffect(() => {
+    if (open && !wasOpen.current) pointerGate.lock();
+    wasOpen.current = open;
+  }, [open, pointerGate]);
+
   /** A jump to section `index`: its first selectable option, if any, becomes active, and its
    * heading scrolls into the pinned slot. A section button's click does the same. */
   const jumpTo = (index: number) => {
@@ -177,6 +194,7 @@ export function useQuickPanel({
   useImperativeHandle(handleRef, () => ({
     move(delta) {
       if (!open) return false;
+      pointerGate.lock();
       scroller.current?.stop();
       // From no active option, ↓ lands on the first selectable option and ↑ on the last.
       const index = active ? selectable.indexOf(active) : delta === 1 ? -1 : selectable.length;
@@ -192,6 +210,7 @@ export function useQuickPanel({
     },
     jump(delta) {
       if (!open) return false;
+      pointerGate.lock();
       // Outside every section, the active option is in the trailing group, after the last one.
       const from = section !== -1 ? section : active ? sections.length : -1;
       const target = nextSection(sections, from, delta);
@@ -257,6 +276,7 @@ export function useQuickPanel({
     hover,
     jumpTo,
     list,
+    pointerGate,
     setList,
     trackOption,
   };

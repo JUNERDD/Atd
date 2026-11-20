@@ -1,15 +1,15 @@
 import AICore
 import SwiftUI
 
-/// Fixed content keeps interpolation in SwiftUI's render graph. Reflow needs presentation
-/// values for layout as well; its descendants must not start independent geometry animations.
+/// Fixed content follows through render effects while the surface evaluates its outline. Reflow
+/// needs presentation values for layout too; descendants must not start geometry animations.
 enum IslandLayoutMotion {
   case fixed, interpolated
 }
 
 /// The common island animation boundary. Its policy describes layout work, not business kinds.
-/// A fixed layout pays no per-frame view-body cost; reflow uses one persistent presentation
-/// clock for the glass and its layout payload. Both use the same outline and follow transform.
+/// A fixed layout keeps business content out of per-frame work; reflow uses one persistent
+/// presentation clock for the glass and its layout payload. Both retain the same surface owner.
 struct IslandSurface<Layout: VectorArithmetic, Content: View>: View {
   let frame: AnimatablePair<MiniPanelGlassRect, Layout>
   let canvas: WindowSize

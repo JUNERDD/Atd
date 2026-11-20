@@ -49,7 +49,7 @@ export const instructionTheme = EditorView.theme({
     fontSize: '14px',
     lineHeight: '20px',
   },
-  '.cm-tooltip.cm-tooltip-autocomplete [role="option"]:is(:hover, [aria-selected="true"])': {
+  '.cm-tooltip.cm-tooltip-autocomplete [role="option"][aria-selected="true"]': {
     backgroundColor: 'var(--muted)',
     color: 'var(--foreground)',
   },

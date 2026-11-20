@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
 import { ChatGPTConsentRequestSchema } from './chatgpt.js';
+import { ModelAliasSchema } from './model-aliases.js';
 import { ProviderCredentialSchema, ServiceConnectionSchema } from './provider-connections.js';
 import { ServiceModelDefinitionSchema } from './models.js';
 
@@ -27,6 +28,8 @@ export const ProvidersListResponseSchema = Type.Object(
   {
     defaultConnectionId: Type.Union([Identifier, Type.Null()]),
     connections: Type.Array(ServiceConnectionSchema),
+    defaultAliasId: Type.Union([Identifier, Type.Null()]),
+    aliases: Type.Array(ModelAliasSchema),
     credentialIssues: Type.Optional(Type.Record(Identifier, ProviderCredentialIssueSchema)),
   },
   { additionalProperties: false },

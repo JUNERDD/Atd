@@ -157,6 +157,10 @@ final class StubService: @unchecked Sendable {
       )
     case ("GET", "/v1/conflict"):
       return (409, [:], Data(#"{"error":{"code":"conflict","message":"business"}}"#.utf8))
+    case ("GET", "/v1/status"):
+      let statusBody =
+        #"{"service":{"serviceId":"stub-service","epoch":\#(epoch)},"draining":false,"activeRuns":0,"pendingConfirms":0,"pendingCapabilities":0}"#
+      return (200, ["Content-Type": "application/json"], Data(statusBody.utf8))
     case ("GET", "/v1/chunks"):
       return (
         200, ["Content-Type": "text/plain"],

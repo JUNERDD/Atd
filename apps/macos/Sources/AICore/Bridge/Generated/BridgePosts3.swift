@@ -4,6 +4,24 @@
 
 import Foundation
 
+/// Params of the `update.dismissReleaseNotes` post.
+public struct UpdateDismissReleaseNotesPost: Codable, Equatable, Sendable {
+  public let version: String
+
+  public init(version: String) {
+    self.version = version
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    version = try container.string(.version, maxLength: 64)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case version
+  }
+}
+
 /// Params of the `task.shown` post.
 public struct TaskShownPost: Codable, Equatable, Sendable {
   public let taskId: String?

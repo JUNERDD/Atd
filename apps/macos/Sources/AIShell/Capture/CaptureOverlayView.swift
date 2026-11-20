@@ -24,7 +24,8 @@ final class CaptureOverlayView: NSView {
   weak var delegate: (any CaptureOverlayDelegate)?
   let annotationHost = AnnotationHostView()
   private let frozenImage = FrozenImageView()
-  private let chrome: CaptureChromeView
+  let chrome: CaptureChromeView
+  let cornerControl = CaptureOverlayCornerControl()
   private let loupe: LoupeView
   /// Above everything else, so the bottom bar stays clickable over a selection that fills the
   /// display; its own area never takes the mouse.
@@ -34,8 +35,9 @@ final class CaptureOverlayView: NSView {
   /// Trackpads scroll in many small steps; the chain walks once per this many points.
   private var scrollAccumulator: CGFloat = 0
   private static let scrollStep: CGFloat = 12
-  /// The last mouse position while the button is down, so a Shift change re-applies the drag.
+  /// The last mouse position while the button is down, so a modifier change re-applies the drag.
   private var dragPoint: CGPoint?
+  private var isSpacePanning = false
 
   /// `frame` is the display's area of the desktop (desktop points).
   init(display: FrozenDisplay, frame: CGRect) {
@@ -62,14 +64,37 @@ final class CaptureOverlayView: NSView {
       guard let self else { return }
       delegate?.overlay(self, perform: .mode(mode))
     }
+    chrome.canClickBadge = { [weak self] in self?.allowsBadgeInteraction == true }
+    chrome.onClickBadge = { [weak self] event in
+      if let self { self.delegate?.overlay(self, didClickBadgeWith: event) }
+    }
+    cornerControl.attach(to: self)
   }
 
   @available(*, unavailable)
   required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
   override var isFlipped: Bool { true }
-  override var acceptsFirstResponder: Bool { true }
+  override var acceptsFirstResponder: Bool { annotationHost.canvas == nil }
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+  private var allowsBadgeInteraction: Bool {
+    delegate?.overlayCanClickBadge(self) == true && !(window?.firstResponder is NSTextView)
+  }
+
+  /// True when the interactive size badge should capture clicks/hover ahead of `annotationHost`.
+  func isInteractiveBadge(at localPoint: CGPoint) -> Bool {
+    allowsBadgeInteraction
+      && barHost.hitTest(convert(localPoint, to: barHost)) == nil
+      && chrome.isInteractiveBadge(at: convert(localPoint, to: chrome))
+  }
+
+  override func hitTest(_ point: NSPoint) -> NSView? {
+    let local = convert(point, from: superview)
+    if let barHit = barHost.hitTest(convert(local, to: barHost)) { return barHit }
+    if isInteractiveBadge(at: local) { return chrome }
+    return super.hitTest(point)
+  }
 
   // MARK: Drawing
 
@@ -77,6 +102,7 @@ final class CaptureOverlayView: NSView {
   /// its size label when `label` is given, and handles only on a committed selection.
   func show(area: CGRect?, handles: Bool, label: String? = nil) {
     chrome.update(area: area, handles: handles, label: label)
+    cornerControl.syncBadge(on: self)
   }
 
   /// Whether the frozen screen shows (decision D1). The long screenshot's live phase hides it
@@ -90,6 +116,10 @@ final class CaptureOverlayView: NSView {
       if !newValue { loupe.isHidden = true }
     }
   }
+
+  var isLoupeVisible: Bool { !loupe.isHidden }
+  @discardableResult func copyLoupeColor(asRGB: Bool) -> String? { loupe.copyColor(asRGB: asRGB) }
+  func setLoupeCopyText(_ copyText: @escaping (String) -> Bool) { loupe.onCopyText = copyText }
 
   /// The loupe beside `point` (desktop points, on this display), or hidden for nil; never while
   /// the frozen screen is hidden.
@@ -111,6 +141,7 @@ final class CaptureOverlayView: NSView {
   /// for nil. With `trustRequest` the Accessibility request stands beside it, clickable while
   /// `trustRequest` is true.
   func showBar(_ content: CaptureBar.Content?, selection: CGRect?, trustRequest: Bool?) {
+    cornerControl.syncBadge(on: self)
     guard let content else {
       bar.isHidden = true
       self.trustRequest?.isHidden = true
@@ -167,16 +198,14 @@ final class CaptureOverlayView: NSView {
   }
 
   override func mouseEntered(with event: NSEvent) { pointerMoved(event) }
-
   override func mouseMoved(with event: NSEvent) { pointerMoved(event) }
-
   override func cursorUpdate(with event: NSEvent) { hoverCursor(at: point(of: event)) }
 
   override func mouseDown(with event: NSEvent) {
     // The keyboard comes to this display, but stays with the editor's canvas or open text when
     // they have it: the selection's handles are pressed here while annotating.
     if !((window?.firstResponder as? NSView)?.isDescendant(of: self) ?? false) {
-      window?.makeFirstResponder(self)
+      window?.makeFirstResponder(annotationHost.canvas ?? self)
     }
     let point = point(of: event)
     dragPoint = point
@@ -188,28 +217,36 @@ final class CaptureOverlayView: NSView {
   override func mouseDragged(with event: NSEvent) {
     let point = point(of: event)
     dragPoint = point
-    delegate?.overlay(self, mouseDraggedTo: point, square: Self.squares(event.modifierFlags))
+    sendDrag(to: point, flags: event.modifierFlags, ended: false)
     delegate?.overlay(self, cursorAt: point)?.set()
   }
 
   override func mouseUp(with event: NSEvent) {
     let point = point(of: event)
     dragPoint = nil
-    delegate?.overlay(self, mouseUpAt: point, square: Self.squares(event.modifierFlags))
+    if isSpacePanning {
+      isSpacePanning = false
+      delegate?.overlay(self, spacePanChanged: false, at: point)
+    }
+    sendDrag(to: point, flags: event.modifierFlags, ended: true)
     hoverCursor(at: point)
   }
 
-  /// Pressing or releasing Shift mid-drag reshapes the selection without a mouse move.
+  /// Pressing or releasing Shift/Option mid-drag reshapes the selection without a mouse move.
   override func flagsChanged(with event: NSEvent) {
-    if let dragPoint {
-      delegate?.overlay(
-        self, mouseDraggedTo: dragPoint, square: Self.squares(event.modifierFlags))
-    }
+    if let dragPoint { sendDrag(to: dragPoint, flags: event.modifierFlags, ended: false) }
     super.flagsChanged(with: event)
   }
 
-  private static func squares(_ flags: NSEvent.ModifierFlags) -> Bool {
-    flags.intersection(.deviceIndependentFlagsMask).contains(.shift)
+  private func sendDrag(to point: CGPoint, flags: NSEvent.ModifierFlags, ended: Bool) {
+    let clean = flags.intersection(.deviceIndependentFlagsMask)
+    let constrained = clean.contains(.shift)
+    let centered = clean.contains(.option)
+    if ended {
+      delegate?.overlay(self, mouseUpAt: point, constrained: constrained, centered: centered)
+    } else {
+      delegate?.overlay(self, mouseDraggedTo: point, constrained: constrained, centered: centered)
+    }
   }
 
   override func rightMouseDown(with event: NSEvent) { delegate?.overlayRightClicked(self) }
@@ -253,6 +290,8 @@ final class CaptureOverlayView: NSView {
       card.cursor(at: point)?.set()
     } else if let cursor = barHost.barCursor(at: point) ?? annotationHost.barCursor(at: point) {
       cursor.set()
+    } else if isInteractiveBadge(at: point) {
+      PointerRole.action.cursor.set()
     } else {
       delegate?.overlay(self, cursorAt: point)?.set()
     }
@@ -272,14 +311,20 @@ final class CaptureOverlayView: NSView {
       return false
     }
     guard event.type == .keyDown, window?.isKeyWindow == true,
-      let command = CaptureCommand(event), command == .save
+      let command = CaptureCommand(event), command == .save || command == .pin
     else { return false }
     delegate?.overlay(self, perform: command)
     return true
   }
 
   override func keyDown(with event: NSEvent) {
-    // Space and W toggle modes once per press; navigation still repeats while held.
+    if event.keyCode == 49, let dragPoint {
+      if !isSpacePanning {
+        isSpacePanning = true
+        delegate?.overlay(self, spacePanChanged: true, at: dragPoint)
+      }
+      return
+    }
     if [49, 13].contains(event.keyCode), event.isARepeat { return }
     guard let command = CaptureCommand(event) else {
       super.keyDown(with: event)
@@ -288,9 +333,17 @@ final class CaptureOverlayView: NSView {
     delegate?.overlay(self, perform: command)
   }
 
+  override func keyUp(with event: NSEvent) {
+    if event.keyCode == 49, isSpacePanning {
+      isSpacePanning = false
+      delegate?.overlay(self, spacePanChanged: false, at: dragPoint ?? .zero)
+      return
+    }
+    super.keyUp(with: event)
+  }
+
   /// Escape normally arrives in `keyDown`; this covers Command-period.
   override func cancelOperation(_ sender: Any?) { delegate?.overlay(self, perform: .cancel) }
-
   /// The Edit menu's Select All, when no text editor took it.
   override func selectAll(_ sender: Any?) { delegate?.overlay(self, perform: .selectDisplay) }
 }

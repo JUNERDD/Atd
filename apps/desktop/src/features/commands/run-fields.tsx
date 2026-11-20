@@ -10,7 +10,9 @@ import { Label } from '@atd/ui/components/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@atd/ui/components/select';
@@ -46,15 +48,25 @@ export function ModelField({
     (connection) => connection.connectionId === settings.defaultConnectionId,
   );
   const fixedModel = value?.mode === 'fixed' ? value : null;
+  const aliases = settings?.aliases ?? [];
+  const aliasId = value?.mode === 'alias' ? value.aliasId : null;
+  const missingAlias = aliasId !== null && !aliases.some((alias) => alias.id === aliasId);
+  const selectValue = !value
+    ? FOLLOW
+    : value.mode === 'alias'
+      ? `alias:${value.aliasId}`
+      : value.mode;
   return (
     <div className="settings-field">
       <Label htmlFor={id}>{t('run.model')}</Label>
       <div className="settings-field">
         <Select
-          value={value?.mode ?? FOLLOW}
-          onValueChange={(mode) => {
-            if (mode === FOLLOW) onChange(undefined);
-            else if (mode === 'inherit') onChange({ mode: 'inherit' });
+          value={selectValue}
+          onValueChange={(next) => {
+            if (next === FOLLOW) onChange(undefined);
+            else if (next === 'inherit') onChange({ mode: 'inherit' });
+            else if (next.startsWith('alias:'))
+              onChange({ mode: 'alias', aliasId: next.slice('alias:'.length) });
             else
               onChange({
                 mode: 'fixed',
@@ -79,6 +91,27 @@ export function ModelField({
             >
               {t('run.useFixedModel')}
             </SelectItem>
+            {(aliases.length > 0 || missingAlias) && (
+              <SelectGroup>
+                <SelectLabel>{t('run.aliasGroup')}</SelectLabel>
+                {aliases.map((alias) => {
+                  const connection = settings?.connections.find(
+                    (item) => item.connectionId === alias.connectionId,
+                  );
+                  const modelName =
+                    connection?.catalog.find((item) => item.id === alias.modelId)?.name ??
+                    alias.modelId;
+                  return (
+                    <SelectItem key={alias.id} value={`alias:${alias.id}`}>
+                      {`${alias.name} · ${modelName}`}
+                    </SelectItem>
+                  );
+                })}
+                {missingAlias && (
+                  <SelectItem value={`alias:${aliasId}`}>{t('run.unavailableAlias')}</SelectItem>
+                )}
+              </SelectGroup>
+            )}
           </SelectContent>
         </Select>
         {fixedModel && (

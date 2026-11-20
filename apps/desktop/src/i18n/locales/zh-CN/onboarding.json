@@ -14,8 +14,8 @@
       "welcome": "欢迎",
       "hotkey": "快捷键",
       "selection": "划词工具栏",
-      "screenshot": "截图",
-      "provider": "AI 提供商",
+      "screenshot": "屏幕捕获",
+      "provider": "模型",
       "features": "更多功能",
       "finish": "准备就绪"
     },
@@ -35,9 +35,9 @@
     "planLabel": "接下来要设置",
     "plan": {
       "hotkey": "用快捷键呼出 Atd",
-      "selection": "对选中的文字提问",
-      "screenshot": "截取屏幕",
-      "provider": "连接你的 AI 提供商"
+      "selection": "对选中的文字提问或运行命令",
+      "screenshot": "截取屏幕与录制画面",
+      "provider": "连接模型与配置模型别名"
     },
     "language": "语言"
   },
@@ -47,7 +47,7 @@
     "waiting": "等待你按下快捷键…",
     "success": "成功了！",
     "rowLabel": "面板快捷键",
-    "rowDescription": "想换个组合？点击按键即可录制新的快捷键。"
+    "rowDescription": "想换个组合？点击按键即可录制新快捷键，也支持连按两次修饰键。"
   },
   "selection": {
     "title": "选中什么，就问什么",
@@ -66,19 +66,25 @@
     },
     "practice": {
       "label": "练习文字",
-      "sample": "好用的工具平时不打扰，需要时随叫随到。选中这段话里的几个词，Atd 的工具栏就会出现在旁边。点“问 Atd”，选中的内容会引用到面板里，等你提问。",
+      "sample": "好用的工具平时不打扰，需要时随叫随到。选中这段话里的几个词，Atd 就会出现在旁边：既能引用到面板提问，也能就地改写或在浮动卡片中查看排版结果。",
       "caption": "选中这段文字的一部分试试。",
       "captionHold": "按住 {{key}}，选中这段文字的一部分试试。",
       "captionToggle": "先连按两次 {{key}}，再选中这段文字的一部分试试。",
       "needsAccess": "授予上方权限后，工具栏才会在这里出现。",
-      "needsToolbar": "打开工具栏开关后，它才会在这里出现。"
+      "needsToolbar": "打开工具栏开关后，它才会在这里出现。",
+      "iconClickHint": "点击指针旁的小图标即可展开工具栏。",
+      "iconHoverHint": "将指针停留在小图标上即可展开工具栏。"
     }
   },
   "screenshot": {
-    "title": "截取屏幕",
-    "description": "按下 {{shortcut}}，截取屏幕上的一块区域。",
+    "title": "截图、长截图与录屏",
+    "description": "按下 {{shortcut}} 框选区域：可添加标注、选取图中文字运行命令、拼接滚动长截图，或切换为录屏。",
     "waiting": "等待屏幕录制权限…",
     "success": "已获得权限。",
+    "captureRow": "截取屏幕",
+    "recordRow": "录制屏幕",
+    "confirmTitle": "确认截图时",
+    "confirmLabel": "截图确认方式",
     "screenRecording": {
       "title": "屏幕录制权限",
       "description": "授权后，系统可能会要求重新打开 Atd。",
@@ -88,30 +94,37 @@
     }
   },
   "provider": {
-    "title": "连接你的 AI",
-    "description": "直接使用你已有的模型：添加 API 密钥，或登录提供商账号。设置窗口会在本指南上方打开。",
+    "title": "连接你的模型",
+    "description": "添加 API 密钥、登录提供商账号，或接入本地模型。“设置 › 模型”会在本指南上方打开。",
     "connect": "连接提供商…",
-    "manage": "管理提供商…",
-    "waiting": "尚未连接任何提供商。",
+    "manage": "打开模型设置…",
+    "reconnect": "前往模型设置修复…",
+    "waiting": "尚未连接可用的模型提供商。",
+    "unreadable": "无法读取 {{name}} 的已保存凭据，请在“模型”设置中重新输入。",
     "connected": "已连接到 {{name}}",
     "model": "默认模型：{{model}}",
-    "footnote": "之后可以随时在设置中添加更多提供商。"
+    "modelWithAlias": "默认别名：{{alias}}（{{model}}）",
+    "footnote": "可在“设置 › 模型”中保存模型别名，组合模型、思考强度与上下文窗口以便随时切换。"
   },
   "features": {
     "title": "Atd 不止于此",
-    "description": "还有三种用法，随时都能派上用场。",
+    "description": "还有四种能力，随时陪你把事情做完。",
     "items": {
+      "computer": {
+        "title": "电脑操作",
+        "description": "经你授权操作网页与 Mac 应用，并自动核实结果。"
+      },
+      "extensions": {
+        "title": "扩展与记忆",
+        "description": "用技能、子代理、插件与 MCP 扩展能力，并由记忆学习你的习惯。"
+      },
       "apps": {
-        "title": "应用",
-        "description": "描述你要的工具，Atd 就把它做成应用。"
+        "title": "应用与交互视图",
+        "description": "把想法做成带桌面小组件的应用，或在对话中直接使用交互视图。"
       },
       "automations": {
-        "title": "自动化",
-        "description": "让任务按时或在文件变动时自动运行。"
-      },
-      "miniPanel": {
-        "title": "迷你面板",
-        "description": "屏幕边缘的快捷入口，也能直接拖入文件。"
+        "title": "自动化与迷你面板",
+        "description": "按时或在文件变动时自动运行，并在屏幕边缘跟进任务进度与审批。"
       }
     }
   },
@@ -127,9 +140,9 @@
     "tips": {
       "label": "可以试试",
       "toggle": "呼出或隐藏 Atd",
-      "screenshot": "截取屏幕",
-      "mention": "用 @ 提及文件",
-      "commands": "用 / 运行命令",
+      "screenshot": "截图或录制屏幕",
+      "mention": "提及文件、对话或工具",
+      "commands": "运行命令、技能或 /model",
       "settings": "打开设置"
     },
     "login": {
@@ -140,7 +153,7 @@
   "intro": {
     "badge": "认识 {{name}}",
     "title": "在任何应用里，AI 都只差一个快捷键",
-    "description": "对选中的文字提问、截取屏幕、接入你已在用的 AI 提供商，全程不必离开手头的工作。",
+    "description": "就地处理选中文字、截图或录屏提问、跨应用协同操作，直连你信赖的模型，全程不必离开手头的工作。",
     "begin": "开始设置",
     "hint": "或按回车键"
   }

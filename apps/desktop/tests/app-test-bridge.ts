@@ -1,11 +1,6 @@
 import { vi } from 'vitest';
-import { DEFAULT_PANEL_BACKGROUND, DEFAULT_SHORTCUTS } from '@atd/agent-contracts';
 import type { FolderBridge } from '../src/client/contract';
-import {
-  DEFAULT_SELECTION_TOOLBAR,
-  type SettingsItemLink,
-  type SettingsSnapshot,
-} from '../src/client/settings-contract';
+import type { SettingsItemLink, SettingsSnapshot } from '../src/client/settings-contract';
 import type {
   AgentBridge,
   AgentEvent,
@@ -17,6 +12,7 @@ import { fixtureCommands } from './command-fixtures';
 import { emptyInput, type RunStatus } from '../src/client/agent/task-schema';
 import type { PermissionRequest } from '../src/client/agent/permission-schema';
 import type { QueueState } from '../src/client/agent/transcript-schema';
+import { initialTestSettings } from './app-test-settings';
 import { providerBridgeFixture } from './provider-bridge-fixture';
 import { memoryBridgeFixture } from './memory-bridge-fixture';
 
@@ -34,57 +30,7 @@ export function installBridge(extras?: {
   /** The panel's readable folders; tests without it run like the settings window. */
   folders?: FolderBridge;
 }) {
-  let settings: SettingsSnapshot = {
-    connections: [
-      {
-        connectionId: 'test',
-        revision: 1,
-        provider: 'openai',
-        name: 'OpenAI API',
-        baseUrl: 'https://api.openai.com/v1',
-        authType: 'api_key',
-        defaultModel: 'test-model',
-        connected: true,
-        hasCredential: true,
-        options: {},
-        customModels: [],
-        catalog: [],
-        catalogError: '',
-        verifiedModel: '',
-      },
-    ],
-    defaultConnectionId: 'test',
-    providersLoaded: true,
-    providerStatusesChecked: true,
-    language: 'en',
-    appearance: null,
-    glowEffects: true,
-    resultMarkdown: true,
-    panelBackground: structuredClone(DEFAULT_PANEL_BACKGROUND),
-    computerVisionModel: null,
-    shortcuts: { ...DEFAULT_SHORTCUTS },
-    pinned: true,
-    showInDock: false,
-    openAtLogin: null,
-    panelPlacement: 'bottomRight',
-    shortcutAvailable: true,
-    screenshotShortcutAvailable: true,
-    recordShortcutAvailable: true,
-    permissionTier: 'manual',
-    shellAllowlist: [],
-    selectionToolbar: structuredClone(DEFAULT_SELECTION_TOOLBAR),
-    screenshotCopyOnConfirm: true,
-    longScreenshotConfirmAction: 'card',
-    commandTyping: true,
-    commandTypingAnimation: true,
-    viewInitiative: 'proactive',
-    summaryTitles: true,
-    nextSteps: true,
-    nextStepClick: 'fill',
-    accessibilityTrusted: true,
-    screenRecordingTrusted: true,
-    onboardingCompleted: true,
-  };
+  let settings: SettingsSnapshot = initialTestSettings();
   const settingsListeners = new Set<(value: SettingsSnapshot) => void>();
   /** Applies a settings write, tells the windows listening, and answers the new snapshot. */
   const writeSettings = (patch: Partial<SettingsSnapshot>) => {
@@ -315,8 +261,11 @@ export function installBridge(extras?: {
         };
       },
       saveSelectionToolbar: vi.fn(async (selectionToolbar) => writeSettings({ selectionToolbar })),
-      setScreenshotCopyOnConfirm: vi.fn(async (screenshotCopyOnConfirm) =>
-        writeSettings({ screenshotCopyOnConfirm }),
+      setScreenshotConfirmAction: vi.fn(async (screenshotConfirmAction) =>
+        writeSettings({ screenshotConfirmAction }),
+      ),
+      setScreenshotConfirmInComposer: vi.fn(async (screenshotConfirmInComposer) =>
+        writeSettings({ screenshotConfirmInComposer }),
       ),
       setLongScreenshotConfirmAction: vi.fn(async (longScreenshotConfirmAction) =>
         writeSettings({ longScreenshotConfirmAction }),

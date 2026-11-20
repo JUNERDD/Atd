@@ -1,4 +1,13 @@
-import { Camera, Check, Command, Sparkles, SquarePen, Zap } from 'lucide-react';
+import {
+  Blocks,
+  Camera,
+  Check,
+  Command,
+  MousePointerClick,
+  Sparkles,
+  SquarePen,
+  Zap,
+} from 'lucide-react';
 import { ArtStage } from './art-panel';
 import './art-features.css';
 
@@ -16,12 +25,12 @@ const ACTIONS = [
 ] as const;
 
 /**
- * Three more things Atd does, in one scene: an app it built (a miniature window with a checklist,
- * Atd's sparkle on its top right corner, where the step's light sets off), the mini panel docked
- * on the window's left edge (a slim capsule of quick actions) and an automation in front of its
- * lower right corner (a raised card with a bolt, its name and schedule, and a time line of runs).
- * Two CSS loops, still under Reduce Motion: the last row writes itself in again and again, and the
- * automation's next run comes due and completes.
+ * Atd's four additional pillars in one scene: an app it built (a miniature window with a
+ * checklist and Atd's sparkle on its top-right corner), Computer use (a raised pointer badge
+ * drifting gently between two upper targets), Extensions & Memory (a compact chip docked along the
+ * window's upper-right edge), the mini panel docked on its left edge, and an automation card at its
+ * lower-right corner. CSS loops run only under Reduce Motion `no-preference`: the last row writes
+ * itself in, the automation's next run completes, and the pointer badge drifts between targets.
  */
 export function FeaturesArt() {
   return (
@@ -52,6 +61,12 @@ export function FeaturesArt() {
             </span>
           ))}
         </span>
+        <span className="guide-ext">
+          <span className="guide-ext-icon">
+            <Blocks strokeWidth={2.25} />
+          </span>
+          <span className="guide-ext-label" />
+        </span>
         <span className="guide-auto">
           <span className="guide-auto-head">
             <span className="guide-auto-badge">
@@ -70,6 +85,9 @@ export function FeaturesArt() {
               <span key={run} className="guide-auto-tick" data-done={run < 2 || undefined} />
             ))}
           </span>
+        </span>
+        <span className="guide-pointer">
+          <MousePointerClick strokeWidth={2.25} />
         </span>
         <span className="guide-app-spark">
           <Sparkles fill="currentColor" />

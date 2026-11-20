@@ -22,7 +22,7 @@ final class AnnotationScopeChip: NSView {
     let glyph = AnnotationIcons.glyph(AnnotationIcons.cancel, label: clearName)
     glyph.size = NSSize(width: 12, height: 12)
     clear.image = glyph
-    clear.toolTip = clearName
+    clear.setCaptureTooltip(clearName)
     clear.setAccessibilityLabel(clearName)
     super.init(frame: frame)
     clear.target = self

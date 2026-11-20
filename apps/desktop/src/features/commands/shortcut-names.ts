@@ -6,9 +6,11 @@ import {
   type CommandModel,
   type CommandShortcut,
   type CommandThinkingLevel,
+  type ModelAlias,
   type ShortcutHolder,
 } from '@atd/agent-contracts';
 import type { CommandDefinition, Parameter } from '../../client/agent/command-schema';
+import { useSettingsSnapshot } from '../settings/use-settings';
 import { pinnedValue } from './shortcut-drafts';
 
 /** The longest generated name, the same cap as a name the person types. */
@@ -31,9 +33,23 @@ export function argumentText(
   return String(value);
 }
 
-/** A command model as the editor names it: the fixed model's id, or the app's default. */
-export function modelText(model: CommandModel, t: Commands): string {
-  return model.mode === 'fixed' ? model.modelId : t('shortcut.name.appDefaultModel');
+/** A command model as the editor names it: fixed model id, alias name, or app default. */
+export function modelText(
+  model: CommandModel,
+  t: Commands,
+  aliases?: readonly ModelAlias[],
+): string {
+  switch (model.mode) {
+    case 'fixed':
+      return model.modelId;
+    case 'inherit':
+      return t('shortcut.name.appDefaultModel');
+    case 'alias':
+      return (
+        aliases?.find((alias) => alias.id === model.aliasId)?.name ??
+        t('shortcut.name.missingAlias')
+      );
+  }
 }
 
 /** A reasoning level as the editor's effort field names it. */
@@ -54,6 +70,7 @@ function generatedName(
   shortcut: CommandShortcut,
   t: Commands,
   tProviders: Providers,
+  aliases?: readonly ModelAlias[],
 ): string {
   if (!hasOverrides(shortcut)) return t('shortcut.name.usesCommand');
   const parts: string[] = [];
@@ -71,7 +88,7 @@ function generatedName(
       );
   }
   if (shortcut.output) parts.push(t(`output.${shortcut.output.action}.title`));
-  if (shortcut.model) parts.push(modelText(shortcut.model, t));
+  if (shortcut.model) parts.push(modelText(shortcut.model, t, aliases));
   if (shortcut.thinkingLevel)
     parts.push(
       t('shortcut.name.value', {
@@ -89,14 +106,16 @@ function generatedName(
 export function useShortcutNames() {
   const { t } = useTranslation('commands');
   const { t: tProviders } = useTranslation('providers');
+  const { snapshot } = useSettingsSnapshot();
+  const aliases = snapshot?.aliases;
   /** The name the person gave the shortcut, else one made from its overrides. */
   const title = (command: CommandDefinition, shortcut: CommandShortcut) =>
-    shortcut.name || generatedName(command, shortcut, t, tProviders);
+    shortcut.name || generatedName(command, shortcut, t, tProviders, aliases);
   return {
     title,
     /** The name made from the shortcut's overrides, which its name field offers as a hint. */
     generated: (command: CommandDefinition, shortcut: CommandShortcut) =>
-      generatedName(command, shortcut, t, tProviders),
+      generatedName(command, shortcut, t, tProviders, aliases),
     /**
      * A command shortcut that holds some keys, for conflict messages: the command's name, with
      * the shortcut's own when it has one or the command has more than one to tell apart.

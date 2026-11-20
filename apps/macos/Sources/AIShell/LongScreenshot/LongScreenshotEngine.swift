@@ -10,7 +10,7 @@ import Synchronization
 /// from the main actor. Progress reaches the main actor through `changed`, coalesced: a hop is
 /// scheduled only when the published value changed and none is pending.
 nonisolated final class LongScreenshotEngine: Sendable {
-  private struct State: Sendable {
+  struct State: Sendable {
     var stitch: LongScreenshotStitch?
     var first: LongScreenshotRows?
     var firstThumbnail: CGImage?
@@ -22,6 +22,9 @@ nonisolated final class LongScreenshotEngine: Sendable {
     /// The latest frame's rows past the band, which become the head or the tail at an edge.
     var latestHead: LongScreenshotRows?
     var latestTail: LongScreenshotRows?
+    /// The latest matched frame's scroll-area pixels and document position, used to bridge strips
+    /// seamlessly when a discrete scroll step exceeds a narrow selection band's height.
+    var latestArea: (position: Int, rows: LongScreenshotRows)?
     var thumbnails: LongScreenshotThumbnails?
     var stopped = false
     /// Counts changes to the kept pixels, so an unchanged preview is not drawn again.
@@ -42,11 +45,21 @@ nonisolated final class LongScreenshotEngine: Sendable {
     let thumbnails: LongScreenshotThumbnails
   }
 
+  /// A locked frame's pixels, valid only during ``receive(_:at:)``.
+  struct Frame {
+    let base: UnsafeRawPointer
+    let bytesPerRow: Int
+
+    func rows(_ rows: Range<Int>, width: Int) -> LongScreenshotRows {
+      LongScreenshotRows(copying: rows, of: base, bytesPerRow: bytesPerRow, width: width)
+    }
+  }
+
   let geometry: LongScreenshotGeometry
-  private let scrollValue: Double?
-  private let state = Mutex(State())
+  let scrollValue: Double?
+  let state = Mutex(State())
   private let scratch = LongScreenshotScratch()
-  private let changed: @MainActor @Sendable () -> Void
+  let changed: @MainActor @Sendable () -> Void
 
   init(
     geometry: LongScreenshotGeometry, scrollValue: Double?,
@@ -73,21 +86,55 @@ nonisolated final class LongScreenshotEngine: Sendable {
         pixels: base, bytesPerRow: bytesPerRow, rows: geometry.bandRows,
         columns: geometry.matchedColumns, scratch: scratch)
     else { return }
+    let hasArea = geometry.areaRows != geometry.bandRows
+    let areaSignature =
+      hasArea
+      ? LongScreenshotSignature.hashing(
+        pixels: base, bytesPerRow: bytesPerRow, rows: geometry.areaRows,
+        columns: geometry.matchedColumns, scratch: scratch)
+      : nil
     let frame = Frame(base: UnsafeRawPointer(base), bytesPerRow: bytesPerRow)
-    let space = state.withLock { $0.thumbnails == nil } ? Self.colorSpace(of: buffer) : nil
-    hop(
-      state.withLock { state in
-        guard !state.stopped else { return false }
-        guard var stitch = state.stitch else {
-          start(&state, frame: frame, signature: signature, space: space)
-          return publish(&state)
-        }
-        cacheEdges(&state, frame: frame, stitch: stitch)
-        let update = stitch.add(signature, at: time)
-        state.stitch = stitch
-        apply(update, to: &state, frame: frame)
+    let prepared = state.withLock { $0.stitch == nil } ? prepareInitial(frame, buffer: buffer) : nil
+    var needArea = false
+    var needHead = false
+    var needTail = false
+    var targetPos = 0
+    let shouldHop = state.withLock { state -> Bool in
+      guard !state.stopped else { return false }
+      guard var stitch = state.stitch else {
+        let seed = prepared ?? prepareInitial(frame, buffer: buffer)
+        start(&state, seed: seed, signature: signature, area: areaSignature)
         return publish(&state)
-      })
+      }
+      let prevPos = stitch.position
+      let update = stitch.add(
+        signature, area: areaSignature, previousAreaPosition: state.latestArea?.position, at: time)
+      ensureImmediateEdges(&state, update: update, stitch: stitch, frame: frame)
+      state.stitch = stitch
+      apply(update, to: &state, frame: frame)
+      let matched = stitch.lost == nil && !stitch.isAdrift
+      let moved = matched && stitch.position != prevPos
+      needArea = hasArea && matched && state.latestArea?.position != stitch.position
+      needHead =
+        !stitch.reachedStart && !geometry.headRows.isEmpty && (moved || state.latestHead == nil)
+      needTail =
+        !stitch.reachedEnd && !geometry.tailRows.isEmpty && (moved || state.latestTail == nil)
+      targetPos = stitch.position
+      return publish(&state)
+    }
+    if needArea || needHead || needTail {
+      let width = geometry.width
+      let nextArea = needArea ? frame.rows(geometry.areaRows, width: width) : nil
+      let nextHead = needHead ? frame.rows(geometry.headRows, width: width) : nil
+      let nextTail = needTail ? frame.rows(geometry.tailRows, width: width) : nil
+      state.withLock { state in
+        guard !state.stopped, let cur = state.stitch, cur.position == targetPos else { return }
+        if let nextArea { state.latestArea = (targetPos, nextArea) }
+        if let nextHead, !cur.reachedStart { state.latestHead = nextHead }
+        if let nextTail, !cur.reachedEnd { state.latestTail = nextTail }
+      }
+    }
+    hop(shouldHop)
   }
 
   /// A frame ScreenCaptureKit reported as unchanged, on the stream's queue.
@@ -122,13 +169,11 @@ nonisolated final class LongScreenshotEngine: Sendable {
       return .init(
         started: true, position: stitch.position, movingRows: stitch.movingRows.count,
         scale: geometry.scale, adrift: stitch.isAdrift, lost: stitch.lost,
-        reachedEnd: stitch.reachedEnd, reachedLimit: stitch.reachedLimit)
+        reachedEnd: stitch.isAtEnd, reachedLimit: stitch.reachedLimit)
     }
   }
 
-  /// Adds the scroll area's part below the selection to the image, or takes it out again: the
-  /// user's choice, which holds whenever the page's end offers that part (the end can move when
-  /// the page loads more).
+  /// Adds the scroll area's part below the selection to the image, or takes it out again.
   func includeTail(_ included: Bool) {
     hop(
       state.withLock { state in
@@ -168,137 +213,5 @@ nonisolated final class LongScreenshotEngine: Sendable {
   /// Stops taking frames and drops every pixel.
   func discard() {
     state.withLock { $0 = State(stopped: true) }
-  }
-
-  // MARK: Under the lock
-
-  /// A locked frame's pixels, valid only during ``receive(_:at:)``.
-  private struct Frame {
-    let base: UnsafeRawPointer
-    let bytesPerRow: Int
-
-    func rows(_ rows: Range<Int>, width: Int) -> LongScreenshotRows {
-      LongScreenshotRows(copying: rows, of: base, bytesPerRow: bytesPerRow, width: width)
-    }
-  }
-
-  private func start(
-    _ state: inout State, frame: Frame, signature: LongScreenshotSignature, space: CGColorSpace?
-  ) {
-    let thumbnails = LongScreenshotThumbnails(
-      width: geometry.width, space: space ?? CGColorSpaceCreateDeviceRGB())
-    let first = frame.rows(0..<geometry.height, width: geometry.width)
-    let stitch = LongScreenshotStitch(
-      geometry: geometry, first: signature, scrollValue: scrollValue)
-    state.thumbnails = thumbnails
-    state.first = first
-    state.firstThumbnail = thumbnails.make(first)
-    state.strips = LongScreenshotStrips(width: geometry.width, thumbnails: thumbnails)
-    cacheEdges(&state, frame: frame, stitch: stitch)
-    state.stitch = stitch
-    state.revision += 1
-  }
-
-  /// Keeps this frame's rows past the band for as long as that edge may still be reached.
-  private func cacheEdges(_ state: inout State, frame: Frame, stitch: LongScreenshotStitch) {
-    if !stitch.reachedStart, !geometry.headRows.isEmpty {
-      state.latestHead = frame.rows(geometry.headRows, width: geometry.width)
-    }
-    if !stitch.reachedEnd, !geometry.tailRows.isEmpty {
-      state.latestTail = frame.rows(geometry.tailRows, width: geometry.width)
-    }
-  }
-
-  private func advance(_ step: (inout LongScreenshotStitch) -> LongScreenshotStitch.Update) {
-    hop(
-      state.withLock { state in
-        guard !state.stopped, var stitch = state.stitch else { return false }
-        let update = step(&stitch)
-        state.stitch = stitch
-        apply(update, to: &state, frame: nil)
-        return publish(&state)
-      })
-  }
-
-  /// Copies the rows `update` asks for out of `frame` (none without one), trims what an edge
-  /// cut, and keeps the head or tail when an edge was reached.
-  private func apply(_ update: LongScreenshotStitch.Update, to state: inout State, frame: Frame?) {
-    guard !update.isEmpty, let stitch = state.stitch, var strips = state.strips else { return }
-    let width = geometry.width
-    if let frame, let rows = update.above.flatMap(streamRows),
-      let top = stitch.stripsAbove?.lowerBound
-    {
-      strips.prepend(frame.rows(rows, width: width), top: top)
-    }
-    if let frame, let rows = update.below.flatMap(streamRows),
-      let bottom = stitch.stripsBelow?.upperBound
-    {
-      strips.append(frame.rows(rows, width: width), top: bottom - rows.count)
-    }
-    if update.keepFrom != nil || update.keepBefore != nil {
-      strips.keep(above: stitch.stripsAbove, below: stitch.stripsBelow)
-    }
-    state.strips = strips
-    if update.dropsHead {
-      state.head = nil
-      state.headThumbnail = nil
-    }
-    if update.dropsTail {
-      state.tail = nil
-      state.tailThumbnail = nil
-    }
-    if update.reached == .start, stitch.addedHead, let rows = state.latestHead {
-      state.head = rows
-      state.headThumbnail = state.thumbnails?.make(rows)
-      state.latestHead = nil
-    }
-    if update.reached == .end, stitch.offersTail, let rows = state.latestTail {
-      state.tail = rows
-      state.tailThumbnail = state.thumbnails?.make(rows)
-      state.latestTail = nil
-    }
-    state.revision += 1
-  }
-
-  /// The stream rows of band rows `rows`; nil, so nothing is copied, unless they lie inside the
-  /// band. The stitch only asks for rows of the band's moving part; this keeps any slip from
-  /// reading outside the frame's buffer.
-  private func streamRows(_ rows: Range<Int>) -> Range<Int>? {
-    let band = geometry.bandRows
-    guard !rows.isEmpty, rows.lowerBound >= 0, rows.upperBound <= band.count else { return nil }
-    return (band.lowerBound + rows.lowerBound)..<(band.lowerBound + rows.upperBound)
-  }
-
-  /// Records the progress as it stands; true when a hop to the main actor must be scheduled.
-  private func publish(_ state: inout State) -> Bool {
-    guard let stitch = state.stitch else { return false }
-    let layout = stitch.layout
-    let scale = geometry.scale
-    let progress = LongScreenshotProgress(
-      height: CGFloat(layout.height) / scale, screens: geometry.screens(layout.height),
-      lost: stitch.lost, reachedEnd: stitch.reachedEnd, reachedStart: stitch.reachedStart,
-      reachedLimit: stitch.reachedLimit,
-      view: CGFloat(layout.view.lowerBound) / scale...CGFloat(layout.view.upperBound) / scale,
-      scrolled: stitch.scrolled,
-      tail: stitch.offersTail ? (stitch.includesTail ? .included : .excluded) : .none)
-    guard progress != state.published else { return false }
-    state.published = progress
-    state.pending = progress
-    guard !state.hopping else { return false }
-    state.hopping = true
-    return true
-  }
-
-  private func hop(_ needed: Bool) {
-    guard needed else { return }
-    let changed = changed
-    Task { @MainActor in changed() }
-  }
-
-  /// The colour space ScreenCaptureKit tagged the frame with: the display's, as screenshots
-  /// use. Nil when untagged.
-  private static func colorSpace(of buffer: CVPixelBuffer) -> CGColorSpace? {
-    guard let attachments = CVBufferCopyAttachments(buffer, .shouldPropagate) else { return nil }
-    return CVImageBufferCreateColorSpaceFromAttachments(attachments)?.takeRetainedValue()
   }
 }

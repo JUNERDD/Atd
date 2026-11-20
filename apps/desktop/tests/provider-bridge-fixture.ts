@@ -1,5 +1,11 @@
 import { vi } from 'vitest';
-import type { Connection, ModelContexts, ModelLevels } from '../src/client/providers/schema';
+import type {
+  Connection,
+  ModelAlias,
+  ModelAliasDraft,
+  ModelContexts,
+  ModelLevels,
+} from '../src/client/providers/schema';
 
 /**
  * The provider bridge the test windows use: three effort levels, no context choice (an unknown
@@ -24,6 +30,16 @@ export function providerBridgeFixture(saved: () => Connection) {
       choices: [],
     })),
     setContext: vi.fn(async () => {}),
+    createAlias: vi.fn(async (draft: ModelAliasDraft): Promise<ModelAlias> => ({
+      id: 'alias-1',
+      ...draft,
+    })),
+    updateAlias: vi.fn(async (id: string, draft: ModelAliasDraft): Promise<ModelAlias> => ({
+      id,
+      ...draft,
+    })),
+    removeAlias: vi.fn(async () => {}),
+    setDefaultAlias: vi.fn(async () => {}),
     disconnect: vi.fn(async () => {}),
     remove: vi.fn(async () => undefined),
     refresh: vi.fn(async () => {}),

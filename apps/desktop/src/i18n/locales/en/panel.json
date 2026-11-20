@@ -267,7 +267,9 @@
       "disconnected": "Service disconnected. {{detail}}",
       "connecting": "Connecting to the service…",
       "reconnecting": "Connection lost. Reconnecting…",
-      "openSettings": "Open Service settings"
+      "openSettings": "Open Service settings",
+      "openDiagnostics": "Diagnose",
+      "restartService": "Restart service"
     }
   },
   "capability": {
@@ -276,10 +278,31 @@
   "errors": {
     "openDesktopApp": "Open the desktop app to run tasks and manage saved data."
   },
+  "modelConfig": {
+    "contextAppliesDraft": "Applies only to this conversation; saved model and alias defaults stay unchanged."
+  },
+  "aliases": {
+    "sectionTitle": "Model aliases",
+    "triggerModified": "{{name}} (modified)",
+    "triggerAriaLabel": "Model alias: {{alias}}, {{details}}",
+    "offlineHint": "{{provider}} is offline",
+    "providerOffline": "Offline · {{summary}}",
+    "modifiedStatus": "Modified draft from “{{name}}”",
+    "restore": "Restore “{{name}}”",
+    "saveAsNew": "Save as new alias",
+    "copySuffix": "copy",
+    "namePlaceholder": "New alias name",
+    "cancel": "Cancel",
+    "save": "Save alias",
+    "emptyName": "Enter a name for the model alias.",
+    "missingModel": "Choose a model before saving an alias.",
+    "saveFailed": "Couldn't save the model alias."
+  },
   "quickPanel": {
     "listLabel": "Suggestions",
     "sectionsLabel": "Groups",
     "groups": {
+      "aliases": "Model aliases",
       "applications": "Applications",
       "commands": "Quick commands",
       "skills": "Skills",

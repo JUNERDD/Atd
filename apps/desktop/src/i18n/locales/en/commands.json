@@ -268,7 +268,8 @@
       "value": "{{label}}: {{value}}",
       "on": "On",
       "off": "Off",
-      "appDefaultModel": "App default model"
+      "appDefaultModel": "App default model",
+      "missingAlias": "Unavailable model alias"
     },
     "row": {
       "noKeys": "No keys set",
@@ -343,6 +344,8 @@
     "useAppDefault": "Use app default",
     "useFixedModel": "Use a fixed model",
     "fixedModel": "Fixed command model",
+    "aliasGroup": "Model aliases",
+    "unavailableAlias": "Unavailable model alias",
     "thinkingLevel": "Effort",
     "thinkingLevelInherit": "Use connection default",
     "thinkingLevelHint": "How much the model reasons before it answers, whichever model runs the command. Lower is faster and cheaper. Each run adjusts the level to what its model supports.",

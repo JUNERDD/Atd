@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { notaryArgs, run } from './config.mjs';
 
@@ -66,6 +67,19 @@ async function request(args) {
 
 const digest = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
 const saveReceipt = (file, receipt) => writeFileSync(file, `${JSON.stringify(receipt, null, 2)}\n`);
+
+async function waitForSubmission(id) {
+  const args = ['wait', id, '--timeout', process.env.AI_NOTARY_TIMEOUT || '30m'];
+  try {
+    return await request(args);
+  } catch (error) {
+    if (!(error instanceof NotaryToolError) || !/NSURLErrorDomain Code=-1009\b/.test(error.message))
+      throw error;
+    console.log(`Network went offline waiting for ${id}. Resuming the same submission in 15s.`);
+    await delay(15_000);
+    return await request(args);
+  }
+}
 
 function failedUpload(error, sha256) {
   const native = error instanceof NotaryToolError ? error : null;
@@ -158,12 +172,7 @@ export async function notarize(file, stapleTarget = file) {
   if (receipt.status !== 'Accepted') {
     let result;
     try {
-      result = await request([
-        'wait',
-        receipt.id,
-        '--timeout',
-        process.env.AI_NOTARY_TIMEOUT || '30m',
-      ]);
+      result = await waitForSubmission(receipt.id);
     } catch (error) {
       // Terminal rejection is still a failure, but its JSON lets us retain Apple's diagnostic.
       if (

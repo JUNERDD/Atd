@@ -31,6 +31,8 @@ export function useRevealMore(total: number, batch: number, resetKey: string) {
     [resetKey, batch],
   );
 
+  const revealAll = useCallback(() => setRevealed({ resetKey, count: total }), [resetKey, total]);
+
   useEffect(() => {
     if (!sentinel || count >= total || typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(
@@ -43,5 +45,5 @@ export function useRevealMore(total: number, batch: number, resetKey: string) {
     return () => observer.disconnect();
   }, [sentinel, count, total, revealMore]);
 
-  return { count: Math.min(count, total), sentinel: setSentinel };
+  return { count: Math.min(count, total), sentinel: setSentinel, revealAll };
 }

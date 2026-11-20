@@ -33,7 +33,8 @@ public struct LongScreenshotGeometry: Equatable, Sendable {
   public let bandRows: Range<Int>
   /// The band's columns: the selection's over the scroll area, all of them when none is known.
   public let bandColumns: Range<Int>
-  /// The columns frames are compared on: the band's without the scroll bar's lane.
+  /// The columns frames are compared on: the band's, without the scroll bar's lane when the scroll
+  /// area is unknown or ends inside the selection.
   public let matchedColumns: Range<Int>
   /// The columns whose pixels move with the page: the band's, without the scroll bar's lane
   /// when the scroll area's trailing edge lies inside the selection. The rest of the image's
@@ -75,10 +76,13 @@ public struct LongScreenshotGeometry: Equatable, Sendable {
       area.map { grid.columns(max(picked.minX, $0.minX), min(picked.maxX, $0.maxX)) }
       ?? (0..<grid.width)
     guard bandRows.count >= 2, bandColumns.count >= 2 else { return nil }
-    // The lane is only worth dropping from a band that stays wide without it.
-    let lane = min(Int((scrollerLane * scale).rounded(.up)), bandColumns.count / 4)
-    let matched = bandColumns.lowerBound..<(bandColumns.upperBound - lane)
     let laneInside = area.map { $0.maxX <= picked.maxX + 0.5 } ?? false
+    let omitsLane = area == nil || laneInside
+    // The lane is only worth dropping when a scroll bar could sit inside the band and the band
+    // stays wide without it.
+    let lane =
+      omitsLane ? min(Int((scrollerLane * scale).rounded(.up)), bandColumns.count / 4) : 0
+    let matched = bandColumns.lowerBound..<(bandColumns.upperBound - lane)
     return LongScreenshotGeometry(
       sourceRect: CGRect(
         x: pixels.minX / scale, y: pixels.minY / scale, width: pixels.width / scale,

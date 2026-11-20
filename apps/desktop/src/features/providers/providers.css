@@ -82,11 +82,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   min-height: 20px;
 }
 .provider-name-track [data-slot='item-title'] {
   display: block;
-  min-width: 80px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -231,18 +232,48 @@
 button.model-config-row-nav {
   cursor: pointer;
 }
-button.model-config-row-nav:hover {
+button.model-config-row-nav:not(:disabled):focus {
   background: var(--muted);
-}
-button.model-config-row-nav:focus-visible {
-  outline: 1px solid var(--ring);
+  outline: none;
 }
 button.model-config-row-nav:disabled {
   cursor: default;
   opacity: 0.5;
 }
-button.model-config-row-nav:disabled:hover {
-  background: transparent;
+/* Root alias action Buttons (Restore / Save as new) share keyboard focus and pointer hover through
+   focus alone, with no focus-visible ring or separate raw :hover fill. */
+.model-config-root [data-root-item][data-slot='button']:is(:focus, :focus-visible) {
+  box-shadow: none;
+  outline: none;
+}
+.model-config-root [data-root-item][data-slot='button'][data-variant='outline']:hover:not(:focus) {
+  background-color: transparent;
+  color: inherit;
+}
+.model-config-root
+  [data-root-item][data-slot='button'][data-variant='secondary']:hover:not(:focus) {
+  background-color: var(--ata-surface-raised-wash);
+}
+.model-config-root
+  [data-root-item][data-slot='button'][data-variant='outline']:not(:disabled):focus {
+  background-color: var(--ata-surface-ghost-hover);
+  color: var(--foreground);
+  border-color: var(--border);
+  box-shadow: none;
+  outline: none;
+}
+.dark
+  .model-config-root
+  [data-root-item][data-slot='button'][data-variant='outline']:not(:disabled):focus {
+  background-color: color-mix(in oklab, var(--input) 30%, transparent);
+}
+.model-config-root
+  [data-root-item][data-slot='button'][data-variant='secondary']:not(:disabled):focus {
+  background-color: var(--ata-material-selected);
+  color: var(--secondary-foreground);
+  border-color: transparent;
+  box-shadow: none;
+  outline: none;
 }
 .model-config-row-label {
   flex-shrink: 0;
@@ -306,11 +337,9 @@ button.model-config-row-nav:disabled:hover {
   font: inherit;
   cursor: pointer;
 }
-.model-config-effort-option:hover {
+.model-config-effort-option:not(:disabled):focus {
   background: var(--muted);
-}
-.model-config-effort-option:focus-visible {
-  outline: 1px solid var(--ring);
+  outline: none;
 }
 .model-config-option-text {
   display: flex;
@@ -441,4 +470,33 @@ button.model-config-row-nav:disabled:hover {
 }
 .provider-advanced-trigger[data-state='open'] svg {
   transform: rotate(180deg);
+}
+.providers-overview-tab {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+.providers-overview-tab[hidden] {
+  display: none;
+}
+.model-alias-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.model-alias-dialog-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}
+.model-alias-dialog-toggle-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
 }

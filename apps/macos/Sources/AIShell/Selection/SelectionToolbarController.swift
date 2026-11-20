@@ -17,26 +17,15 @@ import Carbon.HIToolbox
 /// triple asks once.
 /// A plain click is checked only for a cell selection; it never shows over a text caret.
 ///
-/// While the `toggle` mode listens, ``SelectionToolbarHUD`` says so near the bottom of the
-/// screen (unless the page turned it off).
-///
-/// The toolbar goes on any key (Escape included), scroll or click elsewhere, and when another
-/// app activates, and its menus and their submenus (``ToolbarOptionsCascade``, which never take
-/// the keyboard either) go with it; the pointer wandering off never closes either, so the menu can reach
-/// as far from the capsule as it needs. A newer press or key makes any check still running
-/// stale. Only presses are watched all the time; keys, scrolls and other buttons are watched
-/// while a check is pending or the toolbar shows, so typing and scrolling elsewhere never wake
-/// the app. Without the setting or the trust, no monitor is installed.
-///
-/// ``SelectionToolbarPractice`` owns selections in the welcome guide itself. Activation still
-/// gates those selections; their commands only hide the toolbar and Ask Atd quotes into a draft.
+/// ``SelectionToolbarProbeRunner`` records `< 1 µs` zero-allocation `SelectionDecisionRing` traces
+/// (including `watchInterruptions` debounce cancellation attribution) and drives the 6-step
+/// selection live probe when armed.
 final class SelectionToolbarController {
   /// Ask Atd was clicked, with the practice text when the toolbar was the guide's (nil for a
   /// selection in another app); the toolbar is already hidden.
   var onAsk: ((String?) -> Void)?
   /// A command button or a row of the More menu was clicked on a toolbar over another app's
-  /// selection, launching the command as given; the toolbar and the menu are already hidden. A
-  /// practice toolbar's commands never get here: they would run.
+  /// selection, launching the command as given; the toolbar and the menu are already hidden.
   var onCommand: ((CommandLaunch) -> Void)?
   /// A value of command `id` changed in its options menu over another app's selection, to be
   /// remembered for its next run; a practice toolbar's picks are not.
@@ -45,13 +34,12 @@ final class SelectionToolbarController {
   static let debounce: Duration = .milliseconds(150)
 
   private let trust: AccessibilityTrust
-  private let wps: WpsSelectionAdapter
+  let probeRunner: SelectionToolbarProbeRunner
   private let panel = SelectionToolbarPanel()
   /// Nil until the page first pushes the setting.
   private var settings: SelectionToolbarSettings?
   private var monitor: Any?
-  /// Keys, scrolls and other buttons, watched only while a check is pending or the toolbar
-  /// shows: each makes a check stale or hides the toolbar.
+  /// Keys, scrolls and other buttons, watched only while a check is pending or the toolbar shows.
   private var interruptMonitor: Any?
   private var activationObserver: NSObjectProtocol?
   private var pressedAt: CGPoint?
@@ -65,19 +53,23 @@ final class SelectionToolbarController {
   private var generation = 0
   private var pending: Task<Void, Never>?
   private let practice = SelectionToolbarPractice()
+  private let wps: WpsSelectionAdapter
 
   init(trust: AccessibilityTrust, services: ShellServices) {
     self.trust = trust
-    wps = WpsSelectionAdapter(services: services)
+    let wpsAdapter = WpsSelectionAdapter(services: services)
+    self.wps = wpsAdapter
+    self.probeRunner = SelectionToolbarProbeRunner(
+      ring: services.decisionRings.selection, wps: wpsAdapter)
     panel.onAsk = { [weak self] in
       let text = self?.practice.text
       self?.dismiss()
       self?.onAsk?(text)
     }
     panel.onCommand = { [weak self] launch in
-      let practice = self?.practice.text != nil
+      let isPractice = self?.practice.text != nil
       self?.dismiss()
-      if !practice { self?.onCommand?(launch) }
+      if !isPractice { self?.onCommand?(launch) }
     }
     panel.onPick = { [weak self] id, values in
       if self?.practice.text == nil { self?.onPick?(id, values) }
@@ -88,19 +80,18 @@ final class SelectionToolbarController {
     }
   }
 
-  /// A command's progress HUD came onto the screen or left it; the status HUD, which shares its
-  /// place, yields it meanwhile.
+  var diagnosticsSnapshot: DiagnosticsEnvironmentRecord.SelectionToolbarSnapshotRecord {
+    SelectionToolbarProbeRunner.makeSnapshot(
+      settings: settings, isListening: isListening, monitorInstalled: monitor != nil)
+  }
+
   func hudYields(_ yields: Bool) { hud.setYielding(yields) }
-
   func setAddons(_ installs: AddonInstalls) { wps.apply(installs) }
-
   /// Whether the `toggle` mode listens for selections, or nil while it is not in effect.
   var isListening: Bool? { listening.isArmed ? listening.isOn : nil }
-
-  /// The status menu's way to turn the `toggle` mode's listening on or off.
   func setListening(_ on: Bool) { listening.set(on) }
+  func setCommandOptions(_ catalog: CommandOptionsCatalog) { panel.setCommandOptions(catalog) }
 
-  /// The page's `toolbar.set`.
   func apply(_ settings: SelectionToolbarSettings) {
     self.settings = settings
     panel.configure(settings)
@@ -108,30 +99,15 @@ final class SelectionToolbarController {
     update()
   }
 
-  /// The page's `commandOptions.set`: the commands that get split buttons and options menus
-  /// from the next time the toolbar shows.
-  func setCommandOptions(_ catalog: CommandOptionsCatalog) {
-    panel.setCommandOptions(catalog)
-  }
-
-  /// Installs the monitors exactly while the toolbar is on and trusted, and arms the `toggle`
-  /// mode's listening only then.
   func update() {
     let active = settings?.enabled == true && trust.isTrusted
-    if active, monitor == nil {
-      install()
-    } else if !active, monitor != nil {
-      uninstall()
-    }
+    if active, monitor == nil { install() } else if !active, monitor != nil { uninstall() }
     let activation = settings?.activation
     listening.arm(active && activation?.mode == .toggle ? activation?.keys : nil)
   }
 
   // MARK: Practice
 
-  /// Shows the toolbar beside the guide's practice selection (`selection` in Cocoa global
-  /// points) when the real one would show at all: the setting is on and the app is trusted.
-  /// Otherwise any practice toolbar hides.
   func showPractice(selection: CGRect, text: String) {
     guard let settings, settings.enabled, trust.isTrusted else { return hidePractice() }
     let held = settings.activation.isHeld(in: NSEvent.modifierFlags)
@@ -142,7 +118,6 @@ final class SelectionToolbarController {
     practice.show(selection: selection, text: text, panel: panel)
   }
 
-  /// Hides a practice toolbar; a toolbar over another app's selection stays.
   func hidePractice() {
     if practice.text != nil { dismiss() }
   }
@@ -160,18 +135,14 @@ final class SelectionToolbarController {
     activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
       forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
     ) { [weak self] note in
-      // `Notification` is not Sendable, so only the pid crosses into the main-actor handler.
       let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
       let pid = app?.processIdentifier
       MainActor.assumeIsolated { self?.appActivated(pid: pid) }
     }
   }
 
-  /// Another app came forward: the toolbar over the last one goes, and an Electron app the
-  /// toolbar would probe starts building its web accessibility tree now, so it has one by the
-  /// time something is selected in it.
   private func appActivated(pid: pid_t?) {
-    dismiss()
+    dismiss(interruptedBy: .appActivated)
     guard let settings, let pid, let app = NSRunningApplication(processIdentifier: pid),
       SelectionToolbarRules.shouldProbe(context(of: app, settings))
     else { return }
@@ -198,47 +169,61 @@ final class SelectionToolbarController {
   }
 
   private func handle(_ event: NSEvent) {
-    guard let location = event.cgEvent?.location else { return }
+    guard let location = event.cgEvent?.location else {
+      if event.type == .leftMouseUp {
+        probeRunner.recordMissingCgLocation(trusted: trust.isTrusted)
+      }
+      return
+    }
     let pointer = CaptureCoordinates.flip(
       location, primaryHeight: NSScreen.screens.first?.frame.height ?? 0)
     switch event.type {
     case .leftMouseDown:
-      dismiss()
+      dismiss(interruptedBy: .mouseDown)
       pressedAt = pointer
-      // WPS may emit before this callback runs. Use the source event's uptime, not receipt time.
       pressedTime =
         Date().timeIntervalSince1970 - ProcessInfo.processInfo.systemUptime + event.timestamp
       heldAtPress = held(in: event)
     case .leftMouseUp:
+      let shiftHeld = event.modifierFlags.contains(.shift)
       let selected = SelectionGesture.mayHaveSelected(
-        down: pressedAt, up: pointer, clickCount: event.clickCount,
-        shift: event.modifierFlags.contains(.shift))
-      let admitted = settings?.activation.admits(
-        heldAtPress: heldAtPress, heldAtRelease: held(in: event), listening: listening.isOn)
-      // The press identifies the table even when a drag ends outside it. Without a recorded
-      // press, only the release can associate this gesture with a surface.
+        down: pressedAt, up: pointer, clickCount: event.clickCount, shift: shiftHeld)
+      let heldAtRelease = held(in: event)
+      let wasHeldAtPress = heldAtPress
+      let admitted =
+        settings?.activation.admits(
+          heldAtPress: wasHeldAtPress, heldAtRelease: heldAtRelease, listening: listening.isOn)
+        ?? false
       let origin = pressedAt ?? pointer
       let startedAt = pressedAt == nil ? Date().timeIntervalSince1970 : pressedTime
+      let downPoint = pressedAt
       pressedAt = nil
       heldAtPress = false
-      if admitted == true {
-        schedule(
-          at: pointer, origin: origin, startedAt: startedAt,
-          immediately: event.clickCount < 2, cellsOnly: !selected)
-      }
+      let token = generation
+      guard
+        let recorded = probeRunner.recordMouseUp(
+          SelectionToolbarProbeRunner.GestureInput(
+            pointer: pointer, pressedAt: downPoint, clickCount: event.clickCount,
+            shiftHeld: shiftHeld, mayHaveSelected: selected, heldAtPress: wasHeldAtPress,
+            heldAtRelease: heldAtRelease, listeningOn: listening.isOn, admitted: admitted,
+            settings: settings, trusted: trust.isTrusted),
+          token: token)
+      else { return }
+      schedule(
+        slot: recorded.slot, seq: recorded.seq, at: pointer, origin: origin,
+        startedAt: startedAt, immediately: event.clickCount < 2, cellsOnly: !selected)
     default:
       dismiss()
     }
   }
 
-  /// Whether the activation key combination was down during `event`.
   private func held(in event: NSEvent) -> Bool {
     settings?.activation.isHeld(in: event.modifierFlags) ?? false
   }
 
   private func schedule(
-    at pointer: CGPoint, origin: CGPoint, startedAt: TimeInterval, immediately: Bool,
-    cellsOnly: Bool
+    slot: Int, seq: UInt32, at pointer: CGPoint, origin: CGPoint, startedAt: TimeInterval,
+    immediately: Bool, cellsOnly: Bool
   ) {
     pending?.cancel()
     watchInterruptions()
@@ -246,9 +231,8 @@ final class SelectionToolbarController {
     pending = Task { [weak self] in
       if immediately,
         await self?.check(
-          pointer: pointer, origin: origin, startedAt: startedAt, token: token, cellsOnly: cellsOnly
-        )
-          == true
+          attemptIndex: 0, slot: slot, seq: seq, pointer: pointer, origin: origin,
+          startedAt: startedAt, token: token, cellsOnly: cellsOnly) == true
       {
         return
       }
@@ -256,9 +240,8 @@ final class SelectionToolbarController {
       guard !Task.isCancelled else { return }
       let shown =
         await self?.check(
-          pointer: pointer, origin: origin, startedAt: startedAt, token: token, cellsOnly: cellsOnly
-        )
-        == true
+          attemptIndex: 1, slot: slot, seq: seq, pointer: pointer, origin: origin,
+          startedAt: startedAt, token: token, cellsOnly: cellsOnly) == true
       if !shown, token == self?.generation { self?.stopWatchingInterruptions() }
     }
   }
@@ -266,8 +249,9 @@ final class SelectionToolbarController {
   private func watchInterruptions() {
     guard interruptMonitor == nil else { return }
     let mask: NSEvent.EventTypeMask = [.rightMouseDown, .otherMouseDown, .keyDown, .scrollWheel]
-    interruptMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] _ in
-      MainActor.assumeIsolated { self?.dismiss() }
+    interruptMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in
+      let cause = SelectionToolbarProbeRunner.InterruptionCause.from(eventType: event.type)
+      MainActor.assumeIsolated { self?.dismiss(interruptedBy: cause) }
     }
   }
 
@@ -276,41 +260,28 @@ final class SelectionToolbarController {
     interruptMonitor = nil
   }
 
-  /// The rules first, then Accessibility, then the toolbar if nothing newer happened meanwhile.
-  /// True when the toolbar showed.
   @discardableResult
   private func check(
-    pointer: CGPoint, origin: CGPoint, startedAt: TimeInterval, token: Int, cellsOnly: Bool
+    attemptIndex: Int, slot: Int, seq: UInt32, pointer: CGPoint, origin: CGPoint,
+    startedAt: TimeInterval, token: Int, cellsOnly: Bool
   ) async -> Bool {
-    guard token == generation, let settings,
-      let app = NSWorkspace.shared.frontmostApplication
-    else { return false }
-    guard SelectionToolbarRules.shouldProbe(context(of: app, settings)) else { return false }
-    let deadline = ContinuousClock.now + .milliseconds(300)
-    let evidence = await wps.evidence(app: app, pressedAt: startedAt)
-    guard token == generation, !Task.isCancelled, ContinuousClock.now < deadline,
-      NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier
-    else { return false }
-    let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
-    let probe = await SelectionPresence.check(
-      pid: app.processIdentifier,
-      gestureAt: CaptureCoordinates.flip(origin, primaryHeight: primaryHeight), wps: evidence,
-      limit: ContinuousClock.now.duration(to: deadline))
-    guard token == generation, monitor != nil,
-      NSWorkspace.shared.frontmostApplication?.processIdentifier == app.processIdentifier,
-      !cellsOnly || probe == .cells,
-      SelectionToolbarRules.shows(probe)
-    else { return false }
-    var bounds: CGRect?
-    if case .selected(_, let rect) = probe { bounds = rect }
-    panel.show(selection: bounds, pointer: pointer)
+    guard token == generation, let settings else { return false }
+    let outcome = await probeRunner.performProbeAttempt(
+      attemptIndex: attemptIndex, slot: slot, seq: seq, origin: origin, startedAt: startedAt,
+      token: token, cellsOnly: cellsOnly, settings: settings, trusted: trust.isTrusted
+    ) { [weak self] expectedPid in
+      guard let self, self.generation == token, self.monitor != nil else { return false }
+      return NSWorkspace.shared.frontmostApplication?.processIdentifier == expectedPid
+    }
+    guard outcome.shouldShow else { return false }
+    panel.show(selection: outcome.bounds, pointer: pointer)
     return true
   }
 
-  // MARK: Dismissal
-
-  /// Hides the toolbar and drops any check still running.
-  private func dismiss() {
+  private func dismiss(
+    interruptedBy cause: SelectionToolbarProbeRunner.InterruptionCause = .none
+  ) {
+    probeRunner.recordInterruption(cause, currentToken: generation)
     generation += 1
     pending?.cancel()
     pending = nil

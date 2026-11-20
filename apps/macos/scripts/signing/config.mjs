@@ -66,16 +66,15 @@ export function validateIdentity(config) {
   return { ...config, identity: hash };
 }
 
-/** Apply before Xcode and before the dev supervisor computes its signing-sensitive receipt. */
+/** Apply Release Developer ID signing from local config or explicit environment variables. */
 export function configureSigning(configuration) {
-  // Explicit Debug overrides retain their existing local-development semantics.
-  if (configuration === 'Debug' && process.env.AI_CODE_SIGN_IDENTITY?.trim()) return null;
+  if (configuration === 'Debug') return null;
   const config = signingConfig();
   if (config.identity === '-') return null; // Explicit unsigned packaging rehearsal only.
-  if (!config.identity && configuration === 'Debug') return null;
   const valid = validateIdentity(config);
   process.env.AI_CODE_SIGN_IDENTITY = valid.identity;
   process.env.AI_DEVELOPMENT_TEAM = valid.teamId;
+  if (valid.keychain) process.env.AI_SIGNING_KEYCHAIN = valid.keychain;
   return valid;
 }
 

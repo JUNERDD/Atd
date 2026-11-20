@@ -10,7 +10,26 @@ import {
   type ServiceTokenFile,
 } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
+import {
+  acquireDataDirLock,
+  getConfigRecoveryState,
+  isCorruptConfigError,
+  isErrnoCode,
+  isLockHolderAlive,
+  noteConfigRecovery,
+  releaseDataDirLock,
+  resetConfigRecoveryStateForTests,
+  type ConfigRecoveryState,
+} from './config-lock.js';
+import { scrubPersonalPaths } from './diagnostics/scrub-paths.js';
 import { resolveDataDir, servicePaths, type ServicePaths } from './storage.js';
+
+export {
+  getConfigRecoveryState,
+  isLockHolderAlive,
+  resetConfigRecoveryStateForTests,
+  type ConfigRecoveryState,
+};
 
 const ServiceFileSchema = Type.Object(
   {
@@ -43,19 +62,7 @@ const EndpointFileSchema = Type.Object(
 export type EndpointFile = Static<typeof EndpointFileSchema>;
 
 const BuildInfoSchema = Type.Object(
-  {
-    version: Type.Literal(1),
-    buildId: Type.String({ minLength: 1, maxLength: 128 }),
-  },
-  { additionalProperties: false },
-);
-
-const LockFileSchema = Type.Object(
-  {
-    version: Type.Literal(1),
-    pid: Type.Integer({ minimum: 1 }),
-    startedAt: Type.String(),
-  },
+  { version: Type.Literal(1), buildId: Type.String({ minLength: 1, maxLength: 128 }) },
   { additionalProperties: false },
 );
 
@@ -68,36 +75,13 @@ export interface ServiceConfig {
   port: number;
 }
 
-/** Acquires the dataDir owner lock; throws when another live owner holds it. */
-export async function acquireLock(paths: ServicePaths): Promise<void> {
-  await mkdir(path.dirname(paths.lockFile), { recursive: true });
-  try {
-    const raw = await readFile(paths.lockFile, 'utf8');
-    const lock = parse(LockFileSchema, JSON.parse(raw));
-    if (isAlive(lock.pid))
-      throw new Error(`Another agent service (pid ${lock.pid}) owns ${paths.root}.`);
-  } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code !== 'ENOENT') throw error;
-    if (error instanceof Error && !('code' in error)) throw error;
-  }
-  await atomicWrite(
-    paths.lockFile,
-    { version: 1, pid: process.pid, startedAt: new Date().toISOString() },
-    0o600,
-  );
+/** Acquires the dataDir owner lock; recovers corrupt/stale locks and throws when a live owner holds it. */
+export function acquireLock(paths: ServicePaths): Promise<void> {
+  return acquireDataDirLock(paths, atomicWrite);
 }
 
-export async function releaseLock(paths: ServicePaths): Promise<void> {
-  await rm(paths.lockFile, { force: true });
-}
-
-function isAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
+export function releaseLock(paths: ServicePaths): Promise<void> {
+  return releaseDataDirLock(paths);
 }
 
 /**
@@ -126,23 +110,43 @@ export async function atomicWrite(file: string, value: unknown, mode = 0o600): P
   await writeTextAtomic(file, JSON.stringify(value), mode);
 }
 
+async function createServiceFile(paths: ServicePaths): Promise<ServiceFile> {
+  const created: ServiceFile = {
+    version: 1,
+    serviceId: randomUUID(),
+    protocolVersion: PROTOCOL_VERSION,
+    epoch: 0,
+    createdAt: new Date().toISOString(),
+  };
+  await atomicWrite(paths.serviceFile, created);
+  return created;
+}
+
 async function loadServiceFile(paths: ServicePaths): Promise<ServiceFile> {
   try {
     return parse(ServiceFileSchema, JSON.parse(await readFile(paths.serviceFile, 'utf8')));
   } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      const created: ServiceFile = {
-        version: 1,
-        serviceId: randomUUID(),
-        protocolVersion: PROTOCOL_VERSION,
-        epoch: 0,
-        createdAt: new Date().toISOString(),
-      };
-      await atomicWrite(paths.serviceFile, created);
-      return created;
+    if (isErrnoCode(error, 'ENOENT')) return createServiceFile(paths);
+    if (isCorruptConfigError(error)) {
+      noteConfigRecovery('serviceFileRecreated');
+      return createServiceFile(paths);
     }
-    throw new Error(`Service identity could not be read: ${errorMessage(error)}`);
+    throw new Error(
+      `Service identity could not be read: ${scrubPersonalPaths(errorMessage(error))}`,
+    );
   }
+}
+
+async function writeNewToken(paths: ServicePaths, serviceId: string): Promise<string> {
+  const token = randomBytes(32).toString('base64url');
+  const file: ServiceTokenFile = {
+    version: 1,
+    serviceId,
+    token,
+    createdAt: new Date().toISOString(),
+  };
+  await atomicWrite(paths.tokenFile, file, 0o600);
+  return token;
 }
 
 async function loadToken(paths: ServicePaths, serviceId: string): Promise<string> {
@@ -151,19 +155,14 @@ async function loadToken(paths: ServicePaths, serviceId: string): Promise<string
       ServiceTokenFileSchema,
       JSON.parse(await readFile(paths.tokenFile, 'utf8')),
     );
-    if (file.serviceId !== serviceId) throw new Error('Token service mismatch.');
-    return file.token;
+    if (file.serviceId === serviceId) return file.token;
+    noteConfigRecovery('tokenRotated');
+    return writeNewToken(paths, serviceId);
   } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-      const token = randomBytes(32).toString('base64url');
-      const file: ServiceTokenFile = {
-        version: 1,
-        serviceId,
-        token,
-        createdAt: new Date().toISOString(),
-      };
-      await atomicWrite(paths.tokenFile, file, 0o600);
-      return token;
+    if (isErrnoCode(error, 'ENOENT')) return writeNewToken(paths, serviceId);
+    if (isCorruptConfigError(error)) {
+      noteConfigRecovery('tokenRotated');
+      return writeNewToken(paths, serviceId);
     }
     throw error;
   }
@@ -182,18 +181,23 @@ export async function prepareServe(options: {
   const root = resolveDataDir(options);
   const paths = servicePaths(root);
   await acquireLock(paths);
-  const service = await loadServiceFile(paths);
-  const epoch = service.epoch + 1;
-  await atomicWrite(paths.serviceFile, { ...service, epoch, protocolVersion: PROTOCOL_VERSION });
-  const token = await loadToken(paths, service.serviceId);
-  return {
-    paths,
-    serviceId: service.serviceId,
-    epoch,
-    token,
-    host: options.host ?? '127.0.0.1',
-    port: options.port ?? 0,
-  };
+  try {
+    const service = await loadServiceFile(paths);
+    const epoch = service.epoch + 1;
+    await atomicWrite(paths.serviceFile, { ...service, epoch, protocolVersion: PROTOCOL_VERSION });
+    const token = await loadToken(paths, service.serviceId);
+    return {
+      paths,
+      serviceId: service.serviceId,
+      epoch,
+      token,
+      host: options.host ?? '127.0.0.1',
+      port: options.port ?? 0,
+    };
+  } catch (error) {
+    await releaseLock(paths).catch(() => undefined);
+    throw error;
+  }
 }
 
 /** Reads live endpoint metadata for `status`/`stop` without taking ownership. */
@@ -219,9 +223,8 @@ export async function readLocalToken(dataDir: string): Promise<string | null> {
 /**
  * The packaged build's identity, read from `build-info.json` in the service package root, which
  * the desktop pack step writes. The desktop app reuses a running service only when the buildId in
- * its endpoint matches the one it ships. Development builds have no such file and return
- * undefined; a file that exists but does not parse throws, so a broken pack never passes as a
- * development build.
+ * its endpoint matches the one it ships. Development builds have no such file and return undefined; a file
+ * that exists but does not parse throws, so a broken pack never passes as a development build.
  */
 export async function readBuildId(
   packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
@@ -230,7 +233,7 @@ export async function readBuildId(
   try {
     text = await readFile(path.join(packageRoot, 'build-info.json'), 'utf8');
   } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined;
+    if (isErrnoCode(error, 'ENOENT')) return undefined;
     throw error;
   }
   return parse(BuildInfoSchema, JSON.parse(text)).buildId;

@@ -73,10 +73,12 @@ export interface CaptureBridge {
   /**
    * Captures in `mode` with the screenshot toolbar and says how the capture ended. A command picked
    * on the toolbar is prepared with the screenshot and launched through the launch channel
-   * (`AgentBridge.onLaunch`, marked `fromCapture`) before this resolves. Rejects as
-   * `DesktopBridge.captureScreenshotInput` does, and when the picked command is gone.
+   * (`AgentBridge.onLaunch`, marked `fromCapture`) before this resolves. `options.fromComposer`
+   * marks captures started from the composer's `+ › Screenshot` attach menu so the shell applies
+   * `screenshotConfirmInComposer`. Rejects as `DesktopBridge.captureScreenshotInput` does, and when
+   * the picked command is gone.
    */
-  capture: (mode: CaptureMode) => Promise<CaptureOutcome>;
+  capture: (mode: CaptureMode, options?: { fromComposer?: boolean }) => Promise<CaptureOutcome>;
   readonly recordingAsks: RecordingAsksBridge;
   readonly captureText: CaptureTextBridge;
 }

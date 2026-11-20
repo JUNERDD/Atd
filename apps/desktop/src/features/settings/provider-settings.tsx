@@ -1,16 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CircleAlert, Plug, Plus, SearchX } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { MAX_MODEL_ALIASES } from '@atd/agent-contracts';
 import { Button } from '@atd/ui/components/button';
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '@atd/ui/components/empty';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@atd/ui/components/tabs';
 import { matchFields } from '@atd/ui/lib/fuzzy-match';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
 import type { SettingsSnapshot } from '../../client/settings-contract';
@@ -24,17 +18,22 @@ import {
   ConnectionConfirmDialog,
   type ConnectionConfirm,
 } from '../providers/connection-confirm-dialog';
-import { ProviderConnections } from '../providers/provider-connections';
 import { ProviderCatalog } from '../providers/provider-catalog';
+import {
+  AddProviderButton,
+  ProviderConnectionsTab,
+  ProviderOverviewAlerts,
+  type AddProviderAction,
+} from '../providers/provider-connections-tab';
+import { ModelAliasesSection } from '../providers/model-aliases-section';
 import { ProviderServiceForm } from '../providers/provider-service-form';
-import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { queryClient } from '../../lib/query-client';
 import { bridgeKeys } from '../../lib/bridge-cache';
 import { useServiceStatus } from '../service/use-service';
 import { SettingsHeading } from './settings-heading';
 import { SettingsSearchField } from './settings-search-field';
-import { useSettingsSectionExit } from './settings-navigation';
+import { useSettingsSectionExit, type SettingsPageTarget } from './settings-navigation';
 import { useSettingsPageHistory } from './use-settings-page-history';
 import '../providers/providers.css';
 
@@ -46,9 +45,16 @@ type ProviderRoute =
   | { page: 'overview' }
   | { page: 'catalog' }
   | { page: 'form'; service: ProviderService; connectionId: string | null };
+type ProvidersTab = 'providers' | 'aliases';
 const OVERVIEW: ProviderRoute = { page: 'overview' };
 
-export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot | null }) {
+export function ProviderSettingsForm({
+  snapshot,
+  activePage,
+}: {
+  snapshot: SettingsSnapshot | null;
+  activePage?: SettingsPageTarget | null;
+}) {
   const { t } = useTranslation('settings');
   const { t: tp } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
@@ -87,6 +93,8 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
       ? 'ready'
       : 'loading';
   const connections = snapshot?.connections ?? [];
+  const aliases = snapshot?.aliases ?? [];
+  const usableConnections = connections.filter((c) => c.connected && c.catalog.length > 0);
   // The connections load apart from the settings: until they arrive, placeholder rows stand in for
   // them, rather than the empty state's invitation to connect a first provider.
   const connectionsLoading = connected && !snapshot?.providersLoaded;
@@ -100,7 +108,21 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
   );
   const view = history.route;
   const search = useCompositionQuery();
-  useSettingsSectionExit(() => search.change(''));
+  const [tab, setTab] = useState<ProvidersTab>('providers');
+  const [createAliasOpen, setCreateAliasOpen] = useState(false);
+  const [linked, setLinked] = useState<number | null>(null);
+  useSettingsSectionExit(() => {
+    setTab('providers');
+    setCreateAliasOpen(false);
+    search.change('');
+  });
+  if (activePage?.section === 'providers' && activePage.nonce !== linked) {
+    setLinked(activePage.nonce);
+    history.reset();
+    search.change('');
+    setCreateAliasOpen(false);
+    setTab(activePage.page === 'modelAliases' ? 'aliases' : 'providers');
+  }
   // An operation on a connection; a failure shows its toast and offers Retry, which runs the
   // failed operation again, until something succeeds.
   const operation = useMutation(
@@ -173,17 +195,22 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
     });
     return match || !search.query.trim() ? [{ connection, nameRanges: match?.ranges.name }] : [];
   });
-  const emptyTitle = connections.length
-    ? t('providers.overview.empty.noMatchesTitle', { query: search.query.trim() })
-    : t('providers.overview.empty.firstTitle');
-  const emptyDescription = t(
-    connections.length
-      ? 'providers.overview.empty.noMatchesDescription'
-      : 'providers.overview.empty.firstDescription',
-  );
+  const addAliasDisabled =
+    !bridge || !usableConnections.length || aliases.length >= MAX_MODEL_ALIASES;
+  const addProviderAction: AddProviderAction = {
+    disabled: !bridge,
+    unavailable: !catalogReady,
+    describedBy: catalogFailed ? 'provider-catalog-error' : undefined,
+    onClick: addProvider,
+  };
   function clear() {
     search.change('');
     searchInput.current?.focus();
+  }
+  function handleTabChange(next: string) {
+    setTab(next as ProvidersTab);
+    setCreateAliasOpen(false);
+    search.change('');
   }
   return (
     <section className="providers-overview">
@@ -194,98 +221,91 @@ export function ProviderSettingsForm({ snapshot }: { snapshot: SettingsSnapshot 
         <SettingsSearchField
           ref={searchInput}
           search={search}
-          aria-label={t('providers.overview.searchLabel')}
-          placeholder={t('providers.overview.searchPlaceholder')}
-          disabled={!connections.length}
+          aria-label={t(
+            tab === 'aliases'
+              ? 'providers.overview.searchAliasesLabel'
+              : 'providers.overview.searchLabel',
+          )}
+          placeholder={t(
+            tab === 'aliases'
+              ? 'providers.overview.searchAliasesPlaceholder'
+              : 'providers.overview.searchPlaceholder',
+          )}
+          disabled={tab === 'aliases' ? !aliases.length : !connections.length}
         />
-        <Button
-          className="aria-disabled:opacity-50"
-          disabled={!bridge}
-          aria-disabled={!catalogReady || undefined}
-          aria-describedby={catalogFailed ? 'provider-catalog-error' : undefined}
-          onClick={addProvider}
-        >
-          <Plus />
-          {t('providers.overview.addProvider')}
-        </Button>
+        {tab === 'aliases' ? (
+          <Button disabled={addAliasDisabled} onClick={() => setCreateAliasOpen(true)}>
+            <Plus />
+            {tp('aliases.add')}
+          </Button>
+        ) : (
+          <AddProviderButton
+            action={addProviderAction}
+            label={t('providers.overview.addProvider')}
+          />
+        )}
       </SettingsHeading>
-      {catalogFailed && (
-        <div className="provider-catalog-error">
-          <p id="provider-catalog-error" className="settings-inline-error" role="alert">
-            <CircleAlert aria-hidden="true" />
-            <span>{t('providers.overview.catalogError')}</span>
-          </p>
-          <Button
-            variant="outline"
-            size="xs"
-            aria-disabled={catalogStatus === 'retrying' || undefined}
-            aria-busy={catalogStatus === 'retrying' || undefined}
-            onClick={() => {
-              if (catalogStatus !== 'retrying') void catalogQuery.refetch();
-            }}
-          >
-            {t('providers.overview.retry')}
-          </Button>
-        </div>
-      )}
-      {retryable && (
-        <div className="settings-status">
-          <Button
-            variant="outline"
-            size="xs"
-            disabled={pending}
-            onClick={() => {
-              const failed = operation.variables;
-              if (failed) void perform(failed);
-            }}
-          >
-            {t('providers.overview.retry')}
-          </Button>
-        </div>
-      )}
-      {connectionsLoading ? (
-        <LoadingPlaceholder label={t('providers.overview.loading')}>
-          <ItemsPlaceholder count={2} variant="outline" trailing="none" />
-        </LoadingPlaceholder>
-      ) : null}
-      <ProviderConnections
-        rows={visible}
-        defaultConnectionId={snapshot?.defaultConnectionId ?? null}
+      <ProviderOverviewAlerts
+        catalogFailed={catalogFailed}
+        catalogRetrying={catalogStatus === 'retrying'}
+        onRetryCatalog={() => void catalogQuery.refetch()}
+        retryable={retryable}
         pending={pending}
-        canManage={catalogReady && !catalogQuery.isFetching}
-        onManage={(connection) => void manage(connection)}
-        onConfirm={setConfirming}
-        perform={perform}
+        onRetryOperation={() => {
+          const failed = operation.variables;
+          if (failed) void perform(failed);
+        }}
       />
-      {!visible.length && !connectionsLoading && (
-        <Empty className="px-4 py-8">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">{connections.length ? <SearchX /> : <Plug />}</EmptyMedia>
-            <EmptyTitle>{emptyTitle}</EmptyTitle>
-            <EmptyDescription>{emptyDescription}</EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            {connections.length ? (
-              <Button variant="outline" onClick={clear}>
-                {t('providers.overview.empty.clearSearch')}
-              </Button>
-            ) : (
-              // Follows the header's Add provider: unavailable, and why, while the catalog is.
-              <Button
-                variant="outline"
-                className="aria-disabled:opacity-50"
-                disabled={!bridge}
-                aria-disabled={!catalogReady || undefined}
-                aria-describedby={catalogFailed ? 'provider-catalog-error' : undefined}
-                onClick={addProvider}
-              >
-                <Plus />
-                {t('providers.overview.addProvider')}
-              </Button>
+      <Tabs value={tab} onValueChange={handleTabChange}>
+        <TabsList
+          aria-label={t('providers.overview.tabsLabel')}
+          className="scrollbar-none max-w-full justify-start overflow-x-auto overflow-y-hidden"
+        >
+          <TabsTrigger value="providers" className="flex-none px-2.5">
+            {t('providers.overview.tabs.providers')}
+            {!connectionsLoading && (
+              <span className="text-muted-foreground tabular-nums">{connections.length}</span>
             )}
-          </EmptyContent>
-        </Empty>
-      )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="aliases"
+            className="flex-none px-2.5"
+            data-settings-anchor="settings-providers-aliases"
+          >
+            {t('providers.overview.tabs.aliases')}
+            {!connectionsLoading && (
+              <span className="text-muted-foreground tabular-nums">{aliases.length}</span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="providers" className="providers-overview-tab">
+          <ProviderConnectionsTab
+            loading={connectionsLoading}
+            connectionsCount={connections.length}
+            rows={visible}
+            query={search.query}
+            defaultConnectionId={snapshot?.defaultConnectionId ?? null}
+            pending={pending}
+            canManage={catalogReady && !catalogQuery.isFetching}
+            addProvider={addProviderAction}
+            onManage={(connection) => void manage(connection)}
+            onConfirm={setConfirming}
+            perform={perform}
+            onClearSearch={clear}
+          />
+        </TabsContent>
+        <TabsContent value="aliases" className="providers-overview-tab">
+          <ModelAliasesSection
+            snapshot={snapshot}
+            loading={connectionsLoading}
+            query={search.query}
+            createOpen={createAliasOpen}
+            onCreateOpenChange={setCreateAliasOpen}
+            onClearSearch={clear}
+            addProvider={addProviderAction}
+          />
+        </TabsContent>
+      </Tabs>
       <ConnectionConfirmDialog
         confirm={confirming}
         isDefault={confirming?.connection.connectionId === snapshot?.defaultConnectionId}

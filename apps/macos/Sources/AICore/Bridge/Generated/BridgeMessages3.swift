@@ -4,6 +4,123 @@
 
 import Foundation
 
+/// A Swift → page push; it encodes as its payload.
+public enum NativeEvent: Encodable, Equatable, Sendable {
+  case windowActive(WindowActiveEvent)
+  case windowVisibility(WindowVisibilityEvent)
+  case accessibilityReduceTransparency(AccessibilityReduceTransparencyEvent)
+  case appearanceSystem(AppearanceSystemEvent)
+  case shortcutCommand(ShortcutCommandEvent)
+  case shortcutScreenshot(ShortcutScreenshotEvent)
+  case resourcesImported(ResourcesImportedEvent)
+  case filesDrag(FilesDragEvent)
+  case editCommand(EditCommandEvent)
+  case speechState(SpeechStateEvent)
+  case selectionAsk(SelectionAskEvent)
+  case taskNew(TaskNewEvent)
+  case miniPanelState(MiniPanelStateEvent)
+  case accessibilityTrust(AccessibilityTrustEvent)
+  case screenRecordingTrust(ScreenRecordingTrustEvent)
+  case updateState(UpdateStateEvent)
+  case updateReleaseNotes(UpdateReleaseNotesEvent)
+  case computerState(ComputerStateEvent)
+  case shortcutsChanged(ShortcutsChangedEvent)
+  case socketFrames(SocketFramesEvent)
+  case userAppState(UserAppStateEvent)
+  case userAppPins(UserAppPinsEvent)
+  case taskOpen(TaskOpenEvent)
+  case taskQueueWithdrawn(TaskQueueWithdrawnEvent)
+  case commandProgressAction(CommandProgressActionEvent)
+  case textWriteOffer(TextWriteOfferEvent)
+  case commandOptionsPicked(CommandOptionsPickedEvent)
+  case recordingAsk(RecordingAskEvent)
+  case recordingAskStop(RecordingAskStopEvent)
+  case recordingAskOpen(RecordingAskOpenEvent)
+  case captureTextRun(CaptureTextRunEvent)
+  case captureTextAction(CaptureTextActionEvent)
+  case panelModalOpen(PanelModalOpenEvent)
+  case diagnosticsLiveProbeEvent(DiagnosticsLiveProbeEventEvent)
+
+  /// The contract name.
+  public var name: String {
+    switch self {
+    case .windowActive: "window.active"
+    case .windowVisibility: "window.visibility"
+    case .accessibilityReduceTransparency: "accessibility.reduceTransparency"
+    case .appearanceSystem: "appearance.system"
+    case .shortcutCommand: "shortcut.command"
+    case .shortcutScreenshot: "shortcut.screenshot"
+    case .resourcesImported: "resources.imported"
+    case .filesDrag: "files.drag"
+    case .editCommand: "edit.command"
+    case .speechState: "speech.state"
+    case .selectionAsk: "selection.ask"
+    case .taskNew: "task.new"
+    case .miniPanelState: "miniPanel.state"
+    case .accessibilityTrust: "accessibility.trust"
+    case .screenRecordingTrust: "screenRecording.trust"
+    case .updateState: "update.state"
+    case .updateReleaseNotes: "update.releaseNotes"
+    case .computerState: "computer.state"
+    case .shortcutsChanged: "shortcuts.changed"
+    case .socketFrames: "socket.frames"
+    case .userAppState: "userApp.state"
+    case .userAppPins: "userApp.pins"
+    case .taskOpen: "task.open"
+    case .taskQueueWithdrawn: "task.queueWithdrawn"
+    case .commandProgressAction: "commandProgress.action"
+    case .textWriteOffer: "text.writeOffer"
+    case .commandOptionsPicked: "commandOptions.picked"
+    case .recordingAsk: "recording.ask"
+    case .recordingAskStop: "recording.askStop"
+    case .recordingAskOpen: "recording.askOpen"
+    case .captureTextRun: "captureText.run"
+    case .captureTextAction: "captureText.action"
+    case .panelModalOpen: "panelModal.open"
+    case .diagnosticsLiveProbeEvent: "diagnostics.liveProbe.event"
+    }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    switch self {
+    case .windowActive(let payload): try payload.encode(to: encoder)
+    case .windowVisibility(let payload): try payload.encode(to: encoder)
+    case .accessibilityReduceTransparency(let payload): try payload.encode(to: encoder)
+    case .appearanceSystem(let payload): try payload.encode(to: encoder)
+    case .shortcutCommand(let payload): try payload.encode(to: encoder)
+    case .shortcutScreenshot(let payload): try payload.encode(to: encoder)
+    case .resourcesImported(let payload): try payload.encode(to: encoder)
+    case .filesDrag(let payload): try payload.encode(to: encoder)
+    case .editCommand(let payload): try payload.encode(to: encoder)
+    case .speechState(let payload): try payload.encode(to: encoder)
+    case .selectionAsk(let payload): try payload.encode(to: encoder)
+    case .taskNew(let payload): try payload.encode(to: encoder)
+    case .miniPanelState(let payload): try payload.encode(to: encoder)
+    case .accessibilityTrust(let payload): try payload.encode(to: encoder)
+    case .screenRecordingTrust(let payload): try payload.encode(to: encoder)
+    case .updateState(let payload): try payload.encode(to: encoder)
+    case .updateReleaseNotes(let payload): try payload.encode(to: encoder)
+    case .computerState(let payload): try payload.encode(to: encoder)
+    case .shortcutsChanged(let payload): try payload.encode(to: encoder)
+    case .socketFrames(let payload): try payload.encode(to: encoder)
+    case .userAppState(let payload): try payload.encode(to: encoder)
+    case .userAppPins(let payload): try payload.encode(to: encoder)
+    case .taskOpen(let payload): try payload.encode(to: encoder)
+    case .taskQueueWithdrawn(let payload): try payload.encode(to: encoder)
+    case .commandProgressAction(let payload): try payload.encode(to: encoder)
+    case .textWriteOffer(let payload): try payload.encode(to: encoder)
+    case .commandOptionsPicked(let payload): try payload.encode(to: encoder)
+    case .recordingAsk(let payload): try payload.encode(to: encoder)
+    case .recordingAskStop(let payload): try payload.encode(to: encoder)
+    case .recordingAskOpen(let payload): try payload.encode(to: encoder)
+    case .captureTextRun(let payload): try payload.encode(to: encoder)
+    case .captureTextAction(let payload): try payload.encode(to: encoder)
+    case .panelModalOpen(let payload): try payload.encode(to: encoder)
+    case .diagnosticsLiveProbeEvent(let payload): try payload.encode(to: encoder)
+    }
+  }
+}
+
 /// Everything Swift delivers: a call's result or error, or an event.
 public enum SwiftMessage: Encodable, Equatable, Sendable {
   /// `value` must match the call's result schema; the page checks it.

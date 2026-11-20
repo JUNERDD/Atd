@@ -1,14 +1,15 @@
+import { Suspense } from 'react';
 import { History, Search, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TaskContextState } from '@atd/agent-contracts';
 import type { AgentTask } from '../../client/agent/task-schema';
 import { IconButton } from '../../components/icon-button';
 import { PanelTitle } from './panel-title';
-import { SessionMenu } from './session-menu';
 import { useConversationControls } from './transcript/conversation-controls';
 import { HintButton } from './transcript/find/hint-button';
 import { FIND_ACCELERATOR } from './transcript/find/use-find-shortcut';
 import { UpdateButton } from './update-button';
+import { preloadPanelView, SessionMenu } from './panel-view-loaders';
 import type { PanelView } from './use-task-panel';
 
 /**
@@ -56,7 +57,11 @@ export function PanelHeader({
       <PanelTitle key={view === 'task' ? taskId : view} title={title} task={task} />
       <nav className="header-controls" aria-label={t('header.controlsLabel')}>
         <UpdateButton />
-        {task && <SessionMenu task={task} context={context} />}
+        {task && (
+          <Suspense fallback={null}>
+            <SessionMenu task={task} context={context} />
+          </Suspense>
+        )}
         {find && (
           <HintButton
             label={t('header.find')}
@@ -73,6 +78,8 @@ export function PanelHeader({
           variant="glass-ghost"
           className="header-button"
           aria-pressed={view === 'history'}
+          onPointerEnter={() => preloadPanelView('history')}
+          onFocus={() => preloadPanelView('history')}
           onClick={() => onToggleView('history')}
         >
           <History />
