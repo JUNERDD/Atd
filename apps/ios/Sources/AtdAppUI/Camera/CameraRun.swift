@@ -61,7 +61,8 @@ enum CameraRun {
       currency: CardContext.regionCurrency)
     var reader = CameraTranslationReader(lineCount: shot.lines.count)
     for try await delta in generator.stream(request, choice: command.model) {
-      if reader.feed(delta) { progress(reader.translation) }
+      // The sheet comes up with the first item: a title alone would show an empty card.
+      if reader.feed(delta), !reader.translation.items.isEmpty { progress(reader.translation) }
     }
     // A cancelled stream may end quietly; half an answer is no translation.
     try Task.checkCancellation()
