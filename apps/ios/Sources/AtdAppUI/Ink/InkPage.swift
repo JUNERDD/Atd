@@ -72,7 +72,7 @@ private struct StatusBarFade: View {
   }
 }
 
-/// The head of a sheet on the paper: a round button on either side and the title between them.
+/// The head of a sheet on the paper: a button on either side and the title between them.
 struct SheetHeader<Leading: View, Trailing: View>: View {
   let title: String
   /// Hidden when the content's first row already names what the sheet shows; it stays for
@@ -82,21 +82,53 @@ struct SheetHeader<Leading: View, Trailing: View>: View {
   @ViewBuilder let trailing: Trailing
 
   var body: some View {
-    ZStack {
+    SheetHeaderLayout(gap: 12) {
+      HStack(spacing: 0) { leading }
       Text(title)
         .font(.headline)
         .lineLimit(1)
-        .padding(.horizontal, 56)
         .opacity(showsTitle ? 1 : 0)
         .accessibilityAddTraits(.isHeader)
-      HStack {
-        leading
-        Spacer(minLength: 0)
-        trailing
-      }
+      HStack(spacing: 0) { trailing }
     }
     .padding(.horizontal, 10)
     .padding(.top, 10)
+  }
+}
+
+/// Lays out a sheet header's three parts (leading side, title, trailing side) the way a
+/// navigation bar does: the sides at the edges and the title centered on the sheet, `gap` clear
+/// of the wider side. A side that grows with Dynamic Type, such as a 保存 text button, narrows
+/// the title instead of covering it, and a side that comes and goes never moves the title while
+/// the other side is the wider.
+private struct SheetHeaderLayout: Layout {
+  let gap: CGFloat
+
+  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    let width = proposal.replacingUnspecifiedDimensions().width
+    let sides = [subviews[0], subviews[2]].map { $0.sizeThatFits(.unspecified) }
+    let title = subviews[1].sizeThatFits(titleProposal(width: width, sides: sides))
+    return CGSize(width: width, height: max(title.height, sides[0].height, sides[1].height))
+  }
+
+  func placeSubviews(
+    in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()
+  ) {
+    let sides = [subviews[0], subviews[2]].map { $0.sizeThatFits(.unspecified) }
+    subviews[0].place(
+      at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading, proposal: .unspecified)
+    subviews[2].place(
+      at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing, proposal: .unspecified)
+    subviews[1].place(
+      at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center,
+      proposal: titleProposal(width: bounds.width, sides: sides))
+  }
+
+  /// The title's width: the whole width less the wider side and its gap on each side, so the
+  /// centered title stays clear of both.
+  private func titleProposal(width: CGFloat, sides: [CGSize]) -> ProposedViewSize {
+    let inset = (sides.map(\.width).max() ?? 0) + gap
+    return ProposedViewSize(width: max(width - 2 * inset, 0), height: nil)
   }
 }
 
