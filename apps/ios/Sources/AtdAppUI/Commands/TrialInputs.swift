@@ -22,13 +22,14 @@ struct TrialPhotoInput: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
       if let picture {
+        // Rounded and outlined at the photo's own edges, before the frame that may be wider; the
+        // outline keeps a photo of white paper (a receipt, a screenshot) apart from the paper.
         Image(uiImage: picture)
           .resizable()
           .scaledToFit()
-          .frame(maxHeight: min(height, 320), alignment: .leading)
           .clipShape(InkShape(corners: .chip, wobble: 0))
-          // A photo of white paper (a receipt, a screenshot) keeps an edge on the paper.
           .overlay { InkShape(corners: .chip, wobble: 0).stroke(InkColor.cardLine, lineWidth: 1) }
+          .frame(maxHeight: min(height, 320), alignment: .leading)
           .accessibilityElement()
           .accessibilityLabel(
             photo?.isSample == true
