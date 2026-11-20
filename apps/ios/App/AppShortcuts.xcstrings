@@ -1,6 +1,42 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "${applicationName} briefing" : {
+      "comment" : "Siri and Spotlight phrase: reads Today's Briefing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} briefing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName}今日简报"
+          }
+        }
+      }
+    },
+    "${applicationName} summarize clipboard" : {
+      "comment" : "Siri and Spotlight phrase: sums up the clipboard",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName} summarize clipboard"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "${applicationName}总结剪贴板"
+          }
+        }
+      }
+    },
     "Ask ${applicationName}" : {
       "comment" : "Siri and Spotlight phrase: opens Ask Atd",
       "extractionState" : "manual",
@@ -33,6 +69,78 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "用${applicationName}随手问"
+          }
+        }
+      }
+    },
+    "Run ${command} with ${applicationName}" : {
+      "comment" : "Siri and Spotlight phrase: runs the named command; ${command} is its name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run ${command} with ${applicationName}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用${applicationName}运行${command}"
+          }
+        }
+      }
+    },
+    "Run a command with ${applicationName}" : {
+      "comment" : "Siri and Spotlight phrase: runs a command the person picks",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run a command with ${applicationName}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用${applicationName}运行指令"
+          }
+        }
+      }
+    },
+    "Summarize my clipboard with ${applicationName}" : {
+      "comment" : "Siri and Spotlight phrase: sums up the clipboard",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Summarize my clipboard with ${applicationName}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用${applicationName}总结剪贴板"
+          }
+        }
+      }
+    },
+    "Today's briefing in ${applicationName}" : {
+      "comment" : "Siri and Spotlight phrase: reads Today's Briefing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today's briefing in ${applicationName}"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用${applicationName}听今日简报"
           }
         }
       }

@@ -11,6 +11,7 @@ public enum AtdAppLaunch {
   /// refreshes it through `AtdShortcuts`.
   public static func prepare<Shortcuts: AppShortcutsProvider>(shortcuts: Shortcuts.Type) {
     AtdShortcuts.install { Shortcuts.updateAppShortcutParameters() }
+    EntryRuntime.start()
     // Background task handlers must be registered before launch finishes.
     AutomationLaunch.prepare()
     CameraLaunch.prepare()
