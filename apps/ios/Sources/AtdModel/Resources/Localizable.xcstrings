@@ -170,13 +170,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sum up today’s events, reminders and weather in three sentences."
+            "value" : "Sum up today’s events and reminders in three sentences."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "汇总今天的日程、提醒和天气，给我三句话。"
+            "value" : "汇总今天的日程和提醒，给我三句话。"
           }
         }
       }
