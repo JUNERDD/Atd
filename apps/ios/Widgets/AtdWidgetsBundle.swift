@@ -13,6 +13,7 @@ struct AtdWidgetsBundle: WidgetBundle {
     MiniAppWidget()
     AskControl()
     BriefingControl()
+    RunCommandControl()
     CaptureControl()
     BriefingActivityWidget()
     AutomationActivityWidget()

@@ -1,8 +1,98 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "access.allow" : {
+      "comment" : "Up Next and the Live Activity: opens Atd to ask for calendar access",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow Calendar Access"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许访问日历"
+          }
+        }
+      }
+    },
+    "activity.addModel" : {
+      "comment" : "Live Activity button: opens Atd's model settings",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Model"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加模型"
+          }
+        }
+      }
+    },
+    "activity.retry" : {
+      "comment" : "Live Activity button: runs the command again",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
+          }
+        }
+      }
+    },
+    "activity.stale" : {
+      "comment" : "Live Activity: the run stopped before it finished",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't finish"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没能完成"
+          }
+        }
+      }
+    },
+    "activity.working" : {
+      "comment" : "Live Activity: the model is writing",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Working…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在生成…"
+          }
+        }
+      }
+    },
     "briefing.name" : {
-      "comment" : "Live Activity while Today's Briefing runs",
+      "comment" : "Home Screen widget button and Live Activity: Today's Briefing",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -37,8 +127,80 @@
         }
       }
     },
-    "lock.name" : {
-      "comment" : "Name of the Lock Screen widget that opens Ask Atd",
+    "next.allDay" : {
+      "comment" : "Up Next: an event without a time",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All-day"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全天"
+          }
+        }
+      }
+    },
+    "next.name" : {
+      "comment" : "Lock Screen widget with the next event",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Up Next"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一项"
+          }
+        }
+      }
+    },
+    "next.none" : {
+      "comment" : "Up Next when no event is coming",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No events today"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今天没有日程"
+          }
+        }
+      }
+    },
+    "next.tomorrow %@" : {
+      "comment" : "Up Next: an event tomorrow; %@ is its time",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomorrow %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "明天 %@"
+          }
+        }
+      }
+    },
+    "widget.ask" : {
+      "comment" : "Widget button and Lock Screen widget: opens Ask Atd",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
@@ -51,6 +213,42 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "随手问"
+          }
+        }
+      }
+    },
+    "widget.camera" : {
+      "comment" : "Widget button: opens Atd's camera (Snap and Act)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Snap and Act"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拍了就办"
+          }
+        }
+      }
+    },
+    "widget.expense" : {
+      "comment" : "Widget button and Lock Screen widget: opens the camera on Log Expense",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log Expense"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记一笔"
           }
         }
       }
