@@ -14,7 +14,7 @@ import Testing
     CalendarWriter(store: store, calendar: Shanghai.calendar)
   }
 
-  /// Write-only access is all adding asks for, and it cannot take the event back (A14).
+  /// Write-only access is all adding asks for, and it cannot take the event back.
   @Test func theFirstAdditionAsksForWriteOnlyAccess() async throws {
     let store = FakeCalendar(.notDetermined)
     let writer = writer(store)

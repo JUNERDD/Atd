@@ -17,7 +17,7 @@ struct CommandCatalogTests {
     #expect(CommandCatalog.commands(on: .siri, in: library).map(\.name) == ["Polish", "Receipt"])
   }
 
-  /// Controls run every input (A43): a photo command opens the camera, one that reads nothing
+  /// Controls run every input: a photo command opens the camera, one that reads nothing
   /// runs in a Live Activity.
   @Test func controlsListEveryCommandPlacedThere() {
     #expect(CommandCatalog.commands(on: .controls, in: library).map(\.name) == ["Receipt", "Plan"])

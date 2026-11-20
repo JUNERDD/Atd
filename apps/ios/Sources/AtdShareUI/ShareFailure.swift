@@ -46,7 +46,7 @@ enum ShareFailure: Equatable {
 
 /// What kept a card's action from happening; its card says so in its one footnote.
 enum CardIssue: Equatable {
-  /// Atd may not add to the calendar or reminders; only Settings can change that (A15).
+  /// Atd may not add to the calendar or reminders; only Settings can change that.
   case denied(ProtectedData)
   /// There is no default calendar or reminders list to add to.
   case noDefault(ProtectedData)

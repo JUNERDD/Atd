@@ -31,7 +31,7 @@ struct CommandRunTests {
     #expect(generator.requests.first?.messages.last?.text.contains("Design review") == true)
   }
 
-  /// A person's command that reads nothing runs on its instructions alone (A27).
+  /// A person's command that reads nothing runs on its instructions alone.
   @Test func aPersonsCommandWithoutInputReadsNoAgenda() async throws {
     let calendar = FakeCalendar(.full, events: [meeting])
     let (context, generator) = context(calendar, answer: "Drink water.")

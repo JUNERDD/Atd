@@ -7,7 +7,7 @@ import Testing
   @Test func modesAreCameraCommandsThatTakeInputInLibraryOrder() {
     var library = CommandLibrary(commands: BuiltinCommands.all())
     // A command of the person's own reads the photo's text; one without input cannot run on a
-    // photo, even with the camera switch on (A43).
+    // photo, even with the camera switch on.
     var reads = library.commands[0]
     reads.id = "reads"
     reads.placement.camera = true

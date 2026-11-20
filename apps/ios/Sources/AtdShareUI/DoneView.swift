@@ -2,7 +2,7 @@ import AtdModel
 import SwiftUI
 
 /// What the card's action did: 已添加到日历 with the event's title, or 已记入「记账本」 with the
-/// amount, and 撤销 where it can be taken back (an event only with full calendar access, A14).
+/// amount, and 撤销 where it can be taken back (an event only with full calendar access).
 struct DoneView: View {
   let run: ShareRun
 

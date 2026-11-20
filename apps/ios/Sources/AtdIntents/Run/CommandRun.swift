@@ -28,7 +28,7 @@ public enum CommandInputNeed: Equatable, Sendable {
 
 /// Runs a command for an entry point and reads the answer into a card; a command that only
 /// writes text comes back as a text card. Only the built-in 今日简报 reads the agenda: a person's
-/// own command that reads nothing runs on its instructions alone (A27).
+/// own command that reads nothing runs on its instructions alone.
 public struct CommandRun: Sendable {
   public let context: EntryContext
 

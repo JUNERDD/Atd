@@ -85,7 +85,7 @@ struct AutomationsPage: View {
   }
 
   #if DEBUG
-    /// For screenshots in the simulator, which cannot tap (A7): `-AtdDebug automations-sheet
+    /// For screenshots in the simulator, which cannot tap: `-AtdDebug automations-sheet
     /// new [family]` opens 新建自动化, on that family's steps when one is named;
     /// `-AtdDebug automations-sheet setup <id>` the automation's setup, and `… detail <id>` the
     /// automation as a tap on its row does. `AutomationLaunch` selects this tab for the same

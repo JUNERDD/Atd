@@ -9,7 +9,7 @@ import WidgetKit
 @testable import AtdWidgetsUI
 
 /// Snapshots of the widgets, the Lock Screen accessories and the Live Activity, which the
-/// simulator cannot show without someone adding them (A19). Each is attached to the test result
+/// simulator cannot show without someone adding them. Each is attached to the test result
 /// as a PNG, and each checks that its content fits the space its family has on a 393-pt-wide
 /// iPhone, the smallest size most current iPhones give it. Text follows Dynamic Type up to a
 /// largest size each surface sets, so the checks run at the default size and at the largest.

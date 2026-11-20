@@ -3,7 +3,7 @@ import AtdModel
 import SwiftUI
 
 /// 记一笔's card: the amount, where and when, its 类别 and 记到, and 记入「记账本」. It reads as
-/// found unless the command previews its result, which makes it editable (A16).
+/// found unless the command previews its result, which makes it editable.
 struct ExpenseCardView: View {
   let run: ShareRun
 

@@ -2,8 +2,8 @@ import Foundation
 import Observation
 
 /// A command run Atd shows in its own sheet once an entry point has brought it forward: the
-/// 运行指令 control on a command that reads text, which runs on the clipboard (A25), and a
-/// command that reads nothing, such as 今日简报, while Live Activities are off (A26).
+/// 运行指令 control on a command that reads text, which runs on the clipboard, and a
+/// command that reads nothing, such as 今日简报, while Live Activities are off.
 public struct CommandRunRequest: Identifiable, Hashable, Sendable {
   public let id = UUID()
   public let commandID: String

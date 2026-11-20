@@ -2,7 +2,7 @@ import Foundation
 import WebKit
 
 /// Reads the page behind a link that was shared without its text (apps other than Safari send
-/// only the address). It runs only when the person runs a command on the link (A17), which the
+/// only the address). It runs only when the person runs a command on the link, which the
 /// list's footer says.
 protocol PageReading {
   /// The page at `url` with its title and text.

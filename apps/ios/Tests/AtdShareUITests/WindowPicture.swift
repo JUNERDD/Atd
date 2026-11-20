@@ -1,6 +1,6 @@
 import UIKit
 
-/// Draws a window's screen in a test process for the share sheet's snapshots (A19).
+/// Draws a window's screen in a test process for the share sheet's snapshots.
 ///
 /// A test process cannot draw Liquid Glass: `drawHierarchy` needs a window on a screen, and
 /// `CALayer.render(in:)` draws nothing at all while the tree holds glass's signed-distance-field

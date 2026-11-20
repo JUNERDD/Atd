@@ -5,8 +5,8 @@ import Testing
 
 @testable import AtdMiniApps
 
-/// Every widget template in every size, light and dark, as PNG attachments of the test results
-/// (A19): the widget extension draws these same views.
+/// Every widget template in every size, light and dark, as PNG attachments of the test results:
+/// the widget extension draws these same views.
 @MainActor @Suite struct MiniAppGlanceSnapshotTests {
   private let now = Fixture.day(21, hour: 18)
 

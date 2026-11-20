@@ -12,7 +12,7 @@ public struct BriefingIntent: LiveActivityIntent {
   public static let title = LocalizedStringResource("briefing.title", table: "EntryIntents")
   public static let isDiscoverable = false
   public static let authenticationPolicy = IntentAuthenticationPolicy.alwaysAllowed
-  /// In the foreground only when Live Activities are off, to show the briefing in Atd (A26).
+  /// In the foreground only when Live Activities are off, to show the briefing in Atd.
   public static let supportedModes: IntentModes = [.background, .foreground(.dynamic)]
 
   public init() {}

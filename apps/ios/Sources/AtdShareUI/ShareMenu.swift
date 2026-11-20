@@ -4,7 +4,7 @@ import Foundation
 /// The commands the share sheet offers for what was shared: the best fit first (建议), the rest
 /// under 其他指令, each with a line saying what it will do.
 ///
-/// Every command placed in the share sheet that can run there is listed (`lists(_:)`, A43); the
+/// Every command placed in the share sheet that can run there is listed (`lists(_:)`); the
 /// kind of content only orders them: the prototype's built-ins for it first, then the commands
 /// made for that kind of content, then the rest, each group in library order.
 struct ShareMenu: Equatable {
@@ -27,7 +27,7 @@ struct ShareMenu: Equatable {
   ) {
     let text = content.readableText
     let dates = text.map { Self.dates(in: $0) } ?? []
-    // A18: a text with no date in it is unlikely to hold an event.
+    // A text with no date in it is unlikely to hold an event.
     let ranked = Self.ranked(
       commands.filter(Self.lists), for: content, eventLast: text != nil && dates.isEmpty)
     let upcoming = dates.sorted().first { $0 >= calendar.startOfDay(for: now) }

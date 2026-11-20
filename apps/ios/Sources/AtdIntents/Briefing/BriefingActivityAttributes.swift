@@ -3,7 +3,7 @@ import AtdModel
 import Foundation
 
 /// What a command's Live Activity shows: 今日简报's, and that of any command that reads nothing
-/// run from the 运行指令 control, which works like 今日简报 (A25) and looks the same.
+/// run from the 运行指令 control, which works like 今日简报 and looks the same.
 public struct BriefingActivityAttributes: ActivityAttributes, Sendable {
   public struct ContentState: Codable, Hashable, Sendable {
     public enum Phase: String, Codable, Sendable {

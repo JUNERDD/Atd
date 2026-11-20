@@ -29,7 +29,7 @@ extension ShareRun {
   }
 
   /// Whether the card's fields can be changed before its action: a command that previews its
-  /// result (`review`) shows them editable, one that does not shows them as read (A16).
+  /// result (`review`) shows them editable, one that does not shows them as read.
   var isEditable: Bool {
     command.output.review
   }
@@ -104,7 +104,7 @@ extension ShareRun {
     }
   }
 
-  /// Takes the event back, which only works with full calendar access (A14).
+  /// Takes the event back, which only works with full calendar access.
   func undoEvent() async {
     guard let addition, addition.canRemove, !isBusy else { return }
     isBusy = true

@@ -2,7 +2,7 @@ import AtdModel
 import Foundation
 
 #if DEBUG
-  /// Launch arguments that check mini apps on the simulator, which cannot tap (A7, A44). Only
+  /// Launch arguments that check mini apps on the simulator, which cannot tap. Only
   /// `-AtdDebug miniapp …` is read; other areas' `-AtdDebug` arguments are theirs, and a mini
   /// app's link opens through `EntryDebug`'s `-AtdDebug url <url>`, like any other link.
   ///

@@ -8,7 +8,7 @@ import UIKit
 
 @testable import AtdShareUI
 
-/// Pictures of the share sheet's screens with fixture content (A19: extension views are checked
+/// Pictures of the share sheet's screens with fixture content (extension views are checked
 /// as images attached to the test results; `xcresulttool export attachments` saves them).
 /// `WindowPicture` draws them, glass as gray stand-ins. The tests fail only when a screen draws
 /// nothing.

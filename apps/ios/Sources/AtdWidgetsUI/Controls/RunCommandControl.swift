@@ -5,7 +5,7 @@ import WidgetKit
 
 /// 运行指令 in Control Center, on the Lock Screen and on the Action button: runs the command the
 /// person picked when adding it, from those placed in controls. A command that reads nothing
-/// answers in a Live Activity without unlocking; any other opens Atd (A25).
+/// answers in a Live Activity without unlocking; any other opens Atd.
 public struct RunCommandControl: ControlWidget {
   public init() {}
 

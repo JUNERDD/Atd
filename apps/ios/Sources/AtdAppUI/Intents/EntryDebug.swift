@@ -5,7 +5,7 @@
   import AtdModel
   import Foundation
 
-  /// The entry points' launch hooks for checks on the simulator that simctl cannot tap (A7, A44):
+  /// The entry points' launch hooks for checks on the simulator that simctl cannot tap:
   /// `-AtdDebug briefing <phase>` shows 今日简报's Live Activity in `working`, `done`,
   /// `needsAccess`, `noModel` or `failed` with sample content, `-AtdDebug briefing run` runs the
   /// briefing for real, as its control does, and `-AtdDebug briefing end` ends every activity;

@@ -67,7 +67,7 @@ struct StepPerformer: Sendable {
   }
 
   /// A library command on the previous step's result, or on its instructions alone when it reads
-  /// nothing (A27: no calendar or ledger data goes with it).
+  /// nothing (no calendar or ledger data goes with it).
   private func command(_ id: String, input: String?) async throws -> StepOutcome {
     guard let command = environment.store.load(CommandLibrary.self).document.command(id) else {
       return .failed(text: StepText.commandDeleted)

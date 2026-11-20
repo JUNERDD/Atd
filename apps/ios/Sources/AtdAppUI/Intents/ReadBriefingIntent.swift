@@ -4,7 +4,7 @@ import AtdModel
 import SwiftUI
 
 /// 今日简报 for Siri and Shortcuts: today's events and reminders in three sentences, spoken,
-/// shown and returned as text, so a shortcut can read them aloud or pass them on (A10). The
+/// shown and returned as text, so a shortcut can read them aloud or pass them on. The
 /// control and the widget run `BriefingIntent`, which answers in a Live Activity instead.
 public struct ReadBriefingIntent: AppIntent {
   public static let title = LocalizedStringResource("briefing.title", table: "EntryIntents")

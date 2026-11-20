@@ -36,7 +36,7 @@ import Testing
     return (run, world)
   }
 
-  /// Write-only access is all adding asks for, and it cannot take the event back (A14): done
+  /// Write-only access is all adding asks for, and it cannot take the event back: done
   /// shows no 撤销. The content gave no end, which the card says.
   @Test func addingAsksForWriteOnlyAccessAndCannotBeUndone() async throws {
     let (run, world) = await card(

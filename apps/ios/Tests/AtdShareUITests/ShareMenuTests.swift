@@ -27,7 +27,7 @@ import Testing
     ([menu.suggested].compactMap(\.self) + menu.others).map(\.command.id)
   }
 
-  /// Every command with the share switch on that takes input is listed (A43); the content only
+  /// Every command with the share switch on that takes input is listed; the content only
   /// orders them, the prototype's built-ins for it first.
   @Test func aPageListsTheBuiltinsForPagesFirst() {
     #expect(
@@ -39,7 +39,7 @@ import Testing
       ids(menu(image)) == ["event", "translate", "shorten", "expense", "whiteboard", "polish"])
   }
 
-  /// A18: shared text with no date in it suggests something other than 提取日程.
+  /// Shared text with no date in it suggests something other than 提取日程.
   @Test func textWithoutADateSuggestsShortening() {
     let menu = menu(.text("这一段话讲的是城市里的步行和街角。"))
     #expect(ids(menu) == ["shorten", "translate", "polish", "event", "expense", "whiteboard"])

@@ -30,7 +30,7 @@ nonisolated enum SharedContent: Sendable, Equatable {
     CardInput(text: text, images: images)
   }
 
-  /// The text the suggestion looks for dates in (A18); nil for an image, and for a link whose
+  /// The text the suggestion looks for dates in; nil for an image, and for a link whose
   /// page is read only when a command runs.
   var readableText: String? {
     switch self {

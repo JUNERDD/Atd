@@ -7,7 +7,7 @@ import Testing
 @testable import AtdWidgetsUI
 
 /// The Live Activities as the Lock Screen shows them, drawn with `ImageRenderer` and attached to
-/// the test results (A19): a run going, waiting for the person, finished with a failure, and
+/// the test results: a run going, waiting for the person, finished with a failure, and
 /// stopped; the focus timer timing and ended. Each fits the 160 points the Lock Screen gives an
 /// activity before it cuts it off.
 @MainActor

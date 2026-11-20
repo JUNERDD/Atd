@@ -20,7 +20,7 @@ public struct RunCommandControlConfiguration: ControlConfigurationIntent {
 
 /// What the 运行指令 control does with its command: one that reads nothing runs in the
 /// background with a Live Activity, like 今日简报; one that reads a photo opens Atd's camera with
-/// it; any other opens Atd and runs there on the clipboard (A25, A43).
+/// it; any other opens Atd and runs there on the clipboard.
 public struct RunControlIntent: LiveActivityIntent {
   public static let title = LocalizedStringResource("runControl.title", table: "EntryIntents")
   public static let isDiscoverable = false

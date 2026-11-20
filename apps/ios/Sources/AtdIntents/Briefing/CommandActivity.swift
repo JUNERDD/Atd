@@ -15,7 +15,7 @@ public enum CommandActivity {
   /// The model's share of the budget.
   static let deadline: Duration = .seconds(20)
 
-  /// Whether the person allows Atd's Live Activities; with them off a run shows in the app (A26).
+  /// Whether the person allows Atd's Live Activities; with them off a run shows in the app.
   public static var isAvailable: Bool {
     ActivityAuthorizationInfo().areActivitiesEnabled
   }

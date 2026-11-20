@@ -5,7 +5,7 @@ import AtdModel
 import SwiftUI
 import UIKit
 
-/// A command a control ran in Atd (A25, A26): the 运行指令 control's command that reads text,
+/// A command a control ran in Atd: the 运行指令 control's command that reads text,
 /// run on the clipboard, or one that reads nothing while Live Activities are off. It shows the
 /// command, then its result with the one action the result is for: 拷贝, 添加到日历 or 记入.
 struct CommandRunSheet: View {

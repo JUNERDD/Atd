@@ -16,7 +16,7 @@ public struct AtdRootView: View {
   @State private var tab = AppTab.commands
   @State private var ask: AskRequest?
   @State private var camera: CameraEntry?
-  /// A command a control ran in Atd (`CommandRunCenter`, A40).
+  /// A command a control ran in Atd (`CommandRunCenter`).
   @State private var run: CommandRunRequest?
   @Environment(\.scenePhase) private var scenePhase
   private let routes = RouteCenter.shared
