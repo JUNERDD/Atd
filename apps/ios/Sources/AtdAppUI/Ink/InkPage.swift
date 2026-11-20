@@ -98,37 +98,44 @@ struct SheetHeader<Leading: View, Trailing: View>: View {
 
 /// Lays out a sheet header's three parts (leading side, title, trailing side) the way a
 /// navigation bar does: the sides at the edges and the title centered on the sheet, `gap` clear
-/// of the wider side. A side that grows with Dynamic Type, such as a 保存 text button, narrows
-/// the title instead of covering it, and a side that comes and goes never moves the title while
-/// the other side is the wider.
+/// of the wider side. A title too long for that takes all the room between the two sides, so a
+/// side that grows with Dynamic Type, such as a 保存 text button, narrows the title instead of
+/// covering it.
 private struct SheetHeaderLayout: Layout {
   let gap: CGFloat
 
   func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
     let width = proposal.replacingUnspecifiedDimensions().width
-    let sides = [subviews[0], subviews[2]].map { $0.sizeThatFits(.unspecified) }
-    let title = subviews[1].sizeThatFits(titleProposal(width: width, sides: sides))
-    return CGSize(width: width, height: max(title.height, sides[0].height, sides[1].height))
+    let slot = titleSlot(width: width, subviews: subviews)
+    let title = subviews[1].sizeThatFits(ProposedViewSize(width: slot.width, height: nil))
+    let sides = [subviews[0], subviews[2]].map { $0.sizeThatFits(.unspecified).height }
+    return CGSize(width: width, height: max(title.height, sides[0], sides[1]))
   }
 
   func placeSubviews(
     in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()
   ) {
-    let sides = [subviews[0], subviews[2]].map { $0.sizeThatFits(.unspecified) }
     subviews[0].place(
       at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading, proposal: .unspecified)
     subviews[2].place(
       at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing, proposal: .unspecified)
+    let slot = titleSlot(width: bounds.width, subviews: subviews)
     subviews[1].place(
-      at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center,
-      proposal: titleProposal(width: bounds.width, sides: sides))
+      at: CGPoint(x: bounds.minX + slot.midX, y: bounds.midY), anchor: .center,
+      proposal: ProposedViewSize(width: slot.width, height: nil))
   }
 
-  /// The title's width: the whole width less the wider side and its gap on each side, so the
-  /// centered title stays clear of both.
-  private func titleProposal(width: CGFloat, sides: [CGSize]) -> ProposedViewSize {
-    let inset = (sides.map(\.width).max() ?? 0) + gap
-    return ProposedViewSize(width: max(width - 2 * inset, 0), height: nil)
+  /// Where the title goes across a header `width` wide: centered on it when the whole title fits
+  /// clear of the wider side, otherwise centered in the room between the two sides.
+  private func titleSlot(width: CGFloat, subviews: Subviews) -> (midX: CGFloat, width: CGFloat) {
+    let leading = subviews[0].sizeThatFits(.unspecified).width
+    let trailing = subviews[2].sizeThatFits(.unspecified).width
+    let centered = max(width - 2 * (max(leading, trailing) + gap), 0)
+    if subviews[1].sizeThatFits(.unspecified).width <= centered {
+      return (width / 2, centered)
+    }
+    let room = max(width - leading - trailing - 2 * gap, 0)
+    return (leading + gap + room / 2, room)
   }
 }
 
