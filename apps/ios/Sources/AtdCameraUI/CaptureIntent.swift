@@ -102,11 +102,10 @@ public nonisolated struct CameraMode: Codable, Sendable, Equatable, Hashable, Id
     library.commands.filter(isMode).map(CameraMode.init)
   }
 
-  /// Whether `command` is a camera mode: its camera placement is on and it takes input, which
-  /// the camera gives as the photo and its text (A43). Root swaps the input check for
-  /// `Command.runs(on: .camera)` at integration.
+  /// Whether `command` is a camera mode: its camera placement is on and the camera can run it,
+  /// giving the photo and its text as the input.
   public static func isMode(_ command: Command) -> Bool {
-    command.placement.camera && command.input != CommandInput.none
+    command.placement.camera && command.runs(on: .camera)
   }
 
   /// The mode to open in: the one asked for when it is a mode, else the one used last, else

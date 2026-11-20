@@ -13,13 +13,11 @@ struct CameraAskTopic: Identifiable {
 }
 
 enum CameraAsk {
-  /// 问 Atd about `topic`.
-  ///
-  /// A39: Ask's context (`AskSheet(context:)`, WS-F) is not in this branch's base, so this opens
-  /// a plain panel. At integration, after WS-F is merged, root replaces the body with
-  /// `AskSheet(context: AskContext(title: topic.title, text: topic.text, photo: topic.photo,
-  /// symbol: topic.symbol))`.
+  /// 问 Atd about `topic`: the panel opens with the result as its context, so the first question
+  /// carries the photo and the text.
   static func sheet(about topic: CameraAskTopic) -> some View {
-    AskSheet()
+    AskSheet(
+      context: AskContext(
+        title: topic.title, text: topic.text, photo: topic.photo, symbol: topic.symbol))
   }
 }
