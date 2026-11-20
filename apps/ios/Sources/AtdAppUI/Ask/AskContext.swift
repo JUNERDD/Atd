@@ -34,12 +34,15 @@ struct AskContextChip: View {
   /// Leaves the context out of the conversation; nil once it has been sent.
   var remove: (() -> Void)?
   @Environment(\.dynamicTypeSize) private var typeSize
+  // The photo and ✕ grow with the title, up to the size of a hit area.
+  @ScaledMetric(relativeTo: .footnote) private var scaledPhoto: CGFloat = 22
+  @ScaledMetric(relativeTo: .caption) private var scaledRemove: CGFloat = 28
 
   var body: some View {
     HStack(spacing: 6) {
       HStack(spacing: 6) {
         if let photo = context.photo {
-          PhotoThumbnail(photo: photo, side: 22)
+          PhotoThumbnail(photo: photo, side: min(scaledPhoto, 44))
         } else {
           Image(systemName: context.symbol).imageScale(.small)
         }
@@ -50,6 +53,9 @@ struct AskContextChip: View {
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(AppText.string("ask.context \(context.title)"))
       if let remove {
+        // Drawn inside the chip; the hit area reaches 44 points around it.
+        let side = min(scaledRemove, 44)
+        let reach = (44 - side) / 2
         Button(action: remove) {
           Image(systemName: "xmark")
             .font(.caption.weight(.bold))
@@ -58,8 +64,7 @@ struct AskContextChip: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // Drawn 28 points across inside the chip; the hit area keeps its 44.
-        .padding(-8)
+        .padding(-reach)
         .accessibilityLabel(AppText.string("ask.context.remove \(context.title)"))
       }
     }
