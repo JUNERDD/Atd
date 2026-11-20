@@ -114,6 +114,8 @@ private struct InkSwitch: View {
           .frame(maxWidth: .infinity, alignment: .leading)
         track
       }
+      // Room above and below the label once large text makes it taller than the track.
+      .padding(.vertical, 6)
       .frame(minHeight: 44)
       .contentShape(Rectangle())
     }

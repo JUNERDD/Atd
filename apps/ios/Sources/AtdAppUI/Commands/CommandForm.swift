@@ -78,20 +78,29 @@ struct CommandForm: View {
   }
 }
 
-/// A row that shows a value it does not let you change.
+/// A row that shows a value it does not let you change; the value moves under the title when
+/// large text leaves no room beside it.
 private struct ValueRow: View {
   let title: String
   let value: String
 
   var body: some View {
-    HStack(spacing: 12) {
-      Text(title)
-      Spacer(minLength: 8)
-      Text(value)
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
+    ViewThatFits(in: .horizontal) {
+      HStack(spacing: 12) {
+        Text(title)
+        Spacer(minLength: 8)
+        Text(value)
+          .foregroundStyle(.secondary)
+          .fixedSize()
+      }
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+        Text(value).foregroundStyle(.secondary)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
     .padding(.horizontal, 20)
+    .padding(.vertical, 6)
     .frame(minHeight: 44)
     .accessibilityElement(children: .combine)
   }

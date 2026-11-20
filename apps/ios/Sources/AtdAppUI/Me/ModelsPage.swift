@@ -82,6 +82,7 @@ private struct ConnectionRow: View {
             .accessibilityHidden(true)
         }
         .padding(.trailing, 20)
+        .padding(.vertical, 6)
         .frame(minHeight: 53)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
