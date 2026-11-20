@@ -5,6 +5,9 @@ included:
   - Package.swift
   - App
   - Keyboard
+  - Share
+  - Widgets
+  - Capture
   - Sources
   - Tests
 file_length:

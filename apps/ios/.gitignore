@@ -7,6 +7,11 @@ App/Info.plist
 App/Atd.entitlements
 Keyboard/Info.plist
 Keyboard/AtdKeyboard.entitlements
+Share/Info.plist
+Share/AtdShare.entitlements
+Widgets/Info.plist
+Widgets/AtdWidgets.entitlements
+Capture/Info.plist
 # xcodebuild -derivedDataPath
 DerivedData/
 xcuserdata/
