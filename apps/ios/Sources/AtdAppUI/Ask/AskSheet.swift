@@ -138,7 +138,7 @@ struct AskSheet: View {
 
   private func attach(_ data: Data) async {
     guard conversation.photos.count < AskConversation.photoLimit,
-      let photo = await PhotoEncoder.encode(data)
+      let photo = await ImageEncoding.modelImage(from: data)
     else { return }
     conversation.photos.append(photo)
   }
