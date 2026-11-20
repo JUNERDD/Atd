@@ -130,7 +130,7 @@ struct BriefingActivityBody: View {
 }
 
 /// The compact Dynamic Island's trailing mark: a spinner while writing, a check once done, and an
-/// exclamation mark when the run needs something.
+/// exclamation mark when the run needs something. VoiceOver reads each as words.
 struct BriefingActivityStatus: View {
   let state: BriefingActivityAttributes.ContentState
   let isStale: Bool
@@ -144,12 +144,12 @@ struct BriefingActivityStatus: View {
     case .done:
       Image(systemName: "checkmark")
         .font(.system(size: 14, weight: .semibold))
-        .accessibilityHidden(true)
+        .accessibilityLabel(Text(EntryCopy.string("activity.done")))
     default:
       Image(systemName: "exclamationmark")
         .font(.system(size: 14, weight: .semibold))
         .foregroundStyle(InkColor.alert)
-        .accessibilityHidden(true)
+        .accessibilityLabel(Text(EntryCopy.string("activity.attention")))
     }
   }
 }

@@ -51,6 +51,8 @@ public struct BriefingActivityWidget: Widget {
       }
     } compactLeading: {
       BriefingActivitySticker(attributes: attributes, size: 22)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(attributes.name))
     } compactTrailing: {
       BriefingActivityStatus(state: context.state, isStale: context.isStale)
     } minimal: {
