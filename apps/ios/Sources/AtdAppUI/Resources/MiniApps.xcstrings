@@ -1,7 +1,1050 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-
+    "apps.delete" : {
+      "comment" : "小应用 tab: context menu item that deletes a mini app the person made",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除"
+          }
+        }
+      }
+    },
+    "apps.delete.confirm %@" : {
+      "comment" : "小应用 tab: title of the confirmation before deleting; %@ is the mini app's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete “%@”?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除「%@」？"
+          }
+        }
+      }
+    },
+    "apps.delete.withData" : {
+      "comment" : "小应用 tab: destructive button that deletes the mini app and everything logged in it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete App and Its Data"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除小应用和数据"
+          }
+        }
+      }
+    },
+    "apps.new" : {
+      "comment" : "小应用 tab: the button that builds a new mini app, and that sheet's title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Mini App"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建小应用"
+          }
+        }
+      }
+    },
+    "apps.saved %@" : {
+      "comment" : "小应用 tab: shown for a few seconds after a new mini app is kept; %@ is its name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@” saved"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」存好了"
+          }
+        }
+      }
+    },
+    "build.done" : {
+      "comment" : "Build steps: VoiceOver value of a finished step",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "完成"
+          }
+        }
+      }
+    },
+    "build.now" : {
+      "comment" : "Build steps: VoiceOver value of the step in progress",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In progress"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "进行中"
+          }
+        }
+      }
+    },
+    "build.step.data" : {
+      "comment" : "新建小应用 sheet: build step 2 of 4, the model decides what data the app keeps",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Design the data"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设计数据"
+          }
+        }
+      }
+    },
+    "build.step.page" : {
+      "comment" : "新建小应用 sheet: build step 3 of 4, the model writes the app's page",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build the page"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成界面"
+          }
+        }
+      }
+    },
+    "build.step.understand" : {
+      "comment" : "新建小应用 sheet: build step 1 of 4, the model reads the request",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Understand the idea"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "理解需求"
+          }
+        }
+      }
+    },
+    "build.step.widget" : {
+      "comment" : "新建小应用 sheet: build step 4 of 4, the model sets up the widget",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build the widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成小组件"
+          }
+        }
+      }
+    },
+    "build.stop" : {
+      "comment" : "Build steps: button that stops building or changing a mini app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止"
+          }
+        }
+      }
+    },
+    "dialog.cancel" : {
+      "comment" : "A mini app's page: Cancel in a dialog the page opened",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消"
+          }
+        }
+      }
+    },
+    "failure.save" : {
+      "comment" : "小应用 tab: alert when a mini app could not be saved or changed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t save the mini app."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小应用没能保存。"
+          }
+        }
+      }
+    },
+    "guide.done" : {
+      "comment" : "Add-widget guide: closes it",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "好的"
+          }
+        }
+      }
+    },
+    "guide.shows %@" : {
+      "comment" : "Add-widget guide: a widget added without choosing shows this app; %@ is its name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A new widget shows “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新添加的小组件会显示「%@」"
+          }
+        }
+      }
+    },
+    "guide.step.add" : {
+      "comment" : "Add-widget guide: step 3; Mini App is the widget's name in the gallery",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search for Atd, swipe to Mini App, then tap Add Widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "搜索「Atd」，滑到「小应用」，点「添加小组件」"
+          }
+        }
+      }
+    },
+    "guide.step.edit" : {
+      "comment" : "Add-widget guide: step 2",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap Edit at the top left, then Add Widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点左上角的「编辑」，选「添加小组件」"
+          }
+        }
+      }
+    },
+    "guide.step.hold" : {
+      "comment" : "Add-widget guide: step 1",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On the Home Screen, touch and hold an empty area"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回到主屏幕，长按空白处"
+          }
+        }
+      }
+    },
+    "guide.title" : {
+      "comment" : "Add-widget guide: its title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to Home Screen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加到主屏幕"
+          }
+        }
+      }
+    },
+    "new.building" : {
+      "comment" : "新建小应用 sheet: title while the model builds the app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Building"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在生成"
+          }
+        }
+      }
+    },
+    "new.example.guitar" : {
+      "comment" : "新建小应用 sheet: example chip",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guitar Practice"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "练琴打卡"
+          }
+        }
+      }
+    },
+    "new.example.guitar.text" : {
+      "comment" : "新建小应用 sheet: the sentence the guitar example fills in",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "15 minutes of guitar a day: log how long I practiced and see how many days I’ve kept it up"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每天练 15 分钟吉他，记下练了多久，看我坚持了几天"
+          }
+        }
+      }
+    },
+    "new.example.reading" : {
+      "comment" : "新建小应用 sheet: example chip",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading Streak"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读书打卡"
+          }
+        }
+      }
+    },
+    "new.example.reading.text" : {
+      "comment" : "新建小应用 sheet: the sentence the reading example fills in",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log how many pages I read each day and show on the Home Screen how many days in a row I’ve read"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记录每天读了多少页书，主屏幕显示连续读了几天"
+          }
+        }
+      }
+    },
+    "new.example.steps" : {
+      "comment" : "新建小应用 sheet: example chip",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Step Goal"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "步数达标"
+          }
+        }
+      }
+    },
+    "new.example.steps.text" : {
+      "comment" : "新建小应用 sheet: the sentence the steps example fills in",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tick the day once I walk 8,000 steps and see how many days in a row I’ve made it"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每天走够 8000 步就打个勾，看连续达标了几天"
+          }
+        }
+      }
+    },
+    "new.examples" : {
+      "comment" : "新建小应用 sheet: label of the example chips",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Examples"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "例子"
+          }
+        }
+      }
+    },
+    "new.field" : {
+      "comment" : "新建小应用 sheet: placeholder and label of the description field",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What kind of little tool do you want?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "想要一个什么样的小工具？"
+          }
+        }
+      }
+    },
+    "new.generate" : {
+      "comment" : "新建小应用 sheet: the primary button that builds the app",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generate"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "生成"
+          }
+        }
+      }
+    },
+    "new.retry" : {
+      "comment" : "新建小应用 sheet: the primary button after building failed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try Again"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
+          }
+        }
+      }
+    },
+    "page.error" : {
+      "comment" : "A mini app's page: the green line when the page reported an error",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This mini app ran into a problem"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个小应用出错了"
+          }
+        }
+      }
+    },
+    "page.fix" : {
+      "comment" : "A mini app's page: asks the model to fix the page's error",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fix"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修复"
+          }
+        }
+      }
+    },
+    "page.label %@" : {
+      "comment" : "A mini app's page: VoiceOver label; %@ is the app's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (mini app)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@（小应用）"
+          }
+        }
+      }
+    },
+    "page.missing" : {
+      "comment" : "A mini app's page: shown when its files cannot be read",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This mini app can’t be opened"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这个小应用打不开了"
+          }
+        }
+      }
+    },
+    "preview.addToHome" : {
+      "comment" : "Preview and 小组件 panel: saves the app and shows how to put its widget on the Home Screen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to Home Screen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加到主屏幕"
+          }
+        }
+      }
+    },
+    "preview.keep" : {
+      "comment" : "新建小应用 sheet: saves the new app without adding its widget",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Just Keep It in Mini Apps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "先存在小应用里"
+          }
+        }
+      }
+    },
+    "preview.label %@" : {
+      "comment" : "新建小应用 sheet: VoiceOver label of the new app's page; %@ is its name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (preview)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@（预览）"
+          }
+        }
+      }
+    },
+    "preview.page" : {
+      "comment" : "新建小应用 sheet: header above the new app's page, running as it will open",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When It Opens"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开后的样子"
+          }
+        }
+      }
+    },
+    "refine.done" : {
+      "comment" : "改一改 (changing a mini app by asking the model): the green line after a change when the model gave no summary",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changed"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "改好了"
+          }
+        }
+      }
+    },
+    "refine.field" : {
+      "comment" : "改一改 (changing a mini app by asking the model): placeholder and label of the field",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What should change?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "想怎么改？"
+          }
+        }
+      }
+    },
+    "refine.ideas" : {
+      "comment" : "改一改 (changing a mini app by asking the model): label of the suggested changes",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can say"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可以这样说"
+          }
+        }
+      }
+    },
+    "refine.keepsData" : {
+      "comment" : "改一改 (changing a mini app by asking the model): detail of step 2",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What you logged stays as it is"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你记下的数据保持不变"
+          }
+        }
+      }
+    },
+    "refine.keepsWidget" : {
+      "comment" : "改一改 (changing a mini app by asking the model): detail of step 3",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No need to add it again"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不用重新添加"
+          }
+        }
+      }
+    },
+    "refine.running %@" : {
+      "comment" : "改一改 (changing a mini app by asking the model): VoiceOver label of the steps; %@ is the app's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changing %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在修改%@"
+          }
+        }
+      }
+    },
+    "refine.start" : {
+      "comment" : "改一改 (changing a mini app by asking the model): the primary button",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start Changing"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "开始修改"
+          }
+        }
+      }
+    },
+    "refine.step.page" : {
+      "comment" : "改一改 (changing a mini app by asking the model): step 2 of 3",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change the page"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修改界面"
+          }
+        }
+      }
+    },
+    "refine.step.understand" : {
+      "comment" : "改一改 (changing a mini app by asking the model): step 1 of 3",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Understand the change"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "理解改动"
+          }
+        }
+      }
+    },
+    "refine.step.widget" : {
+      "comment" : "改一改 (changing a mini app by asking the model): step 3 of 3",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update the widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新小组件"
+          }
+        }
+      }
+    },
+    "refine.title" : {
+      "comment" : "改一改 (changing a mini app by asking the model): the button and the sheet title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "改一改"
+          }
+        }
+      }
+    },
+    "refine.undo" : {
+      "comment" : "改一改 (changing a mini app by asking the model): takes the change back",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销"
+          }
+        }
+      }
+    },
+    "sheet.back" : {
+      "comment" : "Mini app sheet: VoiceOver label of the back chevron",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回"
+          }
+        }
+      }
+    },
+    "widget.medium" : {
+      "comment" : "小组件 panel of a mini app: the medium size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medium"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中号"
+          }
+        }
+      }
+    },
+    "widget.onHome" : {
+      "comment" : "小组件 panel of a mini app: the widget is on the Home Screen",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On the Home Screen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在主屏幕上"
+          }
+        }
+      }
+    },
+    "widget.preview %@" : {
+      "comment" : "小组件 panel of a mini app: VoiceOver label of the preview; %@ is what the widget shows",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Widget preview: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小组件预览：%@"
+          }
+        }
+      }
+    },
+    "widget.size" : {
+      "comment" : "小组件 panel of a mini app: VoiceOver label of the size choice",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Widget size"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小组件尺寸"
+          }
+        }
+      }
+    },
+    "widget.small" : {
+      "comment" : "小组件 panel of a mini app: the small size",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Small"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小号"
+          }
+        }
+      }
+    },
+    "widget.title" : {
+      "comment" : "小组件 panel of a mini app: the button and the panel title",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Widget"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "小组件"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }

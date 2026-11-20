@@ -359,5 +359,6 @@ schemes:
         - package: AtdMobile/AtdIntentsTests
         - package: AtdMobile/AtdAutomationsTests
         - package: AtdMobile/AtdShareUITests
+        - package: AtdMobile/AtdMiniAppsTests
     archive:
       config: Release

@@ -1,0 +1,208 @@
+<style>
+  /* Amount and note side by side; stacked, each full width, once large text needs the room. */
+  .add-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .add-row > label {
+    flex: 999 1 8em;
+  }
+  .add-row > .amount {
+    flex: 1 0 7.5em;
+  }
+  .amount .unit {
+    padding-inline-start: 12px;
+    color: var(--ink-2);
+  }
+  .amount .field {
+    padding-inline-start: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .logged {
+    justify-content: space-between;
+  }
+  .logged button {
+    border: 0;
+    min-height: 44px;
+    padding: 0 4px;
+    font: inherit;
+    font-weight: 600;
+    color: var(--ink);
+    background: none;
+  }
+  .cat {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 62% 38% 55% 45% / 46% 58% 42% 54%;
+    background: var(--c);
+  }
+  .expense .grow {
+    display: grid;
+  }
+  .expense .grow small {
+    font: -apple-system-footnote;
+    font-family: var(--font);
+    color: var(--ink-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .expense .end {
+    font-weight: 600;
+    color: var(--ink);
+  }
+</style>
+<section class="card">
+  <span class="kicker" id="month-title"></span>
+  <span class="big" id="month"></span>
+  <span class="sub" id="today"></span>
+</section>
+<form class="card stack" id="form" autocomplete="off">
+  <span class="title" id="form-title"></span>
+  <div class="add-row">
+    <label class="field-frame amount">
+      <span class="unit" id="symbol" aria-hidden="true"></span>
+      <input class="field" id="amount" inputmode="decimal" enterkeyhint="done" />
+    </label>
+    <label class="field-frame"><input class="field" id="note" maxlength="20" /></label>
+  </div>
+  <div class="segmented" id="categories" role="radiogroup"></div>
+  <button class="btn primary block" id="save" type="submit" disabled></button>
+  <p class="note logged" id="logged" role="status" hidden>
+    <span id="logged-text"></span><button type="button" id="undo"></button>
+  </p>
+</form>
+<section>
+  <h3 class="kicker" id="recent-title"></h3>
+  <ul class="list" id="recent"></ul>
+</section>
+<script>
+  const zh = atd.locale.startsWith('zh');
+  const now = new Date();
+  const monthName = new Intl.DateTimeFormat(atd.locale, { month: 'long' }).format(now);
+  const text = zh
+    ? {
+        month: `${now.getMonth() + 1} 月已花`,
+        today: (money, count) => `今天 ${money} · ${count} 笔`,
+        form: '记一笔',
+        amount: '金额',
+        note: '备注（可选）',
+        save: '记下',
+        logged: (money, name) => `已记下 ${money} · ${name}`,
+        undo: '撤销',
+        recent: '最近',
+        empty: '还没有记过账',
+      }
+    : {
+        month: `Spent in ${monthName}`,
+        today: (money, count) => `Today ${money} · ${count}`,
+        form: 'Log an expense',
+        amount: 'Amount',
+        note: 'Note (optional)',
+        save: 'Log',
+        logged: (money, name) => `Logged ${money} · ${name}`,
+        undo: 'Undo',
+        recent: 'Recent',
+        empty: 'Nothing logged yet',
+      };
+  const tints = {
+    dining: 'orange',
+    transport: 'blue',
+    shopping: 'pink',
+    home: 'teal',
+    other: 'gray',
+  };
+  const shown = ['dining', 'transport', 'shopping', 'other'];
+  const $ = (id) => document.getElementById(id);
+  const esc = atd.ui.esc;
+  let category = 'dining';
+  let lastLogged = null;
+
+  $('month-title').textContent = text.month;
+  $('form-title').textContent = text.form;
+  $('amount').placeholder = text.amount;
+  $('amount').setAttribute('aria-label', text.amount);
+  $('note').placeholder = text.note;
+  $('note').setAttribute('aria-label', text.note);
+  $('save').textContent = text.save;
+  $('undo').textContent = text.undo;
+  $('recent-title').textContent = text.recent;
+  $('form').setAttribute('aria-label', text.form);
+  $('symbol').textContent =
+    new Intl.NumberFormat(atd.locale, {
+      style: 'currency',
+      currency: atd.ledger.currency,
+      currencyDisplay: 'narrowSymbol',
+    })
+      .formatToParts(0)
+      .find((part) => part.type === 'currency')?.value ?? '';
+
+  const categoryName = (key) =>
+    (atd.ledger.categories.find((c) => c.key === key) || { name: key }).name;
+  $('categories').innerHTML = shown
+    .map(
+      (key) =>
+        `<label><input type="radio" name="category" value="${key}"${key === category ? ' checked' : ''}>` +
+        `<span>${esc(categoryName(key))}</span></label>`,
+    )
+    .join('');
+  $('categories').addEventListener('change', (event) => (category = event.target.value));
+
+  const amountValue = () => {
+    const value = $('amount').value.trim();
+    return /^\d{1,6}(\.\d{1,2})?$/.test(value) && Number(value) > 0 ? value : null;
+  };
+  $('amount').addEventListener('input', () => {
+    $('amount').value = $('amount').value.replace(/[^\d.]/g, '');
+    $('save').disabled = !amountValue();
+    $('logged').hidden = true;
+  });
+
+  $('form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const amount = amountValue();
+    if (!amount) return;
+    $('save').disabled = true;
+    const note = $('note').value.trim();
+    const expense = await atd.ledger.add({ amount, category, note: note || null });
+    lastLogged = expense.id;
+    $('logged-text').textContent = text.logged(expense.money.text, categoryName(category));
+    $('logged').hidden = false;
+    $('amount').value = '';
+    $('note').value = '';
+    $('amount').blur();
+    $('note').blur();
+  });
+
+  $('undo').addEventListener('click', async () => {
+    if (!lastLogged) return;
+    await atd.ledger.remove(lastLogged);
+    lastLogged = null;
+    $('logged').hidden = true;
+  });
+
+  atd.onData(() => {
+    const ledger = atd.ledger;
+    $('month').textContent = ledger.month.text;
+    $('today').textContent = text.today(ledger.today.text, ledger.todayCount);
+    $('recent').innerHTML = ledger.recent.length
+      ? ledger.recent
+          .map((expense) => {
+            const tint = tints[expense.category] || 'gray';
+            const detail = [expense.merchant, expense.when].filter(Boolean).join(' · ');
+            return (
+              `<li><div class="row expense"><span class="cat" style="--c: var(--hl-${tint})">` +
+              `<i class="sym" data-name="${esc(expense.symbol)}"></i></span>` +
+              `<span class="grow"><span>${esc(expense.note || expense.categoryName)}</span>` +
+              `<small>${esc(detail)}</small></span>` +
+              `<span class="end">${esc(expense.money.text)}</span></div></li>`
+            );
+          })
+          .join('')
+      : `<li><div class="row sub">${esc(text.empty)}</div></li>`;
+  });
+</script>

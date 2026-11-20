@@ -14,6 +14,7 @@ public enum AtdAppLaunch {
     EntryRuntime.start()
     AutomationLaunch.prepare()
     CameraLaunch.prepare()
+    MiniAppDebug.launch()
   }
 }
 

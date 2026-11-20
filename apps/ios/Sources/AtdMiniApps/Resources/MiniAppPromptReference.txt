@@ -1,0 +1,82 @@
+DATA
+
+"fields" lists every piece of data the app keeps, at most 32; the page reads them as atd.data.<name>. Each field is {"name": "<lowerCamelCase, starting with a letter, at most 32 characters>", "kind": "<kind>", ...}:
+- "number": optional "default", "min", "max", "step". A goal, a count, an amount.
+- "text": optional "default", "max" (characters, at most 500).
+- "bool": optional "default".
+- "date": one day as "yyyy-MM-dd"; optional "default".
+- "daily": one number per day, keyed by day ("2026-11-21"); optional "min", "max", "step". Use it for whatever is logged once a day: pages read, minutes practiced, steps, cups. Atd keeps about three years of days.
+- "list": records; "fields" (at most 16 number, text, bool or date fields, none named id) and "max" (records, at most 500). Atd gives every record an "id".
+"initial" (optional) sets starting values of number, text, bool, date and list fields; list records are given without ids. Daily fields always start empty.
+
+WIDGET
+
+Atd draws the widget from the data; you only choose a template and bind it to fields by name. Every label is at most 16 characters, written for the person.
+- {"template": "streak", "series": "<daily field>", "goal": "<number field>" | <number> | null, "unit": "<unit>", "kicker": "<what the streak is>"}: days in a row, today's value and the last week. A day counts when it reaches the goal, or, without a goal, when anything above 0 was logged.
+- {"template": "counter", "series": "<daily field>", "goal": "<number field>" | <number>, "unit": "<unit>", "step": <number>, "button": "<label>"}: today against a goal, with a button on the widget that adds step without opening the app.
+- {"template": "checklist", "list": "<list field>", "done": "<the records' bool field>", "label": "<the records' text field>", "kicker": "<what the count is>", "next": "<label before the next item>", "finished": "<label when all are done>"}: how many are ticked; on the medium widget the next rows tick in place.
+- {"template": "stat", "value": "<number field>" | {"series": "<daily field>", "of": "today" | "week" | "month" | "total" | "streak"} | {"daysUntil": "<date field>"}, "unit": "<unit>", "kicker": "<label>", "bars": "<daily field>" | null}: one number, with the last week's bars when bars names a daily field.
+- {"template": "list", "list": "<list field>", "title": "<the records' text field>", "trailing": "<a field of the records>" | null, "kicker": "<label>"}: the latest records.
+
+PAGE
+
+The page is drawn on Atd's paper with Atd's kit already loaded. Write only the body's content: elements, then at most one <style> and one <script>; no <html>, <head>, <link>, external scripts, images or fonts. The page has no network and no storage of its own: no fetch, no XMLHttpRequest, no localStorage, no cookies, no links that navigate. Keep everything through window.atd. Keep the page under 12 KB.
+
+window.atd:
+- atd.data: the fields' values. atd.today: today as "yyyy-MM-dd". atd.locale: the person's language.
+- atd.stats.<daily field>: {today, doneToday, streak, week: [7 values, today last], weekDone: [7 booleans], weekLabels: [7 short weekday names], month, total}. streak and doneToday count days that reach the widget's goal.
+- atd.onData(render): calls render(data, atd) now and again after every change, including changes made on the widget. Render from these values, never from copies of your own, and do not clear what the person is typing.
+- Changes, each a promise of the new data that rejects with a reason when Atd refuses it: atd.set(field, value); atd.add(dailyField, amount, day?); atd.put(dailyField, value or null, day?); atd.insert(listField, record) resolves to the new record with its id; atd.update(listField, id, changes); atd.remove(listField, id).
+- atd.ui.esc(text) escapes text for innerHTML: always escape anything the person typed. atd.ui.number(n) formats a number. atd.ui.ring(fraction, size, stroke) returns an SVG ring for a .ring; atd.ui.bars(values, {labels, height, all}) returns day bars; atd.ui.meter(fraction) returns a progress bar.
+- <i class="sym" data-name="plus"></i> draws an SF Symbol in the text's color.
+
+Kit classes, which make the page look like the rest of Atd: section.card (an inked card: one per block), .title, .kicker (a small label), .big (a large number, with <small> inside for its unit), .sub (a secondary line), .meta, .row-between, .stack (a spaced column), button.btn (bordered), .btn.primary (filled: the screen's one main action), .btn.hl (highlighter), .btn.block (full width), .btn.round (an icon button; give it an aria-label), label.field-frame > input.field (a text field; inputmode="decimal" for numbers), .segmented > label > input[type=radio] + span (one choice of a few), ul.list > li > .row (rows with hairlines; .grow for the text, .end for a value at the end), a .row with role="checkbox" and aria-checked containing .check-box (a tick box), .note (a done message on green), div.ring containing atd.ui.ring(...) and a .ring-in for its label, .bars. Colors: var(--ink), var(--ink-2), var(--line), var(--hl) (the app's highlighter), var(--on). Size text with the kit's classes, font-size or font-weight; never set font or font-family, because the kit's fonts follow the person's text size and draw Chinese. Buttons and rows are at least 44 points tall. Every icon-only button has an aria-label. No explanations or instructions on the page: labels, numbers and the person's own entries only.
+
+EXAMPLE (a reading streak)
+
+[[ABOUT]]
+name: Reading
+symbol: book
+tint: brown
+understand: Log the pages read each day and keep a streak
+data: Pages read per day
+page: The streak, the last week and today's pages
+widget: Days in a row and the last week
+ideas: Add a monthly calendar | Make the daily goal 30 pages
+[[DATA]]
+{"fields": [{"name": "pages", "kind": "daily", "min": 0, "max": 2000, "step": 5}]}
+[[PAGE]]
+<section class="card">
+  <span class="kicker">Reading streak</span>
+  <span class="big" id="streak"></span>
+  <span class="sub" id="today"></span>
+  <div id="week"></div>
+</section>
+<section class="card stack">
+  <span class="title">Pages today</span>
+  <div class="row-between">
+    <button class="btn round" id="less" aria-label="5 fewer"><i class="sym" data-name="minus"></i></button>
+    <span class="big" id="value"></span>
+    <button class="btn round" id="more" aria-label="5 more"><i class="sym" data-name="plus"></i></button>
+  </div>
+  <button class="btn primary block" id="save">Log today</button>
+</section>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let value = null;
+  const show = () => ($('value').textContent = atd.ui.number(value));
+  atd.onData((data, atd) => {
+    const s = atd.stats.pages;
+    if (value === null) value = s.today || 20;
+    $('streak').innerHTML = `${s.streak}<small> days</small>`;
+    $('today').textContent = s.today ? `Today ${atd.ui.number(s.today)} pages` : 'Nothing logged today';
+    $('week').innerHTML = atd.ui.bars(s.week, { labels: s.weekLabels, all: true });
+    show();
+  });
+  $('less').onclick = () => { value = Math.max(0, value - 5); show(); };
+  $('more').onclick = () => { value += 5; show(); };
+  $('save').onclick = () => atd.put('pages', value);
+</script>
+[[WIDGET]]
+{"template": "streak", "series": "pages", "goal": null, "unit": "pages", "kicker": "Reading streak"}
+[[END]]
