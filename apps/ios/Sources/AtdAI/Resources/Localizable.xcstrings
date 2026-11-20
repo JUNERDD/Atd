@@ -289,6 +289,24 @@
         }
       }
     },
+    "prompt.draft" : {
+      "comment" : "Part of the prompt sent to the model (not shown in the interface): system prompt that drafts a command from one sentence as JSON",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn the person's sentence into a command for their phone keyboard. A command works on the text in the field they are typing in, or on a message they copied, and writes its result back. Reply with only a JSON object and nothing else, with these keys:\nname: a short name (at most 6 Chinese characters or 3 English words)\nsymbol: an SF Symbols name for it\ntint: one of red, orange, yellow, green, mint, teal, cyan, blue, indigo, purple, pink, brown, gray\ninstructions: what the model is asked to do each time the command runs\ninput: \"text\" (the text in the field), \"copied\" (a copied message) or \"none\" (no input)\noutput: \"replace\" (replace the text it read) or \"insert\" (insert at the cursor)\nreview: true to preview the result before it is written\noptions: up to 3 choices made when it runs, each {\"label\" : …, \"choices\" : [2 to 4 short values], \"value\" : the default}\nWrite the name, instructions, labels and choices in the language of the sentence."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "把用户的一句话变成手机键盘里的一条指令。指令读取正在输入的输入框里的文字，或者用户拷贝的一条消息，再把结果写回去。只回复一个 JSON 对象，不要别的文字，包含这些键：\nname：简短的名字（中文不超过 6 个字，英文不超过 3 个词）\nsymbol：一个 SF Symbols 图标名\ntint：red、orange、yellow、green、mint、teal、cyan、blue、indigo、purple、pink、brown、gray 之一\ninstructions：每次运行时对模型的要求\ninput：\"text\"（输入框里的文字）、\"copied\"（拷贝的消息）或 \"none\"（不需要输入）\noutput：\"replace\"（替换读到的文字）或 \"insert\"（插入到光标处）\nreview：true 表示写回前先预览\noptions：最多 3 个运行时可选的选项，每个是 {\"label\" : …, \"choices\" : [2 到 4 个简短的值], \"value\" : 默认值}\n名字、要求、选项的标签和取值用这句话的语言写。"
+          }
+        }
+      }
+    },
     "prompt.draftRule" : {
       "comment" : "Part of the prompt sent to the model (not shown in the interface): how to use the person's draft when replying to a copied message",
       "extractionState" : "manual",

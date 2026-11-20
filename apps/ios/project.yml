@@ -49,6 +49,9 @@ targets:
         excludes:
           - Info.plist
           - Atd.entitlements
+      # The lexicon's license, shown under 我的 › 开源许可.
+      - path: Lexicon/LICENSE
+        buildPhase: resources
     dependencies:
       - package: AtdMobile
         product: AtdAppUI
