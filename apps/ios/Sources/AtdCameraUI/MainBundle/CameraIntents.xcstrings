@@ -1,6 +1,24 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "capture.command" : {
+      "comment" : "Parameter of 拍了就办: the command whose mode the camera opens in",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Command"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "指令"
+          }
+        }
+      }
+    },
     "capture.title" : {
       "comment" : "Control and Camera Control action: opens Atd's camera",
       "extractionState" : "manual",
@@ -15,6 +33,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "拍了就办"
+          }
+        }
+      }
+    },
+    "control.expense" : {
+      "comment" : "Control: opens Atd's camera in 记一笔",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log expense"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "记一笔"
           }
         }
       }
