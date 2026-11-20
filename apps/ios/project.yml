@@ -155,5 +155,6 @@ schemes:
         - package: AtdMobile/AtdAITests
         - package: AtdMobile/AtdPinyinTests
         - package: AtdMobile/AtdKeyboardCoreTests
+        - package: AtdMobile/AtdActionsTests
     archive:
       config: Release

@@ -56,12 +56,17 @@ let package = Package(
     .target(
       name: "AtdKeyboardUI", dependencies: ["AtdModel", "AtdAI", "AtdPinyin", "AtdKeyboardCore"],
       resources: [.process("Resources")], swiftSettings: mainActorByDefault),
+    // What card results do in the person's name: Calendar and Reminders through EventKit, behind
+    // protocols so the logic runs without permissions, and the expense ledger. Never linked by
+    // the keyboard.
+    .target(name: "AtdActions", dependencies: ["AtdModel"], swiftSettings: nonisolatedByDefault),
     .testTarget(name: "AtdModelTests", dependencies: ["AtdModel"]),
     .testTarget(name: "AtdAITests", dependencies: ["AtdAI"]),
     .testTarget(name: "AtdPinyinTests", dependencies: ["AtdPinyin"]),
     .testTarget(
       name: "AtdKeyboardCoreTests",
       dependencies: ["AtdKeyboardCore", "AtdModel", "AtdAI", "AtdPinyin"]),
+    .testTarget(name: "AtdActionsTests", dependencies: ["AtdActions", "AtdModel"]),
   ],
   swiftLanguageModes: [.v6]
 )
