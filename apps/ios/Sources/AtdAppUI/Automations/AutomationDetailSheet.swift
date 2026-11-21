@@ -23,7 +23,7 @@ struct AutomationDetailSheet: View {
   var body: some View {
     VStack(spacing: 0) {
       if let automation = model.automation(id) {
-        SheetHeader(title: automation.trigger.title, showsTitle: false) {
+        SheetHeader(title: automation.trigger.title) {
           CloseButton { dismiss() }
         } trailing: {
           EmptyView()
@@ -82,13 +82,8 @@ struct AutomationDetailSheet: View {
   private func head(_ automation: Automation) -> some View {
     HStack(spacing: 14) {
       Sticker(symbol: automation.symbol, tint: automation.tint, seed: automation.id, size: 52)
-      VStack(alignment: .leading, spacing: 2) {
-        Text(automation.trigger.title)
-          .font(.title2.bold())
-          .accessibilityAddTraits(.isHeader)
-        Text(AutomationText.string("row.runs \(automation.name)"))
-          .foregroundStyle(.secondary)
-      }
+      Text(AutomationText.string("row.runs \(automation.name)"))
+        .foregroundStyle(.secondary)
     }
     .padding(.horizontal, 20)
     .padding(.top, 8)

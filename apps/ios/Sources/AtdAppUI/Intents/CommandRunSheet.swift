@@ -6,8 +6,9 @@ import SwiftUI
 import UIKit
 
 /// A command a control ran in Atd: the 运行指令 control's command that reads text,
-/// run on the clipboard, or one that reads nothing while Live Activities are off. It shows the
-/// command, then its result with the one action the result is for: 拷贝, 添加到日历 or 记入.
+/// run on the clipboard, or one that reads nothing while Live Activities are off. Its header names
+/// the command; under it, the result with the one action the result is for: 拷贝, 添加到日历 or
+/// 记入.
 struct CommandRunSheet: View {
   let request: CommandRunRequest
   @Environment(AppStore.self) private var store
@@ -19,25 +20,17 @@ struct CommandRunSheet: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      SheetHeader(title: command?.displayName ?? "", showsTitle: false) {
+      SheetHeader(title: command?.displayName ?? "") {
         CloseButton { dismiss() }
       } trailing: {
         EmptyView()
       }
       if let command {
         ScrollView {
-          VStack(alignment: .leading, spacing: 20) {
-            HStack(spacing: 12) {
-              Sticker(symbol: command.symbol, tint: command.tint, seed: command.id, size: 40)
-              Text(command.displayName)
-                .font(.title2.bold())
-                .accessibilityAddTraits(.isHeader)
-            }
-            result(of: command)
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.horizontal, 20)
-          .padding(.vertical, 16)
+          result(of: command)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
         action(for: command)
           .padding(.horizontal, 20)

@@ -125,7 +125,7 @@ struct CommandDetailSheet: View {
   var body: some View {
     VStack(spacing: 0) {
       if let command = store.library.command(id) {
-        SheetHeader(title: command.displayName, showsTitle: false) {
+        SheetHeader(title: command.displayName) {
           CloseButton { dismiss() }
         } trailing: {
           EmptyView()

@@ -2,9 +2,10 @@ import AtdInk
 import AtdModel
 import SwiftUI
 
-/// The command editor, on the sheet's paper like a note: the sticker and the name head it, then
-/// the 要求, the options, the entry points that can run it, what it reads and does, the model it
-/// runs on, and a trial run. Used by a command's sheet and by the review step of a new command.
+/// The command editor, on the sheet's paper like a note: its name, the 要求, the options, the entry
+/// points that can run it, what it reads and does, the model it runs on, and a trial run. The
+/// sheet's header carries the title, so the name here is a field like the 要求. Used by a
+/// command's sheet and by the review step of a new command.
 struct CommandForm: View {
   @Binding var command: Command
   @FocusState private var focus: Field?
@@ -15,16 +16,14 @@ struct CommandForm: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      HStack(spacing: 12) {
-        Sticker(symbol: command.symbol, tint: command.tint, seed: command.id, size: 38)
-        TextField(AppText.string("command.name.placeholder"), text: $command.name)
-          .font(.title2.bold())
-          .submitLabel(.done)
-          .focused($focus, equals: .name)
-          .accessibilityLabel(AppText.string("command.name"))
-      }
-      .padding(.horizontal, 20)
-      .frame(minHeight: 60)
+      SectionHeader(AppText.string("command.name"))
+      TextField(AppText.string("command.name.placeholder"), text: $command.name)
+        .submitLabel(.done)
+        .focused($focus, equals: .name)
+        .inkField(focused: focus == .name)
+        .padding(.horizontal, 16)
+        .padding(.top, 6)
+        .accessibilityLabel(AppText.string("command.name"))
 
       SectionHeader(AppText.string("command.instructions"))
       TextField("", text: $command.instructions, axis: .vertical)

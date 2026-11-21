@@ -75,9 +75,6 @@ private struct StatusBarFade: View {
 /// The head of a sheet on the paper: a button on either side and the title between them.
 struct SheetHeader<Leading: View, Trailing: View>: View {
   let title: String
-  /// Hidden when the content's first row already names what the sheet shows; it stays for
-  /// VoiceOver.
-  var showsTitle = true
   @ViewBuilder let leading: Leading
   @ViewBuilder let trailing: Trailing
 
@@ -87,7 +84,6 @@ struct SheetHeader<Leading: View, Trailing: View>: View {
       Text(title)
         .font(.headline)
         .lineLimit(1)
-        .opacity(showsTitle ? 1 : 0)
         .accessibilityAddTraits(.isHeader)
       HStack(spacing: 0) { trailing }
     }
