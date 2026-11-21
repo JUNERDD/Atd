@@ -1,7 +1,9 @@
 /* Atd's ink-and-paper kit for mini app pages. The host puts it before every page, with the color
    tokens it resolves from the system colors (--paper, --ink, --line, --hl, --hl-<tint>, --on,
-   --chosen), so a page drawn with these classes looks like the rest of the app: paper, inked
-   edges drawn by hand, highlighter marks. Text follows Dynamic Type through the system fonts.
+   --chosen, and an illustration's --shade and --deep), so a page drawn with these classes looks
+   like the rest of the app: paper, inked edges drawn by hand, highlighter marks. Text follows
+   Dynamic Type through the system fonts. The hand-drawn-style skill (Skills/) teaches the model
+   these classes; a class added, renamed or redrawn here changes it too.
 
    Chinese text uses PingFang through a face limited to CJK ranges, listed before the system
    font in --font: WebKit has drawn the system font's CJK fallback as missing glyphs (iOS 26.3
@@ -157,7 +159,8 @@ p {
 .field,
 .segmented,
 .check-box,
-.meter {
+.meter,
+.inked {
   position: relative;
   isolation: isolate;
 }
@@ -166,7 +169,8 @@ p {
 .btn::before,
 .field-frame::before,
 .segmented::before,
-.meter::after {
+.meter::after,
+.inked::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -408,6 +412,68 @@ p {
   background: var(--on);
 }
 
+/* Any other box inked by hand, such as a day in a calendar, a tile or a tag: the kit's edge,
+   filled with a highlighter by .on, .chosen or .hl, drawn in ink by .strong. A button loses the
+   browser's frame and nudges when pressed, as .btn does. */
+.inked {
+  border-radius: 16px 20px 15px 18px / 18px 15px 20px 16px;
+}
+
+.inked::before {
+  box-shadow: inset 0 0 0 1.1px var(--line);
+}
+
+.inked.on::before {
+  background: var(--on);
+}
+
+.inked.chosen::before {
+  background: var(--chosen);
+}
+
+.inked.hl::before {
+  background: var(--hl);
+}
+
+.inked.strong::before {
+  box-shadow: inset 0 0 0 1.3px var(--ink);
+}
+
+button.inked {
+  border: 0;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+  transition: transform 120ms ease-out;
+}
+
+button.inked:active {
+  transform: translate(1px, 1.5px);
+}
+
+/* A thing's own mark, as a sticker marks an app in Atd: its highlighter in a blob, a symbol
+   inked on top. */
+.blob {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 62% 38% 55% 45% / 46% 58% 42% 54%;
+  color: var(--ink);
+  background: var(--hl);
+}
+
+/* Words marked with highlighter, a stroke as wide as the line on every line it covers. */
+mark {
+  padding: 0 0.15em;
+  border-radius: 0.4em 0.25em 0.45em 0.2em / 0.3em 0.45em 0.25em 0.4em;
+  color: inherit;
+  background: var(--hl);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
 .sym {
   display: inline-block;
   flex: none;
@@ -475,6 +541,49 @@ p {
   font: -apple-system-caption2;
   font-family: var(--font);
   color: var(--ink-2);
+}
+
+/* A spot illustration, drawn as Atd draws its own (Doodle): ink lines of one weight with round
+   ends in a 160 × 112 box, scaled to the width. Each mark's class gives its look: no class the
+   2-unit line, .thin a finer one, .paper / .deep / .ink a shape filled with paper, the darker
+   gray or ink, .shade the soft blob behind the scene. Its lines stay smooth, as the app's do. */
+.art {
+  display: block;
+  width: min(150px, 100%);
+  height: auto;
+  aspect-ratio: 160 / 112;
+  margin-inline: auto;
+  overflow: visible;
+  color: var(--ink);
+}
+
+.art :is(path, circle, ellipse, rect, line, polyline, polygon) {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.art .thin {
+  stroke-width: 1.3;
+}
+
+.art .paper {
+  fill: var(--paper);
+}
+
+.art .deep {
+  fill: var(--deep);
+}
+
+.art .ink {
+  fill: currentColor;
+}
+
+.art .shade {
+  fill: var(--shade);
+  stroke: none;
 }
 
 .ink-defs {

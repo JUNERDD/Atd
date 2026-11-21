@@ -12,7 +12,17 @@ import UIKit
 /// Nonisolated: UIKit may resolve a dynamic color on any thread, so the providers must not be
 /// tied to the main actor.
 public nonisolated enum InkColor {
-  public static let paper = dynamic(light: UIColor.white, dark: UIColor(white: 0.11, alpha: 1))
+  /// The paper, and an illustration's soft shade and deep fill, as UIKit colors, for what draws
+  /// outside SwiftUI: a mini app's page gets them as its kit's `--paper`, `--shade` and `--deep`.
+  public static let paperUIColor = dynamic(light: .white, dark: UIColor(white: 0.11, alpha: 1))
+  public static let shadeUIColor = dynamic(
+    light: UIColor(red: 0.945, green: 0.941, blue: 0.929, alpha: 1),
+    dark: UIColor(red: 0.173, green: 0.173, blue: 0.18, alpha: 1))
+  public static let deepUIColor = dynamic(
+    light: UIColor(red: 0.871, green: 0.863, blue: 0.843, alpha: 1),
+    dark: UIColor(red: 0.282, green: 0.282, blue: 0.29, alpha: 1))
+
+  public static let paper = Color(uiColor: paperUIColor)
   /// The edge of controls drawn by hand.
   public static let line = Color(uiColor: .label).opacity(0.52)
   /// The edge of a card, lighter than a control's.
@@ -20,13 +30,9 @@ public nonisolated enum InkColor {
   /// A pressed control's fill.
   public static let press = Color(uiColor: .label).opacity(0.07)
   /// The soft shade under an illustration.
-  public static let shade = dynamic(
-    light: UIColor(red: 0.945, green: 0.941, blue: 0.929, alpha: 1),
-    dark: UIColor(red: 0.173, green: 0.173, blue: 0.18, alpha: 1))
+  public static let shade = Color(uiColor: shadeUIColor)
   /// The deep fill of an illustration.
-  public static let deep = dynamic(
-    light: UIColor(red: 0.871, green: 0.863, blue: 0.843, alpha: 1),
-    dark: UIColor(red: 0.282, green: 0.282, blue: 0.29, alpha: 1))
+  public static let deep = Color(uiColor: deepUIColor)
   /// A switch that is on: green highlighter.
   public static let on = highlighter(.systemGreen, light: 0.46, dark: 0.52)
   /// The chosen option of a segmented choice: yellow highlighter.
@@ -59,8 +65,8 @@ public nonisolated enum InkColor {
       })
   }
 
-  private static func dynamic(light: UIColor, dark: UIColor) -> Color {
-    Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
+  private static func dynamic(light: UIColor, dark: UIColor) -> UIColor {
+    UIColor { $0.userInterfaceStyle == .dark ? dark : light }
   }
 
   /// `share` of `color` and the rest of `base`.

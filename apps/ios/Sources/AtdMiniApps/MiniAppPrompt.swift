@@ -5,6 +5,7 @@ import Foundation
 /// The requests 新建小应用 and 改一改 send. Only what the run needs leaves the phone: a build
 /// sends the person's sentence; a refinement sends the app's page, its fields and widget, its
 /// lists' records and its other fields' values, never its daily history or the expense ledger.
+/// Both carry the hand-drawn-style skill, so every page is drawn in Atd's hand.
 public enum MiniAppPrompt {
   /// A new app from the person's sentence.
   /// - Parameter language: the language the app's words are written in (`zh-Hans`, `en`).
@@ -75,10 +76,25 @@ public enum MiniAppPrompt {
     let name =
       Locale(identifier: "en_US").localizedString(forIdentifier: language) ?? language
     return [
-      text(prompt), text("MiniAppPromptReference"),
+      text(prompt), text("MiniAppPromptReference"), "STYLE\n\n" + skill("hand-drawn-style"),
       "LANGUAGE\n\nWrite every word the person sees (the name, the ABOUT lines, the ideas, the "
         + "page and the widget's labels) in \(name).",
     ].joined(separator: "\n\n")
+  }
+
+  /// The instructions of the skill in `Skills/<name>/SKILL.md`, after its front matter. A run is
+  /// one request that cannot load a skill itself, so the system prompt carries it whole.
+  private static func skill(_ name: String) -> String {
+    guard
+      let url = Bundle.module.url(
+        forResource: "SKILL", withExtension: "md", subdirectory: "Skills/\(name)"),
+      let file = try? String(contentsOf: url, encoding: .utf8), file.hasPrefix("---\n"),
+      let end = file.range(of: "\n---\n")
+    else {
+      // The skills ship in this module's bundle; without them the build itself is broken.
+      fatalError("the \(name) skill is missing from the app")
+    }
+    return file[end.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   private static func text(_ name: String) -> String {

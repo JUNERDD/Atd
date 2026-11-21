@@ -1,3 +1,4 @@
+import AtdInk
 import AtdModel
 import Foundation
 import UIKit
@@ -66,7 +67,7 @@ public enum MiniAppDocument {
   }
 
   /// The kit's colors, resolved from the system colors in light and dark the way AtdInk mixes
-  /// them, so a page's paper, ink and highlighters match the app's.
+  /// them, so a page's paper, ink, highlighters and illustrations match the app's.
   static func tokens(tint: CommandTint) -> String {
     func values(_ style: UIUserInterfaceStyle) -> String {
       let traits = UITraitCollection(userInterfaceStyle: style)
@@ -79,7 +80,8 @@ public enum MiniAppDocument {
       }
       let label = UIColor.label.resolvedColor(with: traits)
       var lines = [
-        "--paper: \(dark ? "rgb(28 28 28)" : "rgb(255 255 255)")",
+        "--paper: \(css(InkColor.paperUIColor))", "--shade: \(css(InkColor.shadeUIColor))",
+        "--deep: \(css(InkColor.deepUIColor))",
         "--ink: \(css(.label))", "--ink-solid: \(css(.label))", "--ink-2: \(css(.secondaryLabel))",
         "--ink-3: \(css(.tertiaryLabel))", "--line: \(cssColor(label.withAlphaComponent(0.52)))",
         "--card-line: \(cssColor(label.withAlphaComponent(0.24)))",

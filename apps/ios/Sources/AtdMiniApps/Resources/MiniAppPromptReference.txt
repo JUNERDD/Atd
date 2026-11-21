@@ -20,7 +20,7 @@ Atd draws the widget from the data; you only choose a template and bind it to fi
 
 PAGE
 
-The page is drawn on Atd's paper with Atd's kit already loaded. Write only the body's content: elements, then at most one <style> and one <script>; no <html>, <head>, <link>, external scripts, images or fonts. The page has no network and no storage of its own: no fetch, no XMLHttpRequest, no localStorage, no cookies, no links that navigate. Keep everything through window.atd. Keep the page under 12 KB.
+The page is drawn on Atd's paper with Atd's kit already loaded, in the hand STYLE describes. Write only the body's content: elements, then at most one <style> and one <script>; no <html>, <head>, <link>, external scripts, image files or fonts (an illustration is inline SVG, as STYLE describes). The page has no network and no storage of its own: no fetch, no XMLHttpRequest, no localStorage, no cookies, no links that navigate. Keep everything through window.atd. Keep the page under 12 KB.
 
 window.atd:
 - atd.data: the fields' values. atd.today: today as "yyyy-MM-dd". atd.locale: the person's language.
@@ -30,7 +30,7 @@ window.atd:
 - atd.ui.esc(text) escapes text for innerHTML: always escape anything the person typed. atd.ui.number(n) formats a number. atd.ui.ring(fraction, size, stroke) returns an SVG ring for a .ring; atd.ui.bars(values, {labels, height, all}) returns day bars; atd.ui.meter(fraction) returns a progress bar.
 - <i class="sym" data-name="plus"></i> draws an SF Symbol in the text's color.
 
-Kit classes, which make the page look like the rest of Atd: section.card (an inked card: one per block), .title, .kicker (a small label), .big (a large number, with <small> inside for its unit), .sub (a secondary line), .meta, .row-between, .stack (a spaced column), button.btn (bordered), .btn.primary (filled: the screen's one main action), .btn.hl (highlighter), .btn.block (full width), .btn.round (an icon button; give it an aria-label), label.field-frame > input.field (a text field; inputmode="decimal" for numbers), .segmented > label > input[type=radio] + span (one choice of a few), ul.list > li > .row (rows with hairlines; .grow for the text, .end for a value at the end), a .row with role="checkbox" and aria-checked containing .check-box (a tick box), .note (a done message on green), div.ring containing atd.ui.ring(...) and a .ring-in for its label, .bars. Colors: var(--ink), var(--ink-2), var(--line), var(--hl) (the app's highlighter), var(--on). Size text with the kit's classes, font-size or font-weight; never set font or font-family, because the kit's fonts follow the person's text size and draw Chinese. Buttons and rows are at least 44 points tall. Every icon-only button has an aria-label. No explanations or instructions on the page: labels, numbers and the person's own entries only.
+Buttons and rows are at least 44 points tall. Every icon-only button has an aria-label. No explanations or instructions on the page: its words are labels, numbers and the person's own entries only.
 
 EXAMPLE (a reading streak)
 

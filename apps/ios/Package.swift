@@ -104,10 +104,10 @@ let package = Package(
       name: "AtdCameraUI", dependencies: ["AtdModel", "AtdInk"], exclude: ["MainBundle"],
       resources: [.process("Resources")], swiftSettings: mainActorByDefault),
     // AI-built mini apps, the data their native widgets draw and the widgets' configuration
-    // intent.
+    // intent. `Skills` keeps each skill's folder as written, for the prompts that carry it.
     .target(
       name: "AtdMiniApps", dependencies: ["AtdModel", "AtdAI", "AtdActions", "AtdInk"],
-      exclude: ["MainBundle"], resources: [.process("Resources")],
+      exclude: ["MainBundle"], resources: [.process("Resources"), .copy("Skills")],
       swiftSettings: nonisolatedByDefault),
     // Context automations that Shortcuts personal automations run, and their Live Activities.
     .target(
