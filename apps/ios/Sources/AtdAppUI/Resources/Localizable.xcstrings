@@ -2806,6 +2806,24 @@
         }
       }
     },
+    "trial.running" : {
+      "comment" : "试运行: shown under 输出 until the first words of the result arrive",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Running…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在运行…"
+          }
+        }
+      }
+    },
     "trial.stop" : {
       "comment" : "Trial card button: stop the run",
       "extractionState" : "manual",

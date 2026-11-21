@@ -126,7 +126,8 @@ struct MiniAppSheet: View {
       if let host {
         MiniAppWebView(host: host, label: MiniAppText.string("page.label \(app.name)"))
       } else {
-        Spacer()
+        // The first frame, before the sheet's task makes the host.
+        MiniAppPagePlaceholder()
       }
     }
     .padding(.top, 8)

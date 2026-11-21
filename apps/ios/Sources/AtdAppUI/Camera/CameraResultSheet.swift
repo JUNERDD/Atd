@@ -68,7 +68,7 @@ struct CameraResultSheet: View {
         CameraTextCard(command: command, card: card, photo: flow.modelImage, ask: ask)
       }
     } else {
-      ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+      CameraCardPlaceholder()
     }
   }
 
@@ -85,6 +85,30 @@ struct CameraResultSheet: View {
           .buttonStyle(InkButtonStyle(kind: .filled, form: .block))
       }
     }
+  }
+}
+
+/// The card a photo is becoming, in placeholders while it is read: a head, a few lines and its
+/// actions, where the card will be.
+private struct CameraCardPlaceholder: View {
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      HStack(spacing: 12) {
+        InkPlaceholder(.round, width: 40, seed: 1)
+        InkPlaceholder(width: 120, height: 18, seed: 2)
+      }
+      VStack(alignment: .leading, spacing: 10) {
+        InkPlaceholder(seed: 3)
+        InkPlaceholder(seed: 4)
+        InkPlaceholder(width: 150, seed: 5)
+      }
+      HStack(spacing: 10) {
+        InkPlaceholder(.block, width: 96, height: 36, seed: 6)
+        InkPlaceholder(.block, width: 80, height: 36, seed: 7)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .inkLoading(CameraCopy.string("camera.reading"))
   }
 }
 

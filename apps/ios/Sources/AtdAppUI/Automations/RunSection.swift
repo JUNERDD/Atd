@@ -20,6 +20,8 @@ struct RunSection: View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
           Image(systemName: Self.symbol(step.status))
             .foregroundStyle(Self.color(step.status))
+            // The step being done turns, like the system's spinner, while it runs.
+            .symbolEffect(.rotate, isActive: step.status == .running)
             .accessibilityHidden(true)
           Text(step.text)
             .foregroundStyle(

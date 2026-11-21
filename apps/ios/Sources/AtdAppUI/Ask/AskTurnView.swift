@@ -21,11 +21,7 @@ struct AskTurnView: View {
       question
       switch turn.state {
       case .thinking:
-        HStack(spacing: 8) {
-          ProgressView()
-          Text(AppText.string("ask.thinking")).foregroundStyle(.secondary)
-        }
-        .accessibilityElement(children: .combine)
+        InkWaiting(AppText.string("ask.thinking"))
       case .streaming, .done, .stopped:
         if !turn.answer.isEmpty {
           Text(Self.formatted(turn.answer))

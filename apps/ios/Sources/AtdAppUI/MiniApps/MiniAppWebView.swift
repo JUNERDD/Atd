@@ -4,27 +4,48 @@ import WebKit
 
 /// A mini app's page, drawn on the sheet's paper: the page has no background of its own, its
 /// cards are inked by the kit, and it scrolls itself so its fields stay above the keyboard.
+///
+/// While the page opens, its placeholder stands in its place and the page fades in over it once
+/// drawn. A later load keeps the page showing unless it takes more than a moment. A page that
+/// cannot load says so, with 重试.
 struct MiniAppWebView: View {
   let host: MiniAppPageHost
   let label: String
   @Environment(\.scenePhase) private var scenePhase
+  /// A later load has taken long enough for the placeholder to come back.
+  @State private var slow = false
 
   var body: some View {
     Group {
-      if host.isMissing {
-        Text(MiniAppText.string("page.missing"))
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-      } else {
-        WebView(host.page)
-          .webViewContentBackground(.hidden)
-          .webViewLinkPreviews(.disabled)
-          .webViewElementFullscreenBehavior(.disabled)
-          .webViewMagnificationGestures(.disabled)
-          .webViewBackForwardNavigationGestures(.disabled)
-          .accessibilityLabel(label)
+      switch host.phase {
+      case .missing:
+        MiniAppPageNote(text: MiniAppText.string("page.missing"))
+      case .failed:
+        MiniAppPageNote(text: MiniAppText.string("page.failed"), retry: host.load)
+      case .opening, .shown:
+        ZStack {
+          WebView(host.page)
+            .webViewContentBackground(.hidden)
+            .webViewLinkPreviews(.disabled)
+            .webViewElementFullscreenBehavior(.disabled)
+            .webViewMagnificationGestures(.disabled)
+            .webViewBackForwardNavigationGestures(.disabled)
+            .accessibilityLabel(label)
+            .opacity(showsPage ? 1 : 0)
+            .accessibilityHidden(!showsPage)
+          if !showsPage {
+            MiniAppPagePlaceholder()
+              .transition(.opacity)
+          }
+        }
+        .animation(.easeOut(duration: 0.2), value: showsPage)
       }
+    }
+    .task(id: host.phase) {
+      slow = false
+      guard host.phase == .opening, host.hasShown else { return }
+      try? await Task.sleep(for: .milliseconds(300))
+      if !Task.isCancelled { slow = true }
     }
     .alert(
       host.dialogs.current?.message ?? "", isPresented: dialogShown,
@@ -40,6 +61,10 @@ struct MiniAppWebView: View {
     .onChange(of: scenePhase) { _, phase in
       if phase == .active { Task { await host.revive() } }
     }
+  }
+
+  private var showsPage: Bool {
+    host.phase == .shown || (host.hasShown && !slow)
   }
 
   private var dialogShown: Binding<Bool> {

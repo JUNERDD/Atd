@@ -70,7 +70,7 @@ struct CameraNotesCard: View {
         }
         Button(CameraCopy.string("camera.notes.add"), action: add)
           .buttonStyle(InkButtonStyle(kind: .filled, form: .block))
-          .disabled(adding)
+          .inkBusy(adding)
       case .done(let ids):
         CameraDoneNote(text: CameraCopy.string("camera.notes.added \(ids.count)")) {
           remove(ids)

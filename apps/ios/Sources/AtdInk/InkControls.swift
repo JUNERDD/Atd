@@ -34,6 +34,9 @@ private struct InkButton: View {
   let kind: InkButtonStyle.Kind
   let form: InkButtonStyle.Form
   @Environment(\.isEnabled) private var isEnabled
+  @Environment(\.inkBusy) private var busy
+  /// The spinner shows once a busy action has lasted a moment.
+  @State private var spinning = false
 
   var body: some View {
     let pressed = configuration.isPressed
@@ -43,11 +46,20 @@ private struct InkButton: View {
       .labelStyle(InkLabelStyle())
       .foregroundStyle(kind == .filled ? InkColor.paper : Color.primary)
       .lineLimit(1)
+      // The label keeps the button's size while the spinner stands in for it.
+      .opacity(spinning ? 0 : 1)
       .padding(.horizontal, form == .round ? 0 : form == .block ? 20 : 14)
       .frame(
         minWidth: form == .round ? 40 : nil, maxWidth: form == .block ? .infinity : nil,
         minHeight: form == .block ? 48 : form == .round ? 40 : 36
       )
+      .overlay {
+        if spinning {
+          ProgressView()
+            .tint(kind == .filled ? InkColor.paper : Color.primary)
+            .accessibilityHidden(true)
+        }
+      }
       .background {
         ZStack {
           shape.fill(fill(pressed: pressed))
@@ -58,7 +70,15 @@ private struct InkButton: View {
       .padding(.vertical, form == .block ? 0 : form == .round ? 2 : 4)
       .padding(.horizontal, form == .round ? 2 : 0)
       .contentShape(Rectangle())
-      .opacity(isEnabled ? 1 : 0.4)
+      .opacity(isEnabled || busy ? 1 : 0.4)
+      .task(id: busy) {
+        guard busy else {
+          spinning = false
+          return
+        }
+        try? await Task.sleep(for: .milliseconds(300))
+        if !Task.isCancelled { spinning = true }
+      }
   }
 
   private var corners: InkCorners {

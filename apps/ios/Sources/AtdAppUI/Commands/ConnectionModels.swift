@@ -63,13 +63,10 @@ struct ConnectionModels: View {
   @ViewBuilder private var status: some View {
     switch listing {
     case .loading:
-      HStack(spacing: 12) {
-        ProgressView()
-        Text(AppText.string("model.loading")).foregroundStyle(.secondary)
-      }
-      .padding(.horizontal, 20)
-      .frame(minHeight: 53)
-      .accessibilityElement(children: .combine)
+      // A provider's list usually arrives at once; the line shows only when it doesn't.
+      InkWaiting(AppText.string("model.loading"), delay: .milliseconds(400))
+        .padding(.horizontal, 20)
+        .frame(minHeight: 53)
     case .failed(let failure):
       VStack(alignment: .leading, spacing: 10) {
         Text(failure.message).foregroundStyle(.secondary)

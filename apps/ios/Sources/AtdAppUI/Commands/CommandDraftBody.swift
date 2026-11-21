@@ -76,15 +76,10 @@ struct CommandDraftBody: View {
   }
 
   private var progress: some View {
-    HStack(spacing: 12) {
-      ProgressView()
-      Text(AppText.string("new.drafting"))
-        .foregroundStyle(.secondary)
-    }
-    .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
-    .padding(.horizontal, 20)
-    .padding(.top, 8)
-    .accessibilityElement(children: .combine)
+    InkWaiting(AppText.string("new.drafting"))
+      .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+      .padding(.horizontal, 20)
+      .padding(.top, 8)
   }
 }
 

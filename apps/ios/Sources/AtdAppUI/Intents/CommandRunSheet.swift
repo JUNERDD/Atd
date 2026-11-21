@@ -64,11 +64,7 @@ struct CommandRunSheet: View {
   @ViewBuilder private func result(of command: Command) -> some View {
     switch run.phase {
     case .working:
-      HStack(spacing: 8) {
-        ProgressView()
-        Text(EntryText.string("run.working"))
-          .foregroundStyle(.secondary)
-      }
+      InkWaiting(EntryText.string("run.working"))
     case .done(let card):
       VStack(alignment: .leading, spacing: 6) {
         ForEach(Array(CardText.lines(card).enumerated()), id: \.offset) { _, line in

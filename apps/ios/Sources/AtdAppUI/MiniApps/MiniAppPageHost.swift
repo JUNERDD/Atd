@@ -18,12 +18,26 @@ protocol MiniAppPageSource: AnyObject {
 /// closes.
 @Observable
 final class MiniAppPageHost {
+  /// Where the page is, which decides what its place on the sheet shows.
+  enum Phase: Equatable {
+    /// Starting, or loading the document: its placeholder.
+    case opening
+    /// The document has loaded, so its script has drawn the page.
+    case shown
+    /// The page's files could not be read.
+    case missing
+    /// WebKit could not load the document; loading it again may work.
+    case failed
+  }
+
   let page: WebPage
   let dialogs = MiniAppDialogQueue()
+  private(set) var phase = Phase.opening
+  /// Whether the page has been shown since the sheet opened. A later load (after 改一改, 撤销)
+  /// keeps it on screen for a moment, so a quick one never flashes the placeholder.
+  private(set) var hasShown = false
   /// The first error the page reported since it loaded: 这个小应用出错了 · 修复.
   private(set) var error: String?
-  /// The page's files could not be read.
-  private(set) var isMissing = false
 
   @ObservationIgnored let source: any MiniAppPageSource
   @ObservationIgnored private let url: URL
@@ -35,6 +49,8 @@ final class MiniAppPageHost {
   @ObservationIgnored private var limit = MiniAppRateLimit()
   @ObservationIgnored private var started = false
   @ObservationIgnored private var watching: Task<Void, Never>?
+  /// Counts loads, so only the latest one's outcome changes `phase`.
+  @ObservationIgnored private var loads = 0
 
   init(source: any MiniAppPageSource, url: URL) {
     self.source = source
@@ -68,32 +84,47 @@ final class MiniAppPageHost {
   }
 
   /// Loads the app's current version with its data as it is now: on start, after 改一改 or
-  /// 撤销, and after the page's process ended.
+  /// 撤销, after the page's process ended, and on 重试.
   func load() {
+    loads += 1
     guard let package = source.package(), let snapshot = source.snapshot() else {
-      isMissing = true
+      phase = .missing
       return
     }
-    isMissing = false
+    phase = .opening
     error = nil
     ledger = package.manifest.schema.ledger
     sent = snapshot
     documents.set(
       MiniAppDocument.html(page: package.page, tint: source.tint, snapshot: snapshot), at: url)
+    let attempt = loads
     let navigation = page.load(url)
-    Task {
+    Task { [weak self] in
       do {
-        for try await _ in navigation {}
+        for try await event in navigation where event == .finished {
+          self?.settle(attempt, as: .shown)
+        }
+      } catch WebPage.NavigationError.webContentProcessTerminated {
+        // `watch()` loads the page again.
       } catch {
-        // The document is Atd's own; a failure leaves the page blank until the next load.
+        self?.settle(attempt, as: .failed)
       }
     }
+  }
+
+  /// Ends the opening of load `attempt`, unless a later load took over.
+  private func settle(_ attempt: Int, as outcome: Phase) {
+    guard attempt == loads, phase == .opening else { return }
+    phase = outcome
+    if outcome == .shown { hasShown = true }
   }
 
   /// Sends the page its data again when something else changed it (a widget button, an
   /// expense logged elsewhere).
   func refresh() {
-    guard started, !isMissing, let snapshot = source.snapshot(), snapshot != sent else { return }
+    guard started, phase != .missing, let snapshot = source.snapshot(), snapshot != sent else {
+      return
+    }
     sent = snapshot
     Task { [page] in
       _ = try? await page.callJavaScript(
@@ -101,9 +132,10 @@ final class MiniAppPageHost {
     }
   }
 
-  /// Reloads the page when iOS ended its process while Atd was away.
+  /// Reloads the page when iOS ended its process while Atd was away, or tries again when it had
+  /// failed to load. A page still opening is left to finish.
   func revive() async {
-    guard started, !isMissing else { return }
+    guard started, phase == .shown || phase == .failed else { return }
     let alive = try? await page.callJavaScript("return typeof window.atd === 'object'")
     if (alive as? Bool) != true { load() }
   }

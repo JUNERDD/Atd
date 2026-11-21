@@ -260,10 +260,7 @@ struct ConnectionEditor: View {
     case .idle:
       EmptyView()
     case .running:
-      HStack(spacing: 8) {
-        ProgressView()
-        Text(AppText.string("connection.testing")).foregroundStyle(.secondary)
-      }
+      InkWaiting(AppText.string("connection.testing"))
     case .works:
       Label(AppText.string("connection.works"), systemImage: "checkmark.circle.fill")
         .foregroundStyle(Color(uiColor: .systemGreen))

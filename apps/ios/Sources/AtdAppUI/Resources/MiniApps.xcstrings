@@ -577,6 +577,24 @@
         }
       }
     },
+    "page.failed" : {
+      "comment" : "A mini app's page: shown with Try Again when the page could not be loaded",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn’t open this mini app"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没能打开这个小应用"
+          }
+        }
+      }
+    },
     "page.fix" : {
       "comment" : "A mini app's page: asks the model to fix the page's error",
       "extractionState" : "manual",
@@ -609,6 +627,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@（小应用）"
+          }
+        }
+      }
+    },
+    "page.loading" : {
+      "comment" : "A mini app's page: what VoiceOver reads for the placeholder shown while the page opens",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opening…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在打开…"
           }
         }
       }

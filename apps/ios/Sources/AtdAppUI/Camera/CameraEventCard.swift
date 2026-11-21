@@ -45,7 +45,7 @@ struct CameraEventCard: View {
     case nil:
       Button(CameraCopy.string("camera.event.add"), action: add)
         .buttonStyle(InkButtonStyle(kind: .filled, form: .block))
-        .disabled(adding)
+        .inkBusy(adding)
     case .done(let addition):
       CameraDoneNote(
         text: CameraCopy.string("camera.event.added"),

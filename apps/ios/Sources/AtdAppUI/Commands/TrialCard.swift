@@ -78,7 +78,8 @@ struct TrialCard: View {
       } else if let card = trial.card {
         TrialCardContent(card: card, command: command)
       } else if trial.output.isEmpty {
-        ProgressView().frame(minHeight: 22)
+        InkWaiting(AppText.string("trial.running"))
+          .frame(minHeight: 22)
       } else {
         Text(trial.output)
           .lineSpacing(3)
