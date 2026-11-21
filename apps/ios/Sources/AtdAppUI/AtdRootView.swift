@@ -1,13 +1,12 @@
-import AtdInk
 import AtdIntents
 import AtdModel
 import LockedCameraCapture
 import SwiftUI
-import UIKit
 
 /// The app's root: the 指令, 小应用, 自动化 and 我的 tabs and, beside them, the round 问 Atd button,
-/// which opens the panel over whichever tab is showing. Only this floating bar is Liquid Glass; the
-/// pages are ink on paper.
+/// which opens the panel over whichever tab is showing (`AppTabBar`). A tab's page can also be
+/// swiped sideways to the one beside it. Only this floating bar is Liquid Glass; the pages are ink
+/// on paper.
 ///
 /// Deep links, App Intents and the Lock Screen capture extension reach the app as routes
 /// (`RouteCenter`); `show(_:)` decides which the root takes and which it leaves to a page.
@@ -24,30 +23,16 @@ public struct AtdRootView: View {
   public init() {}
 
   public var body: some View {
-    TabView(selection: selection) {
-      Tab(AppText.string("tab.commands"), systemImage: "wand.and.sparkles", value: .commands) {
-        CommandsPage()
-      }
-      Tab(AppText.string("tab.miniApps"), systemImage: "square.on.circle", value: .miniApps) {
-        MiniAppsPage()
-      }
-      Tab(AppText.string("tab.automations"), systemImage: "flowchart", value: .automations) {
-        AutomationsPage()
-      }
-      Tab(AppText.string("tab.me"), systemImage: "person.crop.circle", value: .me) {
-        MePage()
-      }
-      Tab(value: .ask, role: .search) {
-        Color.clear
-      } label: {
-        Label {
-          Text(AppText.string("tab.ask"))
-        } icon: {
-          Image(uiImage: Self.mark)
-        }
+    // Picking 问 Atd opens the panel and leaves the current tab showing.
+    AppTabBar(selection: $tab, ask: { ask = AskRequest(draft: "") }) { page in
+      switch page {
+      case .commands: CommandsPage()
+      case .miniApps: MiniAppsPage()
+      case .automations: AutomationsPage()
+      case .me: MePage()
       }
     }
-    .tint(.primary)
+    .ignoresSafeArea()
     .environment(store)
     .sheet(item: $ask) { request in
       AskSheet(draft: request.draft).environment(store)
@@ -80,15 +65,6 @@ public struct AtdRootView: View {
         run = request
       }
     }
-  }
-
-  /// Picking 问 Atd opens the panel and leaves the current tab showing.
-  private var selection: Binding<AppTab> {
-    Binding(
-      get: { tab },
-      set: { picked in
-        if picked == .ask { ask = AskRequest(draft: "") } else { tab = picked }
-      })
   }
 
   private var failureShown: Binding<Bool> {
@@ -128,12 +104,11 @@ public struct AtdRootView: View {
     run = nil
     self.tab = tab
   }
-
-  private static let mark = InkArt.markImage(side: 24)
 }
 
-enum AppTab: Hashable {
-  case commands, miniApps, automations, me, ask
+/// A tab with a page, in bar order. 问 Atd is not one: it opens the panel over the tabs.
+enum AppTab: String, CaseIterable {
+  case commands, miniApps, automations, me
 
   /// The tab a tab or detail route belongs to; nil for 问 Atd and the camera, which open over the
   /// tabs.
