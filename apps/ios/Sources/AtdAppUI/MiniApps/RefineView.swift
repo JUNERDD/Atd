@@ -3,7 +3,6 @@ import AtdInk
 import AtdMiniApps
 import AtdModel
 import SwiftUI
-import UIKit
 
 /// 改一改: the person says what to change, the default model rewrites the app and the sheet goes
 /// back to it with 撤销. The data the person logged stays as it is; the widget keeps working
@@ -225,14 +224,13 @@ enum MiniAppRun {
   ) async throws -> MiniAppDraft {
     let (answer, text) = try await stream(request, runner: runner, update: update)
     do {
-      return try MiniAppDraft(answer: answer, symbolExists: symbolExists)
+      return try MiniAppDraft(answer: answer)
     } catch .section(let section, let reason) {
       let repair = try await stream(
         MiniAppPrompt.repair(request, answer: text, section: section, reason: reason),
         runner: runner
       ) { _ in }
-      return try MiniAppDraft(
-        answer: answer.replacing(section, from: repair.answer), symbolExists: symbolExists)
+      return try MiniAppDraft(answer: answer.replacing(section, from: repair.answer))
     }
   }
 
@@ -268,9 +266,5 @@ enum MiniAppRun {
     answer.finish()
     update(answer)
     return (answer, text)
-  }
-
-  private static func symbolExists(_ name: String) -> Bool {
-    UIImage(systemName: name) != nil
   }
 }

@@ -127,19 +127,11 @@ struct SubPage<Content: View>: View {
 struct LicensesPage: View {
   var body: some View {
     SubPage(title: AppText.string("me.licenses")) {
-      VStack(alignment: .leading, spacing: 2) {
-        Text(verbatim: "rime-pinyin-simp").font(.headline)
-        Text(AppText.string("licenses.lexicon"))
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-      }
-      .padding(.horizontal, 20)
-      .padding(.top, 16)
-      Text(Self.lexiconLicense)
-        .font(.footnote.monospaced())
-        .textSelection(.enabled)
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
+      LicenseEntry(
+        name: "rime-pinyin-simp", summary: AppText.string("licenses.lexicon"),
+        text: Self.lexiconLicense)
+      LicenseEntry(name: "Lucide", summary: AppText.string("licenses.icons"), text: Lucide.license)
+        .padding(.top, 12)
     }
   }
 
@@ -147,4 +139,28 @@ struct LicensesPage: View {
   private static let lexiconLicense: String =
     Bundle.main.url(forResource: "LICENSE", withExtension: nil)
     .flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
+}
+
+/// Something that ships inside Atd: its name, what it is and under which license, and that
+/// license's text.
+private struct LicenseEntry: View {
+  let name: String
+  let summary: String
+  let text: String
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      VStack(alignment: .leading, spacing: 2) {
+        Text(verbatim: name).font(.headline)
+        Text(summary)
+          .font(.subheadline)
+          .foregroundStyle(.secondary)
+      }
+      Text(text)
+        .font(.footnote.monospaced())
+        .textSelection(.enabled)
+    }
+    .padding(.horizontal, 20)
+    .padding(.top, 16)
+  }
 }

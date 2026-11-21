@@ -56,7 +56,8 @@ public struct BriefingActivityWidget: Widget {
     } compactTrailing: {
       BriefingActivityStatus(state: context.state, isStale: context.isStale)
     } minimal: {
-      Image(systemName: attributes.symbol)
+      // The sticker's glyph without its blob, as the other presentations draw it.
+      InkSymbol(attributes.symbol, size: 20)
         .foregroundStyle(InkColor.sticker(attributes.tint))
         .accessibilityLabel(Text(attributes.name))
     }

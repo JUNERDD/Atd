@@ -29,8 +29,7 @@ struct GlanceHead: View {
       if style == .fullColor {
         Sticker(symbol: head.symbol, tint: head.tint, seed: head.id, size: 20)
       } else {
-        Image(systemName: head.symbol)
-          .font(.system(size: 12, weight: .semibold))
+        InkSymbol(head.symbol, size: 15)
           .frame(width: 20, height: 20)
           .accessibilityHidden(true)
       }

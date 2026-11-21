@@ -86,8 +86,8 @@ let package = Package(
     // the keyboard.
     .target(name: "AtdActions", dependencies: ["AtdModel"], swiftSettings: nonisolatedByDefault),
     // The ink-and-paper look the app, its widgets, mini apps and the camera share: colors, shapes
-    // drawn by hand, stickers, doodles and the inked controls. SwiftUI only, so every extension
-    // that draws ink can link it.
+    // drawn by hand, stickers and the prototype's Lucide glyphs, doodles and the inked controls.
+    // SwiftUI only, so every extension that draws ink can link it.
     .target(
       name: "AtdInk", dependencies: ["AtdModel"], resources: [.process("Resources")],
       swiftSettings: mainActorByDefault),

@@ -100,7 +100,7 @@ func section(_ failure: MiniAppDraftFailure?) -> MiniAppAnswer.Section? {
   private let now = Fixture.day(21)
 
   @Test func aCompleteAnswerMakesAnApp() throws {
-    let draft = try MiniAppDraft(answer: MiniAppAnswer(Answers.reading), now: now) { _ in true }
+    let draft = try MiniAppDraft(answer: MiniAppAnswer(Answers.reading), now: now)
     #expect(draft.app.name == "Reading" && draft.app.symbol == "book" && draft.app.tint == .brown)
     #expect(!draft.app.builtin && MiniApps.isValidID(draft.app.id))
     #expect(draft.app.ideas.count == 2 && draft.app.createdAt == now)
@@ -119,7 +119,9 @@ func section(_ failure: MiniAppDraftFailure?) -> MiniAppAnswer.Section? {
   }
 
   @Test func anUnknownSymbolBecomesAGenericOne() throws {
-    let draft = try MiniAppDraft(answer: MiniAppAnswer(Answers.reading)) { _ in false }
+    // An SF Symbol, but none a sticker has a glyph for.
+    let answer = Answers.reading.replacingOccurrences(of: "symbol: book", with: "symbol: bolt.car")
+    let draft = try MiniAppDraft(answer: MiniAppAnswer(answer))
     #expect(draft.app.symbol == "square.grid.2x2")
   }
 
@@ -127,12 +129,12 @@ func section(_ failure: MiniAppDraftFailure?) -> MiniAppAnswer.Section? {
     let broken = MiniAppAnswer(
       Answers.replacing("DATA", with: #"{"fields": [{"name": "Pages", "kind": "daily"}]}"#))
     let failure = #expect(throws: MiniAppDraftFailure.self) {
-      try MiniAppDraft(answer: broken) { _ in true }
+      try MiniAppDraft(answer: broken)
     }
     #expect(section(failure) == .data)
     let repair = MiniAppAnswer(
       "[[DATA]]\n{\"fields\": [{\"name\": \"pages\", \"kind\": \"daily\"}]}\n[[END]]")
-    let draft = try MiniAppDraft(answer: broken.replacing(.data, from: repair)) { _ in true }
+    let draft = try MiniAppDraft(answer: broken.replacing(.data, from: repair))
     #expect(draft.package.manifest.schema.fields.map(\.name) == ["pages"])
   }
 
@@ -144,7 +146,7 @@ func section(_ failure: MiniAppDraftFailure?) -> MiniAppAnswer.Section? {
   func aWidgetThatDoesNotFitTheDataCanBeAskedForAgain(_ widget: String) {
     let answer = MiniAppAnswer(Answers.replacing("WIDGET", with: widget))
     let failure = #expect(throws: MiniAppDraftFailure.self) {
-      try MiniAppDraft(answer: answer) { _ in true }
+      try MiniAppDraft(answer: answer)
     }
     #expect(section(failure) == .widget)
   }
@@ -152,7 +154,7 @@ func section(_ failure: MiniAppDraftFailure?) -> MiniAppAnswer.Section? {
   @Test func anAnswerWithoutAPageIsUnreadable() {
     let answer = MiniAppAnswer(Answers.reading.replacingOccurrences(of: "[[PAGE]]", with: ""))
     let failure = #expect(throws: MiniAppDraftFailure.self) {
-      try MiniAppDraft(answer: answer) { _ in true }
+      try MiniAppDraft(answer: answer)
     }
     #expect(failure != nil && section(failure) == nil)
   }
@@ -161,13 +163,13 @@ func section(_ failure: MiniAppDraftFailure?) -> MiniAppAnswer.Section? {
     let answer = MiniAppAnswer(
       Answers.replacing(
         "PAGE", with: "<!doctype html><html><body class=\"x\">\n<p>Hi</p>\n</body></html>"))
-    #expect(try MiniAppDraft(answer: answer) { _ in true }.package.page == "<p>Hi</p>")
+    #expect(try MiniAppDraft(answer: answer).package.page == "<p>Hi</p>")
   }
 }
 
 @Suite struct MiniAppRefinementTests {
   private var current: MiniAppPackage {
-    get throws { try MiniAppDraft(answer: MiniAppAnswer(Answers.reading)) { _ in true }.package }
+    get throws { try MiniAppDraft(answer: MiniAppAnswer(Answers.reading)).package }
   }
 
   @Test func aRefinementKeepsWhatItLeavesOut() throws {
@@ -232,7 +234,7 @@ func section(_ failure: MiniAppDraftFailure?) -> MiniAppAnswer.Section? {
   }
 
   @Test func aRefinementSendsThePageAndValuesButNotTheDailyHistory() throws {
-    let draft = try MiniAppDraft(answer: MiniAppAnswer(Answers.reading)) { _ in true }
+    let draft = try MiniAppDraft(answer: MiniAppAnswer(Answers.reading))
     var data = draft.data
     try data.apply(
       .put(field: "pages", value: 35, day: "2026-11-20"),

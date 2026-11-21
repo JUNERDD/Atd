@@ -21,11 +21,8 @@ public struct MiniAppDraft: Sendable, Equatable {
   /// the widget.
   public var details: [String]
 
-  /// - Parameter symbolExists: whether an SF Symbol name exists on this system; an unknown one
-  ///   becomes a generic symbol.
-  public init(
-    answer: MiniAppAnswer, now: Date = .now, symbolExists: (String) -> Bool
-  ) throws(MiniAppDraftFailure) {
+  /// A symbol outside `StickerSymbols` becomes a generic one, so the app's sticker has its glyph.
+  public init(answer: MiniAppAnswer, now: Date = .now) throws(MiniAppDraftFailure) {
     let about = answer.about
     guard answer.has(.data), answer.has(.page), answer.has(.widget) else {
       throw .unreadable("the answer lacks a section")
@@ -48,7 +45,8 @@ public struct MiniAppDraft: Sendable, Equatable {
     }
     let id = MiniApps.newID()
     let name = String((about["name"] ?? "").prefix(MiniAppLimits.nameLength))
-    let symbol = about["symbol"].flatMap { symbolExists($0) ? $0 : nil } ?? "square.grid.2x2"
+    let symbol =
+      about["symbol"].flatMap { StickerSymbols.contains($0) ? $0 : nil } ?? "square.grid.2x2"
     let tints = CommandTint.allCases.filter { $0 != .gray }
     let tint =
       about["tint"].flatMap { CommandTint(rawValue: $0.lowercased()) }

@@ -13,7 +13,7 @@ import Testing
   }
 
   private func reading() throws -> MiniAppDraft {
-    try MiniAppDraft(answer: MiniAppAnswer(Answers.reading)) { _ in true }
+    try MiniAppDraft(answer: MiniAppAnswer(Answers.reading))
   }
 
   @Test func theLibraryStartsWithTheBuiltinsOnce() throws {

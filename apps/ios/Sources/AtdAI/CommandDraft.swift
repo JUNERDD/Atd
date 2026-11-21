@@ -10,7 +10,8 @@ public enum CommandDraft {
 
   public static func request(_ description: String) -> ModelRequest {
     ModelRequest(
-      system: String(localized: "prompt.draft", table: "CommandDraft", bundle: .module),
+      system: String(localized: "prompt.draft", table: "CommandDraft", bundle: .module)
+        + "\n\nSF Symbols: \(StickerSymbols.promptList)",
       messages: [ModelMessage(.user, description)])
   }
 
@@ -32,7 +33,8 @@ public enum CommandDraft {
     }
     let (input, output) = shape(of: draft)
     return Command(
-      id: id, name: name, symbol: draft.symbol ?? "sparkles",
+      id: id, name: name,
+      symbol: draft.symbol.flatMap { StickerSymbols.contains($0) ? $0 : nil } ?? "sparkles",
       tint: draft.tint.flatMap(CommandTint.init(rawValue:)) ?? .purple,
       instructions: instructions, options: options, versionOption: options.first?.key,
       input: input, output: output, placement: placement(input: input, output: output),

@@ -1348,6 +1348,24 @@
         }
       }
     },
+    "licenses.icons" : {
+      "comment" : "Licenses page: what the Lucide icons are and their license",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Icons · ISC License"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "图标 · ISC License"
+          }
+        }
+      }
+    },
     "licenses.lexicon" : {
       "comment" : "Licenses page: what the pinyin lexicon is and its license",
       "extractionState" : "manual",

@@ -1,6 +1,7 @@
 import ActivityKit
 import AppIntents
 import AtdAutomations
+import AtdInk
 import AtdModel
 import SwiftUI
 import WidgetKit
@@ -35,7 +36,7 @@ public struct FocusActivityWidget: Widget {
             .padding(.top, 4)
         }
       } compactLeading: {
-        Image(systemName: "timer")
+        InkSymbol("timer", size: 20)
           .foregroundStyle(.purple)
           .accessibilityLabel(ActivityText.string("focus.title"))
       } compactTrailing: {
@@ -49,7 +50,7 @@ public struct FocusActivityWidget: Widget {
             .frame(maxWidth: 52)
         }
       } minimal: {
-        Image(systemName: "timer")
+        InkSymbol("timer", size: 20)
           .foregroundStyle(.purple)
           .accessibilityLabel(ActivityText.string("focus.title"))
       }

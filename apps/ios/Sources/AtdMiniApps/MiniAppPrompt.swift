@@ -1,4 +1,5 @@
 import AtdAI
+import AtdModel
 import Foundation
 
 /// The requests 新建小应用 and 改一改 send. Only what the run needs leaves the phone: a build
@@ -9,7 +10,9 @@ public enum MiniAppPrompt {
   /// - Parameter language: the language the app's words are written in (`zh-Hans`, `en`).
   public static func build(_ description: String, language: String) -> ModelRequest {
     ModelRequest(
-      system: system("MiniAppPromptBuild", language: language),
+      system: system("MiniAppPromptBuild", language: language)
+        + "\n\nSYMBOLS\n\nThe symbol is one of these SF Symbols names: "
+        + "\(StickerSymbols.promptList).",
       messages: [ModelMessage(.user, description)])
   }
 

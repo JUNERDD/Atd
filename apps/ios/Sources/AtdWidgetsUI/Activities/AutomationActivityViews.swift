@@ -59,19 +59,27 @@ struct ContinueLine: View {
   }
 }
 
-/// The square with the automation's symbol, in its hue.
+/// The square with the automation's symbol in its hue, as the prototype draws a tile: the
+/// symbol's glyph (`InkSymbol`) at 58 percent of the square.
 struct ActivityTile: View {
   let symbol: String
   let tint: CommandTint
   var size: CGFloat = 26
 
   var body: some View {
-    Image(systemName: symbol)
-      .font(.system(size: size * 0.5, weight: .semibold))
-      .foregroundStyle(.white)
+    InkSymbol(symbol, size: (size * 0.58).rounded())
+      .foregroundStyle(glyphColor)
       .frame(width: size, height: size)
       .background(Color(uiColor: tint.uiColor), in: .rect(cornerRadius: size * 0.27))
       .accessibilityHidden(true)
+  }
+
+  /// Black on the light hues and white on the others, as the prototype's tiles.
+  private var glyphColor: Color {
+    switch tint {
+    case .orange, .yellow, .green, .mint, .teal, .cyan: .black
+    default: .white
+    }
   }
 }
 

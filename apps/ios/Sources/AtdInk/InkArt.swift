@@ -154,8 +154,9 @@ private struct MarkView: View {
   }
 }
 
-/// How a command is told apart: its hue as a highlighter blob with its symbol inked on top. The
-/// blob's shape and a slight tilt come from `seed`, so a command looks the same everywhere.
+/// How a command is told apart: its hue as a highlighter blob with its symbol's glyph inked on top
+/// (`InkSymbol`, at 52 percent of the sticker as in the prototype). The blob's shape and a slight
+/// tilt come from `seed`, so a command looks the same everywhere.
 public struct Sticker: View {
   let symbol: String
   let tint: CommandTint
@@ -171,8 +172,7 @@ public struct Sticker: View {
 
   public var body: some View {
     let hash = inkSeed(seed + symbol + tint.rawValue)
-    Image(systemName: symbol)
-      .font(.system(size: size * 0.46, weight: .medium))
+    InkSymbol(symbol, size: (size * 0.52).rounded())
       .foregroundStyle(InkColor.stickerGlyph(tint))
       .frame(width: size, height: size)
       .background(
@@ -184,7 +184,8 @@ public struct Sticker: View {
   }
 }
 
-/// A plain inked symbol for a settings row: no color, because it identifies nothing.
+/// A plain inked symbol for a settings row: its glyph (`InkSymbol`) at 22 points in a 28-point
+/// square, as the prototype draws a row. No color, because it identifies nothing.
 public struct Glyph: View {
   let symbol: String
 
@@ -193,8 +194,7 @@ public struct Glyph: View {
   }
 
   public var body: some View {
-    Image(systemName: symbol)
-      .font(.system(size: 19, weight: .regular))
+    InkSymbol(symbol, size: 22)
       .foregroundStyle(.primary)
       .frame(width: 28, height: 28)
       .accessibilityHidden(true)

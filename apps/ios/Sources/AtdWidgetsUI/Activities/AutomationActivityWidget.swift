@@ -1,5 +1,6 @@
 import ActivityKit
 import AtdAutomations
+import AtdInk
 import AtdModel
 import SwiftUI
 import WidgetKit
@@ -36,13 +37,13 @@ public struct AutomationActivityWidget: Widget {
           ExpandedRun(attributes: attributes, state: state, isStale: context.isStale)
         }
       } compactLeading: {
-        Image(systemName: attributes.symbol)
+        InkSymbol(attributes.symbol, size: 20)
           .foregroundStyle(tint)
           .accessibilityLabel(attributes.name)
       } compactTrailing: {
         CompactProgress(state: state, isStale: context.isStale)
       } minimal: {
-        Image(systemName: attributes.symbol)
+        InkSymbol(attributes.symbol, size: 20)
           .foregroundStyle(tint)
           .accessibilityLabel(attributes.name)
       }

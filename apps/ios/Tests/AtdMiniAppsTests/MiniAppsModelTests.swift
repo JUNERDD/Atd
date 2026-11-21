@@ -138,7 +138,7 @@ final class ScriptedModel: TextGenerating, @unchecked Sendable {
 
   @Test func aGeneratedAppIsCreatedAndDeleted() throws {
     let model = model()
-    let draft = try MiniAppDraft(answer: MiniAppAnswer(Answers.reading)) { _ in true }
+    let draft = try MiniAppDraft(answer: MiniAppAnswer(Answers.reading))
     try model.create(draft, data: draft.data)
     #expect(model.library.apps.last?.id == draft.app.id && model.glances[draft.app.id] != nil)
     try model.delete(try #require(model.app(draft.app.id)))

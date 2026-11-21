@@ -3,7 +3,6 @@ import AtdInk
 import AtdModel
 import Foundation
 import Observation
-import UIKit
 
 /// Drafting a command: the sentence that describes it, the default model's draft, then the draft
 /// under review until it is saved. 新建指令 starts from an empty sentence or a blank form;
@@ -60,13 +59,11 @@ final class CommandDraftFlow {
           answer += delta
         }
         guard !Task.isCancelled else { return }
-        guard var command = CommandDraft.command(from: answer) else {
+        guard let command = CommandDraft.command(from: answer) else {
           failure = .unreadable(detail: nil)
           step = .describe
           return
         }
-        // The model may name a symbol this system does not have.
-        if UIImage(systemName: command.symbol) == nil { command.symbol = "sparkles" }
         draft = command
         step = .review
       } catch let error as ModelFailure {

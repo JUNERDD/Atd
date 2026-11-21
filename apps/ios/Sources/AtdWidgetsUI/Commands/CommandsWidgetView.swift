@@ -154,8 +154,7 @@ private struct CommandsWidgetSticker: View {
     if renderingMode == .fullColor {
       Sticker(symbol: button.symbol, tint: button.tint, seed: "\(button)", size: size)
     } else {
-      Image(systemName: button.symbol)
-        .font(.system(size: size * 0.6, weight: .medium))
+      InkSymbol(button.symbol, size: (size * 0.66).rounded())
         .frame(width: size, height: size)
         .widgetAccentable()
         .accessibilityHidden(true)

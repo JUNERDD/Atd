@@ -4,7 +4,7 @@ Answer with exactly these sections, each marker alone on its own line, in this o
 
 [[ABOUT]]
 name: <the app's name, at most 12 characters>
-symbol: <an SF Symbol name that fits, such as book, guitars, figure.walk, drop, checklist, flame, leaf, moon.zzz>
+symbol: <the SF Symbol name under SYMBOLS that fits best>
 tint: <one of red orange yellow green mint teal cyan blue indigo purple pink brown gray>
 understand: <one short line: what the app is for>
 data: <one short line: what it records>

@@ -37,7 +37,7 @@ import Testing
             calendar: Fixture.shanghai)
         ))
     }
-    let reading = try MiniAppDraft(answer: MiniAppAnswer(Answers.reading)) { _ in true }
+    let reading = try MiniAppDraft(answer: MiniAppAnswer(Answers.reading))
     var data = MiniAppData(schema: Fixture.reading, stored: [:])
     try data.apply(
       (16...21).map {
