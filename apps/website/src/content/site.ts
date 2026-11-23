@@ -21,7 +21,7 @@ export const site = {
   name: 'Atd',
   author: 'JUNERDD',
   /** The version described by this site; the stable download follows verified releases. */
-  version: '0.12.0',
+  version: '0.12.1',
   repoUrl: 'https://github.com/JUNERDD/Atd',
   releasesUrl: 'https://github.com/JUNERDD/Atd/releases',
   /**
