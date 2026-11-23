@@ -39,7 +39,7 @@ let package = Package(
     // The official MCP SDK (Apache-2.0/MIT, licenses/mcp-swift-sdk-LICENSE): the client side of
     // the private stdio MCP connection to the computer-use browser worker
     // (Computer/Engines/Browser).
-    .package(url: "https://github.com/modelcontextprotocol/swift-sdk", exact: "0.11.0"),
+    .package(url: "https://github.com/modelcontextprotocol/swift-sdk", exact: "0.12.1"),
     // Apple's CommonMark/GFM parser (Apache-2.0 with the Runtime Library Exception,
     // licenses/swift-markdown-LICENSE and -NOTICE; its cmark-gfm is BSD-2-Clause,
     // licenses/swift-cmark-LICENSE): the result cards' Markdown (Island/ResultText), drawn by the
@@ -99,9 +99,14 @@ let package = Package(
       name: "SelectionAXFixture", dependencies: ["AIShell"], path: "Tests/SelectionAXFixture"),
     .executableTarget(
       name: "PanelFocusFixture", dependencies: ["AIShell"], path: "Tests/PanelFocusFixture"),
-    // Real WKWebView checks of the private WebKit settings the shell depends on.
+    // Real WKWebView checks of the private WebKit settings the shell depends on. MCP builds the
+    // browser worker's tool results that BrowserWorkerResultTests decodes.
     .testTarget(
-      name: "AIShellTests", dependencies: ["AIShell", "SelectionAXFixture", "PanelFocusFixture"]),
+      name: "AIShellTests",
+      dependencies: [
+        "AIShell", "SelectionAXFixture", "PanelFocusFixture",
+        .product(name: "MCP", package: "swift-sdk"),
+      ]),
   ],
   swiftLanguageModes: [.v6]
 )
