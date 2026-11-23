@@ -12,6 +12,15 @@ on:
       build_version:
         type: string
         required: true
+      renderer_id:
+        type: string
+        required: true
+      native_component:
+        type: string
+        required: true
+      service_component:
+        type: string
+        required: true
       notarize:
         description: Notarize and staple the signed app and disk image with Apple Notary Service.
         type: boolean
@@ -31,6 +40,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 defaults:
   run:
@@ -60,60 +70,31 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v6.1.1
       - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
           package-manager-cache: false
-      # Reuse setup-node's exact store key when available. Saving a cold PR-scoped
-      # cache here would hold up notarization after the signed app is uploaded.
-      - name: Locate the pnpm store
-        id: pnpm-store
-        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
-      - name: Restore the pnpm store
-        uses: actions/cache/restore@v6.1.0
+      - name: Download the current renderer
+        uses: actions/download-artifact@v8.0.2
         with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: node-cache-${{ runner.os }}-${{ inputs.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
-      # The project's Xcode, which the macos-26 and macos-26-intel images both carry.
-      - name: Select Xcode 26.3
-        run: |
-          sudo xcode-select --switch /Applications/Xcode_26.3.app
-          xcodebuild -version
-      - name: Install XcodeGen
-        run: command -v xcodegen > /dev/null || brew install xcodegen
-      # The service's file index is a Rust addon that `bundle` builds through turbo; with no
-      # argument, rustup installs the toolchain rust-toolchain.toml pins for the host.
-      - name: Install the Rust toolchain
-        run: |
-          rustup toolchain install
-          cargo --version
-      - run: pnpm install --frozen-lockfile
-      # Separate secret names leave legacy branches and installed users' EdDSA trust intact.
+          artifact-ids: ${{ inputs.renderer_id }}
+          merge-multiple: true
+          path: apps/desktop/dist-native
+      - name: Restore the verified components
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NATIVE_COMPONENT: ${{ inputs.native_component }}
+          SERVICE_COMPONENT: ${{ inputs.service_component }}
+        run: bash apps/macos/scripts/release/restore-components.sh
       - name: Import Developer ID credentials
         env:
           DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
           DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
         run: node apps/macos/scripts/signing/ci.mjs --skip-notarize
-      # The trailing argument reaches prepare-service-pack.mjs, the last command of `bundle`: the
-      # add-on lock it embeds names this version's GitHub release assets.
-      - name: Bundle the service, the renderer and the add-ons
-        run: pnpm --filter @atd/macos bundle --marketing-version "$VERSION"
-      # build.mjs maps the architecture, sets the x64 feed URL and overrides the versions. The
-      # build version is passed only when it differs from the marketing version, as a prerelease's
-      # does (its `-` dropped); otherwise project.yml derives it from the marketing version.
-      - name: Build the Release app
-        run: |
-          mkdir -p "$RUNNER_TEMP/release-diagnostics"
-          args=(--configuration Release --arch "$RELEASE_ARCH" --marketing-version "$VERSION" --timing-summary)
-          if [ "$BUILD_VERSION" != "$VERSION" ]; then args+=(--build-version "$BUILD_VERSION"); fi
-          node apps/macos/scripts/build.mjs "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/release-diagnostics/xcodebuild.log"
-          {
-            echo "### Xcode timing: $RELEASE_ARCH"
-            echo '```text'
-            awk '/Build Timing Summary/{show=1} show' "$RUNNER_TEMP/release-diagnostics/xcodebuild.log"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Assemble and sign the Release app
+        env:
+          APP: ${{ github.workspace }}/apps/macos/DerivedData/Build/Products/Release/Atd.app
+        run: node apps/macos/scripts/release/assemble-components.mjs
       - name: Check the built app
         run: |
           app=apps/macos/DerivedData/Build/Products/Release/Atd.app
@@ -162,15 +143,6 @@ jobs:
           overwrite: true
           if-no-files-found: error
           compression-level: 0
-          retention-days: 7
-
-      - name: Upload release diagnostics
-        if: always()
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: release-build-diagnostics-${{ inputs.arch }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/release-diagnostics/
-          if-no-files-found: warn
           retention-days: 7
 
   notarize:

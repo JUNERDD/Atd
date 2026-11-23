@@ -84,20 +84,33 @@ their own approved credentials, permissions and acceptance criteria.
 
 ## Promoting PR release candidates
 
-A same-repository PR targeting `main` produces a signed, dual-architecture release
-candidate when `apps/macos/package.json` differs from its base version. The
-`ci/release-candidate-reuse` branch also opts in for integration rehearsal at the
-current version. Ordinary PRs with no version change and fork PRs keep their
-existing checks. Each native build uploads a `ditto` ZIP of its signed app and the verified
-add-ons. An independent job submits those bytes to Apple, staples the ticket
-and archives the verified bundle together with the add-ons. Its DMG job
-downloads that immutable artifact by ID and checks its run, commit, version and
-architecture before packaging. Rerun a failed notarization or DMG job to reuse the native build.
-Each installer proceeds directly to its own macOS 15 verification, including
-the Intel Release smoke checks on Intel. Both must pass before feed signing. Candidate
-production runs alongside quality checks; the complete CI run must pass. Xcode
-timing summaries and passive DMG phase logs are retained for seven days, including
-logs produced by failed runs.
+Open the version-bump PR as a draft as soon as the intended version is known. A
+same-repository PR targeting `main` starts preparing its candidate on opening and
+on each new head. The version comes from `apps/macos/package.json` and must match
+`project.yml`. The `ci/release-candidate-reuse` integration branch can exercise
+the same path without a version bump. Ordinary PRs keep their existing checks.
+
+Each architecture prepares its native shell and its service, Node and add-ons in
+parallel. A separate job builds the current renderer once for both architectures.
+A component can reuse a successful producer on the same workflow and branch or
+PR when its inputs, versions, architecture and toolchain match. A renderer copy
+edit can reuse both components. Changes to native code or bridge schemas
+invalidate the native component. Each preparation job's summary records whether
+it compiled or reused its input and identifies the immutable artifact and source.
+Expired or absent components are built again.
+
+Assembly verifies each archive's SHA-256 and receipt, embeds the current renderer
+and service in the matching native shell, and signs the assembled app. The
+notarization and DMG jobs retain their signed checkpoints for retries. Each
+installer must pass macOS 15 verification, including the Intel Release smoke
+checks, before the update feeds are signed. The required macOS summary waits for
+the candidate on version-bump PRs. Native build timing summaries and DMG phase
+logs are retained for seven days.
+
+Keep the PR open while publication is pending. Deploy the bilingual articles and
+check them on the production website. Check that the latest PR head and tested
+merge tree are current before merging to publish. The stable release workflow
+verifies both production articles before promoting the installers.
 
 When the version bump reaches `main`, `release.yml` automatically finds the PR
 that introduced that exact commit, then its latest CI run for the PR head. It
@@ -112,7 +125,7 @@ No matching PR/run/candidate, or an expired candidate, is reported explicitly
 and uses the normal complete build and verification path. API errors, failed or
 unfinished CI, wrong source/versions/tree, missing required checks or invalid
 existing artifacts stop promotion. There is no silent fallback from a candidate
-that fails verification. `mode=artifacts` always builds fresh. The optional
+that fails verification. `mode=artifacts` assembles and verifies a new candidate and can reuse matching components. The optional
 `candidate_run_id` still selects an explicit source; a PR source also takes
 `candidate_pr_number`, while a manual source requires the exact commit.
 
@@ -125,15 +138,9 @@ automatic discovery without a PR hint. Both paths reuse the candidate, then
 create, validate and delete a draft. Neither publishes or updates mirrors, and
 neither needs an extra branch. An unmerged PR cannot be formally promoted.
 
-For 0.10.8, review diagnostics and candidate reuse as separate CI PRs before the
-final release PR. After the CI changes are approved and merged, update the
-release branch from main, finish the feature changes and bilingual release post,
-then bump all required versions in the final PR. Wait for the complete candidate
-CI before merging that PR. Any intervening change to main requires refreshing
-and revalidating the candidate's complete tree. Keep candidate generation scoped
-to release preparation rather than every development push.
-
-These changes do not enable the experimental Rust release cache, DMG job split,
-phase timeout supervisor or Swift cache. Measure first candidate production and
-subsequent promotion separately; moving compilation into PR CI does not make
-the complete build-and-release workflow as short as promotion alone.
+To measure a renderer-only change, run `mode=artifacts` twice on the same
+non-release branch with the same version inputs. Let the first run finish, change
+only renderer copy, then run again. Compare the four component summaries, the
+current renderer, final artifact digests, notarization and installer checks.
+Time candidate preparation separately from promotion. A rehearsal can measure
+draft and asset verification; real stable-mirror delivery is measured at release.
