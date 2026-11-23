@@ -152,18 +152,22 @@ function verifyUpload(run, artifact, kind, arch) {
   if (
     !succeeded(job) ||
     !id(job.runner_id) ||
+    !(Date.parse(job.completed_at) >= Date.parse(job.started_at)) ||
+    new Set(producers.map((row) => row.run_attempt)).size !== producers.length ||
     job.steps.filter((step) => step.name.startsWith('Record uploaded artifact ')).length !== 1 ||
     !producers.every(
       (row) =>
+        id(row.run_attempt) &&
+        row.run_attempt <= run.run_attempt &&
         row.run_id === job.run_id &&
         row.head_sha === job.head_sha &&
         row.runner_id === job.runner_id &&
         row.started_at === job.started_at &&
         row.completed_at === job.completed_at &&
         succeeded(row) &&
+        isDeepStrictEqual(row.labels, job.labels) &&
         isDeepStrictEqual(row.steps, job.steps),
     ) ||
-    !id(job.run_attempt) ||
     (job !== matches[0] &&
       (latestUpload.length !== 1 || latestUpload[0].conclusion !== 'skipped')) ||
     job.run_id !== run.id ||
