@@ -1,5 +1,5 @@
 import type { ModelAlias, RunContextChoice } from '@atd/agent-contracts';
-import { Cpu, FoldVertical, Layers, Sparkles } from 'lucide-react';
+import { ArrowsToAxisDashedHorizontal, Cpu, Layers, Sparkles } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { rankByQuery } from '@atd/ui/lib/fuzzy-match';
 import type { Connection, ModelReference } from '../../client/providers/schema';
@@ -197,7 +197,7 @@ export function compactDrill({
   const tooLong = focus.length > MAX_COMPACT_INSTRUCTIONS;
   const option: QuickOption = {
     value: 'command:compact',
-    icon: <FoldVertical />,
+    icon: <ArrowsToAxisDashedHorizontal />,
     title: t('quickPanel.commands.compact.title'),
     description: tooLong
       ? t('quickPanel.blocked.focusTooLong', { count: MAX_COMPACT_INSTRUCTIONS })
@@ -215,7 +215,7 @@ export function compactDrill({
   const group = {
     id: 'compact',
     heading: t('quickPanel.groups.commands'),
-    icon: <FoldVertical />,
+    icon: <ArrowsToAxisDashedHorizontal />,
     options: [option],
   };
   if (block) return { query, groups: [], empty: t(`quickPanel.blocked.${block}`) };

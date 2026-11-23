@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactElement } from 'react';
-import { Copy, Ellipsis, Folder, FoldVertical, Pencil, X } from 'lucide-react';
+import { ArrowsToAxisDashedHorizontal, Copy, Ellipsis, Folder, Pencil, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
@@ -78,7 +78,7 @@ export function SessionMenu({
             title={blocked ? t(`quickPanel.blocked.${blocked}`) : undefined}
             onSelect={() => void compact(task.id)}
           >
-            <FoldVertical />
+            <ArrowsToAxisDashedHorizontal />
             {t('session.compact')}
           </DropdownMenuItem>
           {folders.length > 0 && (

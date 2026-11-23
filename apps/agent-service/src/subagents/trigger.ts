@@ -1,12 +1,10 @@
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import type { CompactionSettings, RetrySettings } from '@earendil-works/pi-coding-agent';
 import { compactionSettings, type PolicyModel } from '../compaction/policy.js';
 import { REQUEST_POLICY } from '../request-policy.js';
 import { startChildTranscript, type ChildTranscriptSource } from './child-transcript.js';
 import { SUBAGENT_CHILD_SYSTEM_PROMPT } from './config.js';
 import { launchModelProblem, type LaunchModelFields } from './launch-model.js';
+import { subagentsModuleUrl } from './package-root.js';
 import {
   hostForTask,
   parentByTask,
@@ -73,6 +71,7 @@ interface ChildSessionLike extends ChildTranscriptSource {
       compaction: CompactionSettings;
       retry: RetrySettings;
       httpIdleTimeoutMs: number;
+      cacheWarming: 'off';
     }): void;
   };
 }
@@ -80,6 +79,8 @@ interface ChildSessionLike extends ChildTranscriptSource {
 interface ChildFactoryLike {
   create(launch: ChildLaunchLike): Promise<ChildSessionLike>;
   dispose(): Promise<void>;
+  /** pi-subagents ends the in-process children of a parent session it shuts down. */
+  disposeForParent(parentSessionFile: string | undefined): Promise<void>;
 }
 
 interface ChildSessionModule {
@@ -91,28 +92,18 @@ let installed = false;
 let installations = 0;
 const liveByTask = new Map<string, Set<ChildSessionLike>>();
 
+/** The module the extension delegator.ts loads reads its factory from (package-root.ts). */
 async function loadChildSessionModule(): Promise<ChildSessionModule> {
-  const require = createRequire(import.meta.url);
-  const roots: string[] = [];
-  // The package exports map hides ./package.json, so resolve the main entry
-  // (package root index.js) and take its directory as the package root.
   try {
-    roots.push(path.dirname(require.resolve('pi-subagents')));
-  } catch {
-    roots.push(path.join(process.cwd(), 'node_modules', 'pi-subagents'));
+    return (await import(
+      subagentsModuleUrl('src', 'runs', 'shared', 'child-session.js')
+    )) as ChildSessionModule;
+  } catch (error) {
+    throw new Error(
+      `pi-subagents child session module is unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
   }
-  let lastError: unknown = null;
-  for (const root of roots) {
-    try {
-      const href = pathToFileURL(path.join(root, 'src', 'runs', 'shared', 'child-session.js')).href;
-      return (await import(href)) as ChildSessionModule;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  throw new Error(
-    `pi-subagents child session module is unavailable: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
-  );
 }
 
 /**
@@ -167,8 +158,11 @@ export async function installManagedLaunchTrigger(): Promise<{ installed: boolea
         const modelRuntime = taskId ? hostForTask(taskId)?.childRuntime : undefined;
         const child = await inner.create(pinManagedLaunch(launch, modelRuntime));
         // Before the child's first prompt: children read settings from the agent dir otherwise.
+        // No cache warming, as for every parent session: Pi's default keeps caches warm between
+        // runs, a spend nobody asked for.
         child.settingsManager.applyOverrides({
           ...REQUEST_POLICY,
+          cacheWarming: 'off',
           ...compactionSettings(child.model),
         });
         if (!tracked) return child;
@@ -201,6 +195,10 @@ export async function installManagedLaunchTrigger(): Promise<{ installed: boolea
     },
     async dispose(): Promise<void> {
       await inner.dispose();
+    },
+    // pi disposes each matching child through its own `dispose`, which `create` wrapped above.
+    async disposeForParent(parentSessionFile: string | undefined): Promise<void> {
+      await inner.disposeForParent(parentSessionFile);
     },
   };
   module.setChildSessionFactory(wrapper);

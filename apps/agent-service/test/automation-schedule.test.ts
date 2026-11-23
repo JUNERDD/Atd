@@ -12,7 +12,7 @@ import {
 import { inert, oneLine } from '../dist/automations/untrusted.js';
 
 /**
- * Schedule occurrences as the engine computes them (croner 10.0.1 for calendar and cron kinds,
+ * Schedule occurrences as the engine computes them (croner 11.0.1 for calendar and cron kinds,
  * plain arithmetic for intervals and one-time runs). The daylight-saving goldens pin croner's
  * observed behavior as the product rule; rerun them on every croner upgrade.
  */
@@ -38,13 +38,13 @@ function schedule(value: AutomationSchedule, timezone = 'UTC'): ScheduleTrigger 
   return { kind: 'schedule', schedule: value, timezone };
 }
 
-test('a daily time in the spring-forward gap runs once that day, shifted forward by the gap', () => {
-  // New York springs forward on 2026-03-08 at 02:00; 02:30 that day runs at 03:30 EDT.
+test('a time in the spring-forward gap runs once that day, when the gap ends', () => {
+  // New York springs forward on 2026-03-08 at 02:00; 02:30 that day runs at 03:00 EDT.
   assert.deepEqual(
     runs({ kind: 'daily', time: '02:30' }, 'America/New_York', '2026-03-06T12:00:00Z', 4),
     [
       '2026-03-07T07:30:00.000Z',
-      '2026-03-08T07:30:00.000Z',
+      '2026-03-08T07:00:00.000Z',
       '2026-03-09T06:30:00.000Z',
       '2026-03-10T06:30:00.000Z',
     ],
@@ -52,11 +52,26 @@ test('a daily time in the spring-forward gap runs once that day, shifted forward
   // Berlin springs forward on 2026-03-29.
   assert.deepEqual(
     runs({ kind: 'daily', time: '02:30' }, 'Europe/Berlin', '2026-03-27T12:00:00Z', 3),
-    ['2026-03-28T01:30:00.000Z', '2026-03-29T01:30:00.000Z', '2026-03-30T00:30:00.000Z'],
+    ['2026-03-28T01:30:00.000Z', '2026-03-29T01:00:00.000Z', '2026-03-30T00:30:00.000Z'],
+  );
+  // A list of explicit times is no wildcard: its time in the gap is not skipped either.
+  assert.deepEqual(
+    runs(
+      { kind: 'cron', expression: '30 2,14 * * *' },
+      'America/New_York',
+      '2026-03-07T12:00:00Z',
+      4,
+    ),
+    [
+      '2026-03-07T19:30:00.000Z',
+      '2026-03-08T07:00:00.000Z',
+      '2026-03-08T18:30:00.000Z',
+      '2026-03-09T06:30:00.000Z',
+    ],
   );
 });
 
-test('a daily time in the fall-back overlap runs once, at its first occurrence', () => {
+test('a time in the fall-back overlap runs once, at its first occurrence', () => {
   assert.deepEqual(
     runs({ kind: 'daily', time: '01:30' }, 'America/New_York', '2026-10-31T12:00:00Z', 2),
     ['2026-11-01T05:30:00.000Z', '2026-11-02T06:30:00.000Z'],
@@ -65,14 +80,29 @@ test('a daily time in the fall-back overlap runs once, at its first occurrence',
     runs({ kind: 'daily', time: '02:30' }, 'Europe/Berlin', '2026-10-24T12:00:00Z', 2),
     ['2026-10-25T00:30:00.000Z', '2026-10-26T01:30:00.000Z'],
   );
+  assert.deepEqual(
+    runs(
+      { kind: 'cron', expression: '30 1,13 * * *' },
+      'America/New_York',
+      '2026-10-31T12:00:00Z',
+      4,
+    ),
+    [
+      '2026-10-31T17:30:00.000Z',
+      '2026-11-01T05:30:00.000Z',
+      '2026-11-01T18:30:00.000Z',
+      '2026-11-02T06:30:00.000Z',
+    ],
+  );
 });
 
-test('a quarter-hour cron never repeats an occurrence across the fall-back hour', () => {
+test('a quarter-hour cron keeps its pace through both passes of the fall-back hour', () => {
   const quarter = { kind: 'cron', expression: '*/15 * * * *' } as const;
   const found = runs(quarter, 'America/New_York', '2026-11-01T04:40:00Z', 7);
-  assert.equal(new Set(found).size, found.length);
-  // croner 10.0.1 skips the repeated hour (01:00-01:59 EST) rather than running it twice.
-  assert.deepEqual(found.slice(4, 6), ['2026-11-01T05:45:00.000Z', '2026-11-01T07:00:00.000Z']);
+  for (let index = 1; index < found.length; index += 1)
+    assert.equal(at(found[index] ?? '') - at(found[index - 1] ?? ''), 15 * 60_000);
+  // 01:45 EDT is followed by 01:00 EST, the second pass of the repeated hour.
+  assert.deepEqual(found.slice(4, 6), ['2026-11-01T05:45:00.000Z', '2026-11-01T06:00:00.000Z']);
 });
 
 test('weekly, monthly and last-day schedules read their wall-clock time in the zone', () => {

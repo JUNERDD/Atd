@@ -23,18 +23,6 @@ import {
 import 'streamdown/styles.css';
 import { harden } from 'rehype-harden';
 import { useTranslation } from 'react-i18next';
-import {
-  CheckIcon,
-  CopyIcon,
-  DownloadIcon,
-  ExternalLinkIcon,
-  LoaderCircleIcon,
-  Maximize2Icon,
-  RotateCcwIcon,
-  XIcon,
-  ZoomInIcon,
-  ZoomOutIcon,
-} from 'lucide-react';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { useColorScheme, type ColorScheme } from '../../../theme/color-scheme';
 import { codeLanguage } from './code-language';
@@ -45,6 +33,7 @@ import { rehypeIncompleteLinks } from './incomplete-links';
 import { mermaidConfig } from './mermaid-lazy';
 import { codeSource } from './selection-toolbar/code-sources';
 import { StreamingCodeBlock } from './streaming-code-block';
+import { STREAMDOWN_ICONS } from './streamdown-icons';
 import { DISPLAY_MATH_TAG } from './math-lazy';
 import { useMarkdownPlugins } from './use-markdown-plugins';
 
@@ -255,19 +244,6 @@ const CONTROLS: NonNullable<StreamdownProps['controls']> = {
   table: false,
   image: false,
 };
-/** Streamdown's own controls draw the app's Lucide glyphs. */
-const ICONS: NonNullable<StreamdownProps['icons']> = {
-  CheckIcon,
-  CopyIcon,
-  DownloadIcon,
-  ExternalLinkIcon,
-  Loader2Icon: LoaderCircleIcon,
-  Maximize2Icon,
-  RotateCcwIcon,
-  XIcon,
-  ZoomInIcon,
-  ZoomOutIcon,
-};
 const LINK_SAFETY: NonNullable<StreamdownProps['linkSafety']> = { enabled: false };
 /** The host opens only web links, so a bare email stays text instead of a link that errors. */
 const DISABLED_AUTOLINKS = ['mailto'];
@@ -331,7 +307,7 @@ export function StreamdownMarkdown({
         mode={streamed ? 'streaming' : 'static'}
         parseIncompleteMarkdown={streaming}
         controls={CONTROLS}
-        icons={ICONS}
+        icons={STREAMDOWN_ICONS}
         linkSafety={LINK_SAFETY}
         disableAutolinkProtocols={DISABLED_AUTOLINKS}
         tableMaxHeight={Infinity}

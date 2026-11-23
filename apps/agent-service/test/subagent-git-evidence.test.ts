@@ -4,13 +4,12 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { subagentsModuleUrl } from '../dist/subagents/package-root.js';
 
 test('optional subagent mutation evidence skips Git outside working trees', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'atd-subagent-git-'));
-  const moduleUrl = new URL(
-    './src/runs/shared/mutation-evidence.js',
-    import.meta.resolve('pi-subagents'),
-  ).href;
+  // The compiled tree the service loads, which carries the patch (package-root.ts).
+  const moduleUrl = subagentsModuleUrl('src', 'runs', 'shared', 'mutation-evidence.js');
   // A separate process keeps the built-in module interception away from other tests. A Git
   // probe is observable even on a developer machine where Git would otherwise succeed.
   const program = `
@@ -32,7 +31,7 @@ test('optional subagent mutation evidence skips Git outside working trees', asyn
     const cwd = fs.realpathSync(process.cwd());
     const plain = snapshotTrackedMutations(cwd);
     assert.equal(typeof plain.unavailable, 'string');
-    assert.equal(collectTrackedMutationEvidence(plain).unavailable, plain.unavailable);
+    assert.equal((await collectTrackedMutationEvidence(plain)).unavailable, plain.unavailable);
     assert.equal(calls, 0, 'Non-repository evidence must not launch Git');
 
     const nested = path.join(cwd, 'repo', 'nested');

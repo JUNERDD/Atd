@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { SquareArrowOutUpRight } from 'lucide-react';
+import { SquareArrowUpRightExit } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AppSummary } from '@atd/agent-contracts';
 import { Badge } from '@atd/ui/components/badge';
@@ -65,7 +65,7 @@ export function AppListCard({
               aria-disabled={busy || undefined}
               onClick={openApp}
             >
-              <SquareArrowOutUpRight />
+              <SquareArrowUpRightExit />
             </IconButton>
           ) : null}
           {children}

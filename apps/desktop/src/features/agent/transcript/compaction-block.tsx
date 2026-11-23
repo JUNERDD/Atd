@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { FoldVertical, LoaderCircle, RotateCcw, TriangleAlert } from 'lucide-react';
+import { ArrowsToAxisDashedHorizontal, LoaderCircle, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Shimmer } from '@atd/ui/components/ai-elements/shimmer';
 import { Button } from '@atd/ui/components/button';
@@ -88,7 +88,7 @@ export function CompactionBlock({ block }: { block: BlockOf<'compaction'> }) {
           after: formatTokenCount(block.tokensAfter),
         })
       : t('compaction.done');
-  const icon = <FoldVertical className="row-icon" strokeWidth={1.75} />;
+  const icon = <ArrowsToAxisDashedHorizontal className="row-icon" strokeWidth={1.75} />;
   if (!block.summary.trim())
     return (
       <ActivityRow.Root status="completed" className="compaction-row" aria-label={label}>

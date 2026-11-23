@@ -283,9 +283,7 @@ function audioFormat(bytes: Uint8Array): string | undefined {
 
 /** Word 2003 XML goes to textutil; any other markup, HTML included, stays text. */
 function textFormat(bytes: Uint8Array, hint: string): Detected {
-  const head = latin1(bytes, 4096)
-    .replace(/^ï»¿/, '')
-    .trimStart();
+  const head = latin1(bytes, 4096).replace(/^ï»¿/, '').trimStart();
   if (
     head.startsWith('<?xml') &&
     (head.includes('progid="Word.Document"') || head.includes('<w:wordDocument'))

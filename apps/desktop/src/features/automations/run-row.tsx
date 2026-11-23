@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { SquareArrowOutUpRight } from 'lucide-react';
+import { SquareArrowUpRightExit } from 'lucide-react';
 import type { AutomationRun } from '@atd/agent-contracts';
 import { Badge } from '@atd/ui/components/badge';
 import { Button } from '@atd/ui/components/button';
@@ -110,7 +110,7 @@ export function RunRow({
               aria-label={t('runs.openTaskFor', { when: started })}
               onClick={onOpen}
             >
-              <SquareArrowOutUpRight data-icon="inline-start" />
+              <SquareArrowUpRightExit data-icon="inline-start" />
               {t('runs.openTask')}
             </Button>
           </ItemActions>

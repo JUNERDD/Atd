@@ -1,5 +1,37 @@
+diff --git a/src/extension/index.js b/src/extension/index.js
+index 9b3e9675a27cbb88f4890d285853b5c76916b74e..5ca97f5d84432ca60a846f1ec9cbaafd6bb82c09 100644
+--- a/src/extension/index.js
++++ b/src/extension/index.js
+@@ -294,7 +294,9 @@ export default function registerSubagentExtension(pi) {
+         parentWake,
+     });
+     const waitSubscriptionManager = createWaitSubscriptionManager(wakingPi, state);
+-    const mainWatchdog = registerMainWatchdog(pi, { slashCommand: slashCommandsEnabled });
++    const disabledFeatures = resolveDisabledFeatureSurface(config);
++    // A disabled watchdog must not register hooks or probe Git at session start.
++    const mainWatchdog = disabledFeatures.features.has("watchdog") ? undefined : registerMainWatchdog(pi, { slashCommand: slashCommandsEnabled });
+     const resultDeliveryOwnership = createResultDeliveryOwnership(state);
+     const completionNotifier = registerSubagentNotify(wakingPi, state, { batchConfig: config.completionBatch, ownership: resultDeliveryOwnership });
+     // Ended async runs whose result has not reached the notifier yet.
+@@ -685,7 +687,6 @@ export default function registerSubagentExtension(pi) {
+             return (await getExecutor()).executeDelegated(requestId, params, signal, onUpdate, ctx);
+         },
+     });
+-    const disabledFeatures = resolveDisabledFeatureSurface(config);
+     const rpcBridge = registerSubagentRpcBridge({
+         events: pi.events,
+         getContext: () => state.lastUiContext,
+@@ -1034,7 +1035,7 @@ export default function registerSubagentExtension(pi) {
+             asyncRetentionAbort.abort();
+             stopResultWatcher();
+             completionNotifier.dispose();
+-            mainWatchdog.dispose();
++            mainWatchdog?.dispose();
+             scheduledRunManager.stop();
+             supervisorChannel.dispose();
+             waitSubscriptionManager.dispose();
 diff --git a/src/runs/shared/child-session.d.ts b/src/runs/shared/child-session.d.ts
-index 44372e7499e12ec94e825ea9a9eccc8a50dd7dc5..1ce9e442f93b5cfedc499379cb8b4bc1ecc41a0d 100644
+index 235a663f0ff3ea599272674598bb29ab057f8ae9..38a8566b295e944eb4294a6386857643018a032a 100644
 --- a/src/runs/shared/child-session.d.ts
 +++ b/src/runs/shared/child-session.d.ts
 @@ -37,6 +37,16 @@ export interface ChildSessionLaunch {
@@ -16,10 +48,10 @@ index 44372e7499e12ec94e825ea9a9eccc8a50dd7dc5..1ce9e442f93b5cfedc499379cb8b4bc1
 +     * dir's auth and catalog files.
 +     */
 +    hostModelRuntime?: () => Promise<import("@earendil-works/pi-coding-agent").ModelRuntime>;
-     /** Logical names resolved only by the remote ambient package. */
+     /** Logical names resolved only by the remote ambient package, plus the parent's acceptance instructions, which no remote file holds. */
      remoteResources?: {
          agent: string;
-@@ -100,6 +110,10 @@ export interface ChildSession {
+@@ -115,6 +125,10 @@ export interface ChildSession {
      /** Live provider/id of the selected model when Pi marks it virtual (`api === "pi-virtual"`); assistant messages then name the dispatched physical model. */
      readonly virtualModelId?: string;
      readonly contextWindow?: number;
@@ -28,16 +60,16 @@ index 44372e7499e12ec94e825ea9a9eccc8a50dd7dc5..1ce9e442f93b5cfedc499379cb8b4bc1
 +    /** Host seam (not upstream): the child's current model. */
 +    readonly model?: import("@earendil-works/pi-ai").Model<import("@earendil-works/pi-ai").Api>;
      readonly machineEvidence?: {
+         provider: PlacementMachineReference["provider"];
          machineId: string;
-         initial?: HerdrRemoteGitStatus;
 diff --git a/src/runs/shared/child-session.js b/src/runs/shared/child-session.js
-index 84bba5799ba30556c229063698ae01f2eb069a4d..9794b36b42c4218a060e3ff22932a73defd01caa 100644
+index 930a91938db1292710b6c2a20342a6bd462e8efb..13512c1257a314fd29ccb79f040677b4b253c990 100644
 --- a/src/runs/shared/child-session.js
 +++ b/src/runs/shared/child-session.js
-@@ -323,8 +323,10 @@ export function createDefaultChildSessionFactory(options = {}) {
-             const pi = await loadPiCodingAgent();
+@@ -409,8 +409,10 @@ export function createDefaultChildSessionFactory(options = {}) {
              const builtinMcpTools = launch.builtinMcpTools ?? [];
-             const builtinMcp = builtinMcpTools.length ? selectedBuiltinMcpExtension(pi, builtinMcpTools) : undefined;
+             let readinessTool;
+             const builtinMcp = builtinMcpTools.length ? selectedBuiltinMcpExtension(pi, builtinMcpTools, () => readinessTool) : undefined;
 +            // Host seam (not upstream): a parent-bound child may run on a model
 +            // runtime the host builds like the parent's. Absent = upstream.
              const modelRuntime = launch.parentProviderRegistry
@@ -46,8 +78,8 @@ index 84bba5799ba30556c229063698ae01f2eb069a4d..9794b36b42c4218a060e3ff22932a73d
                  : await sharedRuntime(pi);
              const agentDir = getAgentDir();
              const commands = launch.runtime.runId && launch.runtime.agent && launch.runtime.childIndex !== undefined
-@@ -512,6 +514,10 @@ export function createDefaultChildSessionFactory(options = {}) {
-                 get modelId() { return session.model ? `${session.model.provider}/${session.model.id}` : undefined; },
+@@ -675,6 +677,10 @@ export function createDefaultChildSessionFactory(options = {}) {
+                 get claimedProvider() { return session.model && !inheritedProviders.has(session.model.provider) && modelRuntime.getRegisteredProviderIds().includes(session.model.provider) ? session.model.provider : undefined; },
                  get virtualModelId() { return session.model?.api === "pi-virtual" ? `${session.model.provider}/${session.model.id}` : undefined; },
                  get contextWindow() { return session.model?.contextWindow; },
 +                // Host seam (not upstream): the child's settings and model, so a host can apply
@@ -55,43 +87,13 @@ index 84bba5799ba30556c229063698ae01f2eb069a4d..9794b36b42c4218a060e3ff22932a73d
 +                settingsManager,
 +                get model() { return session.model; },
              };
-             live.add(child);
+             live.set(child, launch.parentSessionFile);
              return child;
-diff --git a/src/extension/index.js b/src/extension/index.js
---- a/src/extension/index.js
-+++ b/src/extension/index.js
-@@ -314,7 +314,9 @@
-         parentWake,
-     });
-     const waitSubscriptionManager = createWaitSubscriptionManager(wakingPi, state);
--    const mainWatchdog = registerMainWatchdog(pi);
-+    const disabledFeatures = resolveDisabledFeatureSurface(config);
-+    // A disabled watchdog must not register hooks or probe Git at session start.
-+    const mainWatchdog = disabledFeatures.features.has("watchdog") ? undefined : registerMainWatchdog(pi);
-     const resultDeliveryOwnership = createResultDeliveryOwnership(state);
-     const completionNotifier = registerSubagentNotify(wakingPi, state, { batchConfig: config.completionBatch, ownership: resultDeliveryOwnership });
-     // Ended async runs whose result has not reached the notifier yet.
-@@ -654,7 +656,6 @@
-             return (await getExecutor()).executeDelegated(requestId, params, signal, onUpdate, ctx);
-         },
-     });
--    const disabledFeatures = resolveDisabledFeatureSurface(config);
-     const rpcBridge = registerSubagentRpcBridge({
-         events: pi.events,
-         getContext: () => state.lastUiContext,
-@@ -950,7 +951,7 @@
-             stopResultWatcher();
-             resultDeliveryOwnership.clear();
-             completionNotifier.dispose();
--            mainWatchdog.dispose();
-+            mainWatchdog?.dispose();
-             scheduledRunManager.stop();
-             supervisorChannel.dispose();
-             waitSubscriptionManager.dispose();
 diff --git a/src/runs/shared/mutation-evidence.js b/src/runs/shared/mutation-evidence.js
+index baa1024001ff14591b096f702e440d0c4318ff8c..1bc296d911e7e46d7faac128f9a9077176713523 100644
 --- a/src/runs/shared/mutation-evidence.js
 +++ b/src/runs/shared/mutation-evidence.js
-@@ -59,8 +59,25 @@
+@@ -95,8 +95,26 @@ function sameFingerprint(left, right) {
          return false;
      return left.digest === right.digest;
  }
@@ -112,8 +114,9 @@ diff --git a/src/runs/shared/mutation-evidence.js b/src/runs/shared/mutation-evi
 +}
  export function snapshotTrackedMutations(cwd) {
      try {
++        // Same reason upstream reports when git itself finds no work tree.
 +        if (!hasGitWorkTree(cwd))
-+            throw new Error("Not a Git working tree.");
-         const changed = listChangedTrackedFiles(cwd);
++            throw new Error("not a Git work tree");
+         const changed = changedTrackedFiles(gitOutput(cwd, CHANGED_FILES_ARGS));
          const fingerprints = {};
          for (const file of changed.paths)
