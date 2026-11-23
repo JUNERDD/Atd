@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
       - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
@@ -155,7 +155,7 @@ jobs:
         run: bash apps/macos/scripts/release/app-handoff.sh archive "$APP" tmp/addons-release "$RUNNER_TEMP/checkpoint"
       - name: Upload the signed app and add-ons
         id: app
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: signed-app-${{ inputs.arch }}
           path: ${{ runner.temp }}/checkpoint/
@@ -166,7 +166,7 @@ jobs:
 
       - name: Upload release diagnostics
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: release-build-diagnostics-${{ inputs.arch }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/release-diagnostics/
@@ -191,7 +191,7 @@ jobs:
         with:
           node-version-file: .node-version
       - name: Download the signed app and add-ons
-        uses: actions/download-artifact@v8.0.0
+        uses: actions/download-artifact@v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.artifact-id }}
           merge-multiple: true
@@ -221,7 +221,7 @@ jobs:
         run: bash apps/macos/scripts/release/app-handoff.sh archive "$APP" "$RUNNER_TEMP/signed" "$RUNNER_TEMP/checkpoint"
       - name: Upload the verified app and add-ons
         id: app
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: app-${{ inputs.arch }}
           path: ${{ runner.temp }}/checkpoint/
@@ -249,7 +249,7 @@ jobs:
         with:
           node-version-file: .node-version
       - name: Download the verified app and add-ons
-        uses: actions/download-artifact@v8.0.0
+        uses: actions/download-artifact@v8.0.2
         with:
           artifact-ids: ${{ needs.notarize.outputs.artifact-id }}
           merge-multiple: true
@@ -288,7 +288,7 @@ jobs:
           ls -l dist
       - name: Upload the dmg and add-ons
         id: dmg
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: dmg-${{ inputs.arch }}
           overwrite: true
@@ -300,7 +300,7 @@ jobs:
 
       - name: Upload release diagnostics
         if: always()
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: release-dmg-diagnostics-${{ inputs.arch }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/release-diagnostics/
@@ -323,7 +323,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/download-artifact@v8.0.0
+      - uses: actions/download-artifact@v8.0.2
         with:
           artifact-ids: ${{ needs.package.outputs.artifact-id }}
           merge-multiple: true
@@ -413,7 +413,7 @@ jobs:
         run: codesign --verify --deep --strict "$APP"
       - name: Upload Intel macOS 15 smoke evidence
         if: always() && inputs.arch == 'x64'
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: intel-macos15-smoke-evidence-${{ github.run_attempt }}
           path: ${{ runner.temp }}/intel-macos15-smoke/

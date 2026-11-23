@@ -345,7 +345,7 @@ jobs:
       TARGET_TREE: ${{ needs.version.outputs.tree }}
       CANDIDATE_RECEIPT_SHA256: ${{ needs.version.outputs.candidate-receipt-sha256 }}
     steps:
-      - uses: actions/download-artifact@v8.0.0
+      - uses: actions/download-artifact@v8.0.2
         if: needs.version.outputs.candidate-artifact-id == ''
         with:
           artifact-ids: ${{ needs.candidate.outputs.artifact-id }}
