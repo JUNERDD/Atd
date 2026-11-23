@@ -26,12 +26,11 @@ class Progress:
             self.phases[key] = now
         elif event_type.endswith("::finished") and key in self.phases:
             event["durationSeconds"] = round(now - self.phases.pop(key), 3)
-        # dmgbuild 1.6.5 adds a trailing colon to the detach result and output keys.
-        result = info.get("ret", info.get("ret:"))
+        result = info.get("ret")
         if result is not None:
             event["returnCode"] = result
-        if name == "hdiutil::detach" and result:
-            event["message"] = info.get("output", info.get("output:", "")).strip()
+        if name == "diskutil::detach" and result:
+            event["message"] = info.get("output", "").strip()
         if event_type == "error::fatal":
             event["message"] = info["message"]
         print("ATD_DMG_EVENT " + json.dumps(event), file=sys.stderr, flush=True)
