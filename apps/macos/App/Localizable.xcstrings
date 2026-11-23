@@ -7315,6 +7315,24 @@
         }
       }
     },
+    "longScreenshot.capture.tooltip.tooSmall" : {
+      "comment" : "Long screenshot entry on the screenshot toolbar and capture bar (tooltip.tooSmall): %@ is the minimum width and height in points",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Long screenshot: make the selection at least %@ pt wide and tall"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "长截图：选区的宽和高需至少 %@ pt"
+          }
+        }
+      }
+    },
     "longScreenshot.card.annotate" : {
       "comment" : "Long screenshot result card on the island (annotate)",
       "extractionState" : "manual",

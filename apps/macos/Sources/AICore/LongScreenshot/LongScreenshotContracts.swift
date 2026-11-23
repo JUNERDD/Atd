@@ -48,6 +48,9 @@ public enum LongScreenshotAvailability: Equatable, Sendable {
   case notScrollable
   /// Not offered: the selection spans more than one display.
   case spansDisplays
+  /// Not offered: the selection is narrower or shorter than ``LongScreenshotGeometry/minimumBand``,
+  /// the band the engine needs to follow the page.
+  case tooSmall
 }
 
 public enum LongScreenshotDirection: Equatable, Sendable {
