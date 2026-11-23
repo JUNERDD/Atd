@@ -35,10 +35,7 @@ const CSS_OUTPUT = fileURLToPath(
   new URL('../src/components/brand-loader-motion.css', import.meta.url),
 );
 const SWIFT_OUTPUT = fileURLToPath(
-  new URL(
-    '../../macos/Sources/AIShell/Windows/Generated/BrandLoaderMotion.swift',
-    import.meta.url,
-  ),
+  new URL('../../macos/Sources/AIShell/Windows/Generated/BrandLoaderMotion.swift', import.meta.url),
 );
 const SYMBOL = new URL('../../../packages/ui/src/assets/brands/atd/symbol.svg', import.meta.url);
 
@@ -63,7 +60,8 @@ const TURNS = 3;
  * back to its own place, so neither jumps at the loop's seam.
  */
 const REPEATS = 2;
-if (TURNS % 2 === 0) throw new Error('TURNS must be odd for drop b to follow drop a a cycle later.');
+if (TURNS % 2 === 0)
+  throw new Error('TURNS must be odd for drop b to follow drop a a cycle later.');
 /** The farthest a drop's outline may jump in one 60Hz frame: a quarter of its 16px width. */
 const STROBE = 4;
 /** Seconds each crossing stays on screen even at top speed, about the eye's integration time. */
@@ -377,7 +375,8 @@ ${rows.join('\n')}
   ]
 }
 `;
-  if (source.split('\n').length > 340) throw new Error('The Swift keyframes outgrow the 350-line limit.');
+  if (source.split('\n').length > 340)
+    throw new Error('The Swift keyframes outgrow the 350-line limit.');
   return source;
 }
 
