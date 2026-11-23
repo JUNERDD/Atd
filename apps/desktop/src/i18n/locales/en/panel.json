@@ -13,7 +13,7 @@
     "updatePreparing": "Preparing version {{version}}…",
     "releaseNotes": "Release notes",
     "releaseNotesTooltip": "View release notes for {{version}}",
-    "dismissReleaseNotes": "Dismiss this update notification",
+    "dismissReleaseNotes": "Hide this update notification",
     "loadingConversation": "Loading conversation…"
   },
   "find": {
