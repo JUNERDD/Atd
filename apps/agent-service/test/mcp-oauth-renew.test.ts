@@ -16,7 +16,7 @@ import { startTestService } from './service-harness.ts';
  * browser, and never costs the stored sign-in: the redirect port being busy does not matter, a
  * refresh that cannot be tried is an internal error that leaves everything as it was, and a
  * refresh a connection already has in flight is joined instead of spending the rotating token
- * twice.
+ * twice. Only the server can end it: a refused refresh token or client goes to the browser.
  */
 
 const keyring = installMemoryKeyring();
@@ -128,6 +128,39 @@ test('a refresh token the server turns down falls back to the browser, with a cl
   } finally {
     await release();
   }
+});
+
+test('a client the server no longer knows gives way to a new one, and the callback completes the sign-in', async () => {
+  const { post, row } = oauth();
+  await signedIn('forgotten');
+  const before = stateOf('forgotten');
+  mock.clients.delete(before.clientInformation?.client_id ?? '');
+  const counters = { ...mock.counters };
+  const started = await post('/v1/mcp/auth/start', 'forgotten');
+  assert.equal(started.status, 200, started.text);
+  const { authorizationUrl } = parse(
+    Type.Object({ authorizationUrl: Type.String() }),
+    started.json,
+  );
+  assert.equal(mock.counters.tokenRequests, counters.tokenRequests + 1, 'the refresh was tried');
+  assert.equal(mock.counters.refreshGrants, counters.refreshGrants, 'and refused');
+  assert.equal(
+    mock.counters.registrations,
+    counters.registrations + 1,
+    'one client, for the browser',
+  );
+  const client = new URL(authorizationUrl).searchParams.get('client_id');
+  assert.notEqual(client, before.clientInformation?.client_id, 'a new client');
+
+  await approveAuthorization(authorizationUrl, { visit: true });
+  await waitFor(async () => (await row('forgotten')).state === 'disconnected');
+  assert.equal(
+    mock.counters.codeGrants,
+    counters.codeGrants + 1,
+    'the callback exchanged the code',
+  );
+  assert.equal(stateOf('forgotten').clientInformation?.client_id, client);
+  assert.equal((await post('/v1/mcp/connect', 'forgotten')).status, 200);
 });
 
 test('a refresh that cannot be tried is an internal error, and the stored sign-in is left as it was', async () => {

@@ -7,7 +7,6 @@ import {
   OAuthError,
   parseWwwAuthenticate,
   type OAuthChallenge,
-  type OAuthClientProvider,
 } from '@earendil-works/pi-mcp/oauth';
 import type { KeyringBackend } from '../credentials/keyring.js';
 import type { Logger } from '../logging.js';
@@ -43,39 +42,6 @@ export function configuredScope(record: McpServerConfig): string | undefined {
 export function mergeScopes(...scopes: Array<string | undefined>): string | undefined {
   const merged = new Set(scopes.flatMap((scope) => scope?.split(/\s+/).filter(Boolean) ?? []));
   return merged.size > 0 ? [...merged].join(' ') : undefined;
-}
-
-/**
- * pi-mcp's stateful provider seen through the one interface a refresh needs. It has no
- * `saveClientInformation`, so a flow that finds no client fails instead of registering one
- * (`adaptOAuthProvider` would register at connect), and nothing of a sign-in in progress is
- * touched: no verifier or state parameter is stored, and invalidating what the server just
- * refused leaves them alone.
- */
-function refreshOnly(provider: McpOAuthProvider, onMissingClient: () => void): OAuthClientProvider {
-  return {
-    redirectUrl: provider.redirectUrl,
-    clientMetadata: provider.clientMetadata,
-    clientInformation: async () => {
-      const client = await provider.clientInformation();
-      if (!client) onMissingClient();
-      return client;
-    },
-    tokens: () => provider.tokens(),
-    saveTokens: (tokens) => provider.saveTokens(tokens),
-    redirectToAuthorization: () => undefined,
-    saveCodeVerifier: () => undefined,
-    codeVerifier: () => {
-      throw new Error('A token refresh has no authorization code to exchange.');
-    },
-    invalidateCredentials: async (kind) => {
-      for (const part of kind === 'all' ? (['client', 'tokens', 'discovery'] as const) : [kind]) {
-        if (part !== 'verifier') await provider.invalidateCredentials(part);
-      }
-    },
-    saveDiscoveryState: (discovery) => provider.saveDiscoveryState(discovery),
-    discoveryState: () => provider.discoveryState(),
-  };
 }
 
 export interface ConnectionAuthOptions {
@@ -123,7 +89,6 @@ export function createOAuthConnectionAuth(options: ConnectionAuthOptions): OAuth
     if (!state?.tokens?.refresh_token || (!state.clientInformation && !client.clientId)) {
       throw new McpOAuthAuthorizationRequiredError();
     }
-    let missingClient = false;
     const flow = oauthFlowFetch({ serverUrl, service: options.service, base: fetch });
     const provider = new McpOAuthProvider({
       serverUrl,
@@ -134,30 +99,34 @@ export function createOAuthConnectionAuth(options: ConnectionAuthOptions): OAuth
       onRedirect: () => undefined,
     });
     try {
-      const result = await authorizeMcp(
-        refreshOnly(provider, () => {
-          missingClient = true;
-        }),
-        {
-          serverUrl,
-          ...flowTargets(client, challenge?.scope ?? scope, challenge),
-          fetch: flow.fetch,
-        },
-      );
+      // `refreshOnly` registers no client and leaves a sign-in in progress alone: its state
+      // parameter and PKCE verifier survive whatever the server refuses here.
+      const result = await authorizeMcp(provider, {
+        serverUrl,
+        ...flowTargets(client, challenge?.scope ?? scope, challenge),
+        fetch: flow.fetch,
+        refreshOnly: true,
+      });
       if (result === 'AUTHORIZED') return;
     } catch (error) {
-      // The server turned the saved sign-in down (or the client is gone): only a new sign-in helps.
-      if (missingClient || error instanceof OAuthError) {
-        log.info('An MCP server refused the saved OAuth sign-in.', {
-          reason: error instanceof OAuthError ? error.code : 'client registration missing',
-        });
+      // The server turned the saved sign-in down: only a new sign-in helps.
+      if (error instanceof OAuthError) {
+        log.info('An MCP server refused the saved OAuth sign-in.', { reason: error.code });
         throw new McpOAuthAuthorizationRequiredError();
       }
       throw error;
     }
-    // pi-mcp sends the browser redirect for a refresh it could not ask (network, timeout, server
-    // error). What stopped the request says more than "sign in": an authorization server that is
-    // down is tried again, and signing in anew would not help.
+    // pi-mcp dropped a client the server refused (`invalid_client`): only a new sign-in helps.
+    if (!(await provider.clientInformation())) {
+      log.info('An MCP server refused the saved OAuth sign-in.', {
+        reason: 'client registration missing',
+      });
+      throw new McpOAuthAuthorizationRequiredError();
+    }
+    // Otherwise pi-mcp answers REDIRECT for a refresh it could not ask (network, timeout, server
+    // error) or one the server refused with `invalid_grant`. What stopped the request says more than
+    // "sign in": an authorization server that is down is tried again, and signing in anew would not
+    // help.
     flow.check();
     throw flow.unreachable() ?? new McpOAuthAuthorizationRequiredError();
   };
