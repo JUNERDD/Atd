@@ -20,6 +20,25 @@ The panel uses the symbol as a `currentColor` alpha mask. A 26px image footprint
 mark about 15px wide inside the existing 28px button, with the complete source and padding intact.
 The website's nav shows it the same way at 24px. Settings navigation has no logo.
 
+Window-level loading (the panel and settings windows while their code loads, and the panel while
+the service starts) animates the mark's two drops twining around each other (`BrandLoader` in
+`apps/desktop/src/components/brand-loader.tsx`). They orbit their shared centre on a circle tilted
+away from the screen, so each in turn passes in front of the other, growing as it comes forward
+while the one behind shrinks and fades, and they pass back through the mark between crossings. The
+point symmetry re-forms the mark every half orbit, so each half orbit reads as a turn. Each cycle
+is three of them: the drops speed up out of the mark, rush through the middle turn and slow into
+the mark again; the speed eases but never stops. The animation runs two cycles, which brings each
+drop back to its own place. The rhythm is computed rather than tuned: the speed is one harmonic of
+the cycle, the gentlest way a loop can speed up and slow down, between the fastest top speed at
+which the spin cannot strobe and the fastest slow speed that keeps the mark readable, with every
+frame moving. `apps/desktop/scripts/brand-loader-motion.mjs` derives it and bakes it into
+transform and opacity keyframes the compositor plays (run
+`pnpm --filter @atd/desktop brand-loader-motion` after changing it; `--stats` prints the figures).
+The generator reads the drops' radius from `symbol.svg` and draws each drop's mask from it, so the
+master stays the only source of the geometry. The mark is 32px inside a 40px box that leaves room
+for a drop swelling as it comes forward. Under Reduce Motion it rests whole and breathes its
+opacity instead. Inline and in-control progress keeps the Lucide spinner.
+
 The menu bar images are 18 × 18 template images (36 × 36 at 2x) with the mark 15pt wide. Running
 and attention draw their badge in the mark's empty upper-right quadrant, centered at (13.5, 4.5),
 cut clear of both drops; unavailable dims the mark to 40%.
@@ -40,3 +59,5 @@ cut clear of both drops; unavailable dims the mark to 40%.
 foreground component (`1741:95292`), the app icons (`1741:95296`, development `1757:95728`), the
 development panel header (`1760:95766`) and the menu bar states (`1562:59933`, development
 `1759:95783`) all use it. When the mark changes, update the master and that component together.
+`App / Brand loader` (`4451:96668`) draws the loader's phases from the same paths and plays the loop
+as a prototype; `App / Window loading` (`4452:96602`) places it in the window-level loading state.

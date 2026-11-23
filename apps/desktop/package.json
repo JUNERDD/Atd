@@ -9,8 +9,9 @@
     "dev:renderer": "vite",
     "build": "vite build",
     "typecheck": "tsc -p tsconfig.json",
-    "lint": "oxlint src tests plugins scripts *.ts && node scripts/export-bridge-schema.mjs --check",
+    "lint": "oxlint src tests plugins scripts *.ts && node scripts/export-bridge-schema.mjs --check && node scripts/brand-loader-motion.mjs --check",
     "bridge-schema": "node scripts/export-bridge-schema.mjs",
+    "brand-loader-motion": "node scripts/brand-loader-motion.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

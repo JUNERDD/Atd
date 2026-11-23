@@ -438,7 +438,7 @@ body {
    a frozen indicator reads as a hang, and the loading regions, whose only animation is a short
    delayed fade: without the delay, a load that ends at once would flash them. */
 @media (prefers-reduced-motion: reduce) {
-  *:not([data-slot='spinner'], .loading-placeholder),
+  *:not([data-slot='spinner'], [data-slot='brand-loader'], .loading-placeholder),
   *::before,
   *::after {
     transition: none !important;

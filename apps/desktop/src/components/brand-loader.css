@@ -1,0 +1,63 @@
+/*
+ * `BrandLoader`: the Drops mark's two drops twine around each other. They orbit their shared centre
+ * on a circle tilted away from the screen, so each in turn passes in front of the other, growing as
+ * it comes forward while the one behind shrinks and fades, and they pass back through the mark
+ * between crossings. The drops are identical, so the mark re-forms every half orbit and each
+ * half orbit reads as a turn. Each cycle is three of them: the drops speed up out of the mark, rush
+ * through the middle turn and slow into the mark again, as gently as a loop can. The speed eases
+ * but never stops.
+ *
+ * This file is the layout; `brand-loader-motion.css` is generated from the computed rhythm
+ * (`scripts/brand-loader-motion.mjs`) and holds the cycle length, the drop mask (from
+ * `symbol.svg`), each drop's resting transform and every keyframe. All of it moves by transform
+ * and opacity alone, so the compositor keeps it smooth while the page's main thread is busy loading
+ * the window it stands in for.
+ *
+ * The drop in front is always fully opaque and the same colour as the one behind, so an overlap
+ * looks the same in either stacking order: the drops need no depth sorting.
+ */
+.brand-loader {
+  display: grid;
+  place-items: center;
+  /* The mark is 32px; the box leaves room for a drop swelling as it comes forward. */
+  width: 40px;
+  height: 40px;
+}
+.brand-loader-mark {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+/* Each drop starts centred on the mark; its transform places it. `linear` only joins the baked
+   samples: the eased, never-zero speed lives in the keyframes. */
+.brand-loader-drop {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  background-color: currentColor;
+  animation: var(--brand-loader-cycle) linear infinite;
+  will-change: transform, opacity;
+}
+.brand-loader-drop[data-drop='a'] {
+  animation-name: brand-loader-drop-a;
+}
+.brand-loader-drop[data-drop='b'] {
+  animation-name: brand-loader-drop-b;
+}
+
+/* Reduce Motion stills the orbit: the mark rests whole and breathes between full and 60% opacity,
+   which carries no movement. The sine easing keeps the breath from pausing at either end. The
+   global rule in `styles.css` exempts the root for that breath. */
+@media (prefers-reduced-motion: reduce) {
+  .brand-loader {
+    animation: brand-loader-breathe 2s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  }
+  .brand-loader-drop {
+    animation: none;
+  }
+}
+@keyframes brand-loader-breathe {
+  50% {
+    opacity: 0.6;
+  }
+}
