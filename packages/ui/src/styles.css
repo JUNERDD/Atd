@@ -588,8 +588,15 @@
  * transcript streaming in) and does not restart when React re-renders the element. The element
  * sets `--ai-shimmer-spread` and `--ai-shimmer-duration`. A percentage `background-position`
  * places the layer within (element width - layer width), so `100% + layer width` puts its left
- * edge on the element's right edge. The macOS shell's running text ports this exactly
- * (`apps/macos/Sources/AICore/Selection/ShimmerSweep.swift`).
+ * edge on the element's right edge.
+ *
+ * The sweep never stops and never runs at one speed (MOT-15). Its speed is one harmonic of the
+ * sweep, continuous across the seam: a third above its mean at the seam, where the band leaves
+ * the text and re-enters it and shows least, and a third below across the text's middle. The
+ * Bézier follows that harmonic within 4% of its speed. A third keeps the band of a
+ * three-character Chinese label ("Running") moving more than half a device pixel each frame; a
+ * two-character one runs near that floor even at one speed. The macOS shell's running text ports
+ * this exactly, curve included (`apps/macos/Sources/AICore/Selection/ShimmerSweep.swift`).
  */
 @keyframes ai-shimmer-sweep {
   from {
@@ -626,7 +633,8 @@
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
-      animation: ai-shimmer-sweep var(--ai-shimmer-duration) linear infinite;
+      animation: ai-shimmer-sweep var(--ai-shimmer-duration) cubic-bezier(0.5, 0.6667, 0.5, 0.3333)
+        infinite;
     }
   }
 }
