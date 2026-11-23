@@ -6,7 +6,7 @@
 // upload. Partial reruns exclude their own artifacts and cold uploads replace their prior ID.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
-import { parseArgs } from 'node:util';
+import { isDeepStrictEqual, parseArgs } from 'node:util';
 import { componentKey, localSourceHash, sourceHash } from './component-key.mjs';
 
 const env = process.env;
@@ -145,11 +145,24 @@ function verifyUpload(run, artifact, kind, arch) {
   const producers = jobs.filter((job) =>
     job.steps?.some((step) => step.name === proofName && succeeded(step)),
   );
-  const job = producers[0];
+  // GitHub copies successful jobs into partial retries, including their complete step timeline.
+  // Copies have fresh job IDs and attempt numbers but describe one actual runner execution.
+  const job = producers.includes(matches[0]) ? matches[0] : producers[0];
   const latestUpload = uploadSteps(matches[0]);
   if (
-    producers.length !== 1 ||
     !succeeded(job) ||
+    !id(job.runner_id) ||
+    job.steps.filter((step) => step.name.startsWith('Record uploaded artifact ')).length !== 1 ||
+    !producers.every(
+      (row) =>
+        row.run_id === job.run_id &&
+        row.head_sha === job.head_sha &&
+        row.runner_id === job.runner_id &&
+        row.started_at === job.started_at &&
+        row.completed_at === job.completed_at &&
+        succeeded(row) &&
+        isDeepStrictEqual(row.steps, job.steps),
+    ) ||
     !id(job.run_attempt) ||
     (job !== matches[0] &&
       (latestUpload.length !== 1 || latestUpload[0].conclusion !== 'skipped')) ||
