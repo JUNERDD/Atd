@@ -1,0 +1,129 @@
+name: Prepare one release component
+
+on:
+  workflow_call:
+    inputs:
+      kind:
+        type: string
+        required: true
+      arch:
+        type: string
+        required: true
+      marketing_version:
+        type: string
+        required: true
+      build_version:
+        type: string
+        required: true
+    outputs:
+      component:
+        description: Immutable artifact, source commit and input fingerprint for assembly.
+        value: ${{ jobs.prepare.outputs.component }}
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prepare:
+    name: Prepare ${{ inputs.kind }} component
+    runs-on: ${{ inputs.arch == 'arm64' && 'macos-26' || 'macos-26-intel' }}
+    timeout-minutes: 60
+    outputs:
+      component: ${{ steps.select.outputs.component }}
+    env:
+      RELEASE_ARCH: ${{ inputs.arch }}
+      RELEASE_MACHINE: ${{ inputs.arch == 'arm64' && 'arm64' || 'x86_64' }}
+      VERSION: ${{ inputs.marketing_version }}
+      BUILD_VERSION: ${{ inputs.build_version }}
+      KIND: ${{ inputs.kind }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - name: Select the native toolchain
+        run: |
+          [ "$(uname -m)" = "$RELEASE_MACHINE" ]
+          sudo xcode-select --switch /Applications/Xcode_26.3.app
+          case "$KIND" in
+            native) command -v xcodegen >/dev/null || brew install xcodegen ;;
+            service) rustup toolchain install ;;
+            *) exit 1 ;;
+          esac
+      - name: Find a verified component with matching inputs
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node apps/macos/scripts/release/components-source.mjs "$KIND"
+      - name: Compile the native shell
+        if: inputs.kind == 'native' && steps.source.outputs.artifact-id == ''
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-diagnostics"
+          node apps/macos/scripts/build.mjs --configuration Release --arch "$RELEASE_ARCH" \
+            --marketing-version "$VERSION" --build-version "$BUILD_VERSION" \
+            --native-component --timing-summary 2>&1 | tee "$RUNNER_TEMP/release-diagnostics/xcodebuild.log"
+          awk '/Build Timing Summary/{show=1} show' "$RUNNER_TEMP/release-diagnostics/xcodebuild.log" >> "$GITHUB_STEP_SUMMARY"
+      - name: Locate the pnpm store
+        if: inputs.kind == 'service' && steps.source.outputs.artifact-id == ''
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - name: Restore the pnpm store
+        if: inputs.kind == 'service' && steps.source.outputs.artifact-id == ''
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: node-cache-${{ runner.os }}-${{ inputs.arch }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Build the service, Node and add-ons
+        if: inputs.kind == 'service' && steps.source.outputs.artifact-id == ''
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @atd/macos bundle:service --marketing-version "$VERSION"
+      - name: Archive the component
+        if: steps.source.outputs.artifact-id == ''
+        env:
+          COMPONENT_KEY: ${{ steps.source.outputs.key }}
+        run: bash apps/macos/scripts/release/component-handoff.sh archive "$KIND" "$RUNNER_TEMP/component"
+      - name: Upload ${{ inputs.kind }} component
+        id: upload
+        if: steps.source.outputs.artifact-id == ''
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: atd-component-${{ inputs.kind }}-${{ inputs.arch }}-${{ steps.source.outputs.key }}
+          path: ${{ runner.temp }}/component/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+          overwrite: true
+      - name: Select the immutable component
+        id: select
+        env:
+          COMPONENT_KEY: ${{ steps.source.outputs.key }}
+          PRIOR_RUN: ${{ steps.source.outputs.run-id }}
+          ARTIFACT: ${{ steps.source.outputs.artifact-id || steps.upload.outputs.artifact-id }}
+          DIGEST: ${{ steps.source.outputs.digest || steps.upload.outputs.artifact-digest }}
+          SOURCE_SHA: ${{ steps.source.outputs.source-sha || github.sha }}
+        run: |
+          [[ "$ARTIFACT" =~ ^[1-9][0-9]*$ && "${DIGEST#sha256:}" =~ ^[a-f0-9]{64}$ && "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          component=$(jq -cn --arg key "$COMPONENT_KEY" --arg id "$ARTIFACT" \
+            --arg digest "${DIGEST#sha256:}" --arg source "$SOURCE_SHA" \
+            '{key:$key,id:$id,digest:$digest,source:$source}')
+          echo "component=$component" >> "$GITHUB_OUTPUT"
+          if [ -n "$PRIOR_RUN" ]; then status="reused from run $PRIOR_RUN"; else status="built in this run"; fi
+          echo "$KIND/$RELEASE_ARCH: $status, artifact $ARTIFACT, source $SOURCE_SHA" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload release diagnostics
+        if: always() && inputs.kind == 'native' && steps.source.outputs.artifact-id == ''
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: release-build-diagnostics-${{ inputs.arch }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-diagnostics/
+          if-no-files-found: warn
+          retention-days: 7

@@ -111,20 +111,13 @@ targets:
         script: |
           set -euo pipefail
           [ "$CONFIGURATION" = Release ] || exit 0
-          repo="$SRCROOT/../.."
-          renderer="$repo/apps/desktop/dist-native"
-          service="$repo/tmp/t7-agent-service-pack"
-          node="$repo/tmp/t7-node"
-          for required in "$renderer/index.html" "$service/dist/cli.js" "$service/build-info.json" "$node/bin/node"; do
-            if [ ! -e "$required" ]; then
-              echo "error: $required is missing. Run pnpm --filter @atd/macos bundle first."
-              exit 1
-            fi
-          done
           resources="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH"
-          rsync -a --delete "$renderer/" "$resources/renderer/"
-          rsync -a --delete --exclude .tsbuildinfo "$service/" "$resources/agent-service/"
-          rsync -a --delete "$node/" "$resources/node/"
+          if [ "${ATD_NATIVE_COMPONENT:-NO}" = YES ]; then
+            # A previous full Release build may have populated this same product.
+            rm -rf "$resources/renderer" "$resources/agent-service" "$resources/node"
+          else
+            /bin/bash "$SRCROOT/scripts/release/embed-components.sh" "$resources"
+          fi
     settings:
       base:
         PRODUCT_NAME: Atd

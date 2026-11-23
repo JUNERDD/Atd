@@ -146,6 +146,9 @@ jobs:
     name: PR release candidate
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.candidate == 'true'
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/release-candidate.yml
     with:
       marketing_version: ${{ needs.changes.outputs.marketing-version }}
@@ -296,13 +299,15 @@ jobs:
   # it, since that also skips both jobs.
   desktop:
     name: macOS desktop smoke test
-    needs: [changes, swift, rust]
+    needs: [changes, swift, rust, candidate]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Require the Swift and Rust checks
         env:
           CHANGES: ${{ needs.changes.result }}
+          REQUIRE_CANDIDATE: ${{ needs.changes.outputs.candidate }}
+          CANDIDATE: ${{ needs.candidate.result }}
           SWIFT: ${{ needs.swift.result }}
           RUST: ${{ needs.rust.result }}
           RUN_SWIFT: ${{ github.event_name != 'pull_request' || needs.changes.outputs.swift == 'true' }}
@@ -310,5 +315,9 @@ jobs:
         run: |
           echo "Change detection: $CHANGES, Swift checks: $SWIFT, Rust checks: $RUST"
           if [ "$CHANGES" = failure ]; then exit 1; fi
+          if [ "$REQUIRE_CANDIDATE" = true ]; then
+            [ "$CANDIDATE" = success ] || { echo "::error::The release candidate is not ready."; exit 1; }
+            echo "Signed installers for both architectures passed macOS 15 verification. The release candidate is ready." >> "$GITHUB_STEP_SUMMARY"
+          fi
           expected() { if [ "$1" = true ]; then echo success; else echo skipped; fi; }
           [ "$SWIFT" = "$(expected "$RUN_SWIFT")" ] && [ "$RUST" = "$(expected "$RUN_RUST")" ]

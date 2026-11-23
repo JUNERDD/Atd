@@ -241,6 +241,11 @@ jobs:
           output build true
           output publish false
           echo "$MODE run for $marketing_version (build $build_version); nothing is published." >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify the published release notes
+        if: steps.version.outputs.publish == 'true' && !contains(steps.version.outputs.marketing_version, '-')
+        env:
+          VERSION: ${{ steps.version.outputs.marketing_version }}
+        run: python3 apps/macos/scripts/release/published-notes.py "$VERSION"
       - name: Resolve the verified release candidate
         if: steps.version.outputs.build == 'true'
         id: candidate
@@ -304,6 +309,9 @@ jobs:
     name: Build candidate
     needs: version
     if: needs.version.outputs.build == 'true' && needs.version.outputs.candidate-artifact-id == ''
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/release-candidate.yml
     with:
       marketing_version: ${{ needs.version.outputs.marketing_version }}
