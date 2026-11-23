@@ -137,20 +137,13 @@ function verifyUpload(run, artifact, kind, arch) {
   if (matches.length !== 1 || !id(latest) || latest > run.run_attempt || !succeeded(matches[0]))
     throw new Error(`No unique successful ${suffix} job in run ${run.id}.`);
 
-  // A full rerun can go warm and leave an earlier attempt's cold artifact intact. The API
-  // identifies its run but omits job/attempt. Bind its creation time to exactly one cold upload
-  // using the whole-second precision of the artifact timestamp.
+  // A warm rerun can retain an earlier attempt's upload. Match its immutable ID to the
+  // successful step recorded on that attempt. Artifact and runner timestamps have distinct clocks.
   const uploadName = `Upload ${kind} component`;
   const uploadSteps = (job) => job.steps?.filter((step) => step.name === uploadName) ?? [];
-  const seconds = (time) => Math.floor(Date.parse(time) / 1000);
-  const created = seconds(artifact.created_at);
+  const proofName = `Record uploaded artifact ${artifact.id}`;
   const producers = jobs.filter((job) =>
-    uploadSteps(job).some(
-      (step) =>
-        succeeded(step) &&
-        seconds(step.started_at) <= created &&
-        created <= seconds(step.completed_at),
-    ),
+    job.steps?.some((step) => step.name === proofName && succeeded(step)),
   );
   const job = producers[0];
   const latestUpload = uploadSteps(matches[0]);
