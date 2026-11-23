@@ -15,7 +15,7 @@ minidex = "=0.39.0"
 # Exact pin: 0.x with breaking releases every few weeks. Scores fuzzy (out-of-order-free
 # subsequence) name matches in `fuzzy.rs`; `safe_read` keeps its SIMD loads inside each haystack.
 frizbee = { version = "=0.13.0", features = ["safe_read"] }
-ignore = "0.4.33"
+ignore = "0.4.35"
 libc = "0.2.191"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
