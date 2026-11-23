@@ -21,8 +21,6 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     MARKETING_VERSION: 0.1.0
     CURRENT_PROJECT_VERSION: '1'
-    # iPhone only.
-    TARGETED_DEVICE_FAMILY: '1'
     # Simulator builds are signed to run locally, which needs no team and still applies the App
     # Group and Keychain entitlements below. Device and TestFlight builds pass the team through
     # ATD_DEVELOPMENT_TEAM and sign automatically.
@@ -48,10 +46,17 @@ settings:
 packages:
   AtdMobile:
     path: .
+targetTemplates:
+  iPhone:
+    platform: iOS
+    settings:
+      base:
+        # XcodeGen sets the device family per target. The app and every extension are iPhone only.
+        TARGETED_DEVICE_FAMILY: '1'
 targets:
   Atd:
     type: application
-    platform: iOS
+    templates: [iPhone]
     sources:
       - path: App
         excludes:
@@ -142,7 +147,7 @@ targets:
         AtdURLScheme: $(ATD_URL_SCHEME)
   AtdKeyboard:
     type: app-extension
-    platform: iOS
+    templates: [iPhone]
     sources:
       - path: Keyboard
         excludes:
@@ -188,7 +193,7 @@ targets:
             RequestsOpenAccess: true
   AtdShare:
     type: app-extension
-    platform: iOS
+    templates: [iPhone]
     sources:
       - path: Share
         excludes:
@@ -244,7 +249,7 @@ targets:
             NSExtensionJavaScriptPreprocessingFile: SharePage
   AtdWidgets:
     type: app-extension
-    platform: iOS
+    templates: [iPhone]
     sources:
       - path: Widgets
         excludes:
@@ -295,7 +300,7 @@ targets:
     # LockedCameraCapture: the camera Atd shows while the iPhone is locked. It has no network and
     # no App Group, so it takes no entitlements; its photos reach the app after the person unlocks.
     type: extensionkit-extension
-    platform: iOS
+    templates: [iPhone]
     sources:
       - path: Capture
         excludes:
