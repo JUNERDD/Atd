@@ -148,7 +148,8 @@ struct IslandComposeCard: View {
 /// secondary colour; or a problem with the last attachment, in the label colour after a warning
 /// glyph, with Open System Settings beside a refused screenshot's. It wraps to
 /// ``IslandMetrics/maxNoteLines`` lines and ends in an ellipsis past them, its whole text the
-/// tooltip.
+/// tooltip. A refused file's note is the reason, with the file's name on one secondary line under
+/// it, shortened in the middle so its extension stays.
 struct IslandComposeNote: View {
   let model: IslandModel
   let note: ComposeDraft.Note?
@@ -160,8 +161,13 @@ struct IslandComposeNote: View {
     case .limit: labels.composeLimit
     case .screenRecording: labels.composeScreenRecording
     case .failed(let message): message
+    case .refused(let reason, let file): "\(Self.reason(reason))\n\(file)"
     case nil: attach ? labels.composeNoteAttach : labels.composeNote
     }
+  }
+
+  private static func reason(_ reason: ResourceImportFailureReason) -> String {
+    ShellStrings.shared.text(AttachFailureStringKey(reason))
   }
 
   var body: some View {
@@ -172,11 +178,18 @@ struct IslandComposeNote: View {
           IslandGlyph(name: IslandIcons.warning, side: 12)
             .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 2 }
         }
-        Text(verbatim: text)
-          .font(IslandType.hint)
-          .lineLimit(IslandMetrics.maxNoteLines)
-          .truncationMode(.tail)
-          .fixedSize(horizontal: false, vertical: true)
+        if case .refused(let reason, let file) = note {
+          VStack(alignment: .leading, spacing: 0) {
+            line(Self.reason(reason))
+            Text(verbatim: file)
+              .font(IslandType.hint)
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+              .truncationMode(.middle)
+          }
+        } else {
+          line(text)
+        }
       }
       .foregroundStyle(note == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -188,5 +201,13 @@ struct IslandComposeNote: View {
       }
     }
     .padding(.horizontal, IslandMetrics.rowPadding)
+  }
+
+  private func line(_ text: String) -> some View {
+    Text(verbatim: text)
+      .font(IslandType.hint)
+      .lineLimit(IslandMetrics.maxNoteLines)
+      .truncationMode(.tail)
+      .fixedSize(horizontal: false, vertical: true)
   }
 }

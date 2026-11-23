@@ -40,8 +40,9 @@ export const NativeFolderRefSchema = Type.Object(
 
 /**
  * An item the shell did not add: its basename (a path reaches the page only in a registered
- * folder's ref) and the reason. `unreadable`, `unsupported` and `tooLarge` come from a file import;
- * `unreadable`, `notDirectory` and `forbidden` (a folder no task may read) from a folder
+ * folder's ref) and the reason. `missing`, `denied` (macOS privacy protection refused the read),
+ * `unreadable`, `unsupported`, `tooLarge` and `noSpace` (no room to store it) come from a file
+ * import; `unreadable`, `notDirectory` and `forbidden` (a folder no task may read) from a folder
  * registration. `failed`: the request itself failed (the service was unreachable or answered an
  * error), so the item may be fine and adding it again may work. `tooMany`: the item came past what
  * one gesture adds, `MAX_ATTACHMENTS` files and `MAX_FOLDERS` folders, and was left out unread.
@@ -50,9 +51,12 @@ export const ImportFailureSchema = Type.Object(
   {
     name: Text(255),
     reason: Type.Union([
+      Type.Literal('missing'),
+      Type.Literal('denied'),
       Type.Literal('unreadable'),
       Type.Literal('unsupported'),
       Type.Literal('tooLarge'),
+      Type.Literal('noSpace'),
       Type.Literal('notDirectory'),
       Type.Literal('forbidden'),
       Type.Literal('failed'),
@@ -145,4 +149,9 @@ export const NativeFileCalls = {
     ),
     result: Type.Object({ saved: Type.Boolean() }, { additionalProperties: false }),
   },
+  /**
+   * Opens System Settings at Privacy & Security › Files & Folders, where the user allows Atd a
+   * folder after refusing a `denied` file's read. macOS grants this access only there.
+   */
+  'files.openPrivacySettings': { params: Empty, result: Empty },
 } satisfies Record<string, { params: TSchema; result: TSchema }>;

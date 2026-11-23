@@ -121,6 +121,12 @@ public struct FilesSaveResult: Codable, Equatable, Sendable {
   }
 }
 
+/// Params of the `files.openPrivacySettings` call.
+public typealias FilesOpenPrivacySettingsParams = NativeEmpty
+
+/// Result of the `files.openPrivacySettings` call.
+public typealias FilesOpenPrivacySettingsResult = NativeEmpty
+
 /// Params of the `text.write` call.
 public struct TextWriteParams: Codable, Equatable, Sendable {
   public let target: String

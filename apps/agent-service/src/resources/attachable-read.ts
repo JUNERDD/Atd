@@ -56,8 +56,8 @@ export class AttachableRejected extends Error {
  */
 export async function inspectAttachable(filePath: string): Promise<InspectedFile> {
   const name = path.basename(filePath);
-  const realPath = await realpath(filePath).catch(() => unreadable(name));
-  const info = await stat(realPath).catch(() => unreadable(name));
+  const realPath = await realpath(filePath).catch((error: unknown) => notRead(name, error));
+  const info = await stat(realPath).catch((error: unknown) => notRead(name, error));
   if (!info.isFile())
     throw new AttachableRejected('unsupported', `${name} is not a file that can be attached.`);
   if (info.size > MAX_ATTACHMENT_BYTES) throw tooLarge(name);
@@ -72,7 +72,7 @@ export async function inspectAttachable(filePath: string): Promise<InspectedFile
 
 /** The bytes of an inspected file, under the same rules. */
 export async function readInspected(file: InspectedFile): Promise<Uint8Array> {
-  const bytes = await readFile(file.realPath).catch(() => unreadable(file.name));
+  const bytes = await readFile(file.realPath).catch((error: unknown) => notRead(file.name, error));
   // The file can grow between stat and read; the limit applies to the bytes that are stored.
   if (bytes.length > MAX_ATTACHMENT_BYTES) throw tooLarge(file.name);
   // Kept as read: a copy would hold the file in memory twice.
@@ -92,8 +92,23 @@ export async function readAttachable(filePath: string): Promise<AttachableFile> 
   };
 }
 
-function unreadable(name: string): never {
-  throw new AttachableRejected('unreadable', `${name} could not be read.`);
+/**
+ * A failed read of `name`, by Node's error code: the code says which reason the user can act on,
+ * while the error's message names the absolute path and never travels on.
+ */
+function notRead(name: string, error: unknown): never {
+  const code = error instanceof Error && 'code' in error ? error.code : undefined;
+  switch (code) {
+    case 'ENOENT':
+    case 'ENOTDIR':
+      throw new AttachableRejected('missing', `${name} could not be found.`);
+    // macOS privacy protection answers EPERM; EACCES, a file mode denial, is no System Settings
+    // matter, so it stays unreadable.
+    case 'EPERM':
+      throw new AttachableRejected('denied', `Atd is not allowed to read ${name}.`);
+    default:
+      throw new AttachableRejected('unreadable', `${name} could not be read.`);
+  }
 }
 
 function tooLarge(name: string): AttachableRejected {

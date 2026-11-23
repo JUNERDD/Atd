@@ -68,13 +68,23 @@ export const ResourceImportRequestSchema = Type.Object(
 export type ResourceImportRequest = Static<typeof ResourceImportRequestSchema>;
 
 /**
- * Why a path was not imported, for the client's own wording: the file could not be read, it is
- * not a regular file, or it is larger than `MAX_ATTACHMENT_BYTES`. Every format is attachable.
+ * Why a path was not imported, for the client's own wording. Every format is attachable.
+ *
+ * - `missing`: nothing is at the path (moved, deleted, or not yet written by the app it came from).
+ * - `denied`: macOS refused the read (`EPERM`, as its privacy protection answers), which the user
+ *   can change in System Settings; a POSIX permission denial (`EACCES`) is `unreadable`.
+ * - `unreadable`: any other read failure.
+ * - `unsupported`: not a regular file.
+ * - `tooLarge`: larger than `MAX_ATTACHMENT_BYTES`.
+ * - `noSpace`: the file was read but the service's disk had no room to store it.
  */
 export const ResourceImportFailureReasonSchema = Type.Union([
+  Type.Literal('missing'),
+  Type.Literal('denied'),
   Type.Literal('unreadable'),
   Type.Literal('unsupported'),
   Type.Literal('tooLarge'),
+  Type.Literal('noSpace'),
 ]);
 export type ResourceImportFailureReason = Static<typeof ResourceImportFailureReasonSchema>;
 

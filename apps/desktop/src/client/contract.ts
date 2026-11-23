@@ -53,14 +53,18 @@ export interface FileSearchBridge {
 }
 
 /**
- * Why the shell did not add an item: a file import (`unreadable`, `unsupported`, `tooLarge`), a
- * folder registration (`unreadable`, `notDirectory`, `forbidden` for a folder no task may read), a
+ * Why the shell did not add an item: a file import (`missing`, `denied` by macOS privacy
+ * protection, `unreadable`, `unsupported`, `tooLarge`, `noSpace` to store it), a folder
+ * registration (`unreadable`, `notDirectory`, `forbidden` for a folder no task may read), a
  * request that failed as a whole (`failed`), or an item past what one gesture adds (`tooMany`).
  */
 export type ImportFailureReason =
+  | 'missing'
+  | 'denied'
   | 'unreadable'
   | 'unsupported'
   | 'tooLarge'
+  | 'noSpace'
   | 'notDirectory'
   | 'forbidden'
   | 'failed'

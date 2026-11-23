@@ -34,8 +34,10 @@ describe('composer folders', () => {
     const textbox = screen.getByRole('textbox', { name: 'Task prompt' });
     await user.click(screen.getByRole('button', { name: 'Attach context' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Add folder…' }));
-    // A refused pick explains itself; the registered folder becomes a chip.
-    expect(await screen.findByRole('status')).toHaveTextContent('notes.txt is not a folder.');
+    // A refused pick explains itself under its name; the registered folder becomes a chip.
+    const refused = await screen.findByRole('status');
+    expect(refused).toHaveTextContent('Not a folder');
+    expect(refused).toHaveTextContent('notes.txt');
     await waitFor(() => expect(draftOf(textbox).text).toBe('@project '));
     expect(screen.getByTitle('Folder: /Users/me/project')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Send task' }));

@@ -109,6 +109,114 @@
         }
       }
     },
+    "attachFailure.missing" : {
+      "comment" : "Note on the command island's compose card when the first file picked for it could not be attached; %@ is the file's name. Nothing is at the file's path: it was moved or deleted, or the app it came from has not written it yet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File is missing or not saved yet"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件不存在或尚未保存"
+          }
+        }
+      }
+    },
+    "attachFailure.denied" : {
+      "comment" : "Note on the command island's compose card when the first file picked for it could not be attached; %@ is the file's name. macOS privacy protection refused the read; the user can allow Atd in System Settings.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No access to this file"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有读取此文件的权限"
+          }
+        }
+      }
+    },
+    "attachFailure.unreadable" : {
+      "comment" : "Note on the command island's compose card when the first file picked for it could not be attached; %@ is the file's name. The file could not be read for another reason.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't read this item"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法读取此项"
+          }
+        }
+      }
+    },
+    "attachFailure.unsupported" : {
+      "comment" : "Note on the command island's compose card when the first file picked for it could not be attached; %@ is the file's name. It is not a regular file.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not a file that can be attached"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不是可附加的文件"
+          }
+        }
+      }
+    },
+    "attachFailure.tooLarge" : {
+      "comment" : "Note on the command island's compose card when the first file picked for it could not be attached; %@ is the file's name. It is over the attachment size limit.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File is too large to attach"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "文件太大，无法附加"
+          }
+        }
+      }
+    },
+    "attachFailure.noSpace" : {
+      "comment" : "Note on the command island's compose card when the first file picked for it could not be attached; %@ is the file's name. The disk had no room to store it.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not enough storage to add this file"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "存储空间不足，无法添加此文件"
+          }
+        }
+      }
+    },
     "automation.notice.attention.body" : {
       "comment" : "Body of a needs-attention automation notification when the number of declined actions and questions is unknown",
       "extractionState" : "manual",
