@@ -1,4 +1,6 @@
-// Bakes the brand loader (`src/components/brand-loader.tsx`) into CSS: the drop mask and keyframes.
+// Bakes the brand loader (`src/components/brand-loader.tsx`) into CSS, the drop mask and keyframes,
+// and the same keyframes into Swift for the macOS shell's native loading placeholder
+// (`WindowLoadingView`), which stands in for the page until it paints.
 // The mark's two drops twine around each other. They orbit their shared centre on a circle tilted
 // away from the screen, so each in turn passes in front of the other, and pass back through the
 // mark between crossings. The drops stay flat; depth shows as scale, and the drop behind fades. The
@@ -20,15 +22,24 @@
 //   mark still holds within LOGO_ARC degrees of rest for LOGO seconds, and there the drops' outline
 //   must still move at FLOOR px/s.
 //
-//   node scripts/brand-loader-motion.mjs          write src/components/brand-loader-motion.css
-//   node scripts/brand-loader-motion.mjs --check  exit 1 when that file is stale
+//   node scripts/brand-loader-motion.mjs          write the stylesheet and the Swift keyframes
+//   node scripts/brand-loader-motion.mjs --check  exit 1 when either is stale
 //   node scripts/brand-loader-motion.mjs --stats  print the computed rhythm instead
 //   node scripts/brand-loader-motion.mjs --curve  print the sampled rhythm curve as JSON
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const OUTPUT = fileURLToPath(new URL('../src/components/brand-loader-motion.css', import.meta.url));
+const CSS_OUTPUT = fileURLToPath(
+  new URL('../src/components/brand-loader-motion.css', import.meta.url),
+);
+const SWIFT_OUTPUT = fileURLToPath(
+  new URL(
+    '../../macos/Sources/AIShell/Windows/Generated/BrandLoaderMotion.swift',
+    import.meta.url,
+  ),
+);
 const SYMBOL = new URL('../../../packages/ui/src/assets/brands/atd/symbol.svg', import.meta.url);
 
 /** The loader draws the 84-unit mark at 32px, centred in a 40px box. */
@@ -47,10 +58,12 @@ const BACK_OPACITY = 0.38;
  */
 const TURNS = 3;
 /**
- * Cycles the animation spans. An odd number of half orbits leaves the drops in each other's places;
- * repeating the cycle brings each back to its own, so neither element jumps at the loop's seam.
+ * Cycles the animation spans. A cycle of an odd number of half orbits carries each drop to the
+ * other's place, so drop `b` plays drop `a`'s keyframes one cycle later, and two cycles bring each
+ * back to its own place, so neither jumps at the loop's seam.
  */
-const REPEATS = TURNS % 2 ? 2 : 1;
+const REPEATS = 2;
+if (TURNS % 2 === 0) throw new Error('TURNS must be odd for drop b to follow drop a a cycle later.');
 /** The farthest a drop's outline may jump in one 60Hz frame: a quarter of its 16px width. */
 const STROBE = 4;
 /** Seconds each crossing stays on screen even at top speed, about the eye's integration time. */
@@ -257,23 +270,16 @@ function round(value, places) {
 const transform = (drop) =>
   `translate(${round(drop.x, 3)}px, ${round(drop.y, 3)}px) rotate(${round(drop.r, 2)}deg) scale(${round(drop.s, 4)})`;
 
-function keyframes(which, frames, duration) {
-  const states = frames.map((frame) => ({ t: frame.t, ...pose(frame.theta)[which] }));
-  const kept = simplify(states, [
+/** Drop `a`'s states at the samples linear interpolation needs; drop `b` replays them. */
+function dropStates(frames) {
+  const states = frames.map((frame) => ({ t: frame.t, ...pose(frame.theta).a }));
+  return simplify(states, [
     [(state) => state.x, 0.02],
     [(state) => state.y, 0.02],
     [(state) => state.r, 0.4],
     [(state) => state.s, 0.003],
     [(state) => state.o, 0.01],
   ]);
-  const blocks = kept.map(
-    (state) =>
-      `  ${round((state.t / duration) * 100, 3)}% {\n    transform: ${transform(state)};\n    opacity: ${round(state.o, 3)};\n  }`,
-  );
-  return {
-    css: `@keyframes brand-loader-drop-${which} {\n${blocks.join('\n')}\n}`,
-    count: kept.length,
-  };
 }
 
 const svgUrl = (viewBox, body) =>
@@ -286,7 +292,7 @@ const svgUrl = (viewBox, body) =>
     .replaceAll('%3A', ':')
     .replaceAll('%2C', ',')}")`;
 
-function stylesheet({ frames, duration }) {
+function stylesheet({ cycle, duration }, states) {
   const [r, d] = [RADIUS, 2 * RADIUS];
   // One drop in its own box: the circle fills it and the tip is its lower-right corner.
   const mask = svgUrl(`0 0 ${d} ${d}`, `<path d='M${d} ${d}H${r}A${r} ${r} 0 1 1 ${d} ${r}Z'/>`);
@@ -297,7 +303,9 @@ function stylesheet({ frames, duration }) {
  * this mask and these keyframes shape lives in \`brand-loader.css\`.
  */
 .brand-loader {
-  --brand-loader-cycle: ${round(duration, 3)}s;
+  --brand-loader-duration: ${round(duration, 3)}s;
+  /* Drop b plays drop a's keyframes one cycle of the rhythm later. */
+  --brand-loader-b-delay: ${-round(cycle, 3)}s;
 }
 .brand-loader-drop {
   width: ${round(d * PX, 3)}px;
@@ -311,9 +319,66 @@ function stylesheet({ frames, duration }) {
 .brand-loader-drop[data-drop='b'] {
   transform: ${transform(rest.b)};
 }
-${keyframes('a', frames, duration).css}
-${keyframes('b', frames, duration).css}
+@keyframes brand-loader-drop {
+${states.map((state) => `  ${round((state.t / duration) * 100, 3)}% {\n    transform: ${transform(state)};\n    opacity: ${round(state.o, 3)};\n  }`).join('\n')}
+}
 `;
+}
+
+/** The same keyframes for the shell, already in `swift format` layout. */
+function swiftSource({ cycle, duration }, states) {
+  const rows = states.map((state) => {
+    const values = [state.t / duration, state.x, state.y, state.r, state.s, state.o];
+    const places = [5, 3, 3, 2, 4, 3];
+    return `    .init(${values.map((value, i) => round(value, places[i])).join(', ')}),`;
+  });
+  const source = `// Generated by apps/desktop/scripts/brand-loader-motion.mjs from its computed rhythm. Do not edit;
+// run \`pnpm --filter @atd/desktop brand-loader-motion\` after changing that script.
+
+/// The brand loader's motion for the native loading placeholder: the keyframes of
+/// \`apps/desktop/src/components/brand-loader-motion.css\`, in points from the mark's centre with y
+/// pointing down. Drop \`b\` plays drop \`a\`'s keyframes \`bDelay\` seconds later.
+enum BrandLoaderMotion {
+  struct Keyframe {
+    /// Share of \`duration\`, from 0 to 1.
+    let time: Double
+    let x: Double
+    let y: Double
+    /// Degrees, clockwise on screen.
+    let rotation: Double
+    let scale: Double
+    let opacity: Double
+
+    init(
+      _ time: Double, _ x: Double, _ y: Double, _ rotation: Double, _ scale: Double,
+      _ opacity: Double
+    ) {
+      self.time = time
+      self.x = x
+      self.y = y
+      self.rotation = rotation
+      self.scale = scale
+      self.opacity = opacity
+    }
+  }
+
+  /// Seconds the animation runs before it repeats: ${REPEATS} cycles of the rhythm.
+  static let duration = ${round(duration, 3)}
+  /// One cycle of the rhythm, after which drop \`a\` stands where drop \`b\` stood.
+  static let bDelay = ${round(cycle, 3)}
+  /// The square each drop fills, its circle and its tip, in points.
+  static let dropSize: Double = ${round(2 * RADIUS * PX, 3)}
+  /// The mark's square, and the box that leaves room for a drop swelling as it comes forward.
+  static let markSize: Double = ${round(84 * PX, 3)}
+  static let boxSize: Double = ${BOX}
+  /// Drop \`a\`, from the mark at rest.
+  static let keyframes: [Keyframe] = [
+${rows.join('\n')}
+  ]
+}
+`;
+  if (source.split('\n').length > 340) throw new Error('The Swift keyframes outgrow the 350-line limit.');
+  return source;
 }
 
 const computed = rhythm();
@@ -329,7 +394,7 @@ if (process.argv.includes('--stats')) {
     logo: `±${LOGO_ARC}° for ${round(logo, 3)}s`,
     crossing: `${round(enter, 1)}°–${round(leave, 1)}°, ${round((leave - enter) / top, 3)}s at top`,
     slowest: `${round(slowest, 1)}px/s`,
-    keyframes: ['a', 'b'].map((which) => keyframes(which, frames, duration).count),
+    keyframes: dropStates(frames).length,
   });
 } else if (process.argv.includes('--curve')) {
   const samples = computed.frames.filter((_, i, all) => i % 4 === 0 || i === all.length - 1);
@@ -343,24 +408,34 @@ if (process.argv.includes('--stats')) {
     ),
   );
 } else {
-  const css = stylesheet(computed);
+  const states = dropStates(computed.frames);
+  const outputs = [
+    [CSS_OUTPUT, stylesheet(computed, states)],
+    [SWIFT_OUTPUT, swiftSource(computed, states)],
+  ];
   if (process.argv.includes('--check')) {
     const normalize = (text) => text.replace(/\s+/g, '');
-    let current = '';
-    try {
-      current = readFileSync(OUTPUT, 'utf8');
-    } catch {
-      // A missing file is stale as well.
-    }
-    if (normalize(current) !== normalize(css)) {
-      console.error(
-        `${OUTPUT} is out of date with its rhythm. Run: pnpm --filter @atd/desktop brand-loader-motion`,
-      );
-      process.exit(1);
+    for (const [file, text] of outputs) {
+      let current = '';
+      try {
+        current = readFileSync(file, 'utf8');
+      } catch {
+        // A missing file is stale as well.
+      }
+      if (normalize(current) !== normalize(text)) {
+        console.error(
+          `${file} is out of date with its rhythm. Run: pnpm --filter @atd/desktop brand-loader-motion`,
+        );
+        process.exit(1);
+      }
     }
   } else {
-    writeFileSync(OUTPUT, css);
-    // The repository formatter owns the file layout; `format:check` covers it like any other file.
-    execFileSync('pnpm', ['exec', 'oxfmt', OUTPUT], { stdio: 'inherit' });
+    for (const [file, text] of outputs) {
+      mkdirSync(path.dirname(file), { recursive: true });
+      writeFileSync(file, text);
+    }
+    // The repository formatter owns the stylesheet's layout; `format:check` covers it like any other
+    // file. The Swift is emitted in its formatter's layout, which `pnpm check:swift` verifies.
+    execFileSync('pnpm', ['exec', 'oxfmt', CSS_OUTPUT], { stdio: 'inherit' });
   }
 }

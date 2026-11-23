@@ -34,8 +34,10 @@ which the spin cannot strobe and the fastest slow speed that keeps the mark read
 frame moving. `apps/desktop/scripts/brand-loader-motion.mjs` derives it and bakes it into
 transform and opacity keyframes the compositor plays (run
 `pnpm --filter @atd/desktop brand-loader-motion` after changing it; `--stats` prints the figures).
-The generator reads the drops' radius from `symbol.svg` and draws each drop's mask from it, so the
-master stays the only source of the geometry. The mark is 32px inside a 40px box that leaves room
+It writes the same keyframes into Swift for the macOS shell, whose native placeholder
+(`BrandLoaderView`) shows the loader until a window's page paints. The generator reads the drops'
+radius from `symbol.svg` and draws each drop's mask from it, so the master stays the only source of
+the geometry. The mark is 32px inside a 40px box that leaves room
 for a drop swelling as it comes forward. Under Reduce Motion it rests whole and breathes its
 opacity instead. Inline and in-control progress keeps the Lucide spinner.
 

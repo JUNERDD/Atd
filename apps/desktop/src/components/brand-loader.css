@@ -8,8 +8,9 @@
  * but never stops.
  *
  * This file is the layout; `brand-loader-motion.css` is generated from the computed rhythm
- * (`scripts/brand-loader-motion.mjs`) and holds the cycle length, the drop mask (from
- * `symbol.svg`), each drop's resting transform and every keyframe. All of it moves by transform
+ * (`scripts/brand-loader-motion.mjs`) and holds the animation's length, drop b's delay, the drop
+ * mask (from `symbol.svg`), each drop's resting transform and every keyframe. The macOS shell's
+ * native placeholder plays the same keyframes (`BrandLoaderView`). All of it moves by transform
  * and opacity alone, so the compositor keeps it smooth while the page's main thread is busy loading
  * the window it stands in for.
  *
@@ -35,14 +36,12 @@
   inset: 0;
   margin: auto;
   background-color: currentColor;
-  animation: var(--brand-loader-cycle) linear infinite;
+  animation: brand-loader-drop var(--brand-loader-duration) linear infinite;
   will-change: transform, opacity;
 }
-.brand-loader-drop[data-drop='a'] {
-  animation-name: brand-loader-drop-a;
-}
+/* A cycle of the rhythm carries drop a to where b stands, so b plays a's keyframes a cycle on. */
 .brand-loader-drop[data-drop='b'] {
-  animation-name: brand-loader-drop-b;
+  animation-delay: var(--brand-loader-b-delay);
 }
 
 /* Reduce Motion stills the orbit: the mark rests whole and breathes between full and 60% opacity,
