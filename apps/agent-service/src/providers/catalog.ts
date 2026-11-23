@@ -1,7 +1,11 @@
-import type { Api, Model } from '@earendil-works/pi-ai';
+import type { Api, Model, ModelCost, ThinkingLevelMap } from '@earendil-works/pi-ai';
 import { builtinProviders } from '@earendil-works/pi-ai/providers/all';
 import type { ModelRuntime } from '@earendil-works/pi-coding-agent';
-import type { ServiceCatalogEntry, ServiceModelDefinition } from '@atd/agent-contracts';
+import {
+  THINKING_LEVEL_ORDER,
+  type ServiceCatalogEntry,
+  type ServiceModelDefinition,
+} from '@atd/agent-contracts';
 import { LLAMA_PROVIDER } from './llama.js';
 import { ACCOUNT_PROVIDERS } from './auth-policy.js';
 import { nativeThinkingModel } from './native-thinking.js';
@@ -61,6 +65,29 @@ function isAmbient(providerId: string): boolean {
   return providerId === 'amazon-bedrock' || providerId === 'google-vertex';
 }
 
+type ContractLevelMap = NonNullable<ServiceModelDefinition['thinkingLevelMap']>;
+
+/**
+ * A Pi thinking-level map as the contract holds it, wherever Pi models enter the contract. Pi's
+ * schema types every level `| undefined`; the contract keeps only the levels a map sets, `null`
+ * marking one the model refuses.
+ */
+export function contractLevelMap(map: ThinkingLevelMap | undefined): ContractLevelMap | undefined {
+  if (!map) return undefined;
+  const levels: ContractLevelMap = {};
+  for (const level of THINKING_LEVEL_ORDER) {
+    const value = map[level];
+    if (value !== undefined) levels[level] = value;
+  }
+  return levels;
+}
+
+/** A Pi model's prices as the contract holds them: `tiers` only when the model has some. */
+function contractCost(cost: ModelCost): ServiceModelDefinition['cost'] {
+  const { input, output, cacheRead, cacheWrite, tiers } = cost;
+  return { input, output, cacheRead, cacheWrite, ...(tiers ? { tiers } : {}) };
+}
+
 export function toServiceModel(model: Model<Api>): ServiceModelDefinition {
   const {
     id,
@@ -75,6 +102,7 @@ export function toServiceModel(model: Model<Api>): ServiceModelDefinition {
     cost,
     thinkingLevelMap,
   } = nativeThinkingModel(model);
+  const levels = contractLevelMap(thinkingLevelMap);
   return {
     id,
     name,
@@ -85,8 +113,8 @@ export function toServiceModel(model: Model<Api>): ServiceModelDefinition {
     input,
     contextWindow,
     maxTokens,
-    cost,
-    ...(thinkingLevelMap ? { thinkingLevelMap } : {}),
+    cost: contractCost(cost),
+    ...(levels ? { thinkingLevelMap: levels } : {}),
   };
 }
 

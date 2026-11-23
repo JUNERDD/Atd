@@ -5,7 +5,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   ShieldX,
-  SquareArrowOutUpRight,
+  SquareArrowUpRightExit,
 } from 'lucide-react';
 import type { AutomationItem } from '@atd/agent-contracts';
 import { Alert, AlertDescription, AlertTitle } from '@atd/ui/components/alert';
@@ -113,7 +113,7 @@ export function ComputerAuthorization({
             variant="outline"
             onClick={() => void automationsBridge().showTask(trial.taskId).catch(showErrorToast)}
           >
-            <SquareArrowOutUpRight data-icon="inline-start" />
+            <SquareArrowUpRightExit data-icon="inline-start" />
             {t('computer.trial.open')}
           </Button>
         )}

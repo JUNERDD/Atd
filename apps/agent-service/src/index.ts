@@ -87,6 +87,11 @@ export async function createService(
     onShutdownRequest?: () => void;
   } = {},
 ): Promise<ServiceHandle> {
+  // Pi code that is given no directory resolves the agent dir from this: pi-subagents' config and
+  // agent discovery, and pi-web-access's `web-search.json` and DuckDuckGo cooldown file (its first
+  // read is cached for the process). Set before any task runs, so none of them reaches the user's
+  // own `~/.pi/agent`; the processes the service starts inherit it.
+  process.env.PI_CODING_AGENT_DIR = config.paths.agentDir;
   const log = createLogger(process.env.AI_AGENT_LOG_LEVEL === 'debug' ? 'debug' : 'info');
   const systemProxy = options.systemProxy ?? (await createSystemProxy(log));
   const startedAt = new Date().toISOString();

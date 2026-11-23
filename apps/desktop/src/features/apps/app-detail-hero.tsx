@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
-import { Ellipsis, Pencil, SquareArrowOutUpRight, SquarePen, Trash2 } from 'lucide-react';
+import { Ellipsis, Pencil, SquareArrowUpRightExit, SquarePen, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AppDetail, AppSummary } from '@atd/agent-contracts';
 import { Button } from '@atd/ui/components/button';
@@ -135,7 +135,7 @@ export function AppDetailHero({
             {pending === 'open' ? (
               <Spinner data-icon="inline-start" />
             ) : (
-              <SquareArrowOutUpRight data-icon="inline-start" />
+              <SquareArrowUpRightExit data-icon="inline-start" />
             )}
             {t('panel.open')}
           </Button>

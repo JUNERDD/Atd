@@ -226,6 +226,9 @@ final class ShellBridge {
     case .filesSave(let params):
       let saved = try await shell.attachments.save(params)
       return try Self.encode(FilesSaveResult(saved: saved))
+    case .filesOpenPrivacySettings:
+      shell.attachments.openPrivacySettings()
+      return try Self.encode(NativeEmpty())
     case .approvalRequest(let params):
       return try Self.encode(await shell.launchApprovals.request(serverId: params.serverId))
     case .toolbarSet(let params):

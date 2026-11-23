@@ -41,7 +41,7 @@ extension CaptureSession {
   private func scrollableRegion(
     for rect: CGRect, in live: CaptureLongScreenshot.Live, on owner: CaptureOverlayView
   ) -> CGRect {
-    if let area = longScreenshot.answer(for: rect)?.area {
+    if let area = longScreenshot.answer(for: rect)?.probe.area {
       return desktop.geometry.desktopRect(area.frame).union(live.selection)
     }
     let quartz = desktop.geometry.quartzRect(live.selection)
@@ -53,7 +53,7 @@ extension CaptureSession {
   }
 
   private func scrollBand(for rect: CGRect, in live: CaptureLongScreenshot.Live) -> CGRect {
-    guard let area = longScreenshot.answer(for: rect)?.area else { return live.selection }
+    guard let area = longScreenshot.answer(for: rect)?.probe.area else { return live.selection }
     let intersection = live.selection.intersection(desktop.geometry.desktopRect(area.frame))
     return intersection.isNull || intersection.isEmpty ? live.selection : intersection
   }

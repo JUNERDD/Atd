@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import type { McpFetch } from '@earendil-works/pi-mcp';
 import {
+  authorizeMcp,
   McpOAuthAuthorizationRequiredError,
+  McpOAuthProvider,
   type McpOAuthState,
   type OAuthChallenge,
 } from '@earendil-works/pi-mcp/oauth';
@@ -13,13 +15,15 @@ import { createOAuthConnectionAuth, OAuthProviders } from '../dist/mcp/oauth-pro
 import { KeychainOAuthStore } from '../dist/mcp/oauth-store.js';
 import type { OAuthConnectionAuth } from '../dist/mcp/types.js';
 import { sleep } from './mcp-fake-server.ts';
+import { approveAuthorization } from './mcp-http-kit.ts';
 import { at, httpRecord, memoryLog, waitFor } from './mcp-kit.ts';
 import { startOAuthMock, type OAuthMock } from './mcp-oauth-mock.ts';
 import { installMemoryKeyring } from './memory-keyring.ts';
 
 /**
  * The auth a connection carries: which store and auth a server has, when a token is renewed (by a
- * connection, or by a sign-in start that shares the refresh), and when only a new sign-in helps.
+ * connection, or by a sign-in start that shares the refresh), when only a new sign-in helps, and
+ * that a renewal leaves a sign-in waiting for the browser able to finish.
  */
 
 const SERVICE = 'oauth-auth';
@@ -216,6 +220,69 @@ test('only a new sign-in helps without a refresh token or a client, or when more
   const challenge = at(session.challenges);
   assert.equal(challenge.error, 'insufficient_scope');
   assert.equal(challenge.scope, 'read write');
+});
+
+test('a client the server no longer knows is dropped, and a renewal registers no other', async () => {
+  const session = await signedIn();
+  mock.clients.delete(session.grant.clientId);
+  const before = { ...mock.counters };
+  // A request on the way fails too: the refused client still decides, not the network.
+  const timedOut = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+  let requests = 0;
+  const flaky: McpFetch = (input, init) =>
+    (requests += 1) === 1 ? Promise.reject(timedOut) : fetch(input, init);
+  await assert.rejects(
+    rejectedBy(session.auth, session.grant.accessToken, 'Bearer', flaky),
+    McpOAuthAuthorizationRequiredError,
+  );
+  assert.equal(mock.counters.tokenRequests, before.tokenRequests + 1, 'one refresh was tried');
+  assert.equal(mock.counters.registrations, before.registrations, 'no client was registered');
+  const kept = await session.store.load();
+  assert.equal(kept?.clientInformation, undefined, 'the refused client is gone');
+  assert.equal(kept?.tokens, undefined, 'and its tokens with it');
+  await assert.rejects(session.auth.renew(), McpOAuthAuthorizationRequiredError);
+  assert.equal(mock.counters.tokenRequests, before.tokenRequests + 1, 'nothing left to refresh');
+});
+
+test('a sign-in waiting for the browser completes after renewals the server took or refused', async () => {
+  const session = await signedIn({ expiresAt: Date.now() + 1_000 });
+  // The browser step of a sign-in on the same store, as oauth-signin.ts takes it.
+  let redirect: URL | undefined;
+  const provider = new McpOAuthProvider({
+    serverUrl: mock.url,
+    redirectUrl: at(session.grant.redirectUris),
+    clientMetadata: { client_name: 'Agent Service' },
+    store: session.store,
+    onRedirect: (url) => {
+      redirect = url;
+    },
+  });
+  const browserStep = await authorizeMcp(provider, { serverUrl: mock.url, skipRefresh: true });
+  assert.equal(browserStep, 'REDIRECT');
+  const waiting = await session.store.load();
+  assert.ok(waiting?.codeVerifier && waiting.oauthState, 'the sign-in waits');
+
+  assert.notEqual(await session.auth.token(), session.grant.accessToken, 'a renewal it took');
+  mock.revokeEverything();
+  const carried = (await session.store.load())?.tokens?.access_token;
+  await assert.rejects(rejectedBy(session.auth, carried), McpOAuthAuthorizationRequiredError);
+  const after = await session.store.load();
+  assert.equal(after?.tokens, undefined, 'a renewal it refused');
+  assert.equal(after?.codeVerifier, waiting.codeVerifier, "the sign-in's verifier stays");
+  assert.equal(after?.oauthState, waiting.oauthState, 'and so does its state');
+
+  // The browser answers, and the code is exchanged as oauth-exchange.ts does.
+  const answer = new URL((await approveAuthorization(redirect ?? '')).location).searchParams;
+  assert.equal(answer.get('state'), waiting.oauthState);
+  const iss = answer.get('iss');
+  const exchanged = await authorizeMcp(provider, {
+    serverUrl: mock.url,
+    authorizationCode: answer.get('code') ?? '',
+    ...(iss === null ? {} : { iss }),
+  });
+  assert.equal(exchanged, 'AUTHORIZED');
+  const token = await session.auth.token();
+  assert.ok(token !== undefined && mock.accepts(token), 'connections send the new sign-in');
 });
 
 test('renew() renews now, and shares the refresh a connection has in flight', async () => {

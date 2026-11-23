@@ -34,7 +34,7 @@ interface XmlParser {
 }
 
 type XmlParserClass = new (options: {
-  errorHandler: Record<string, (message: unknown) => void>;
+  onError: (level: 'warning' | 'error' | 'fatalError', message: string) => void;
 }) => XmlParser;
 
 type XmlSerializerClass = new () => { serializeToString(node: XmlNode): string };
@@ -78,16 +78,22 @@ function isConstructor<T>(value: unknown): value is T {
   return typeof value === 'function';
 }
 
-/** An XML document's root element. xmldom resolves no external entities and loads nothing. */
+/**
+ * An XML document's root element. xmldom resolves no external entities and loads nothing. Its
+ * warnings and recoverable errors are passed over, as a reader of other applications' files must;
+ * a fatal error, a missing root element included, throws xmldom's `ParseError` whatever `onError`
+ * does, and rejects the document.
+ */
 export function parseXml(source: string): XmlElement {
   Parser ??= parserClass();
-  const fail = (message: unknown) => {
-    throw new Error(`malformed XML: ${String(message).split('\n', 1)[0] ?? ''}`);
-  };
-  const ignore = () => undefined;
-  const document = new Parser({
-    errorHandler: { warning: ignore, error: ignore, fatalError: fail },
-  }).parseFromString(source, 'text/xml');
+  let document: ReturnType<XmlParser['parseFromString']>;
+  try {
+    // Without `onError`, xmldom reports every problem on the console.
+    document = new Parser({ onError: () => undefined }).parseFromString(source, 'text/xml');
+  } catch (error) {
+    if (!(error instanceof Error && error.name === 'ParseError')) throw error;
+    throw new Error(`malformed XML: ${error.message.split('\n', 1)[0] ?? ''}`, { cause: error });
+  }
   if (!document.documentElement) throw new Error('malformed XML: no root element');
   return document.documentElement;
 }

@@ -1,43 +1,16 @@
-"""Run dmgbuild and correct its background bookmark before the image is compressed."""
+"""Run dmgbuild and verify the app's signature inside the image before it is compressed.
+
+dmgbuild 2.0 writes the background as an alias only, without the bookmark Finder on macOS 26
+failed to resolve (dmgbuild/dmgbuild#273), so the image needs no .DS_Store correction.
+"""
 
 import argparse
-import struct
 import subprocess
 from pathlib import Path
 
 from dmgbuild import build_dmg
-from ds_store import DSStore
-from mac_alias import (
-    Data,
-    URL,
-    kBookmarkVolumePath,
-    kBookmarkVolumeProperties,
-    kBookmarkVolumeURL,
-)
-from mac_alias.bookmark import kCFURLVolumeIsDiskImage, kCFURLVolumeIsInternal
 
 from dmg_progress import Progress
-
-
-def fix_background_bookmark(mount_point):
-    # mac-alias 2.2.2 marks every volume as internal. Finder cannot resolve the
-    # volume-relative background path on a DMG with that flag (macOS 26).
-    # Keep dmgbuild's volume identity and file IDs, but describe the actual volume.
-    with DSStore.open(str(mount_point / ".DS_Store"), "r+") as store:
-        bookmark = store["."]["pBBk"]
-        flags, valid, reserved = struct.unpack(
-            "<QQQ", bookmark[kBookmarkVolumeProperties].bytes
-        )
-        flags = (flags & ~kCFURLVolumeIsInternal) | kCFURLVolumeIsDiskImage
-        valid |= kCFURLVolumeIsInternal | kCFURLVolumeIsDiskImage
-        bookmark[kBookmarkVolumeProperties] = Data(
-            struct.pack("<QQQ", flags, valid, reserved)
-        )
-        # The versioned volume name contains a space; file URLs must escape it.
-        bookmark[kBookmarkVolumeURL] = URL(
-            Path(bookmark[kBookmarkVolumePath]).as_uri() + "/"
-        )
-        store["."]["pBBk"] = bookmark
 
 
 def main():
@@ -65,7 +38,6 @@ def main():
         ):
             if mount_point is None:
                 raise RuntimeError("dmgbuild did not provide the mounted image")
-            fix_background_bookmark(mount_point)
             # Layout metadata must not invalidate the signed app that users install.
             progress({"type": "operation::start", "operation": "codesign::verify"})
             subprocess.run(

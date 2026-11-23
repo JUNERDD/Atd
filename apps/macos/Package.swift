@@ -35,11 +35,18 @@ let package = Package(
   // Direct dependencies are pinned exactly; Package.resolved (checked in) pins their transitive
   // dependencies, and scripts/build.mjs makes xcodebuild use only those versions.
   dependencies: [
+    // The updater (App/AppUpdater), embedded as Sparkle.framework (MIT, licenses/sparkle-LICENSE,
+    // which also carries the BSD, MIT and zlib terms of the code Sparkle bundles).
     .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1"),
     // The official MCP SDK (Apache-2.0/MIT, licenses/mcp-swift-sdk-LICENSE): the client side of
     // the private stdio MCP connection to the computer-use browser worker
-    // (Computer/Engines/Browser).
-    .package(url: "https://github.com/modelcontextprotocol/swift-sdk", exact: "0.11.0"),
+    // (Computer/Engines/Browser). Its MCP target links swift-log (Apache-2.0,
+    // licenses/swift-log-LICENSE and -NOTICE), swift-system (Apache-2.0 with the Runtime Library
+    // Exception, licenses/swift-system-LICENSE) and eventsource (MIT,
+    // licenses/eventsource-LICENSE).
+    // swift-nio, swift-atomics and swift-collections in Package.resolved never reach the app: only
+    // the SDK's conformance executables and eventsource's AsyncHTTPClient trait (off) use them.
+    .package(url: "https://github.com/modelcontextprotocol/swift-sdk", exact: "0.12.1"),
     // Apple's CommonMark/GFM parser (Apache-2.0 with the Runtime Library Exception,
     // licenses/swift-markdown-LICENSE and -NOTICE; its cmark-gfm is BSD-2-Clause,
     // licenses/swift-cmark-LICENSE): the result cards' Markdown (Island/ResultText), drawn by the
@@ -99,9 +106,14 @@ let package = Package(
       name: "SelectionAXFixture", dependencies: ["AIShell"], path: "Tests/SelectionAXFixture"),
     .executableTarget(
       name: "PanelFocusFixture", dependencies: ["AIShell"], path: "Tests/PanelFocusFixture"),
-    // Real WKWebView checks of the private WebKit settings the shell depends on.
+    // Real WKWebView checks of the private WebKit settings the shell depends on. MCP builds the
+    // browser worker's tool results that BrowserWorkerResultTests decodes.
     .testTarget(
-      name: "AIShellTests", dependencies: ["AIShell", "SelectionAXFixture", "PanelFocusFixture"]),
+      name: "AIShellTests",
+      dependencies: [
+        "AIShell", "SelectionAXFixture", "PanelFocusFixture",
+        .product(name: "MCP", package: "swift-sdk"),
+      ]),
   ],
   swiftLanguageModes: [.v6]
 )

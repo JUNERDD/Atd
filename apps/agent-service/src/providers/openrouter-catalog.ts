@@ -3,7 +3,7 @@ import { Value } from 'typebox/value';
 import { hasApi, type Api, type Model, type Provider } from '@earendil-works/pi-ai';
 import { parse, type ServiceConnection, type ServiceModelDefinition } from '@atd/agent-contracts';
 import { CatalogFailure, readCatalogJson } from './catalog-http.js';
-import { toServiceModel } from './catalog.js';
+import { contractLevelMap, toServiceModel } from './catalog.js';
 import { openRouterReasoning, openRouterReasoningProvider } from './openrouter-reasoning.js';
 import { uniqueModels } from './connection-view.js';
 
@@ -157,7 +157,7 @@ export async function loadOpenRouterModels(
       const defaultThinkingLevel = reasoning ? capabilities.defaultThinkingLevel : undefined;
       // OpenRouter translates output_config.effort to the same gateway efforts on Messages.
       const thinkingLevelMap = reasoning
-        ? (capabilities.thinkingLevelMap ?? model?.thinkingLevelMap)
+        ? (capabilities.thinkingLevelMap ?? contractLevelMap(model?.thinkingLevelMap))
         : undefined;
       return [
         {

@@ -46,9 +46,11 @@ function searchDetails(queries: string[], outcomes: QueryOutcome[]): SearchRawDe
 }
 
 /**
- * Runs every query against the keyless DuckDuckGo provider concurrently (the package bounds each
- * request to 30 s and honors `signal`). One failed query is reported in the text; when all fail,
- * the call fails. Call only after the web gate allowed the call.
+ * Runs every query against the keyless DuckDuckGo provider. All are issued at once; the package's
+ * limiter (web/package.ts) starts them about 10 s apart, refuses one at once as rate limited when
+ * it could not start within 20 s, bounds each to 30 s from the call and honors `signal`. One
+ * failed query is reported in the text; when all fail, the call fails. Call only after the web
+ * gate allowed the call.
  */
 export async function runSearch(
   queries: string[],

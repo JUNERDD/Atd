@@ -1,4 +1,4 @@
-import { History, LayoutDashboard, SquareArrowOutUpRight } from 'lucide-react';
+import { History, LayoutDashboard, SquareArrowUpRightExit } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { AppBuildDetails } from '@atd/agent-contracts';
 import { Badge } from '@atd/ui/components/badge';
@@ -58,7 +58,7 @@ export function AppCard({ details }: { details: AppBuildDetails }) {
             aria-disabled={busy || undefined}
             onClick={() => void actions.open(details.appId)}
           >
-            <SquareArrowOutUpRight data-icon="inline-start" />
+            <SquareArrowUpRightExit data-icon="inline-start" />
             {t('card.open')}
           </Button>
           <Button

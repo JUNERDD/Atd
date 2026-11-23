@@ -75,9 +75,12 @@ public struct ResourcesImportedEvent: Codable, Equatable, Sendable {
     }
 
     public enum Reason: String, Codable, Equatable, Sendable {
+      case missing
+      case denied
       case unreadable
       case unsupported
       case tooLarge
+      case noSpace
       case notDirectory
       case forbidden
       case failed

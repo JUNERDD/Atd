@@ -85,6 +85,9 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "files.pickFolder":
         call = try .filesPickFolder(container.value(.params, FilesPickFolderParams.self))
       case "files.save": call = try .filesSave(container.value(.params, FilesSaveParams.self))
+      case "files.openPrivacySettings":
+        call = try .filesOpenPrivacySettings(
+          container.value(.params, FilesOpenPrivacySettingsParams.self))
       case "text.write": call = try .textWrite(container.value(.params, TextWriteParams.self))
       case "commandProgress.show":
         call = try .commandProgressShow(container.value(.params, CommandProgressShowParams.self))

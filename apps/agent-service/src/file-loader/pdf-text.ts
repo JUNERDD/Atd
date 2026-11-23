@@ -4,8 +4,10 @@ import type { getDocumentProxy } from 'unpdf';
 import type { PdfPagesReply } from './jobs.js';
 
 /**
- * pdf.js's binary CMaps, vendored from `cmaps/` of pdfjs-dist 6.4.299, the pdf.js unpdf 1.9.0
- * bundles (Adobe's BSD-3-Clause license in its LICENSE). Text set in CJK fonts that use a
+ * pdf.js's binary CMaps, vendored from `cmaps/` of pdfjs-dist 6.4.299; pdf.js has not changed
+ * them since 2014, so they serve the pdf.js 6.5.438 that unpdf 2.2.1 bundles too (Adobe's
+ * BSD-3-Clause license in its LICENSE). Without `pdfjs-dist` installed, unpdf supplies no CMaps
+ * of its own, so this `cMapUrl` is the only one pdf.js gets. Text set in CJK fonts that use a
  * predefined CMap reads only with them. Both `src/file-loader/` and `dist/file-loader/` resolve to
  * the package's `vendor/` (package.json `files`). A plain path with a trailing separator: pdf.js in
  * Node reads `${cMapUrl}${name}.bcmap` with `fs.readFile`, which takes no `file:` URL string.

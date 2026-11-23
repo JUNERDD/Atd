@@ -82,7 +82,7 @@ export function runtimePackageDir(name) {
 }
 
 /** The pinned playwright-core the worker runs on (apps/agent-service/package.json). */
-export const PLAYWRIGHT_CORE_VERSION = '1.64.1';
+export const PLAYWRIGHT_CORE_VERSION = '1.65.1';
 export const BROWSER_WORKER_VERSION = '0.6.0';
 
 /** The worker's tool set, as its `capabilities` reports it (verify-app/worker-check.mjs). */

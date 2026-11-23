@@ -248,6 +248,15 @@ final class AttachmentImporter {
     }
   }
 
+  /// `files.openPrivacySettings`: Privacy & Security › Files & Folders, where macOS lets the user
+  /// allow Atd the folder of a file whose read it refused (`denied`). Files the user picks or drops
+  /// stay readable without it; a refusal comes from paths that reached Atd any other way.
+  func openPrivacySettings() {
+    let pane = "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders"
+    guard let url = URL(string: pane) else { return }
+    NSWorkspace.shared.open(url)
+  }
+
   /// The service's import of local files, at most ``AttachmentRules/maxPathsPerImport``.
   func importPaths(_ urls: [URL]) async throws(BridgeError) -> ResourceImportResponse {
     let paths = urls.filter(\.isFileURL).prefix(AttachmentRules.maxPathsPerImport).map {

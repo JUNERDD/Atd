@@ -24,12 +24,14 @@ nonisolated struct WindowSnapshot: Sendable {
   var windows: [CaptureWindow] { entries.map(\.window) }
 
   /// On-screen windows of other apps from the normal level up to open menus, without the
-  /// desktop, invisible windows and the Dock's screen-sized window. The app's own windows are
-  /// left out: they are not in the frozen image either.
+  /// desktop, invisible windows, the Dock's screen-sized window and other screen overlays
+  /// (``isScreenOverlay(_:pid:displays:)``). The app's own windows are left out: they are not in
+  /// the frozen image either.
   static func take() -> WindowSnapshot {
     let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
     guard let infos = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]]
     else { return WindowSnapshot(entries: []) }
+    let displays = activeDisplayBounds()
     let ownPID = ProcessInfo.processInfo.processIdentifier
     let highest = Int(CGWindowLevelForKey(.popUpMenuWindow))
     let dock = Int(CGWindowLevelForKey(.dockWindow))
@@ -42,7 +44,8 @@ nonisolated struct WindowSnapshot: Sendable {
           (info[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1 > 0,
           let bounds = info[kCGWindowBounds as String] as? NSDictionary,
           let frame = CGRect(dictionaryRepresentation: bounds),
-          min(frame.width, frame.height) >= minimumSide
+          min(frame.width, frame.height) >= minimumSide,
+          !isScreenOverlay(frame, pid: pid, displays: displays)
         else { return nil }
         return Entry(
           window: CaptureWindow(
@@ -50,6 +53,31 @@ nonisolated struct WindowSnapshot: Sendable {
           title: info[kCGWindowName as String] as? String,
           ownerName: info[kCGWindowOwnerName as String] as? String)
       })
+  }
+
+  /// Whether a window of `frame` (Quartz) owned by `pid` is a see-through overlay of a whole
+  /// display: one that covers a display exactly and belongs to a background agent (an app
+  /// without a Dock icon), such as Notification Center's while a banner shows. It draws little
+  /// of itself and lets the pointer through, so it is never the window a point lies over, but
+  /// as the frontmost it would hide every window under it from element detection.
+  private static func isScreenOverlay(_ frame: CGRect, pid: pid_t, displays: [CGRect]) -> Bool {
+    let coversDisplay = displays.contains { display in
+      abs(frame.minX - display.minX) < 1 && abs(frame.minY - display.minY) < 1
+        && abs(frame.width - display.width) < 1 && abs(frame.height - display.height) < 1
+    }
+    guard coversDisplay, let app = NSRunningApplication(processIdentifier: pid) else {
+      return false
+    }
+    return app.activationPolicy != .regular
+  }
+
+  /// Every active display's bounds in Quartz points.
+  private static func activeDisplayBounds() -> [CGRect] {
+    var count: UInt32 = 0
+    guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return [] }
+    var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+    guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return [] }
+    return ids.prefix(Int(count)).map(CGDisplayBounds)
   }
 
   /// The app and window frontmost at `point` (Quartz): the app's localized name and the

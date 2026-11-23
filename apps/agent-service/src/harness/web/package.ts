@@ -4,19 +4,26 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 /**
- * The parts of `pi-web-access 0.44.0` the web tools reuse, loaded module by module through jiti
+ * The parts of `pi-web-access 0.48.0` the web tools reuse, loaded module by module through jiti
  * from the package's TypeScript sources. The package factory (`index.ts`) and its bundled
  * `dist/index.js` are never loaded: index.ts statically imports the curator server, Gemini web
  * (browser cookies) and every keyed provider, and reads `web-search.json`. The modules loaded
  * here import none of those:
  *
  * - `duckduckgo.ts` (keyless search) → activity.ts, domain-filter-normalization.ts,
- *   search-result-count-normalization.ts; its `perplexity.ts` import is type-only and erased.
+ *   search-result-count-normalization.ts, utils.ts, and duckduckgo-rate-limit.ts → abortable.ts,
+ *   brave-rate-limit.ts (only its sleep and wait formatting; it imports nothing); its
+ *   `perplexity.ts` import is type-only and erased. The limiter queues this process's searches
+ *   (one every 10 s, at most 10 in 10 minutes) and fails one at once, as rate limited, when it
+ *   could not start within 20 s; after a bot check it pauses every search for 30 minutes, doubling
+ *   up to 2 hours, and shares that pause through `duckduckgo-cooldown.json` in the web-search
+ *   config dir (utils.ts `getWebSearchConfigDir`), which `createService` points at the service's
+ *   agent dir through `PI_CODING_AGENT_DIR`.
  * - `ssrf-protection.ts` (`fetchRemoteUrl`: public-address check on every hop, manual redirects)
- *   → utils.ts. Loading it probes whether a `web-search.json` exists (utils.ts
- *   `getWebSearchConfigDir`); the file is only opened by the SSRF and fetch config loaders,
- *   which the web tools never call — they pass explicit options —
- *   and by `loadConfiguredProxy`, which `fetchRemoteUrl` reaches only with a proxy in play.
+ *   → utils.ts. Loading it resolves the `web-search.json` path in that same dir; the file is only
+ *   opened by the SSRF and fetch config loaders, which the web tools never call — they pass
+ *   explicit options — and by `loadConfiguredProxy`, which `fetchRemoteUrl` reaches only with a
+ *   proxy in play.
  * - `data-uri-sanitize.ts` (strips inline base64 data URIs from extracted text).
  * - `rsc-extract.ts` (Next.js React Server Components payloads) and `declared-web-links.ts`
  *   (RFC 8288 / `<link rel>` declarations such as `service-desc`); neither imports anything.
@@ -35,7 +42,7 @@ import { pathToFileURL } from 'node:url';
  */
 
 /** The version the module list above was verified against; `loadWebPackage` refuses others. */
-export const WEB_PACKAGE_VERSION = '0.44.0';
+export const WEB_PACKAGE_VERSION = '0.48.0';
 
 export interface SearchHit {
   title: string;

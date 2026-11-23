@@ -490,6 +490,16 @@
 }
 
 /*
+ * Custom loops ease but never stop (MOT-15 in the apple-design skill). `--ata-ease-sine` is a
+ * sine, the curve of every oscillation (breathing, floating) whether it runs `alternate` or turns
+ * at a keyframe: it is still only at the instant it turns, where `ease-in-out` lingers there
+ * about a tenth longer.
+ */
+:root {
+  --ata-ease-sine: cubic-bezier(0.37, 0, 0.63, 1);
+}
+
+/*
  * Loading placeholders (`Skeleton`) rest still, so a quick load swaps static shapes for content;
  * a wait past one second starts a slow breath between full and 60% opacity, in the spirit of the
  * system Pulse symbol effect rather than a sweeping highlight. Under Reduce Motion the shapes stay
@@ -502,7 +512,7 @@
 }
 
 @utility animate-placeholder {
-  animation: ata-placeholder-pulse 2s ease-in-out 1s infinite;
+  animation: ata-placeholder-pulse 2s var(--ata-ease-sine) 1s infinite;
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
@@ -578,8 +588,15 @@
  * transcript streaming in) and does not restart when React re-renders the element. The element
  * sets `--ai-shimmer-spread` and `--ai-shimmer-duration`. A percentage `background-position`
  * places the layer within (element width - layer width), so `100% + layer width` puts its left
- * edge on the element's right edge. The macOS shell's running text ports this exactly
- * (`apps/macos/Sources/AICore/Selection/ShimmerSweep.swift`).
+ * edge on the element's right edge.
+ *
+ * The sweep never stops and never runs at one speed (MOT-15). Its speed is one harmonic of the
+ * sweep, continuous across the seam: a third above its mean at the seam, where the band leaves
+ * the text and re-enters it and shows least, and a third below across the text's middle. The
+ * Bézier follows that harmonic within 4% of its speed. A third keeps the band of a
+ * three-character Chinese label ("Running") moving more than half a device pixel each frame; a
+ * two-character one runs near that floor even at one speed. The macOS shell's running text ports
+ * this exactly, curve included (`apps/macos/Sources/AICore/Selection/ShimmerSweep.swift`).
  */
 @keyframes ai-shimmer-sweep {
   from {
@@ -616,7 +633,8 @@
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
-      animation: ai-shimmer-sweep var(--ai-shimmer-duration) linear infinite;
+      animation: ai-shimmer-sweep var(--ai-shimmer-duration) cubic-bezier(0.5, 0.6667, 0.5, 0.3333)
+        infinite;
     }
   }
 }

@@ -276,6 +276,11 @@ export interface SettingsBridge {
    * its pane in System Settings; `screenRecordingTrusted` follows the outcome.
    */
   requestScreenRecording: () => Promise<void>;
+  /**
+   * Opens System Settings at Privacy & Security › Files & Folders, where the user allows Atd a
+   * folder after macOS refused a file's read (`denied`). There is no prompt to show again.
+   */
+  openFilesPrivacySettings: () => Promise<void>;
   /** The open panel on application bundles; empty when cancelled. */
   pickApps: () => Promise<ExcludedApp[]>;
   onChange: (listener: (settings: SettingsSnapshot) => void) => () => void;

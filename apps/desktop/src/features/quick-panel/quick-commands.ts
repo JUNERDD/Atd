@@ -1,7 +1,7 @@
 import {
+  ArrowsToAxisDashedHorizontal,
   Astroid,
   BrainCircuit,
-  FoldVertical,
   Gauge,
   History,
   Layers,
@@ -105,7 +105,7 @@ export const QUICK_COMMANDS: readonly QuickCommand[] = [
   {
     kind: 'run',
     id: 'compact',
-    icon: FoldVertical,
+    icon: ArrowsToAxisDashedHorizontal,
     keywords: ['summarize', 'summary', 'context', 'tokens'],
     blockedBy: ({ compact }) => compact,
     run: (actions) => actions.compact(),

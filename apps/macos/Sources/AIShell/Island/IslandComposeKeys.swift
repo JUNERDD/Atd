@@ -188,8 +188,10 @@ extension CommandProgressController {
       case .files:
         let response = try await attachments.pickFiles()
         let files = response.imported.map { FileRef($0.resource) }
-        // The card has one note: the first refused file's reason, in the service's words.
-        let refused = response.failures.first.map { ComposeDraft.Note.failed($0.message) }
+        // The card has one note: the first refused file's reason and name.
+        let refused = response.failures.first.map {
+          ComposeDraft.Note.refused($0.reason, file: AttachmentRules.basename($0.path))
+        }
         if files.isEmpty { return refused.map { .note($0) } ?? .nothing }
         return .files(files, refused: refused)
       }

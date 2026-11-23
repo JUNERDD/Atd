@@ -12,6 +12,9 @@ public struct ComposeDraft: Equatable, Sendable {
     case screenRecording
     /// The attachment failed, in the shell's words.
     case failed(String)
+    /// The service refused a chosen file: why, and the file's name (its basename), which the card
+    /// shows on its own line under the reason.
+    case refused(ResourceImportFailureReason, file: String)
   }
 
   /// The most files the card holds, the contract's limit (`ComposedInputSchema`).

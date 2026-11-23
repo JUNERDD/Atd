@@ -338,6 +338,6 @@ private nonisolated struct StubCaptureTargeting: ElementTargeting {
   func begin(windows: [CaptureWindow]) async -> ElementDetection { .windowsOnly }
   func targets(at point: CGPoint) async -> [CGRect] { [] }
   func describe(at point: CGPoint, frame: CGRect) async -> ElementDescription? { nil }
-  func scrollArea(around selection: CGRect) async -> LongScreenshotScrollArea? { nil }
+  func scrollArea(around selection: CGRect) async -> LongScreenshotScrollProbe { .unknown }
   func end() async {}
 }

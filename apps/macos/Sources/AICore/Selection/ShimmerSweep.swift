@@ -2,8 +2,8 @@
 /// (`packages/ui/src/components/ai-elements/shimmer.tsx`, `.ai-shimmer` in
 /// `packages/ui/src/styles.css`) as the conversation's running rows use it, with its defaults, so
 /// the shell's running text moves exactly like the app's: a foreground-coloured band sweeps left
-/// to right across text in the muted colour, linearly, once every ``duration`` seconds, without
-/// end.
+/// to right across text in the muted colour once every ``duration`` seconds, without end, on the
+/// page's ``easing``.
 ///
 /// The band is a horizontal gradient as wide as itself, transparent → foreground → transparent,
 /// its half-width ``spreadPerCharacter`` points per character, and its centre travels from one
@@ -19,6 +19,10 @@
 public struct ShimmerSweep: Equatable, Sendable {
   /// Seconds per sweep (the page's `duration` default).
   public static let duration = 2.0
+  /// The sweep's timing curve, the page's `cubic-bezier()` control points: the band never stops
+  /// and never runs at one speed (MOT-15 in the apple-design skill), a third faster than its mean
+  /// where it leaves the text and re-enters it and a third slower across the text's middle.
+  public static let easing = (x1: 0.5, y1: 2.0 / 3, x2: 0.5, y2: 1.0 / 3)
   /// The band's half-width per character, in points (the page's `spread` default).
   public static let spreadPerCharacter = 2.0
   /// The band's half-width.

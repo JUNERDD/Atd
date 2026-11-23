@@ -149,7 +149,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .guide-capture-frame {
-    animation: guide-capture-breathe 3.2s ease-in-out infinite alternate;
+    animation: guide-capture-breathe 3.2s var(--ata-ease-sine) infinite alternate;
   }
 }
 @keyframes guide-capture-breathe {

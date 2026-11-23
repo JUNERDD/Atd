@@ -17,8 +17,9 @@ import type { LightDesign } from './light-design';
  *
  * Motion: the streaks drift along the band in both directions, a shimmer travels up it, and every
  * twenty-odd seconds a soft swell sweeps the stroke from the warm end to the cool one, like the pen
- * passing again. `start` is a moment with the swell near the warm end and the cool end lit, which
- * is also the still frame under Reduce Motion.
+ * passing again, lingering over each lit end and hurrying through the dim middle, never stopping
+ * (MOT-15 in the apple-design skill). `start` is a moment with the swell near the warm end and the
+ * cool end lit, which is also the still frame under Reduce Motion.
  *
  * Cost: a lit pixel takes four or five noises; pixels well off the band, and those beside it in
  * the dim middle, return after one.
@@ -73,8 +74,11 @@ vec3 light(vec2 f, vec2 p, float t) {
   vec3 echoCol = mix(cool, warm, side);
 
   // The swell: the pen passing again, warm end to cool, once every 22.5 seconds; it wraps while
-  // off the frame.
-  float phase = mod(t * .16, 3.6) - 1.8;
+  // off the frame. Its speed swings half its mean either side on the pass's second harmonic, so it
+  // never runs at one speed or stops: slowest over the two lit ends, fastest through the dim
+  // middle and the wrap.
+  float pass = mod(t, 22.5) / 22.5;
+  float phase = 3.6 * (pass + .5 / (2. * TAU) * sin(2. * TAU * pass)) - 1.8;
   float sw = (along - phase) / .35;
   float swell = .5 * exp(-sw * sw);
 
@@ -97,5 +101,6 @@ vec3 light(vec2 f, vec2 p, float t) {
   /** The stroke: nearly straight, its upper side crisper than its lower, the echo well above it. */
   uniforms: { u_bow: 0.04, u_width: [0.2, 0.32], u_echo: 0.55, u_calm: 0.1 },
   maxPixels: 250_000,
-  start: 8000,
+  // The swell stands where one speed put it at 8 s, so the still frame keeps its composition.
+  start: 8870,
 };

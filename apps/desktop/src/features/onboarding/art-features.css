@@ -276,18 +276,25 @@
   height: 100%;
 }
 
+/*
+ * The loops never hold a frame (MOT-15). The last row's line and the automation's next-run bar
+ * write themselves in from the left and then clear from the same end, their keyframes carrying the
+ * easing; the tick that the bar runs into fills as the bar reaches it, stays done while the bar
+ * drains into it, and fades before the bar sets off again, so the bar keeps that loop moving. The
+ * pointer floats on a sine.
+ */
 @media (prefers-reduced-motion: no-preference) {
   .guide-app-row:nth-child(3) .guide-app-line {
-    animation: guide-reveal-x 6s ease-in-out infinite;
+    animation: guide-reveal-x 6s infinite;
   }
   .guide-auto-next {
-    animation: guide-reveal-x 7.2s linear infinite;
+    animation: guide-reveal-x 7.2s infinite;
   }
   .guide-auto-tick:last-child::after {
-    animation: guide-auto-done 7.2s ease-out infinite;
+    animation: guide-auto-done 7.2s var(--ata-ease-sine) infinite;
   }
   .guide-pointer {
-    animation: guide-pointer-move 4.8s ease-in-out infinite alternate;
+    animation: guide-pointer-move 4.8s var(--ata-ease-sine) infinite alternate;
   }
 }
 @keyframes guide-pointer-move {
@@ -298,35 +305,39 @@
     transform: translate(calc(var(--u) * 24), calc(var(--u) * 22));
   }
 }
+/*
+ * The head crosses the line in the first half and the tail follows it in the second (translating
+ * by the line's own width keeps the right end in place), so the empty line jumps back unseen.
+ * Both ends ride one speed curve, one harmonic of the cycle at half its mean either side: fastest
+ * while the line is empty, slowest as it is whole. The line stays at least four-fifths written
+ * for a third of each cycle, nearly as long as the old pause, and the row's line still moves over
+ * half a device pixel each frame. Each half is that harmonic as a Bézier, within 1% of its speed.
+ */
 @keyframes guide-reveal-x {
-  0%,
-  8% {
-    opacity: 1;
-    transform: scaleX(0);
+  0% {
+    transform: translateX(0) scaleX(0);
+    animation-timing-function: cubic-bezier(0.425, 0.638, 0.575, 0.788);
   }
-  44%,
-  84% {
-    opacity: 1;
-    transform: scaleX(1);
+  50% {
+    transform: translateX(0) scaleX(1);
+    animation-timing-function: cubic-bezier(0.425, 0.212, 0.575, 0.362);
   }
-  96%,
   100% {
-    opacity: 0;
-    transform: scaleX(1);
+    transform: translateX(100%) scaleX(0);
   }
 }
+/* The tick grows fastest just before the bar arrives at its slowest, at 50%. */
 @keyframes guide-auto-done {
   0%,
-  38% {
+  44% {
     opacity: 0;
     transform: scale(0.4);
   }
-  44%,
-  84% {
+  52%,
+  86% {
     opacity: 1;
     transform: scale(1);
   }
-  96%,
   100% {
     opacity: 0;
     transform: scale(1);

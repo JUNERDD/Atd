@@ -22,7 +22,7 @@ nonisolated extension LongScreenshotEngine {
     let first = frame.rows(0..<geometry.height, width: width)
     let firstThumbnail = thumbnails.make(first)
     let area =
-      geometry.areaRows != geometry.bandRows ? frame.rows(geometry.areaRows, width: width) : nil
+      geometry.measuresArea ? frame.rows(geometry.areaRows, width: width) : nil
     let head = !geometry.headRows.isEmpty ? frame.rows(geometry.headRows, width: width) : nil
     let tail = !geometry.tailRows.isEmpty ? frame.rows(geometry.tailRows, width: width) : nil
     return InitialSeed(

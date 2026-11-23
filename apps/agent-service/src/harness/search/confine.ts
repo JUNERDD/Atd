@@ -1,6 +1,6 @@
 import { readFile, readdir, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
-import type { FindOperations, GrepOperations, LsOperations } from '@earendil-works/pi-coding-agent';
+import type { FindOperations, LsOperations } from '@earendil-works/pi-coding-agent';
 import { inside, resolveToolPath } from '../../service-fs.js';
 import { pathGlob } from './glob.js';
 import { ripgrepFiles } from './ripgrep.js';
@@ -70,10 +70,20 @@ async function realOrNearest(absolute: string): Promise<string> {
 }
 
 /**
- * pi's pluggable grep/find/ls operations for one call, each confined to `roots`. They are the
- * second line of confinement after the argument check: every path pi touches (search roots,
- * context-line file reads, listed entries) must stay inside those roots. find globs through
- * ripgrep with the call's `signal`, never through pi's fd download path.
+ * What the service's grep (grep.ts) reads: whether the searched path is a directory, and the files
+ * its context lines come from. pi's own `GrepOperations` no longer reads files.
+ */
+export interface GrepOperations {
+  isDirectory(absolutePath: string): Promise<boolean>;
+  readFile(absolutePath: string): Promise<string>;
+}
+
+/**
+ * The file operations of one call, each confined to `roots`: the service grep's reads and pi's
+ * pluggable find and ls operations. They are the second line of confinement after the argument
+ * check: every path touched (search roots, context-line file reads, listed entries) must stay
+ * inside those roots. find globs through ripgrep with the call's `signal`, never through pi's fd
+ * download path.
  */
 export function searchOperations(
   roots: SearchRoots,

@@ -14,7 +14,8 @@ type Failure = ResourceImportResponse['failures'][number];
  *
  * When storing fails partway (a full disk, a ledger write), nothing of the batch stays: the
  * files it wrote are removed and every path lands in `failures`, refused ones with their own
- * reason and the rest as `unreadable`, named only by basename and the error's code.
+ * reason and the rest as `noSpace` for a full disk or else `unreadable`, named only by basename
+ * and the error's code.
  */
 export async function importResources(
   store: Pick<ResourceStore, 'save'>,
@@ -61,9 +62,11 @@ function notStored(filePath: string, error: unknown): Failure {
   // Node's fs errors embed absolute paths: only the code, such as ENOSPC, goes on.
   const code = error instanceof Error && 'code' in error ? error.code : undefined;
   const cause = typeof code === 'string' && /^[A-Z][A-Z0-9_]*$/.test(code) ? ` (${code})` : '';
+  // A full disk (or quota) is the one storing failure the user can act on.
+  const full = code === 'ENOSPC' || code === 'EDQUOT';
   return {
     path: filePath,
-    reason: 'unreadable',
+    reason: full ? 'noSpace' : 'unreadable',
     message: `${path.basename(filePath)} could not be stored${cause}.`,
   };
 }

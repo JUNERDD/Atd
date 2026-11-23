@@ -45,7 +45,8 @@ nonisolated final class LongScreenshotEngine: Sendable {
     let thumbnails: LongScreenshotThumbnails
   }
 
-  /// A locked frame's pixels, valid only during ``receive(_:at:)``.
+  /// A locked frame's pixels from the selection's first column
+  /// (``LongScreenshotGeometry/imageColumns``), valid only during ``receive(_:at:)``.
   struct Frame {
     let base: UnsafeRawPointer
     let bytesPerRow: Int
@@ -74,7 +75,7 @@ nonisolated final class LongScreenshotEngine: Sendable {
   func receive(_ buffer: CVPixelBuffer, at time: Double) {
     guard !state.withLock({ $0.stopped }),
       CVPixelBufferGetPixelFormatType(buffer) == kCVPixelFormatType_32BGRA,
-      CVPixelBufferGetWidth(buffer) == geometry.width,
+      CVPixelBufferGetWidth(buffer) == geometry.streamWidth,
       CVPixelBufferGetHeight(buffer) == geometry.height,
       CVPixelBufferLockBaseAddress(buffer, .readOnly) == kCVReturnSuccess
     else { return }
@@ -84,16 +85,19 @@ nonisolated final class LongScreenshotEngine: Sendable {
     guard
       let signature = LongScreenshotSignature.hashing(
         pixels: base, bytesPerRow: bytesPerRow, rows: geometry.bandRows,
-        columns: geometry.matchedColumns, scratch: scratch)
+        columns: geometry.matchedStreamColumns, scratch: scratch)
     else { return }
-    let hasArea = geometry.areaRows != geometry.bandRows
+    let hasArea = geometry.measuresArea
     let areaSignature =
       hasArea
       ? LongScreenshotSignature.hashing(
         pixels: base, bytesPerRow: bytesPerRow, rows: geometry.areaRows,
-        columns: geometry.matchedColumns, scratch: scratch)
+        columns: geometry.measuredColumns, scratch: scratch)
       : nil
-    let frame = Frame(base: UnsafeRawPointer(base), bytesPerRow: bytesPerRow)
+    // Every copy keeps the selection's columns only: the stream's others are measured, not kept.
+    let frame = Frame(
+      base: UnsafeRawPointer(base).advanced(by: geometry.imageColumns.lowerBound * 4),
+      bytesPerRow: bytesPerRow)
     let prepared = state.withLock { $0.stitch == nil } ? prepareInitial(frame, buffer: buffer) : nil
     var needArea = false
     var needHead = false
