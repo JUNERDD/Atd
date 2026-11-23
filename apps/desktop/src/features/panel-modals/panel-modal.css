@@ -810,7 +810,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .notarization-guide {
-    animation: notarization-guide-float 4.2s ease-in-out infinite alternate;
+    animation: notarization-guide-float 4.2s var(--ata-ease-sine) infinite alternate;
   }
 }
 
