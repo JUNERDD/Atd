@@ -63,6 +63,10 @@ public struct LongScreenshotStitch: Sendable {
   /// have been blank).
   var leftSide = (pairs: 0, columns: 0)
   var rightSide = (pairs: 0, columns: 0)
+  /// The same for the scroll area's signature, counted in its own columns
+  /// (``LongScreenshotGeometry/measuredColumns``), which may reach past the band's.
+  var areaLeftSide = (pairs: 0, columns: 0)
+  var areaRightSide = (pairs: 0, columns: 0)
   /// The latest matched frame's position.
   public internal(set) var position = 0
   /// Document rows held as strips above the first frame's rows, and below them.

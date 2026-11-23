@@ -3,11 +3,17 @@ import Foundation
 
 /// Where a long screenshot's stream reads and which of its pixels are stitched (decision D2).
 ///
-/// The stream reads the selection's columns over the vertical union of the selection and the
-/// scroll area's visible frame, so the rows of the scroll area above and below the selection are
-/// in every frame for when the page reaches its start or end (D6). Rows and columns here are the
-/// stream's pixels, origin at its top-left. The *band* is the part of the selection over the
-/// scroll area: only it moves when the page scrolls, and only it is compared between frames.
+/// The stream reads the vertical union of the selection and the scroll area's visible frame, so
+/// the rows of the scroll area above and below the selection are in every frame for when the page
+/// reaches its start or end (D6). Across, it reads the selection's columns and, when a scroll area
+/// is known, the part of it the scroll is measured on (``measuredColumns``): the whole page moves
+/// by one offset, and a selection over empty space holds nothing that shows how far, while the
+/// content beside it does. Only the selection's columns are ever kept: they are the image.
+///
+/// Rows are the stream's pixels, origin at its top. Columns are the image's (origin at the
+/// selection's left edge), except ``imageColumns`` and ``measuredColumns``, which are the
+/// stream's. The *band* is the part of the selection over the scroll area: only it moves when
+/// the page scrolls, and only it is stitched.
 public struct LongScreenshotGeometry: Equatable, Sendable {
   /// A scroll area overlapping the selection by less than this, either way, does not count
   /// (decision D5), in points.
@@ -17,14 +23,26 @@ public struct LongScreenshotGeometry: Equatable, Sendable {
   /// ends inside the selection its pixels come from the first frame (otherwise every strip would
   /// carry a piece of the knob).
   public static let scrollerLane: CGFloat = 15
+  /// The widest stretch of a scroll area the scroll is measured on, in points, centred on the
+  /// selection; a wider selection is measured on its own columns. Hashing a frame costs time in
+  /// proportion to its pixels, and a page's content rarely spans more.
+  public static let measureWidth: CGFloat = 1200
 
   /// The stream's source rect in display points (origin top-left), on the display's pixel grid.
   public let sourceRect: CGRect
   /// Pixels per point.
   public let scale: CGFloat
-  /// The stream's size in pixels; also the stitched image's width.
+  /// The stitched image's width in pixels: the selection's columns.
   public let width: Int
+  /// The stream's size in pixels.
+  public let streamWidth: Int
   public let height: Int
+  /// The selection's columns in the stream: what is stitched (``width`` of them).
+  public let imageColumns: Range<Int>
+  /// The stream's columns the scroll area's signature is hashed on, to measure the scroll: the
+  /// compared columns (``matchedColumns``) and, with a scroll area, up to ``measureWidth`` of it
+  /// around them, without its scroll bar's lane.
+  public let measuredColumns: Range<Int>
   /// The selection's rows.
   public let selectionRows: Range<Int>
   /// The scroll area's visible rows, the selection's when no scroll area is known.
@@ -63,19 +81,24 @@ public struct LongScreenshotGeometry: Equatable, Sendable {
     }
     let top = min(picked.minY, area?.minY ?? picked.minY)
     let bottom = max(picked.maxY, area?.maxY ?? picked.maxY)
-    let source = CGRect(x: picked.minX, y: top, width: picked.width, height: bottom - top)
+    let measured = area.map { measuredSpan(of: $0, around: picked) }
+    let left = min(picked.minX, measured?.lowerBound ?? picked.minX)
+    let right = max(picked.maxX, measured?.upperBound ?? picked.maxX)
+    let source = CGRect(x: left, y: top, width: right - left, height: bottom - top)
     guard
       let pixels = DisplayPixelGrid.pixels(of: source, displaySize: displaySize, scale: scale),
       pixels.width >= 2, pixels.height >= 2
     else { return nil }
     let grid = Grid(origin: pixels.origin, size: pixels.size, scale: scale)
+    let imageColumns = grid.columns(picked.minX, picked.maxX)
+    let image = imageColumns.lowerBound
     let selectionRows = grid.rows(picked.minY, picked.maxY)
     let areaRows = area.map { grid.rows($0.minY, $0.maxY) } ?? selectionRows
     let bandRows = selectionRows.clamped(to: areaRows)
     let bandColumns =
       area.map { grid.columns(max(picked.minX, $0.minX), min(picked.maxX, $0.maxX)) }
-      ?? (0..<grid.width)
-    guard bandRows.count >= 2, bandColumns.count >= 2 else { return nil }
+      .map { ($0.lowerBound - image)..<($0.upperBound - image) } ?? (0..<imageColumns.count)
+    guard imageColumns.count >= 2, bandRows.count >= 2, bandColumns.count >= 2 else { return nil }
     let laneInside = area.map { $0.maxX <= picked.maxX + 0.5 } ?? false
     let omitsLane = area == nil || laneInside
     // The lane is only worth dropping when a scroll bar could sit inside the band and the band
@@ -83,14 +106,44 @@ public struct LongScreenshotGeometry: Equatable, Sendable {
     let lane =
       omitsLane ? min(Int((scrollerLane * scale).rounded(.up)), bandColumns.count / 4) : 0
     let matched = bandColumns.lowerBound..<(bandColumns.upperBound - lane)
+    let matchedInStream = (matched.lowerBound + image)..<(matched.upperBound + image)
+    let span = measured.map { grid.columns($0.lowerBound, $0.upperBound) } ?? matchedInStream
+    let measuredLower = min(span.lowerBound, matchedInStream.lowerBound)
+    let measuredUpper = max(span.upperBound, matchedInStream.upperBound)
     return LongScreenshotGeometry(
       sourceRect: CGRect(
         x: pixels.minX / scale, y: pixels.minY / scale, width: pixels.width / scale,
         height: pixels.height / scale),
-      scale: scale, width: grid.width, height: grid.height, selectionRows: selectionRows,
-      areaRows: areaRows, bandRows: bandRows, bandColumns: bandColumns, matchedColumns: matched,
+      scale: scale, width: imageColumns.count, streamWidth: grid.width, height: grid.height,
+      imageColumns: imageColumns, measuredColumns: measuredLower..<measuredUpper,
+      selectionRows: selectionRows, areaRows: areaRows, bandRows: bandRows,
+      bandColumns: bandColumns, matchedColumns: matched,
       liveColumns: laneInside ? matched : bandColumns,
-      screenRows: max(1, areaRows.count), maxRows: maximumRows(width: grid.width))
+      screenRows: max(1, areaRows.count), maxRows: maximumRows(width: imageColumns.count))
+  }
+
+  /// The stretch of `area` (points) the scroll is measured on for a selection `picked`: up to
+  /// ``measureWidth`` wide, or the selection's width over the area when that is wider, centred on
+  /// the selection and kept within the area without its scroll bar's lane.
+  private static func measuredSpan(of area: CGRect, around picked: CGRect) -> Range<CGFloat> {
+    let lower = area.minX
+    let upper = max(lower, area.maxX - scrollerLane)
+    let over = min(picked.maxX, upper) - max(picked.minX, lower)
+    let width = min(upper - lower, max(measureWidth, over))
+    let start = min(max(lower, picked.midX - width / 2), upper - width)
+    return start..<(start + width)
+  }
+
+  /// The compared columns (``matchedColumns``) in the stream.
+  public var matchedStreamColumns: Range<Int> {
+    (matchedColumns.lowerBound + imageColumns.lowerBound)..<(matchedColumns.upperBound
+      + imageColumns.lowerBound)
+  }
+
+  /// Whether frames carry a scroll-area signature beside the band's: when the scroll area
+  /// reaches past the band's rows, or the scroll is measured on more columns than the band's.
+  public var measuresArea: Bool {
+    areaRows != bandRows || measuredColumns != matchedStreamColumns
   }
 
   /// The most rows an image `width` pixels wide may have: its export keeps at most

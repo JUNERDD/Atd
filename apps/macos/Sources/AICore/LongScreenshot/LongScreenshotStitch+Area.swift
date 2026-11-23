@@ -5,9 +5,11 @@ import Foundation
 ///
 /// ScreenCaptureKit streams the vertical union of the selection and the scroll area, so frames hold
 /// ``LongScreenshotGeometry/areaRows`` even when ``LongScreenshotGeometry/bandRows`` is a narrow
-/// slice inside it. Matching prefers the full scroll-area signature whenever present so repeating
-/// card grids inside a narrow band never alias against wider non-repeating context, while keeping
-/// the stitched document bounds strictly equal to what passed through the selection box.
+/// slice inside it, and across ``LongScreenshotGeometry/measuredColumns`` of the scroll area, which
+/// may reach past the selection's. Matching prefers the scroll-area signature whenever present so
+/// repeating card grids inside a narrow band never alias against wider non-repeating context and
+/// a band over empty space follows the content beside it, while keeping the stitched document
+/// bounds strictly equal to what passed through the selection box.
 extension LongScreenshotStitch {
   struct FrameMatch {
     let outcome: LongScreenshotMatcher.Outcome
@@ -17,11 +19,12 @@ extension LongScreenshotStitch {
     var reanchoredStill = false
   }
 
-  /// The static parts in use across ``LongScreenshotGeometry/areaRows``.
+  /// The static parts in use across ``LongScreenshotGeometry/areaRows``, side columns counted in
+  /// the scroll area signature's own columns.
   var areaApplied: LongScreenshotMatcher.Static {
     var parts = areaStatics ?? .none
-    parts.left = leftSide.pairs >= 2 ? leftSide.columns : 0
-    parts.right = rightSide.pairs >= 2 ? rightSide.columns : 0
+    parts.left = areaLeftSide.pairs >= 2 ? areaLeftSide.columns : 0
+    parts.right = areaRightSide.pairs >= 2 ? areaRightSide.columns : 0
     return parts
   }
 
@@ -160,8 +163,12 @@ extension LongScreenshotStitch {
   }
 
   /// Adopts a moving pair's static parts measured on ``LongScreenshotGeometry/areaRows`` and
-  /// projects any static header, footer, or side columns overlapping ``LongScreenshotGeometry/bandRows``.
+  /// projects any static header, footer, or side columns overlapping ``LongScreenshotGeometry/bandRows``
+  /// and the band's compared columns.
   mutating func adoptArea(_ pair: LongScreenshotMatcher.Static) {
+    Self.count(pair.left, into: &areaLeftSide)
+    Self.count(pair.right, into: &areaRightSide)
+    let sides = bandSides(ofArea: pair)
     if var known = areaStatics {
       known.top = min(known.top, pair.top)
       known.bottom = min(known.bottom, pair.bottom)
@@ -177,11 +184,25 @@ extension LongScreenshotStitch {
     if top + bottom <= bandHeight - 2 * LongScreenshotMatcher.minimumOverlap {
       adopt(
         LongScreenshotMatcher.Static(
-          top: top, bottom: bottom, left: pair.left, right: pair.right))
+          top: top, bottom: bottom, left: sides.left, right: sides.right))
     } else {
-      Self.count(pair.left, into: &leftSide)
-      Self.count(pair.right, into: &rightSide)
+      Self.count(sides.left, into: &leftSide)
+      Self.count(sides.right, into: &rightSide)
     }
+  }
+
+  /// The part of a scroll-area pair's fixed side columns (counted from the edges of
+  /// ``LongScreenshotGeometry/measuredColumns``) that lies over the band's compared columns,
+  /// counted from those columns' edges; zero for a side column beside the band.
+  func bandSides(ofArea pair: LongScreenshotMatcher.Static) -> (left: Int, right: Int) {
+    let measured = geometry.measuredColumns
+    let band = geometry.matchedStreamColumns
+    let left =
+      pair.left > 0 ? min(band.count, max(0, measured.lowerBound + pair.left - band.lowerBound)) : 0
+    let right =
+      pair.right > 0
+      ? min(band.count, max(0, band.upperBound - (measured.upperBound - pair.right))) : 0
+    return (left, right)
   }
 
   /// Takes in a moving pair's static parts: each only ever shrinks, since a row or column that
