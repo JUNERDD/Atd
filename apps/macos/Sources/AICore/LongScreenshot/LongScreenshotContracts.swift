@@ -19,14 +19,32 @@ public struct LongScreenshotScrollArea: Equatable, Sendable {
   }
 }
 
+/// What Accessibility says about scrolling under a screenshot selection.
+public enum LongScreenshotScrollProbe: Equatable, Sendable {
+  /// A scroll area lies under the selection.
+  case area(LongScreenshotScrollArea)
+  /// Nothing under the selection scrolls: no window is there, or the app's tree describes what
+  /// the selection holds and none of it is a scroll area.
+  case none
+  /// Accessibility cannot tell: the app does not answer, its tree does not reach the window, or
+  /// it describes nothing finer than the selection (an app that draws its own content, such as a
+  /// terminal or a chat app, may scroll inside that one element).
+  case unknown
+
+  /// The scroll area, when one was found.
+  public var area: LongScreenshotScrollArea? {
+    if case .area(let area) = self { area } else { nil }
+  }
+}
+
 /// Whether a screenshot selection offers the long screenshot, and why not.
 public enum LongScreenshotAvailability: Equatable, Sendable {
-  /// Offered: a scroll area lies under the selection, or Accessibility is off so nothing can say
-  /// it does not (scrolling by hand needs no permission).
+  /// Offered: a scroll area lies under the selection, or nothing can say it does not, because
+  /// Accessibility is off or cannot tell (scrolling by hand needs no permission).
   case available
   /// Not yet known: the probe for this selection is still running.
   case checking
-  /// Not offered: nothing under the selection scrolls.
+  /// Not offered: Accessibility says nothing under the selection scrolls.
   case notScrollable
   /// Not offered: the selection spans more than one display.
   case spansDisplays

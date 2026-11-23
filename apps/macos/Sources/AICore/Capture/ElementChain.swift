@@ -137,23 +137,43 @@ public enum ElementChain {
     }
   }
 
-  /// The position in `chain` of the scroll area a long screenshot reads (decision D5): the
-  /// innermost `AXScrollArea` inside `window` whose frame, cut to the window, overlaps
-  /// `selection` by at least `minimumOverlap` both ways. A small inner one under the selection's
-  /// centre (a code block) gives way to the one around it. A web area's scroll area is its
-  /// parent, the next scroll area up the chain. Nil when none qualifies or the chain does not
-  /// reach `window`.
-  public static func scrollAreaIndex(
+  /// What `chain`, the ancestor chain of the element under `selection`'s centre, says about
+  /// scrolling there (``scrollEvidence(in:window:selection:minimumOverlap:)``).
+  public enum ScrollEvidence: Equatable, Sendable {
+    /// The scroll area at this position in the chain.
+    case scrollArea(Int)
+    /// The chain describes what the selection holds, and none of it scrolls.
+    case none
+    /// The chain cannot say: it does not reach the window, or its deepest element holds the
+    /// whole selection, so the app describes nothing finer and may scroll inside it.
+    case unknown
+  }
+
+  /// What a long screenshot learns from `chain` about scrolling under `selection` (decision D5).
+  /// The scroll area is the innermost `AXScrollArea` inside `window` whose frame, cut to the
+  /// window, overlaps `selection` by at least `minimumOverlap` both ways. A small inner one under
+  /// the selection's centre (a code block) gives way to the one around it. A web area's scroll
+  /// area is its parent, the next scroll area up the chain.
+  ///
+  /// Without one, the chain proves nothing scrolls only when it reaches `window` and its deepest
+  /// element is smaller than the selection's part in the window. A chain cut short (a foreign or
+  /// stale tree, or one deeper than the walk's budget) or an app that answers with one element
+  /// for its whole content (a terminal's text area, a window without children) is `.unknown`.
+  public static func scrollEvidence(
     in chain: [Node], window: Window, selection: CGRect, minimumOverlap: CGFloat
-  ) -> Int? {
-    guard let boundary = verifiedBoundary(of: chain, in: window) else { return nil }
-    return chain[..<boundary].indices.first { index in
+  ) -> ScrollEvidence {
+    guard let boundary = verifiedBoundary(of: chain, in: window) else { return .unknown }
+    let scrollArea = chain[..<boundary].indices.first { index in
       let node = chain[index]
       guard node.role == "AXScrollArea", isUsable(node.frame) else { return false }
       let overlap = node.frame.intersection(window.frame).intersection(selection)
       return !overlap.isNull && overlap.width >= minimumOverlap
         && overlap.height >= minimumOverlap
     }
+    if let scrollArea { return .scrollArea(scrollArea) }
+    let deepest = chain[0].frame.intersection(window.frame)
+      .insetBy(dx: -duplicateTolerance, dy: -duplicateTolerance)
+    return deepest.contains(selection.intersection(window.frame)) ? .unknown : .none
   }
 
   /// Index of the first window or sheet in `chain` that is `window` itself. Anything beyond it

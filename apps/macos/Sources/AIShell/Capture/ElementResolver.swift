@@ -90,19 +90,30 @@ actor ElementResolver: ElementTargeting {
     return described.first { $0.title != nil } ?? described.first
   }
 
-  /// The window under `point` (Quartz) and the element its app shows there, for a probe
-  /// beyond hover targets (the long screenshot's scroll area); nil without Accessibility, a
-  /// window there, or an answer. Supersedes queued hover requests, as ``describe(at:frame:)``
-  /// does, and prepares a web app's tree.
-  func element(at point: CGPoint) -> (window: ElementChain.Window, element: AXUIElement)? {
+  /// What a probe beyond hover targets (the long screenshot's scroll area) finds at a point.
+  enum Hit {
+    /// No window is under the point.
+    case noWindow
+    /// Accessibility says nothing there: it is off for the session, or the app does not answer
+    /// the hit-test (some apps implement none).
+    case silent
+    /// The window under the point and the element its app shows there.
+    case element(ElementChain.Window, AXUIElement)
+  }
+
+  /// The window under `point` (Quartz) and the element its app shows there, for a probe beyond
+  /// hover targets. Supersedes queued hover requests, as ``describe(at:frame:)`` does, and
+  /// prepares a web app's tree.
+  func element(at point: CGPoint) -> Hit {
     advanceRequest()
-    guard let session, session.trusted,
-      let window = ElementChain.topmostWindow(at: point, in: session.windows)
-    else { return nil }
+    guard let session, session.trusted else { return .silent }
+    guard let window = ElementChain.topmostWindow(at: point, in: session.windows) else {
+      return .noWindow
+    }
     prepare(pid: window.pid)
     guard let hit = AccessibilityProbe.element(at: point, in: application(pid: window.pid))
-    else { return nil }
-    return (window, hit)
+    else { return .silent }
+    return .element(window, hit)
   }
 
   func end() async {

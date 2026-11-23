@@ -51,10 +51,10 @@ final class CaptureLongScreenshot {
     }
   }
 
-  /// What Accessibility found under one selection (desktop points): nil when nothing scrolls.
+  /// What Accessibility found under one selection (desktop points).
   struct Answer {
     let selection: CGRect
-    let area: LongScreenshotScrollArea?
+    let probe: LongScreenshotScrollProbe
   }
 
   /// How many answers are kept, the latest last; going back to a recent selection, as Esc from
@@ -85,9 +85,9 @@ final class CaptureLongScreenshot {
     answers.last { $0.selection == selection }
   }
 
-  func remember(_ area: LongScreenshotScrollArea?, under selection: CGRect) {
+  func remember(_ probe: LongScreenshotScrollProbe, under selection: CGRect) {
     answers.removeAll { $0.selection == selection }
-    answers.append(Answer(selection: selection, area: area))
+    answers.append(Answer(selection: selection, probe: probe))
     if answers.count > Self.kept { answers.removeFirst() }
   }
 

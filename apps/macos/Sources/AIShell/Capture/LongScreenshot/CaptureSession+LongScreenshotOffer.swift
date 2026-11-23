@@ -6,8 +6,9 @@ import AppKit
 /// in screenshot mode, for a selection on one display. Without Accessibility nothing can say the
 /// selection does not scroll, so it is offered: scrolling by hand needs no permission. With it,
 /// Accessibility looks for a scroll area under every settled selection, beside the text reading,
-/// and the answer is kept per selection. The toolbar's button and the bottom bar's ⌘↓ show the
-/// answer; ⌘↓ beeps while it is not `.available`.
+/// and the answer is kept per selection; only an answer that shows nothing scrolls there withholds
+/// it, and one that cannot tell offers it as without Accessibility. The toolbar's button and the
+/// bottom bar's ⌘↓ show the answer; ⌘↓ beeps while it is not `.available`.
 extension CaptureSession {
   /// How far a scroll area must overlap the selection both ways for it to count.
   static let longScreenshotOverlap: CGFloat = 48
@@ -28,10 +29,14 @@ extension CaptureSession {
       return .available
     case .elements:
       guard let answer = longScreenshot.answer(for: rect) else { return .checking }
-      guard let frame = answer.area?.frame else { return .notScrollable }
-      let overlap = frame.intersection(desktop.geometry.quartzRect(rect))
-      let minimum = Self.longScreenshotOverlap
-      return overlap.width >= minimum && overlap.height >= minimum ? .available : .notScrollable
+      switch answer.probe {
+      case .unknown: return .available
+      case .none: return .notScrollable
+      case .area(let area):
+        let overlap = area.frame.intersection(desktop.geometry.quartzRect(rect))
+        let minimum = Self.longScreenshotOverlap
+        return overlap.width >= minimum && overlap.height >= minimum ? .available : .notScrollable
+      }
     }
   }
 
@@ -74,10 +79,10 @@ extension CaptureSession {
     longScreenshot.probe = Task { [weak self] in
       if delay > .zero { try? await Task.sleep(for: delay) }
       guard !Task.isCancelled else { return }
-      let area = await targeting.scrollArea(around: quartz)
+      let probe = await targeting.scrollArea(around: quartz)
       guard !Task.isCancelled, let self, !isFinished else { return }
       longScreenshot.probe = nil
-      longScreenshot.remember(area, under: rect)
+      longScreenshot.remember(probe, under: rect)
       showLongScreenshotAvailability()
     }
   }
