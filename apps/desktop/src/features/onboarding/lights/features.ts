@@ -15,11 +15,14 @@ import type { LightDesign } from './light-design';
  * Motion: every twelve seconds the sparkle flares and a pass sets off from it: two pens of light
  * run round the window in opposite directions, the warm one along the top and down behind the
  * capsule, the cool one down behind the card, lengthening and heating the rays they pass and
- * leaving a short afterglow, and meet at the far corner some five seconds later, as if the app were
- * built again, version after version. Where a pen passes behind the card or the capsule, the rays
- * it lengthens light that surface's rim. Broad swells drift round the outline all the while.
- * `start` is a moment midway through a pass, the warm pen near the left end of the top edge and the
- * cool one under the window's right half, which is also the still frame under Reduce Motion.
+ * leaving a short afterglow, and meet at the far corner some five and a half seconds later, as if
+ * the app were built again, version after version. The pens ease out of the flare and gather
+ * speed round the window, never stopping (MOT-15 in the apple-design skill); at half their mean
+ * speed at first, they are still inside its glow, about 16 units out, as it fades. Where a pen
+ * passes behind the card or the capsule, the rays it lengthens light that surface's rim. Broad
+ * swells drift round the outline all the while. `start` is a moment midway through a pass, the
+ * warm pen near the left end of the top edge and the cool one under the window's right half,
+ * which is also the still frame under Reduce Motion.
  *
  * Composition: positions are in the art's unit (`--u` in `art-illustration.css`, derived from the
  * canvas the same way), after `art-features.css`, so the rays leave the window's own edges, the
@@ -38,7 +41,7 @@ uniform vec2 u_spark;
 uniform vec4 u_window;
 uniform vec4 u_card;
 uniform vec4 u_capsule;
-uniform vec2 u_pass;
+uniform vec3 u_pass;
 
 // The art's unit (--u: 0.4% of the panel's width or 0.75% of its height, the smaller) in pixels.
 float artUnit() {
@@ -103,9 +106,12 @@ vec3 light(vec2 f, vec2 p, float t) {
   float gap = .3 + .7 * smoothstep(8., 40., .5 * len - path);
 
   // A pass every u_pass.x seconds: the pens leave the sparkle and run round at u_pass.y units a
-  // second, each lighting the rays it passes and leaving a short afterglow.
+  // second on average, each lighting the rays it passes and leaving a short afterglow. Their speed
+  // is one harmonic of the pass, u_pass.z of its mean either side, so they never run at one speed
+  // or stop: slowest as they leave the flare, fastest past their meeting in the dim far corner.
   float tau = mod(t, u_pass.x);
-  float lag = tau * u_pass.y - path;
+  float run = u_pass.y * (tau - u_pass.z * u_pass.x / TAU * sin(TAU * tau / u_pass.x));
+  float lag = run - path;
   float pen = exp(-lag * lag / 400.) + .6 * step(0., lag) * exp(-lag / (1.6 * u_pass.y));
 
   // The rays: a tight band hugging the outline in a softer aura, which a passing pen lengthens;
@@ -142,16 +148,17 @@ vec3 light(vec2 f, vec2 p, float t) {
   /**
    * The sparkle's centre; the centre and half size of the window (its corners rounded by 9), the
    * automation's card (by 13) and the mini panel's capsule (by half its width), in art units from
-   * the art's centre (y up), after `art-features.css`; a pass's period in seconds and its pens'
-   * speed in art units a second.
+   * the art's centre (y up), after `art-features.css`; a pass's period in seconds, its pens' mean
+   * speed in art units a second and how far that speed swings either side, as a share of it.
    */
   uniforms: {
     u_spark: [62, 41],
     u_window: [-11, 1, 73, 40],
     u_card: [63, -25, 30, 25],
     u_capsule: [-84, -7, 9, 23],
-    u_pass: [12, 40],
+    u_pass: [12, 40, 0.5],
   },
   maxPixels: 250_000,
-  start: 3_000,
+  // The pens stand where one speed put them at 3 s, so the still frame keeps its composition.
+  start: 3_860,
 };
