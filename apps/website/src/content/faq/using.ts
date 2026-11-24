@@ -13,11 +13,11 @@ export const using = {
       },
       answer: {
         en: [
-          'Press ⌘ ⇧ Space to show or hide the main panel, or open it from the menu bar icon. Other default shortcuts: ⌘ ⇧ 2 takes a screenshot, ⌘ N starts a new conversation and ⌘ , opens Settings.',
+          'Press ⌘ ⇧ Space to show or hide the main panel, or open it from the menu bar icon. Other default shortcuts: ⌘ ⇧ 2 takes a screenshot, ⌘ ⇧ 3 records the screen, ⌘ ⇧ M switches model aliases, ⌘ N starts a new conversation and ⌘ , opens Settings.',
           'You can change these shortcuts in Settings → General.',
         ],
         zh: [
-          '按 ⌘ ⇧ Space 显示或隐藏主面板，也可以从菜单栏图标打开。其他默认快捷键：⌘ ⇧ 2 截图，⌘ N 新建对话，⌘ , 打开设置。',
+          '按 ⌘ ⇧ Space 显示或隐藏主面板，也可以从菜单栏图标打开。其他默认快捷键：⌘ ⇧ 2 截图，⌘ ⇧ 3 录屏，⌘ ⇧ M 切换模型别名，⌘ N 新建对话，⌘ , 打开设置。',
           '这些快捷键都可以在“设置 → 通用”中修改。',
         ],
       },
@@ -45,11 +45,11 @@ export const using = {
       },
       answer: {
         en: [
-          'Yes. Press ⌘ ⇧ 2 to capture an area, mark it up with arrows, step numbers, notes or a mosaic, then ask about it or run commands on its text. For a page longer than the screen, Long screenshot stitches the scrolling area as you scroll or as Auto-scroll moves through it.',
+          'Yes. Press ⌘ ⇧ 2 to capture an area, mark it up with shapes, arrows, Smart Shapes, step numbers, notes, spotlight or a mosaic, pin it as a floating window across Spaces, or ask about it and run commands on its text. For a page longer than the screen, Long screenshot stitches the scrolling area as you scroll or as Auto-scroll moves through it.',
           'Switch to Record on the capture bar to record an element, a window or part of your display, with optional microphone and system audio. Atd reads the detected clicks, keystrokes, screen changes and on-device narration rather than sending the video file to the model. Both need the Screen Recording permission.',
         ],
         zh: [
-          '可以。按 ⌘ ⇧ 2 框选区域截图，用箭头、编号、文字说明或马赛克标注后，可以直接提问，或对图中的文字运行命令。页面超过一屏时，滚动长截图会在你手动滚动或开启“自动滚动”时把整页拼接起来。',
+          '可以。按 ⌘ ⇧ 2 框选区域截图，用形状、箭头、智能形状、编号、文字、聚光灯或马赛克做好标注，一键贴图置顶跨桌面空间显示，或直接提问、对图中的文字运行命令。页面超过一屏时，滚动长截图会在你手动滚动或开启“自动滚动”时把整页拼接起来。',
           '在捕获底栏切换到“录屏”，即可录制某个元素、窗口或屏幕的任意区域，可选录入麦克风和系统声音。Atd 读取的是识别出的点击、按键、画面变化和本机转写的旁白，不会把视频文件发给模型。截图和录屏都需要“屏幕录制”权限。',
         ],
       },
