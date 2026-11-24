@@ -9,6 +9,8 @@ import type {
 export interface UsageRequest {
   baseUrl: string;
   apiKey: string;
+  /** The user explicitly allowed this connection's usage URL to use plain HTTP. */
+  allowInsecure?: boolean;
   fetch: typeof fetch;
   signal: AbortSignal;
 }
@@ -37,6 +39,21 @@ export function numberValue(value: unknown): number | null {
 
 export function textValue(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+/** Loopback HTTP never leaves the machine, so it is safe without the insecure opt-in. */
+export function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '[::1]' || /^127\.\d+\.\d+\.\d+$/.test(hostname);
+}
+
+/** Whether a usage URL may receive the API key without an explicit insecure opt-in. */
+export function isSecureUsageUrl(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl);
+    return url.protocol === 'https:' || (url.protocol === 'http:' && isLoopbackHost(url.hostname));
+  } catch {
+    return false;
+  }
 }
 
 export function endpoint(baseUrl: string, path: string, fallback: string): string {

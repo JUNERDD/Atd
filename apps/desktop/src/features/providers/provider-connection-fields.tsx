@@ -3,6 +3,7 @@ import { ChevronDown, TriangleAlert } from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
 import { Input } from '@atd/ui/components/input';
 import { Label } from '@atd/ui/components/label';
+import { ItemGroup } from '@atd/ui/components/item';
 import {
   Collapsible,
   CollapsibleContent,
@@ -23,6 +24,7 @@ import type {
 } from '../../client/providers/schema';
 import { CLOUD_FIELDS, isCustom, isAmbient } from '../../client/providers/metadata';
 import { isInsecureEndpoint } from '../../client/providers/configuration';
+import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import type { ConnectionDraftPatch } from './use-provider-draft';
 import { CustomModels } from './custom-models';
 
@@ -159,6 +161,18 @@ export function ProviderConnectionFields({
                   </output>
                 )}
               </div>
+              {isInsecureEndpoint(draft.baseUrl) && (
+                <ItemGroup>
+                  <SettingsSwitchRow
+                    id="provider-allow-insecure-usage"
+                    title={t('form.allowInsecureUsage')}
+                    description={t('form.allowInsecureUsageDescription')}
+                    checked={draft.allowInsecureUsage ?? false}
+                    disabled={disabled}
+                    onCheckedChange={(allowInsecureUsage) => change({ allowInsecureUsage })}
+                  />
+                </ItemGroup>
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>

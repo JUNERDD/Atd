@@ -297,6 +297,8 @@ function applyUpdate(current: ServiceConnection, body: ProviderUpdateRequest): v
   if (body.presetId !== undefined) current.presetId = body.presetId;
   current.baseUrl = body.baseUrl;
   current.defaultModel = body.defaultModel;
+  if (body.allowInsecureUsage) current.allowInsecureUsage = true;
+  else delete current.allowInsecureUsage;
   if (body.defaultThinkingLevel) current.defaultThinkingLevel = body.defaultThinkingLevel;
   else delete current.defaultThinkingLevel;
   current.options = body.options;

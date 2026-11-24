@@ -81,6 +81,8 @@ export const ServiceConnectionSchema = Type.Object(
      */
     /** Non-secret provider options such as a region or deployment map. */
     options: Type.Optional(Type.Record(Type.String(), Type.String({ maxLength: 2048 }))),
+    /** Allow usage queries to a plain-HTTP endpoint; off unless the user explicitly opts in. */
+    allowInsecureUsage: Type.Optional(Type.Boolean()),
     /** Caller-defined models for custom endpoints. */
     customModels: Type.Optional(Type.Array(ServiceModelDefinitionSchema, { maxItems: 100 })),
     /** Last successful catalog refresh; absent until one succeeds for this configuration. */

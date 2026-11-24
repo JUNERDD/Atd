@@ -10,6 +10,7 @@ import { connectionCredentials, connectionRuntime, type ProviderStores } from '.
 import {
   clampRatio,
   deepseekBalance,
+  isSecureUsageUrl,
   kimiUsage,
   moonshotBalance,
   openRouterCredits,
@@ -61,6 +62,8 @@ export async function providerUsage(
   // until a SIWC-supported usage API is verified, every OpenAI connection stays unsupported.
   const adapter = adapters.get(connection.provider);
   if (!adapter) return { kind: 'unsupported' };
+  if (connection.baseUrl && !connection.allowInsecureUsage && !isSecureUsageUrl(connection.baseUrl))
+    return { kind: 'unsupported' };
   // Automatic reads stop at a recorded issue; an explicit refresh retries so re-entering the
   // credential can clear it instead of leaving the row permanently stuck.
   if (!options.refresh && currentCredentialIssue(stores.dataDir, connection.connectionId))
@@ -170,6 +173,7 @@ async function query(
     return await adapter({
       baseUrl: connection.baseUrl,
       apiKey: token,
+      allowInsecure: connection.allowInsecureUsage === true,
       fetch,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });

@@ -129,6 +129,8 @@ export const ConnectionConfigSchema = Type.Object(
       Type.Record(id, Type.Integer({ minimum: 1024, maximum: 100_000_000 })),
     ),
     options: Type.Record(Type.String(), text),
+    /** Allow usage queries to a plain-HTTP endpoint; off unless the user explicitly opts in. */
+    allowInsecureUsage: Type.Optional(Type.Boolean()),
     customModels: Type.Array(ModelDefinitionSchema, { maxItems: 100 }),
   },
   { additionalProperties: false },

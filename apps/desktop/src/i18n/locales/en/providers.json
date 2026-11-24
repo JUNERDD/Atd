@@ -149,6 +149,8 @@
     "resourceEndpoint": "Resource endpoint",
     "baseUrl": "Base URL",
     "insecureHttpWarning": "This endpoint uses plain HTTP. API keys and conversation data are not encrypted in transit. Continue only if you trust the server and network.",
+    "allowInsecureUsage": "Allow usage queries over plain HTTP",
+    "allowInsecureUsageDescription": "The API key is sent unencrypted to this endpoint's usage URL. Enable only for a trusted local or private network.",
     "authFallback": "API key or bearer token",
     "ambientNote": "Use the configured AWS credentials or Google Application Default Credentials on this device. Save this connection to opt in.",
     "signInNote": "Sign in to continue in your browser. Your account credentials stay on this device.",

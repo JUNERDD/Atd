@@ -226,3 +226,37 @@ test('concurrent usage reads share one request', async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test('an HTTP base URL requires explicit opt-in', async () => {
+  const connection = connectionFixture({
+    connectionId: 'usage-http',
+    baseUrl: 'http://api.kimi.com/coding/v1',
+  });
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ usages: { limit_5h: { used_ratio: 0.1 } } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+  try {
+    assert.deepEqual(await providerUsage(storesFor(connection), connection), {
+      kind: 'unsupported',
+    });
+    assert.equal(calls, 0);
+    const allowed = { ...connection, allowInsecureUsage: true };
+    assert.equal((await providerUsage(storesFor(allowed), allowed)).kind, 'ok');
+    assert.equal(calls, 1);
+
+    const loopback = connectionFixture({
+      connectionId: 'usage-http-loopback',
+      baseUrl: 'http://localhost:8080/v1',
+    });
+    assert.equal((await providerUsage(storesFor(loopback), loopback)).kind, 'ok');
+    assert.equal(calls, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

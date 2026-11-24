@@ -56,6 +56,7 @@ export function useProviderDraft(
           baseUrl: provider.baseUrl,
           authType: provider.auth[0]?.type ?? 'api_key',
           defaultModel: '',
+          allowInsecureUsage: false,
           options: {},
           customModels: [],
         },

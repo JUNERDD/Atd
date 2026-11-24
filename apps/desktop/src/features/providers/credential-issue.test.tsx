@@ -140,6 +140,34 @@ describe('provider credential issue UI', () => {
     ).toBeInTheDocument();
   });
 
+  it('offers an explicit opt-in before usage queries use a plain-HTTP endpoint', async () => {
+    installBridge();
+    const user = userEvent.setup();
+    const row = connectionFixture({ baseUrl: 'http://api.example.com/v1' });
+    render(
+      <TooltipProvider>
+        <SettingsSubpageContext value={() => () => {}}>
+          <ProviderForm
+            provider={catalogProviderFixture}
+            connection={row}
+            serviceName="OpenAI"
+            planChoice={null}
+            onSaved={vi.fn()}
+            onBack={vi.fn()}
+          />
+        </SettingsSubpageContext>
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /advanced settings/i }));
+    const toggle = screen.getByRole('switch', {
+      name: /allow usage queries over plain http/i,
+    });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    expect(toggle).toBeChecked();
+  });
+
   it('renders a localized credential recovery banner and settings shortcut in StatusBar', async () => {
     installBridge();
     const openSection = vi.spyOn(window.desktop!.settings, 'openSection').mockResolvedValue();

@@ -3,6 +3,7 @@ import {
   clampRatio,
   failure,
   getJson,
+  isLoopbackHost,
   isRecord,
   numberValue,
   resetTimeValue,
@@ -22,11 +23,21 @@ const OPENCODE_HOSTS = ['opencode.ai'];
  * endpoint. Usage endpoints authenticate with the saved API key, so a custom gateway must not
  * receive it; the caller answers `unsupported` instead.
  */
-function vendorOrigin(baseUrl: string, hosts: readonly string[]): string | undefined {
+function vendorOrigin(
+  baseUrl: string,
+  hosts: readonly string[],
+  allowInsecure: boolean,
+): string | undefined {
   if (!baseUrl) return undefined;
   try {
     const url = new URL(baseUrl);
-    if (url.protocol !== 'https:' || (url.port && url.port !== '443')) return undefined;
+    const loopback = url.protocol === 'http:' && isLoopbackHost(url.hostname);
+    if (
+      !allowInsecure &&
+      !loopback &&
+      (url.protocol !== 'https:' || (url.port && url.port !== '443'))
+    )
+      return undefined;
     return hosts.includes(url.hostname) ? url.origin : undefined;
   } catch {
     return undefined;
@@ -34,8 +45,13 @@ function vendorOrigin(baseUrl: string, hosts: readonly string[]): string | undef
 }
 
 /** The vendor origin for a connection, falling back to the provider's default usage host. */
-function usageOrigin(baseUrl: string, hosts: readonly string[], fallback: string): string | null {
-  if (baseUrl) return vendorOrigin(baseUrl, hosts) ?? null;
+function usageOrigin(
+  baseUrl: string,
+  hosts: readonly string[],
+  fallback: string,
+  allowInsecure: boolean,
+): string | null {
+  if (baseUrl) return vendorOrigin(baseUrl, hosts, allowInsecure) ?? null;
   return fallback;
 }
 
@@ -91,7 +107,12 @@ export async function zhipuUsage(
   request: UsageRequest,
   fallbackOrigin: string,
 ): Promise<ProviderUsageResponse> {
-  const origin = usageOrigin(request.baseUrl, ZHIPU_HOSTS, fallbackOrigin);
+  const origin = usageOrigin(
+    request.baseUrl,
+    ZHIPU_HOSTS,
+    fallbackOrigin,
+    request.allowInsecure === true,
+  );
   if (!origin) return { kind: 'unsupported' };
   const { response, json } = await getJson(request, `${origin}/api/monitor/usage/quota/limit`, {
     authorization: request.apiKey,
@@ -145,6 +166,7 @@ export async function minimaxUsage(
     request.baseUrl,
     MINIMAX_HOSTS,
     isCn ? 'https://api.minimaxi.com' : 'https://api.minimax.io',
+    request.allowInsecure === true,
   );
   if (!origin) return { kind: 'unsupported' };
   const { response, json } = await getJson(
@@ -197,7 +219,12 @@ const OPEN_CODE_GO_ORIGIN = 'https://opencode.ai';
 
 /** OpenCode Go exposes rolling (five-hour), weekly and monthly used percentages. */
 export async function openCodeGoUsage(request: UsageRequest): Promise<ProviderUsageResponse> {
-  const origin = usageOrigin(request.baseUrl, OPENCODE_HOSTS, OPEN_CODE_GO_ORIGIN);
+  const origin = usageOrigin(
+    request.baseUrl,
+    OPENCODE_HOSTS,
+    OPEN_CODE_GO_ORIGIN,
+    request.allowInsecure === true,
+  );
   if (!origin) return { kind: 'unsupported' };
   const { response, json } = await getJson(request, `${origin}/zen/go/v1/usage`);
   if (response.status === 403)

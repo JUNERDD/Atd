@@ -43,6 +43,7 @@ export const ProviderUpdateRequestSchema = Type.Object(
     /** Absent clears the saved level, so runs fall back to off. */
     defaultThinkingLevel: ServiceConnectionSchema.properties.defaultThinkingLevel,
     options: Type.Record(Type.String(), Type.String({ maxLength: 2048 })),
+    allowInsecureUsage: Type.Optional(Type.Boolean()),
     customModels: Type.Array(ServiceModelDefinitionSchema, { maxItems: 100 }),
     credential: ProviderCredentialChangeSchema,
   },

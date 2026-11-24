@@ -131,6 +131,7 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
       }),
       verifiedModel: '',
       migratedAt: null,
+      ...(body.allowInsecureUsage ? { allowInsecureUsage: true } : {}),
       options: body.options,
       customModels: body.customModels,
       ...(body.defaultThinkingLevel ? { defaultThinkingLevel: body.defaultThinkingLevel } : {}),

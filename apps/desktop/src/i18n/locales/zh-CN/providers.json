@@ -149,6 +149,8 @@
     "resourceEndpoint": "资源端点",
     "baseUrl": "基础 URL",
     "insecureHttpWarning": "此端点使用未加密的 HTTP。API 密钥和对话数据在传输中不会加密，请仅在信任该服务器和网络时使用。",
+    "allowInsecureUsage": "允许通过 HTTP 查询用量",
+    "allowInsecureUsageDescription": "API 密钥会以未加密方式发送到该端点的用量接口。请仅在你信任的本地或私有网络中使用。",
     "authFallback": "API 密钥或 bearer 令牌",
     "ambientNote": "使用本设备上已配置的 AWS 凭据或 Google Application Default Credentials。保存此连接即表示你选择启用。",
     "signInNote": "点击登录后，在浏览器中完成授权。账号凭据保存在本设备。",

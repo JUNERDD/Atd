@@ -291,4 +291,17 @@ test('cleartext and non-standard vendor origins are unsupported', async () => {
     ),
     { kind: 'unsupported' },
   );
+  assert.deepEqual(
+    await zhipuUsage(
+      {
+        ...responding(
+          { success: true, data: { limits: [] } },
+          { baseUrl: 'http://api.z.ai/api/coding/paas/v4' },
+        ),
+        allowInsecure: true,
+      },
+      'https://api.z.ai',
+    ),
+    { kind: 'ok', windows: [] },
+  );
 });

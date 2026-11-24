@@ -12,6 +12,7 @@ export function draftFrom(connection: Connection): ConnectionDraft {
     authType,
     defaultModel,
     defaultThinkingLevel,
+    allowInsecureUsage,
     options,
     customModels,
   } = connection;
@@ -25,6 +26,7 @@ export function draftFrom(connection: Connection): ConnectionDraft {
     authType,
     defaultModel,
     ...(defaultThinkingLevel === undefined ? {} : { defaultThinkingLevel }),
+    allowInsecureUsage: Boolean(allowInsecureUsage),
     ...(connection.chatgptConsent?.privacyVersion === CHATGPT_PRIVACY_VERSION
       ? {
           chatgptConsent: {
