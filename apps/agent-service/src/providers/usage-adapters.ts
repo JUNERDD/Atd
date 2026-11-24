@@ -9,8 +9,6 @@ import type {
 export interface UsageRequest {
   baseUrl: string;
   apiKey: string;
-  /** ChatGPT account ID for OAuth connections; unused by API-key providers. */
-  accountId?: string;
   fetch: typeof fetch;
   signal: AbortSignal;
 }
@@ -20,6 +18,7 @@ export type UsageAdapter = (request: UsageRequest) => Promise<ProviderUsageRespo
 type RecordValue = Record<string, unknown>;
 
 const KIMI_CODE_BASE_URL = 'https://api.kimi.com/coding/v1';
+const MAX_RESPONSE_LENGTH = 1_000_000;
 
 export function isRecord(value: unknown): value is RecordValue {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -55,9 +54,24 @@ export async function getJson(
       accept: 'application/json',
       ...headers,
     },
+    // A login/WAF redirect must not turn into a 200 HTML page parsed as an empty usage result.
+    redirect: 'manual',
     signal: request.signal,
   });
-  return { response, json: await response.json().catch(() => null) };
+  const text = await response.text();
+  if (text.length > MAX_RESPONSE_LENGTH) throw new Error('The usage response was too large.');
+  if (!response.ok) {
+    try {
+      return { response, json: JSON.parse(text) };
+    } catch {
+      return { response, json: null };
+    }
+  }
+  try {
+    return { response, json: JSON.parse(text) };
+  } catch {
+    throw new Error('The usage response was not valid JSON.');
+  }
 }
 
 /**
@@ -126,13 +140,6 @@ export function clampRatio(value: number): number {
   return Math.min(Math.max(value, 0), 1);
 }
 
-/** A provider's unix timestamp in seconds, as an ISO string; zero and negative mean "none". */
-export function unixSecondsToIso(value: unknown): string | undefined {
-  const seconds = numberValue(value);
-  if (seconds === null || seconds <= 0) return undefined;
-  return new Date(seconds * 1000).toISOString();
-}
-
 /** A unix timestamp that may be seconds or milliseconds, as an ISO string. */
 export function unixTimestampToIso(value: unknown): string | undefined {
   const timestamp = numberValue(value);
@@ -144,16 +151,6 @@ export function unixTimestampToIso(value: unknown): string | undefined {
 /** A reset value that may already be an ISO string or a millisecond timestamp. */
 export function resetTimeValue(value: unknown): string | undefined {
   return textValue(value) ?? unixTimestampToIso(value);
-}
-
-/** Map a rate-limit window length to the shared window IDs; unknown lengths stay unlabelled. */
-export function windowFromSeconds(value: unknown): ProviderUsageWindowId | null {
-  const seconds = numberValue(value);
-  if (seconds === null || seconds <= 0) return null;
-  if (seconds === 18_000) return 'session';
-  if (seconds === 604_800) return 'weekly';
-  if (seconds === 2_592_000) return 'monthly';
-  return null;
 }
 
 /** Kimi Code reports a five-hour session, a weekly window, and monthly quotas. */

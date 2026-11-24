@@ -1,21 +1,15 @@
 import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CHATGPT_PRIVACY_VERSION } from '@atd/agent-contracts';
 import { queryClient } from '../../lib/query-client';
 import type { Connection, ProviderUsage } from '../../client/providers/schema';
 
 /**
  * Whether an automatic usage read is allowed. A credential issue must not hit the keychain again
- * (macOS re-prompts on every failed read), and ChatGPT plan usage needs current privacy consent
- * and plan permission before its bearer token reaches the usage endpoint.
+ * (macOS re-prompts on every failed read); callers also gate on the sequential status probe so
+ * an unreadable sibling does not turn every row into another prompt.
  */
 export function providerUsageAvailable(connection: Connection | null): boolean {
-  if (!connection?.connected || connection.credentialIssue) return false;
-  if (connection.provider !== 'openai' || connection.authType !== 'oauth') return true;
-  return (
-    connection.chatgptConsent?.privacyVersion === CHATGPT_PRIVACY_VERSION &&
-    connection.chatgptPlanEnabled === true
-  );
+  return Boolean(connection?.connected && !connection.credentialIssue);
 }
 
 /**
@@ -23,7 +17,7 @@ export function providerUsageAvailable(connection: Connection | null): boolean {
  * 30 seconds and the renderer shares one cache entry, so a settings row and its dialog make a
  * single request; providers without a usage API answer `unsupported` without failing the row.
  */
-export function useProviderUsage(connection: Connection | null) {
+export function useProviderUsage(connection: Connection | null, automatic = true) {
   const bridge = window.desktop?.settings.providers;
   // A manual refresh must reach the provider, not the service's 30-second cache.
   const forceRefresh = useRef(false);
@@ -42,7 +36,7 @@ export function useProviderUsage(connection: Connection | null) {
         if (usage.kind === 'error') throw new Error(usage.message);
         return usage;
       },
-      enabled: Boolean(bridge && providerUsageAvailable(connection)),
+      enabled: Boolean(bridge && automatic && providerUsageAvailable(connection)),
       staleTime: 30_000,
       gcTime: 5 * 60_000,
       meta: { errorToast: false },

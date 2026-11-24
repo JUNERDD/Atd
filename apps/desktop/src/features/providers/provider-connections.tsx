@@ -47,6 +47,7 @@ export function ProviderConnections({
   defaultConnectionId,
   pending,
   canManage,
+  usageEnabled = true,
   onManage,
   onConfirm,
   perform,
@@ -56,6 +57,8 @@ export function ProviderConnections({
   pending: boolean;
   /** Whether the provider catalog is loaded, which a connection's page needs. */
   canManage: boolean;
+  /** Whether automatic usage reads may touch the keychain; manual dialogs stay available. */
+  usageEnabled?: boolean;
   onManage: (connection: Connection) => void;
   /** Asks before a disconnect or a removal. */
   onConfirm: (confirm: ConnectionConfirm) => void;
@@ -208,7 +211,7 @@ export function ProviderConnections({
                         {presentation && (
                           <Badge variant="secondary">{t(presentation.plan.nameKey)}</Badge>
                         )}
-                        <ProviderUsageSummary connection={connection} />
+                        <ProviderUsageSummary connection={connection} enabled={usageEnabled} />
                       </div>
                     </ItemContent>
                   </div>
@@ -220,6 +223,7 @@ export function ProviderConnections({
                       thinkingLevel={connection.defaultThinkingLevel}
                       scopeLabel={t('connections.defaultModelLabel', { name: connection.name })}
                       disabled={pending}
+                      usageEnabled={usageEnabled}
                       onModelChange={(reference) =>
                         void perform(() => bridge!.setModel(reference, connection.revision))
                       }

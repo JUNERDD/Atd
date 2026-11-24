@@ -62,6 +62,9 @@ export function ProviderSettingsForm({
   const hasUnreadableIssue = (snapshot?.connections ?? []).some(
     (connection) => connection.credentialIssue === 'unreadable',
   );
+  // Automatic usage reads also touch the OS keychain. Wait for the sequential status probe and
+  // stop entirely while one connection is unreadable, so opening Settings never cascades prompts.
+  const usageEnabled = !hasUnreadableIssue && snapshot?.providerStatusesChecked === true;
   useEffect(() => {
     if (connected && bridge && !hasUnreadableIssue) {
       void bridge.checkStatuses().catch(() => undefined);
@@ -287,6 +290,7 @@ export function ProviderSettingsForm({
             defaultConnectionId={snapshot?.defaultConnectionId ?? null}
             pending={pending}
             canManage={catalogReady && !catalogQuery.isFetching}
+            usageEnabled={usageEnabled}
             addProvider={addProviderAction}
             onManage={(connection) => void manage(connection)}
             onConfirm={setConfirming}

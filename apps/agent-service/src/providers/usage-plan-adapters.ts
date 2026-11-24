@@ -7,9 +7,7 @@ import {
   numberValue,
   resetTimeValue,
   textValue,
-  unixSecondsToIso,
   unixTimestampToIso,
-  windowFromSeconds,
   type UsageRequest,
 } from './usage-adapters.js';
 
@@ -28,6 +26,7 @@ function vendorOrigin(baseUrl: string, hosts: readonly string[]): string | undef
   if (!baseUrl) return undefined;
   try {
     const url = new URL(baseUrl);
+    if (url.protocol !== 'https:' || (url.port && url.port !== '443')) return undefined;
     return hosts.includes(url.hostname) ? url.origin : undefined;
   } catch {
     return undefined;
@@ -227,37 +226,4 @@ export async function openCodeGoUsage(request: UsageRequest): Promise<ProviderUs
     });
   }
   return { kind: 'ok', windows };
-}
-
-const CHATGPT_USAGE_URL = 'https://chatgpt.com/backend-api/wham/usage';
-
-/** ChatGPT plan usage as the Codex CLI reads it: two rate-limit windows and a plan. */
-export async function chatgptUsage(request: UsageRequest): Promise<ProviderUsageResponse> {
-  const headers: Record<string, string> = { 'user-agent': 'codex-cli' };
-  if (request.accountId) headers['chatgpt-account-id'] = request.accountId;
-  const { response, json } = await getJson(request, CHATGPT_USAGE_URL, headers);
-  if (response.status === 401 || response.status === 403)
-    return {
-      kind: 'error',
-      message: `Authentication failed (HTTP ${response.status}). Sign in again.`,
-    };
-  if (!response.ok) return failure(response, json);
-  const rateLimit = isRecord(json) && isRecord(json.rate_limit) ? json.rate_limit : undefined;
-  if (!rateLimit) return { kind: 'ok', windows: [] };
-  const windows = new Map<string, ProviderUsageWindow>();
-  for (const key of ['primary_window', 'secondary_window'] as const) {
-    const window = rateLimit[key];
-    if (!isRecord(window)) continue;
-    const used = numberValue(window.used_percent);
-    if (used === null) continue;
-    const id = windowFromSeconds(window.limit_window_seconds);
-    if (!id) continue;
-    const resetsAt = used > 0 ? unixSecondsToIso(window.reset_at) : undefined;
-    windows.set(id, {
-      id,
-      usedRatio: clampRatio(used / 100),
-      ...(resetsAt ? { resetsAt } : {}),
-    });
-  }
-  return { kind: 'ok', windows: [...windows.values()] };
 }

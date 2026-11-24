@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CHATGPT_PRIVACY_VERSION } from '@atd/agent-contracts';
 import { installBridge } from '../../../tests/app-test-bridge';
 import type { Connection } from '../../client/providers/schema';
 import { queryClient } from '../../lib/query-client';
@@ -123,9 +122,9 @@ describe('provider usage panel', () => {
     expect(usage).toHaveBeenLastCalledWith('kimi-1', true);
   });
 
-  it('does not request ChatGPT usage without current consent and plan permission', async () => {
+  it('names ChatGPT OAuth as unsupported instead of calling the retired Codex endpoint', async () => {
     installBridge();
-    const usage = vi.fn(async () => ({ kind: 'ok' as const, windows: [] }));
+    const usage = vi.fn(async () => ({ kind: 'unsupported' as const }));
     window.desktop!.settings.providers.usage = usage;
 
     render(
@@ -133,17 +132,21 @@ describe('provider usage panel', () => {
         connection={connectionFixture({
           provider: 'openai',
           authType: 'oauth',
-          chatgptConsent: {
-            privacyVersion: CHATGPT_PRIVACY_VERSION,
-            backgroundAllowed: false,
-            acceptedAt: new Date().toISOString(),
-          },
-          chatgptPlanEnabled: false,
         })}
       />,
     );
 
-    expect(await screen.findByText(/plan usage is not enabled/i)).toBeInTheDocument();
+    expect(await screen.findByText(/does not publish plan usage/i)).toBeInTheDocument();
+    expect(usage).toHaveBeenCalledWith('kimi-1', false);
+  });
+
+  it('does not read usage automatically while the status probe is gated', () => {
+    installBridge();
+    const usage = vi.fn(async () => ({ kind: 'ok' as const, windows: [] }));
+    window.desktop!.settings.providers.usage = usage;
+
+    render(<ProviderUsageSummary connection={connectionFixture()} enabled={false} />);
+
     expect(usage).not.toHaveBeenCalled();
   });
 

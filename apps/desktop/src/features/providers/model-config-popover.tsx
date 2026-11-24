@@ -56,6 +56,7 @@ type ModelConfigPopoverProps = EffortControl &
     scopeLabel?: string;
     compact?: boolean;
     disabled?: boolean;
+    usageEnabled?: boolean;
   };
 
 /**
@@ -242,7 +243,13 @@ export function ModelConfigPopover(props: ModelConfigPopoverProps) {
               />
             )}
             <ChatGPTPlan connection={connection} variant="menu" />
-            {connection && <ProviderUsageSummary connection={connection} variant="menu" />}
+            {connection && (
+              <ProviderUsageSummary
+                connection={connection}
+                variant="menu"
+                enabled={props.usageEnabled ?? true}
+              />
+            )}
             {contextChoice ? (
               <button
                 ref={contextRowRef}

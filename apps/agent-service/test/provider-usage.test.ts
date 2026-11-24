@@ -9,7 +9,6 @@ import {
   type UsageRequest,
 } from '../dist/providers/usage-adapters.js';
 import {
-  chatgptUsage,
   minimaxUsage,
   openCodeGoUsage,
   zhipuUsage,
@@ -257,48 +256,6 @@ test('OpenCode Go maps rolling, weekly, and monthly windows', async () => {
   );
 });
 
-test('ChatGPT maps Codex rate-limit windows and sends the account header', async () => {
-  const request = responding({
-    rate_limit: {
-      primary_window: {
-        used_percent: 12.5,
-        limit_window_seconds: 18_000,
-        reset_at: 1_800_000_000,
-      },
-      secondary_window: {
-        used_percent: 42,
-        limit_window_seconds: 604_800,
-        reset_at: 1_800_000_000,
-      },
-    },
-  });
-  let accountId: string | null = null;
-  const original = request.fetch;
-  request.fetch = async (url, init) => {
-    const headers = init?.headers as Record<string, string> | undefined;
-    accountId = headers?.['chatgpt-account-id'] ?? null;
-    return original(url, init);
-  };
-  const usage = await chatgptUsage({ ...request, accountId: 'acct-1' });
-  assert.equal(accountId, 'acct-1');
-  assert.equal(usage.kind, 'ok');
-  if (usage.kind !== 'ok') return;
-  assert.deepEqual(
-    usage.windows.map((window) => [window.id, window.usedRatio]),
-    [
-      ['session', 0.125],
-      ['weekly', 0.42],
-    ],
-  );
-  assert.equal(usage.windows[0]?.resetsAt, new Date(1_800_000_000 * 1000).toISOString());
-});
-
-test('ChatGPT reports an expired sign-in', async () => {
-  const usage = await chatgptUsage(responding({}, { status: 401 }));
-  assert.equal(usage.kind, 'error');
-  if (usage.kind === 'error') assert.match(usage.message, /Sign in again/);
-});
-
 test('empty numeric strings are missing, not zero', () => {
   assert.equal(numberValue(''), null);
   assert.equal(numberValue('   '), null);
@@ -317,4 +274,21 @@ test('custom endpoints do not receive usage keys', async () => {
   assert.deepEqual(await minimaxUsage(request, false), { kind: 'unsupported' });
   assert.deepEqual(await openCodeGoUsage(request), { kind: 'unsupported' });
   assert.equal(calls, 0);
+});
+
+test('cleartext and non-standard vendor origins are unsupported', async () => {
+  assert.deepEqual(
+    await zhipuUsage(
+      responding({}, { baseUrl: 'http://api.z.ai/api/coding/paas/v4' }),
+      'https://api.z.ai',
+    ),
+    { kind: 'unsupported' },
+  );
+  assert.deepEqual(
+    await zhipuUsage(
+      responding({}, { baseUrl: 'https://api.z.ai:8443/api/coding/paas/v4' }),
+      'https://api.z.ai',
+    ),
+    { kind: 'unsupported' },
+  );
 });

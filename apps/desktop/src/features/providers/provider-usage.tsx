@@ -12,7 +12,6 @@ import {
 } from '@atd/ui/components/dialog';
 import { Progress } from '@atd/ui/components/progress';
 import { cn } from '@atd/ui/lib/utils';
-import { CHATGPT_PRIVACY_VERSION } from '@atd/agent-contracts';
 import type { Connection, ProviderUsage } from '../../client/providers/schema';
 import {
   WINDOW_LABELS,
@@ -33,15 +32,17 @@ import { providerUsageAvailable, useProviderUsage } from './use-provider-usage';
 export function ProviderUsageSummary({
   connection,
   variant = 'inline',
+  enabled = true,
 }: {
   connection: Connection;
   variant?: 'inline' | 'menu';
+  enabled?: boolean;
 }) {
   const { t, i18n } = useTranslation('providers');
-  const { data } = useProviderUsage(connection);
+  const { data } = useProviderUsage(connection, enabled);
   // A disabled query can still retain a cached value; the gate must hide it when consent, plan
   // permission, the credential or the connection no longer allows a usage read.
-  if (!providerUsageAvailable(connection) || data?.kind !== 'ok') return null;
+  if (!enabled || !providerUsageAvailable(connection) || data?.kind !== 'ok') return null;
   const short = data.windows
     .map((window) => `${t(WINDOW_SHORT_LABELS[window.id])} ${percent(window.usedRatio)}`)
     .join(' · ');
@@ -139,15 +140,9 @@ export function ProviderUsageDialog({
   const usage: ProviderUsage | undefined = available ? query.data : undefined;
   const gated = !connection
     ? null
-    : !connection.connected
+    : !connection.connected || !available
       ? t('connections.usage.unavailable')
-      : !available
-        ? connection.credentialIssue
-          ? t('connections.usage.unavailable')
-          : connection.chatgptConsent?.privacyVersion === CHATGPT_PRIVACY_VERSION
-            ? t('chatgpt.planDisabledDescription')
-            : t('chatgpt.privacyRequired')
-        : null;
+      : null;
   return (
     <Dialog
       open={Boolean(connection)}

@@ -1,9 +1,11 @@
+import type { ProviderUsageResponse, ServiceConnection } from '@atd/agent-contracts';
+import { KeyringUnavailable } from '../credentials/keyring.js';
 import {
-  CHATGPT_PRIVACY_VERSION,
-  type ProviderUsageResponse,
-  type ServiceConnection,
-} from '@atd/agent-contracts';
-import { ConflictError } from '../errors.js';
+  clearCredentialIssue,
+  currentCredentialIssue,
+  expectsStoredCredential,
+  recordCredentialIssue,
+} from './credential-issues.js';
 import { connectionCredentials, connectionRuntime, type ProviderStores } from './runtime.js';
 import {
   clampRatio,
@@ -13,7 +15,7 @@ import {
   openRouterCredits,
   type UsageAdapter,
 } from './usage-adapters.js';
-import { chatgptUsage, minimaxUsage, openCodeGoUsage, zhipuUsage } from './usage-plan-adapters.js';
+import { minimaxUsage, openCodeGoUsage, zhipuUsage } from './usage-plan-adapters.js';
 
 const CACHE_MS = 30_000;
 const FAILURE_CACHE_MS = 5_000;
@@ -39,39 +41,12 @@ const adapters = new Map<string, UsageAdapter>([
 ]);
 
 const cache = new Map<string, { at: number; value: ProviderUsageResponse }>();
+const inFlight = new Map<string, Promise<ProviderUsageResponse>>();
+const generations = new Map<string, number>();
 
 const MESSAGE_LIMIT = 2000;
 const RESET_LIMIT = 64;
 const CURRENCY_LIMIT = 16;
-
-/**
- * ChatGPT's usage endpoint keys on the workspace account ID, which the stored OIDC ID token
- * carries under the OpenAI auth claim. Fall back to the OIDC subject for older credentials.
- */
-export function chatgptAccountId(credential: {
-  subject?: unknown;
-  idToken?: unknown;
-}): string | undefined {
-  if (typeof credential.idToken === 'string') {
-    const payload = credential.idToken.split('.')[1];
-    if (payload) {
-      try {
-        const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Record<
-          string,
-          unknown
-        >;
-        const auth = claims['https://api.openai.com/auth'];
-        if (auth && typeof auth === 'object' && !Array.isArray(auth)) {
-          const accountId = (auth as Record<string, unknown>)['chatgpt_account_id'];
-          if (typeof accountId === 'string' && accountId) return accountId;
-        }
-      } catch {
-        // A malformed ID token leaves the OIDC subject as the usable fallback.
-      }
-    }
-  }
-  return typeof credential.subject === 'string' ? credential.subject : undefined;
-}
 
 /**
  * The provider-reported allowance for one connection. Unsupported providers answer without a
@@ -82,15 +57,17 @@ export async function providerUsage(
   connection: ServiceConnection,
   options: { refresh?: boolean; runtime?: UsageAuthRuntime } = {},
 ): Promise<ProviderUsageResponse> {
-  // OpenAI's API key has no balance endpoint; only the ChatGPT OAuth plan has usage windows.
-  const adapter =
-    connection.provider === 'openai'
-      ? connection.authType === 'oauth'
-        ? chatgptUsage
-        : undefined
-      : adapters.get(connection.provider);
+  // ChatGPT's SIWC token is scoped to api.openai.com, not the Codex chatgpt.com usage endpoint;
+  // until a SIWC-supported usage API is verified, every OpenAI connection stays unsupported.
+  const adapter = adapters.get(connection.provider);
   if (!adapter) return { kind: 'unsupported' };
-  requireChatGPTPlan(connection);
+  // Automatic reads stop at a recorded issue; an explicit refresh retries so re-entering the
+  // credential can clear it instead of leaving the row permanently stuck.
+  if (!options.refresh && currentCredentialIssue(stores.dataDir, connection.connectionId))
+    return {
+      kind: 'error',
+      message: 'The saved credential needs attention. Re-enter it in connection settings.',
+    };
   // Saving a connection increments its revision, so a replaced credential or changed
   // configuration misses the cache instead of serving the previous account's allowance.
   const key = `${connection.connectionId}:${connection.revision}`;
@@ -101,26 +78,23 @@ export async function providerUsage(
     Date.now() - cached.at < (cached.value.kind === 'error' ? FAILURE_CACHE_MS : CACHE_MS)
   )
     return cached.value;
-  const value = bound(await query(stores, connection, adapter, options.runtime));
-  remember(key, value);
-  return value;
-}
-
-/**
- * The usage endpoints send the connection's bearer token to the provider. ChatGPT plan usage
- * additionally requires current privacy consent and the plan permission, so an identity-only
- * sign-in never sends its token to a usage endpoint it is not authorized to call.
- */
-function requireChatGPTPlan(connection: ServiceConnection): void {
-  if (connection.provider !== 'openai' || connection.authType !== 'oauth') return;
-  if (connection.chatgptConsent?.privacyVersion !== CHATGPT_PRIVACY_VERSION)
-    throw new ConflictError(
-      'chatgpt_privacy_required: Review the ChatGPT privacy notice in connection settings.',
-    );
-  if (!connection.chatgptPlanEnabled)
-    throw new ConflictError(
-      'chatgpt_plan_disabled: Enable ChatGPT plan usage in connection settings.',
-    );
+  if (!options.refresh) {
+    const pending = inFlight.get(key);
+    if (pending) return pending;
+  }
+  const generation = (generations.get(key) ?? 0) + 1;
+  generations.set(key, generation);
+  let operation: Promise<ProviderUsageResponse>;
+  operation = (async () => {
+    const value = bound(await query(stores, connection, adapter, options.runtime));
+    // A slower request must not replace a newer manual refresh's result.
+    if (generations.get(key) === generation) remember(key, value);
+    return value;
+  })().finally(() => {
+    if (inFlight.get(key) === operation) inFlight.delete(key);
+  });
+  inFlight.set(key, operation);
+  return operation;
 }
 
 /** Keep an adapter's response inside the shared contract's bounds before the client parses it. */
@@ -163,7 +137,6 @@ async function query(
   if (connection.authType !== 'api_key' && connection.authType !== 'oauth')
     return { kind: 'unavailable', reason: 'no-credential' };
   let token: string | undefined;
-  let accountId: string | undefined;
   try {
     if (connection.authType === 'oauth') {
       // Resolve OAuth through Pi's runtime auth, like model catalog refresh, so an expired SIWC
@@ -173,28 +146,30 @@ async function query(
       const auth = await models.getAuth(connection.provider);
       if (!auth?.auth.apiKey) return { kind: 'unavailable', reason: 'no-credential' };
       token = auth.auth.apiKey;
-      const credential = await connectionCredentials(stores, connection).read(connection.provider);
-      accountId =
-        credential?.type === 'oauth'
-          ? chatgptAccountId(credential as unknown as { subject?: unknown; idToken?: unknown })
-          : undefined;
     } else {
       const credential = await connectionCredentials(stores, connection).read(connection.provider);
       token = credential?.type === 'api_key' ? credential.key : undefined;
     }
-  } catch {
+  } catch (error) {
+    if (isKeyringError(error) && expectsStoredCredential(connection))
+      recordCredentialIssue(stores.dataDir, connection.connectionId, 'unreadable');
     return {
       kind: 'error',
       message:
         'The saved credential could not be read or refreshed. Sign in again in connection settings.',
     };
   }
-  if (!token) return { kind: 'unavailable', reason: 'no-credential' };
+  if (!token) {
+    if (expectsStoredCredential(connection))
+      recordCredentialIssue(stores.dataDir, connection.connectionId, 'missing');
+    return { kind: 'unavailable', reason: 'no-credential' };
+  }
+  if (expectsStoredCredential(connection))
+    clearCredentialIssue(stores.dataDir, connection.connectionId);
   try {
     return await adapter({
       baseUrl: connection.baseUrl,
       apiKey: token,
-      ...(accountId ? { accountId } : {}),
       fetch,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
@@ -210,10 +185,20 @@ async function query(
   }
 }
 
+function isKeyringError(error: unknown): boolean {
+  return (
+    error instanceof KeyringUnavailable ||
+    (error instanceof Error && error.cause instanceof KeyringUnavailable)
+  );
+}
+
 function remember(key: string, value: ProviderUsageResponse): void {
   if (cache.size >= CACHE_LIMIT) {
     const oldest = cache.keys().next().value;
-    if (oldest !== undefined) cache.delete(oldest);
+    if (oldest !== undefined) {
+      cache.delete(oldest);
+      generations.delete(oldest);
+    }
   }
   cache.set(key, { at: Date.now(), value });
 }

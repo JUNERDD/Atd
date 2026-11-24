@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { CHATGPT_PRIVACY_VERSION, type ServiceConnection } from '@atd/agent-contracts';
+import type { ServiceConnection } from '@atd/agent-contracts';
+import { KeyringUnavailable } from '../dist/credentials/keyring.js';
+import {
+  clearCredentialIssue,
+  currentCredentialIssue,
+  recordCredentialIssue,
+} from '../dist/providers/credential-issues.js';
 import type { ProviderStores } from '../dist/providers/runtime.js';
 import { providerUsage } from '../dist/providers/usage.js';
 
@@ -85,90 +91,24 @@ test('a prototype-named provider is unsupported without reading the credential',
   assert.equal(reads, 0);
 });
 
-test('ChatGPT usage resolves its OAuth token through the runtime so an expired access token refreshes', async (t) => {
-  // The runtime's getAuth refreshes an expired SIWC token under the credential lock; a stale
-  // keyring `access` is never used directly. The injected runtime stands in for that resolution
-  // so the query asserts it sends the fresh runtime token rather than the raw stored credential.
-  const runtime = { getAuth: async () => ({ auth: { apiKey: 'fresh-access' } }) };
+test('ChatGPT OAuth stays unsupported without reading or refreshing its credential', async () => {
+  let reads = 0;
   const connection = connectionFixture({
-    connectionId: 'usage-chatgpt-oauth',
+    connectionId: 'usage-chatgpt-unsupported',
     provider: 'openai',
     name: 'ChatGPT',
     baseUrl: 'https://api.openai.com/v1',
     authType: 'oauth',
-    chatgptConsent: {
-      privacyVersion: CHATGPT_PRIVACY_VERSION,
-      backgroundAllowed: false,
-      acceptedAt: new Date().toISOString(),
-    },
     chatgptPlanEnabled: true,
   });
-  const stores = storesFor(connection, undefined, () =>
-    JSON.stringify({
-      type: 'oauth',
-      protocol: 'siwc',
-      clientId: 'client-1',
-      access: 'stale-access',
-      refresh: 'refresh-token',
-      expires: Date.now() - 60_000,
-      subject: 'sub-1',
-      idToken: 'e30.e30.sig',
-      scopes: [],
-    }),
+  assert.deepEqual(
+    await providerUsage(
+      storesFor(connection, () => (reads += 1)),
+      connection,
+    ),
+    { kind: 'unsupported' },
   );
-  let bearer: string | null = null;
-  let accountId: string | null = null;
-  const captureFetch: typeof fetch = async (_url, init) => {
-    const headers = (init?.headers ?? {}) as Record<string, string>;
-    bearer = headers.authorization ?? null;
-    accountId = headers['chatgpt-account-id'] ?? null;
-    return new Response(
-      JSON.stringify({
-        rate_limit: {
-          primary_window: {
-            used_percent: 10,
-            limit_window_seconds: 18_000,
-            reset_at: 1_800_000_000,
-          },
-        },
-      }),
-      { status: 200, headers: { 'content-type': 'application/json' } },
-    );
-  };
-  t.mock.method(globalThis, 'fetch', captureFetch);
-  assert.equal((await providerUsage(stores, connection, { runtime })).kind, 'ok');
-  // The fresh runtime token (not the stale keyring access) reaches the usage endpoint.
-  assert.equal(bearer, 'Bearer fresh-access');
-  // The account header still comes from the stored credential's identity.
-  assert.equal(accountId, 'sub-1');
-});
-
-test('an identity-only ChatGPT sign-in never calls the usage endpoint', async () => {
-  const connection = connectionFixture({
-    connectionId: 'usage-chatgpt-plan-disabled',
-    provider: 'openai',
-    name: 'ChatGPT',
-    baseUrl: 'https://api.openai.com/v1',
-    authType: 'oauth',
-    chatgptConsent: {
-      privacyVersion: CHATGPT_PRIVACY_VERSION,
-      backgroundAllowed: false,
-      acceptedAt: new Date().toISOString(),
-    },
-    chatgptPlanEnabled: false,
-  });
-  let calls = 0;
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = (async () => {
-    calls += 1;
-    return new Response('{}', { status: 200 });
-  }) as typeof fetch;
-  try {
-    await assert.rejects(providerUsage(storesFor(connection), connection), /chatgpt_plan_disabled/);
-    assert.equal(calls, 0);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
+  assert.equal(reads, 0);
 });
 
 test('an explicit refresh bypasses the 30 second success cache', async () => {
@@ -191,6 +131,97 @@ test('an explicit refresh bypasses the 30 second success cache', async () => {
       'ok',
     );
     assert.equal(calls, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('a keychain read failure records an unreadable credential', async () => {
+  const connection = connectionFixture({ connectionId: 'usage-keyring-unreadable' });
+  const stores = storesFor(connection);
+  stores.keyring.get = async () => {
+    throw new KeyringUnavailable('denied');
+  };
+  const result = await providerUsage(stores, connection);
+  assert.equal(result.kind, 'error');
+  assert.equal(currentCredentialIssue('/tmp', connection.connectionId), 'unreadable');
+  clearCredentialIssue('/tmp', connection.connectionId);
+});
+
+test('a missing stored credential is recorded as missing', async () => {
+  const connection = connectionFixture({ connectionId: 'usage-missing-credential' });
+  const stores = storesFor(connection);
+  stores.keyring.get = async () => undefined;
+  const result = await providerUsage(stores, connection);
+  assert.deepEqual(result, { kind: 'unavailable', reason: 'no-credential' });
+  assert.equal(currentCredentialIssue('/tmp', connection.connectionId), 'missing');
+  clearCredentialIssue('/tmp', connection.connectionId);
+});
+
+test('a manual refresh clears a recorded issue after a readable credential', async () => {
+  const connection = connectionFixture({ connectionId: 'usage-clear-issue' });
+  recordCredentialIssue('/tmp', connection.connectionId, 'missing');
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ usages: { limit_5h: { used_ratio: 0.1 } } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })) as typeof fetch;
+  try {
+    const result = await providerUsage(storesFor(connection), connection, { refresh: true });
+    assert.equal(result.kind, 'ok');
+    assert.equal(currentCredentialIssue('/tmp', connection.connectionId), undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('a non-JSON 200 response is an error, not an empty success', async () => {
+  const connection = connectionFixture({ connectionId: 'usage-invalid-json' });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response('<html>login</html>', { status: 200 })) as typeof fetch;
+  try {
+    assert.equal((await providerUsage(storesFor(connection), connection)).kind, 'error');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('a redirect is an error, not an empty success', async () => {
+  const connection = connectionFixture({ connectionId: 'usage-redirect' });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response('', {
+      status: 302,
+      headers: { location: 'https://login.example.com' },
+    })) as typeof fetch;
+  try {
+    assert.equal((await providerUsage(storesFor(connection), connection)).kind, 'error');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('concurrent usage reads share one request', async () => {
+  const connection = connectionFixture({ connectionId: 'usage-single-flight' });
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ usages: { limit_5h: { used_ratio: 0.1 } } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+  try {
+    const [first, second] = await Promise.all([
+      providerUsage(storesFor(connection), connection),
+      providerUsage(storesFor(connection), connection),
+    ]);
+    assert.equal(first.kind, 'ok');
+    assert.equal(second.kind, 'ok');
+    assert.equal(calls, 1);
   } finally {
     globalThis.fetch = originalFetch;
   }
