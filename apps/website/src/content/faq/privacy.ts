@@ -26,11 +26,11 @@ export const privacy = {
       answer: {
         en: [
           'Only the ones for features you use, and Atd asks for each when you first use the feature that needs it. The selection toolbar needs Accessibility (called Device Control and Data Access on newer macOS versions), and screenshots and screen recordings need Screen Recording.',
-          'Computer use in Mac apps needs the same app-control access plus Screen Recording; Settings → Computer use shows their status and opens System Settings for you. You can turn any of them off again in System Settings › Privacy & Security.',
+          'Computer use in Mac apps needs the same app-control access plus Screen Recording; Settings → Computer use shows their status and opens System Settings for you. If macOS blocks reading a file you attach, Atd tells you why and opens Privacy & Security › Files & Folders directly. You can also inspect permissions and system health in Diagnostics beside About in Settings, or turn any permission off again in System Settings › Privacy & Security.',
         ],
         zh: [
           '只需要你所用功能对应的权限，Atd 会在你第一次使用该功能时请求。选区工具栏需要“辅助功能”（较新的 macOS 中称为“设备控制和数据访问”），截图和录屏需要“屏幕录制”。',
-          '在 Mac 应用中进行电脑操作，需要同样的应用控制权限和“屏幕录制”；“设置 → 电脑操作”会显示它们的状态，并能直接打开系统设置。这些权限随时都可以在“系统设置 › 隐私与安全性”中关闭。',
+          '在 Mac 应用中进行电脑操作，需要同样的应用控制权限和“屏幕录制”；“设置 → 电脑操作”会显示它们的状态，并能直接打开系统设置。如果 macOS 阻止读取你附加的文件，Atd 会说明原因并提供一键打开“隐私与安全性 › 文件与文件夹”的入口。你也可以在设置底栏“关于”旁的“系统诊断”中检查权限与运行状态，并随时在“系统设置 › 隐私与安全性”中关闭任意权限。',
         ],
       },
       see: 'privacy',

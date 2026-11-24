@@ -53,20 +53,20 @@ const homeKeywords: Localized<readonly string[]> = {
 
 const featureList: Localized<readonly string[]> = {
   en: [
-    'Selection toolbar with in-place actions',
-    'Screenshot annotations, scrolling capture, and screen recording',
-    'Mac computer use and autonomous subagents',
-    'Skills, MCP servers, and slash commands',
-    'Local memory and per-action permission approvals',
-    'Cloud models and local runtimes on macOS',
+    'Selection toolbar with in-place actions and floating Markdown cards',
+    'Screenshot annotations, floating pins, scrolling capture, and screen recording',
+    'Mac app and website computer use, personal apps, and scheduled automations',
+    'Skills, subagents, MCP servers, and saved slash commands',
+    'Local memory, per-action permission approvals, and built-in 7-layer diagnostics',
+    'Cloud models, reusable model aliases, and local runtimes on macOS',
   ],
   zh: [
-    '选区旁浮动工具栏与就地写回结果',
-    '截图标注、滚动长截图与录屏识步提问',
-    'Mac 电脑操作（Computer Use）与子智能体协作',
-    'Skills、MCP 与斜杠命令扩展',
-    '本地审核记忆与关键操作逐次授权',
-    '接入云端模型与本地运行时',
+    '选区旁浮动工具栏、就地写回与悬浮 Markdown 结果卡片',
+    '截图标注、跨空间贴图置顶、滚动长截图与录屏识步提问',
+    'Mac 应用与网站电脑操作、个人应用构建与定时自动化',
+    'Skills、子代理、MCP 服务器与可复用斜杠命令',
+    '本地可审核记忆、逐项权限控制与内置七层系统诊断',
+    '接入云端模型、可复用模型别名与本机运行时',
   ],
 };
 

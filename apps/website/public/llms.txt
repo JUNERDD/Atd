@@ -1,6 +1,6 @@
 # Atd
 
-> Atd (anything, anytime, anywhere, to do) is a free, open-source macOS AI desktop agent (MIT licensed). A native app for macOS 15 or later (Apple silicon or Intel) opens a floating panel on ⌘ ⇧ Space anywhere to run coding, computer use, MCP/skill workflows, screenshot and screen-recording captures, and automation with cloud or local models.
+> Atd (anything, anytime, anywhere, to do) is a free, open-source macOS AI desktop agent (MIT licensed, Developer ID signed and notarized by Apple). A native app for macOS 15 or later (Apple silicon or Intel) opens a floating panel on ⌘ ⇧ Space anywhere to run coding, computer use, MCP/skill workflows, screenshot and screen-recording captures, and automation with cloud or local models.
 
 ## Core Pages
 

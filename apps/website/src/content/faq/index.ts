@@ -12,7 +12,7 @@ export * from './types.ts';
  * prerender scripts can read it under Node's type stripping.
  */
 export const faq = {
-  updated: '2026-11-20',
+  updated: '2026-11-24',
   copy: {
     en: {
       headTitle: 'FAQ: the free, open-source AI agent for Mac — Atd',

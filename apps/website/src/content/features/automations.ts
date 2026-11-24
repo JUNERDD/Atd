@@ -3,9 +3,9 @@ import type { FeaturePage } from './types.ts';
 export const automations = {
   slug: 'automations',
   illustration: { case: 'automations' },
-  updated: '2026-11-18',
+  updated: '2026-11-24',
   related: ['mcp-and-skills', 'computer-use', 'privacy'],
-  posts: ['atd-0-10-6'],
+  posts: ['atd-0-12-1', 'atd-0-12-0', 'atd-0-10-6'],
   copy: {
     en: {
       name: 'Automations',
@@ -25,7 +25,7 @@ export const automations = {
           ],
           points: [
             'Schedule: once, at an interval from 15 minutes to a week, daily, weekly, monthly, or a custom cron expression, in the time zone you choose.',
-            'Folder: when files are added to or change in a folder you choose, optionally only files matching name patterns such as *.pdf, including subfolders up to 4 levels down.',
+            'Folder: when files are added to or change in a folder you choose, optionally only files matching name patterns such as *.pdf, including subfolders up to 4 levels down. If a watched folder goes missing or loses read permission, Atd tells you why.',
             'Mac is idle: at most once a day, the first time your Mac has had no keyboard, mouse or trackpad input for 5 to 120 minutes while none of your tasks is running.',
             'Another automation: after another automation’s run has a result, finds nothing new, needs you or fails. Automations can’t follow each other in a loop.',
           ],
@@ -34,7 +34,7 @@ export const automations = {
           id: 'actions',
           title: 'Decide what each run does',
           paragraphs: [
-            'A run follows a prompt you write for it, or runs one of your saved commands with its parameters and input. Each run starts fresh, so a prompt should say what to do, where to look and what a good result looks like. A folder run also hands its command the files that changed.',
+            'A run follows a prompt you write for it, or runs one of your saved commands with its parameters and input. Each run starts fresh, so a prompt should say what to do, where to look and what a good result looks like. A folder run also hands its command the files that changed. You can bind an automation to a reusable model alias so editing the alias updates every automation that uses it.',
             'To automate a saved command, choose Automate… from its More menu in Settings › Commands, or ask Atd in a conversation to set up the automation for you. Commands that read the selection, the clipboard or a screenshot need you there, so they can’t run as automations.',
             'New installations include an editable Consolidate memory automation that merges duplicate memories and rewrites outdated ones, at most once a day after two hours of Mac inactivity. Memories it would remove become suggestions you confirm in Settings › Memory.',
           ],
@@ -129,7 +129,7 @@ export const automations = {
           ],
           points: [
             '计划：仅一次、按 15 分钟到 1 周的间隔、每天、每周、每月，或自定义 cron 表达式，按你选择的时区计算。',
-            '文件夹：你选择的文件夹中有文件新增或变化时运行，可以只匹配 *.pdf 这类文件名模式，也可以包含最多 4 层子文件夹。',
+            '文件夹：你选择的文件夹中有文件新增或变化时运行，可以只匹配 *.pdf 这类文件名模式，也可以包含最多 4 层子文件夹。如果被监视的文件夹找不到或缺少读取权限，Atd 会明确提示原因。',
             'Mac 空闲时：每天最多一次，在这台 Mac 首次连续 5 到 120 分钟没有键盘、鼠标或触控板操作，且你的任务都没有在运行时开始。',
             '另一个自动化：在另一个自动化的某次运行有结果、没有新内容、需要你处理或失败后运行。自动化之间不能循环触发。',
           ],
@@ -138,7 +138,7 @@ export const automations = {
           id: 'actions',
           title: '决定每次运行做什么',
           paragraphs: [
-            '每次运行可以执行你为它写的提示词，也可以带着参数和输入运行一个已保存的命令。每次运行都从零开始，所以提示词要写清楚做什么、去哪里找，以及怎样才算好结果。由文件夹触发的运行还会把变化的文件交给命令。',
+            '每次运行可以执行你为它写的提示词，也可以带着参数和输入运行一个已保存的命令。每次运行都从零开始，所以提示词要写清楚做什么、去哪里找，以及怎样才算好结果。由文件夹触发的运行还会把变化的文件交给命令。你还可以将自动化绑定到可复用的模型别名，修改别名即可同步更新所有绑定它的自动化。',
             '要让已保存的命令自动运行，可以在“设置 › 命令”中打开它的“更多”菜单，选择“设为自动化…”；也可以直接在对话中让 Atd 帮你设置。读取选中文字、剪贴板或截图的命令需要你在场，因此不能设为自动化。',
             '新安装的 Atd 自带一个可编辑的“整理记忆”自动化：每天最多一次，在 Mac 连续两小时无操作后合并重复的记忆、改写过时的记忆。它认为该删除的记忆会变成建议，由你在“设置 › 记忆”中确认。',
           ],

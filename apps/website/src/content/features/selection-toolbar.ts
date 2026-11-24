@@ -3,7 +3,7 @@ import type { FeaturePage } from './types.ts';
 export const selectionToolbar = {
   slug: 'selection-toolbar',
   illustration: { case: 'selection-toolbar' },
-  updated: '2026-11-18',
+  updated: '2026-11-24',
   related: ['screen-capture', 'models', 'automations'],
   posts: ['atd-0-11-0', 'atd-0-10-6'],
   copy: {
@@ -36,7 +36,7 @@ export const selectionToolbar = {
             'Insert after the selected text: keeps the original and adds the answer after it, for replies and continuations.',
             'Insert at the cursor: types the answer where the cursor was.',
             'Copy to the clipboard.',
-            'Show in a card: a floating card over the app, ready to copy, insert or open in Atd.',
+            'Show in a card: a floating card over the app that renders formatted Markdown as it streams (toggleable under Settings → General), ready to copy, insert or open in Atd.',
             'Show in the conversation: the answer stays in the panel.',
           ],
         },
@@ -128,7 +128,7 @@ export const selectionToolbar = {
             '插入到选中文字之后：保留原文，把结果接在后面，适合回复和续写。',
             '插入到光标处：在光标所在处输入结果。',
             '拷贝到剪贴板。',
-            '显示在卡片中：悬浮在当前应用上方，可拷贝、插入或在 Atd 中打开。',
+            '显示在卡片中：悬浮在当前应用上方，流式渲染格式化 Markdown（可在「设置 → 通用」关闭），可拷贝、插入或在 Atd 中打开。',
             '显示在对话中：结果只留在面板里。',
           ],
         },

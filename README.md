@@ -1,17 +1,12 @@
 # Atd
 
-> [!WARNING]
-> **Previously published releases use a self-signed certificate and are not notarized by Apple.** macOS may block their first launch because it cannot verify the developer or Apple notarization.
->
-> Download only from the official link below. If you trust that download, try opening **Atd** once, then go to **System Settings → Privacy & Security → Open Anyway** and confirm **Open** in the next prompt. See [Apple’s full first-launch instructions](https://support.apple.com/en-sa/102445).
-
 <img src="packages/ui/src/assets/brands/atd/app-icon.png" width="96" alt="Atd app icon" />
 
 **A quiet, open-source AI desktop agent for macOS** — _anything, anytime, anywhere, to do._
 
 Select text, capture your screen, or press **⌘ ⇧ Space** to start a conversation. Atd brings your cloud or local models, MCP tools, computer use, and local context into a small desktop panel—for everyday work, coding tasks, and apps of your own.
 
-**macOS 15+ · Apple silicon and Intel**
+**macOS 15+ · Apple silicon and Intel · Signed and notarized by Apple**
 
 [![Download Atd for Apple silicon](https://img.shields.io/badge/Download_for_Mac-Apple_silicon-111111?style=for-the-badge&logo=apple&logoColor=white)](https://downloads.atd.best/latest/Atd-arm64.dmg) [![Download Atd for Intel](https://img.shields.io/badge/Download_for_Mac-Intel-111111?style=for-the-badge&logo=apple&logoColor=white)](https://downloads.atd.best/latest/Atd-x64.dmg)
 
@@ -24,11 +19,11 @@ _Interface preview of the main panel._
 ## Get started
 
 1. Download the latest DMG for your Mac — [Apple silicon](https://downloads.atd.best/latest/Atd-arm64.dmg) (saved as `Atd-<version>-arm64.dmg`) or [Intel](https://downloads.atd.best/latest/Atd-x64.dmg) (saved as `Atd-<version>-x64.dmg`); both need macOS 15 or later. Open it and drag **Atd** to **Applications**.
-2. Open **Atd**. If macOS blocks it, follow the first-launch instructions in the warning above.
+2. Open **Atd** from **Applications**. Releases are signed with an Apple Developer ID certificate and notarized by Apple; if you are upgrading from a pre-0.11 self-signed build, macOS may ask once to reconfirm permissions or Keychain access.
 3. Open **Settings → Models**, add a provider connection, and choose your default provider and model. Connect with a supported account sign-in, API key, or local endpoint.
-4. Press **⌘ ⇧ Space** to open the panel. Ask a question, attach a file, or start from selected text or a screenshot.
+4. Press **⌘ ⇧ Space** to open the panel. Ask a question, attach a file, or start from selected text, a screenshot, or a screen recording.
 
-The selection toolbar asks for Accessibility access; screen capture asks for Screen Recording access. Grant these in macOS when you use those features.
+The selection toolbar asks for Accessibility access; screen capture and recording ask for Screen Recording access. Grant these in macOS when you use those features.
 
 Atd includes what it needs to run; you do not need to install Node.js. If a task needs an external tool, that tool must be available on your Mac.
 
@@ -38,6 +33,8 @@ Atd includes what it needs to run; you do not need to install Node.js. If a task
 | ---------------------- | ---------------- |
 | Show or hide the panel | ⌘ ⇧ Space        |
 | Take a screenshot      | ⌘ ⇧ 2            |
+| Record the screen      | ⌘ ⇧ 3            |
+| Switch model alias     | ⌘ ⇧ M            |
 | New conversation       | ⌘ N              |
 | Open settings          | ⌘ ,              |
 | Send a message         | Enter            |
@@ -47,11 +44,12 @@ Change these in **Settings → General**. The menu bar icon is another way to op
 
 ## What you can do
 
-- **Bring the right context.** Use selected text, annotated screenshots, attachments, `@` file mentions, or drag files onto the Mini Panel.
+- **Bring the right context.** Use selected text, annotated screenshots, attachments, `@` mentions for files or earlier conversations, or drag files onto the Mini Panel.
+- **Capture and annotate your screen.** Mark up screenshots with shapes, arrows, Smart Shapes, spotlight, step numbers, and mosaic; pin any capture as a floating window across Spaces; stitch scrolling pages into a long screenshot; record your screen with detected steps and on-device narration (without sending the video file to the model); or run commands directly on text inside a screenshot.
 - **Follow the work.** Streamed conversations show tool activity, file diffs, terminal output, web results, todo lists, and subagent activity. Continue a task with a follow-up, or stop an active run.
-- **Use your models.** Connect cloud, local, and custom providers. Each connection has its own credentials and default model; existing tasks retain their model selection.
-- **Make work reusable.** Save commands with parameters and shortcuts. Add skills, subagents, and MCP servers individually or through [supported plugin bundles](packages/plugin-kit/README.md).
-- **Answer in place.** Run a command from the selection toolbar or its shortcut: tap to use the options you picked last, or hold to choose them. Its answer can replace the selected text, go in after it or at the cursor, be copied, or open in a conversation.
+- **Use your models.** Connect cloud, local, and custom providers—including ChatGPT plan sign-in, API keys, cloud services, and local runtimes such as Ollama, LM Studio, llama.cpp, and vLLM. Save reusable **Model aliases** that bundle a connection, model, context window, and reasoning effort, and switch them with `⌘ ⇧ M` or `/model`.
+- **Make work reusable.** Save commands with parameters and up to eight shortcuts. Add skills, subagents, and MCP servers individually or through [supported plugin bundles](packages/plugin-kit/README.md).
+- **Answer in place.** Run a command from the selection toolbar or its shortcut: tap to use the options you picked last, or hold to choose them. Its answer can replace the selected text, go in after it or at the cursor, be copied, show in a floating Markdown card, or open in a conversation.
 - **Build personal apps.** Describe a small tool, create it in a conversation, and open it from **My apps**. Apps can have an independent window, their own backend, and desktop widgets; return to the task to refine them.
 - **Work across websites and apps.** Let a task request access to the websites and Mac apps it needs. Manage that access, browser environments, and computer-use controls in **Settings → Computer use**.
 - **Run work automatically.** Schedule prompts or saved commands, react to folder changes, run when your Mac is idle, or chain work after another automation. Inspect status and run history, and pause automations from settings.
@@ -135,7 +133,7 @@ _Models and settings: connect a ChatGPT plan or API credentials, after agreeing 
 - **Model and tool access.** Requests go to the model providers you configure. Tools and MCP servers can access the files or external services allowed by their configuration and the task's permissions.
 - **Credentials.** Provider and MCP credentials are stored in your Mac’s keychain.
 - **Approval controls.** Each task can use Manual approval, Auto approval, or Always allow; new installations start on Auto approval, which still asks when an action looks risky. Settings also owns the shell allowlist and memory-learning controls.
-- **Lifecycle and logs.** Atd starts its local agent service when you open the app and stops it when you quit. If you need logs to troubleshoot a problem, choose **Show Service Logs** from the menu bar menu.
+- **Lifecycle and diagnostics.** Atd starts its local agent service when you open the app and stops it when you quit. To troubleshoot permissions, toolchains, or network issues, open **Diagnostics** beside **About** in Settings to run the 7-layer Doctor, test live probes without recording text or pixels, or preview and export a redacted support bundle; **Export Diagnostics…** and **Show Service Logs** are also available from the menu bar menu.
 
 ## Contributing
 
@@ -143,7 +141,7 @@ Read the [contributor guidelines](AGENTS.md) before making changes, and submit a
 
 ## License
 
-Atd is released under the [MIT License](LICENSE). Code adapted from other projects keeps its own license: the [AI Elements](packages/ui/src/components/ai-elements/LICENSE) components (Apache-2.0), the memory engine's files from [pi-hermes-memory](licenses/pi-hermes-memory-LICENSE) (MIT), and the background computer-use driver (`apps/macos/Sources/AIComputerDriver`), written in Swift after recipes from [open-computer-use](licenses/open-computer-use-LICENSE), [yabai](licenses/yabai-LICENSE), [Peekaboo](licenses/peekaboo-LICENSE) and [Cua Driver](licenses/cua-driver-LICENSE) (all MIT). The PDF character maps in `apps/agent-service/vendor/pdfjs-cmaps`, taken from pdf.js, keep Adobe's [BSD-3-Clause license](apps/agent-service/vendor/pdfjs-cmaps/LICENSE).
+Atd is released under the [MIT License](LICENSE). Code adapted from other projects keeps its own license: the [AI Elements](packages/ui/src/components/ai-elements/LICENSE) components (Apache-2.0), the memory engine's files from [pi-hermes-memory](licenses/pi-hermes-memory-LICENSE) (MIT), and the background computer-use driver (`apps/macos/Sources/AIComputerDriver`), written in Swift after recipes from [open-computer-use](licenses/open-computer-use-LICENSE), [yabai](licenses/yabai-LICENSE), [Peekaboo](licenses/peekaboo-LICENSE) and [Cua Driver](licenses/cua-driver-LICENSE) (all MIT). The PDF character maps in `apps/agent-service/vendor/pdfjs-cmaps`, taken from pdf.js, keep Adobe's [BSD-3-Clause license](apps/agent-service/vendor/pdfjs-cmaps/LICENSE). Third-party library licenses and notices shipped with the macOS app are collected in [`licenses/`](licenses/).
 
 The license covers the code, not the Atd name and logo, nor the logos of other companies and services in `packages/ui/src/assets/brands`, which remain their owners' trademarks.
 
