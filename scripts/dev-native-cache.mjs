@@ -1,53 +1,36 @@
 /** Enable native task caching only for a known local development compiler context. */
 import { execFile } from 'node:child_process';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { DEV_TURBO_CONFIG, NATIVE_CONTEXT_FILE, syncDevTurboConfig } from './dev-turbo-config.mjs';
 
 const exec = promisify(execFile);
 const repository = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const nativeTaskName = '@atd/file-index#build';
 
-/** Derive the dev configuration from the production task graph without changing its edges. */
+/**
+ * Returns the root config for Turbo watch: the checked-in dev graph, whose cached addon is keyed
+ * by this checkout's compiler context, or `turbo.json`, which keeps the addon uncached.
+ */
 export async function prepareDevNativeCache() {
   const sourcePath = path.join(repository, 'turbo.json');
   try {
-    const source = await readFile(sourcePath, 'utf8');
-    const config = JSON.parse(source);
-    const task = config.tasks?.[nativeTaskName];
-    if (
-      !task ||
-      typeof task !== 'object' ||
-      !Array.isArray(task.inputs) ||
-      !task.inputs.every((input) => typeof input === 'string')
-    ) {
-      throw new Error('The native build task does not declare its inputs.');
-    }
-
     const context = await nativeContext();
-    if (!context.enabled) bypass(context.reason);
-    const digest = createHash('sha256')
-      .update(source)
-      .update(JSON.stringify(context))
-      .digest('hex');
-    const relativeDirectory = `.turbo/dev/${digest}`;
-    const directory = path.join(repository, relativeDirectory);
-    const contextInput = `$TURBO_ROOT$/${relativeDirectory}/native-context.json`;
-    config.tasks[nativeTaskName] = {
-      ...task,
-      cache: context.enabled,
-      inputs: [
-        ...new Set([...task.inputs, contextInput, '$TURBO_ROOT$/scripts/dev-native-cache.mjs']),
-      ],
-    };
-    await mkdir(directory, { recursive: true, mode: 0o700 });
-    await writeAtomic(path.join(directory, 'native-context.json'), context);
-    const generatedPath = path.join(directory, 'turbo.json');
-    await writeAtomic(generatedPath, config);
-    return generatedPath;
+    if (!context.enabled) {
+      bypass(context.reason);
+      return sourcePath;
+    }
+    if (await syncDevTurboConfig()) {
+      process.stderr.write(
+        '[dev] Updated turbo.dev.json from turbo.json; commit it with the turbo.json change.\n',
+      );
+    }
+    await mkdir(path.dirname(NATIVE_CONTEXT_FILE), { recursive: true, mode: 0o700 });
+    await writeAtomic(NATIVE_CONTEXT_FILE, context);
+    return DEV_TURBO_CONFIG;
   } catch {
     // The checked-in configuration keeps this task uncached; preparation must not block dev.
     bypass('development cache preparation failed');
