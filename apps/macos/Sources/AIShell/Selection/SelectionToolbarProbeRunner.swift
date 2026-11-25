@@ -65,17 +65,17 @@ final class SelectionToolbarProbeRunner {
     }
   }
 
-  /// Records a `leftMouseUp` gesture in `< 250 ns` and returns `(slot, seq)` when admitted for AX
-  /// probing, or `nil` when gated out beforehand.
+  /// Records a paired `leftMouseUp` gesture in `< 250 ns` and returns `(slot, seq)` when admitted
+  /// for AX probing, or `nil` when gated out beforehand.
   func recordMouseUp(_ input: GestureInput, token: Int) -> (slot: Int, seq: UInt32)? {
+    guard let down = input.pressedAt else { return nil }
     let nowNs = MonotonicTimestampAnchor.nowUptimeNs()
     let app = frontmostAppProvider()
     let secure = secureInputEnabled()
     let bundleId = app?.bundleIdentifier
     let ownBundleId = Bundle.main.bundleIdentifier
 
-    var flags: SelectionGateFlags = [.hadCgLocation]
-    if input.pressedAt != nil { flags.insert(.hadMouseDown) }
+    var flags: SelectionGateFlags = [.hadCgLocation, .hadMouseDown]
     if input.shiftHeld { flags.insert(.shiftHeld) }
     if input.mayHaveSelected { flags.insert(.mayHaveSelected) } else { flags.insert(.cellsOnly) }
     if input.heldAtPress { flags.insert(.heldAtPress) }
@@ -90,10 +90,8 @@ final class SelectionToolbarProbeRunner {
     entry.frontmostBundleId = InlineText64(truncatingUTF8: bundleId)
     entry.frontmostPid = app?.pid ?? 0
     entry.flags = flags.rawValue
-    if let down = input.pressedAt {
-      let deciPt = Int((hypot(input.pointer.x - down.x, input.pointer.y - down.y) * 10.0).rounded())
-      entry.dragDistanceDeciPt = UInt16(clamping: max(0, deciPt))
-    }
+    let deciPt = Int((hypot(input.pointer.x - down.x, input.pointer.y - down.y) * 10.0).rounded())
+    entry.dragDistanceDeciPt = UInt16(clamping: max(0, deciPt))
     entry.clickCount = UInt8(clamping: max(0, input.clickCount))
     entry.activationMode = Self.encodeActivation(input.settings?.activation.mode)
 
@@ -102,17 +100,13 @@ final class SelectionToolbarProbeRunner {
       bundleId.map { input.settings?.excludedBundleIds.contains($0) == true } ?? false
     entry.appFilter = input.settings == nil ? 3 : (isOwnApp ? 1 : (isExcluded ? 2 : 0))
 
-    if !input.admitted {
-      entry.dropStage = 2
-      ring.append(entry)
-      emitLive(
-        trusted: input.trusted, bundleId: bundleId, excluded: isExcluded,
-        role: nil, length: 0, outcome: "activation_blocked")
-      return nil
-    }
+    // Avoid evicting the 64-slot ring with routine own-app clicks or unadmitted plain clicks;
+    // keep admitted gestures, selection-like unadmitted gestures, and all live-probe steps.
+    let shouldRecordInRing = !isOwnApp && (input.admitted || input.mayHaveSelected)
+
     if input.settings?.enabled != true || !input.trusted {
       entry.dropStage = 3
-      ring.append(entry)
+      if shouldRecordInRing { ring.append(entry) }
       emitLive(
         trusted: input.trusted, bundleId: bundleId, excluded: isExcluded,
         role: nil, length: 0,
@@ -121,12 +115,20 @@ final class SelectionToolbarProbeRunner {
     }
     if secure || isOwnApp || isExcluded {
       entry.dropStage = secure ? 4 : (isExcluded ? 5 : 6)
-      ring.append(entry)
+      if shouldRecordInRing { ring.append(entry) }
       let code =
         secure ? "secure_input_active" : (isExcluded ? "excluded_app" : "ignored_own_window")
       emitLive(
         trusted: input.trusted, bundleId: bundleId, excluded: isExcluded,
         role: nil, length: 0, outcome: code)
+      return nil
+    }
+    if !input.admitted {
+      entry.dropStage = 2
+      if shouldRecordInRing { ring.append(entry) }
+      emitLive(
+        trusted: input.trusted, bundleId: bundleId, excluded: isExcluded,
+        role: nil, length: 0, outcome: "activation_blocked")
       return nil
     }
 

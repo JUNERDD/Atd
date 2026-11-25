@@ -165,12 +165,16 @@ final class SelectionToolbarController {
       NSWorkspace.shared.notificationCenter.removeObserver(activationObserver)
     }
     activationObserver = nil
+    pressedAt = nil
+    heldAtPress = false
     dismiss()
   }
 
   private func handle(_ event: NSEvent) {
     guard let location = event.cgEvent?.location else {
       if event.type == .leftMouseUp {
+        pressedAt = nil
+        heldAtPress = false
         probeRunner.recordMissingCgLocation(trusted: trust.isTrusted)
       }
       return
@@ -185,18 +189,23 @@ final class SelectionToolbarController {
         Date().timeIntervalSince1970 - ProcessInfo.processInfo.systemUptime + event.timestamp
       heldAtPress = held(in: event)
     case .leftMouseUp:
+      // Ignore orphan mouse-ups without a paired `.leftMouseDown` (for example synthetic duplicates
+      // from third-party `CGEventTap` drag utilities or releases leaving our own windows) so they
+      // cannot cancel an in-flight probe or overwrite `activeAttempt`.
+      guard let downPoint = pressedAt else {
+        heldAtPress = false
+        return
+      }
       let shiftHeld = event.modifierFlags.contains(.shift)
       let selected = SelectionGesture.mayHaveSelected(
-        down: pressedAt, up: pointer, clickCount: event.clickCount, shift: shiftHeld)
+        down: downPoint, up: pointer, clickCount: event.clickCount, shift: shiftHeld)
       let heldAtRelease = held(in: event)
       let wasHeldAtPress = heldAtPress
       let admitted =
         settings?.activation.admits(
           heldAtPress: wasHeldAtPress, heldAtRelease: heldAtRelease, listening: listening.isOn)
         ?? false
-      let origin = pressedAt ?? pointer
-      let startedAt = pressedAt == nil ? Date().timeIntervalSince1970 : pressedTime
-      let downPoint = pressedAt
+      let startedAt = pressedTime
       pressedAt = nil
       heldAtPress = false
       let token = generation
@@ -210,7 +219,7 @@ final class SelectionToolbarController {
           token: token)
       else { return }
       schedule(
-        slot: recorded.slot, seq: recorded.seq, at: pointer, origin: origin,
+        slot: recorded.slot, seq: recorded.seq, at: pointer, origin: downPoint,
         startedAt: startedAt, immediately: event.clickCount < 2, cellsOnly: !selected)
     default:
       dismiss()
