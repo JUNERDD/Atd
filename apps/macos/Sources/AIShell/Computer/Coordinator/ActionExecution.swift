@@ -87,7 +87,10 @@ final class ActionExecution {
       } catch { return .failure(error) }
     }
     let operationId = operationId
-    stopHandler = { Task { await engine.cancel(operationId: operationId) } }
+    stopHandler = {
+      running.cancel()
+      Task { await engine.cancel(operationId: operationId) }
+    }
     let result = await running.value
     stopHandler = nil
     if let stop { return .failure(stop) }

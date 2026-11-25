@@ -83,7 +83,7 @@ const withOperation = {
   downloadDir: z.string().min(2).max(4096).regex(/^\//).optional(),
 };
 
-export const listPagesInput = {};
+export const listPagesInput = { operationId: OperationId.optional() };
 export const listPagesOutput = {
   ...common,
   /** `openerId`: the page target that opened this one, when Chrome reports it. */

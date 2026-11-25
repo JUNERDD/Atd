@@ -29,19 +29,21 @@ extension BrowserPageDriver {
   // MARK: Surfaces
 
   /// The page targets the browser's worker drives, with the page that opened each.
-  func listPages(_ endpoint: any BrowserWorkerEndpoint) async throws(ComputerFailure)
-    -> [BrowserWorkerReply.Page]
+  func listPages(_ endpoint: any BrowserWorkerEndpoint, operationId: String? = nil)
+    async throws(ComputerFailure) -> [BrowserWorkerReply.Page]
   {
+    var arguments: [String: Value] = [:]
+    if let operationId { arguments["operationId"] = .string(operationId) }
     let (reply, _) = try await call(
-      endpoint, "list_pages", [:], timeout: .seconds(10), writes: false)
+      endpoint, "list_pages", arguments, timeout: .seconds(10), writes: false)
     return try reply.checked("list_pages").pages ?? []
   }
 
   /// Lists the target's surfaces again; the bound page being gone ends the ref.
-  func refreshSurfaces(_ ref: TargetRefWire, _ target: Target) async throws(ComputerFailure)
-    -> BrowserSurfaceSet
-  {
-    let pages = try await listPages(target.endpoint)
+  func refreshSurfaces(
+    _ ref: TargetRefWire, _ target: Target, operationId: String? = nil
+  ) async throws(ComputerFailure) -> BrowserSurfaceSet {
+    let pages = try await listPages(target.endpoint, operationId: operationId)
     guard var set = surfaces[ref.id] else {
       throw ComputerFailure(
         .targetChanged, "The browser target is not current; list targets again.")
@@ -56,12 +58,14 @@ extension BrowserPageDriver {
 
   /// The page an action on surface `id` writes to: the bound page for the root, without a
   /// listing; a popup only while it is still admitted.
-  func surfacePage(_ ref: TargetRefWire, _ id: String?, _ target: Target)
-    async throws(ComputerFailure) -> String
-  {
+  func surfacePage(
+    _ ref: TargetRefWire, _ id: String?, _ target: Target, operationId: String? = nil
+  ) async throws(ComputerFailure) -> String {
     guard let bound = surfaces[ref.id] else { throw Self.surfaceGone }
     guard let id, id != bound.rootId else { return bound.boundPageId }
-    guard let pageId = try await refreshSurfaces(ref, target).pageId(of: id) else {
+    guard
+      let pageId = try await refreshSurfaces(ref, target, operationId: operationId).pageId(of: id)
+    else {
       throw Self.surfaceGone
     }
     return pageId

@@ -19,7 +19,8 @@ extension BrowserPageDriver {
     let target = try await target(ref)
     let binding = target.binding
     let record = try currentObservation(observation.id, ref: target.page, refId: ref.id)
-    let pageId = try await surfacePage(ref, context.surfaceRefId, target)
+    let pageId = try await surfacePage(
+      ref, context.surfaceRefId, target, operationId: context.operationId)
     guard record.pageId == pageId else {
       throw ComputerFailure(
         .staleObservation,
@@ -231,7 +232,7 @@ extension BrowserPageDriver {
       return try reply.checked(tool)
     } catch {
       guard error.code == .targetChanged, !error.mayHaveDispatched,
-        let pages = try? await listPages(write.endpoint),
+        let pages = try? await listPages(write.endpoint, operationId: context.operationId),
         pages.contains(where: { $0.pageId == write.record.pageId })
       else { throw error }
       throw ComputerFailure(.notFound, error.message)

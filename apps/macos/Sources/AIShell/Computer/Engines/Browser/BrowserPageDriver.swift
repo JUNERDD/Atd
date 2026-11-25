@@ -134,7 +134,7 @@ final class BrowserPageDriver {
     let screenshot = operation.include.screenshot
     let target = try await target(ref)
     try context.check()
-    let set = try await refreshSurfaces(ref, target)
+    let set = try await refreshSurfaces(ref, target, operationId: context.operationId)
     try context.check()
     guard let pageId = set.pageId(of: operation.surfaceRefId) else { throw Self.surfaceGone }
     let (raw, workerGeneration) = try await call(

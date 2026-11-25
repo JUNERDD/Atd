@@ -17,26 +17,48 @@ final class BrowserWorkerPool {
     let generation: Int
   }
 
-  private struct Entry {
-    var contextId: String
+  final class PoolEntry {
+    let profileId: String
+    let contextId: String
+    var isRemoved = false
     var worker: BrowserWorkerProcess?
     var starting: Task<BrowserWorkerProcess, any Error>?
+    var startingGeneration: Int?
+    var startingWaiters:
+      [UUID: CheckedContinuation<Result<BrowserWorkerProcess, BrowserWorkerCallError>, Never>] = [:]
     var inFlight = 0
     var idle: Task<Void, Never>?
     var crashes = 0
     var lastExit: ContinuousClock.Instant?
+
+    init(profileId: String, contextId: String) {
+      self.profileId = profileId
+      self.contextId = contextId
+    }
+  }
+
+  final class InFlightCall {
+    let writes: Bool
+    var sent = false
+    var cancel: () -> Void = {}
+
+    init(writes: Bool) { self.writes = writes }
   }
 
   static let idleGrace: Duration = .seconds(300)
   static let startTimeout: Duration = .seconds(15)
-  private static let log = Logger(subsystem: "com.junerdd.ai", category: "computer")
+  static let cancelledMemory = 256
+  static let log = Logger(subsystem: "com.junerdd.ai", category: "computer")
 
   /// The Node and worker new generations run; running ones keep theirs until stopped.
   var binaries: EngineBinaries
   private let logDirectory: URL
   private let uploadRoot: URL
-  private var entries: [String: Entry] = [:]
+  var entries: [String: PoolEntry] = [:]
   private var lastGeneration = 0
+  var cancelledOperations: Set<String> = []
+  var cancelledOrder: [String] = []
+  var inFlightByOperation: [String: [UUID: InFlightCall]] = [:]
 
   init(binaries: EngineBinaries, logDirectory: URL, uploadRoot: URL) {
     self.binaries = binaries
@@ -61,7 +83,9 @@ final class BrowserWorkerPool {
 
   /// The running generation of a profile's worker, if one runs for `contextId`'s browser.
   func generation(profileId: String, contextId: String) -> Int? {
-    guard let entry = entries[profileId], entry.contextId == contextId else { return nil }
+    guard let entry = entries[profileId], isLive(entry), entry.contextId == contextId else {
+      return nil
+    }
     return entry.worker?.generation
   }
 
@@ -70,86 +94,146 @@ final class BrowserWorkerPool {
   /// nothing to another (a new worker even restarts them at the same numbers).
   func call(
     _ instance: any BrowserWorkerEndpoint, _ tool: String, _ arguments: [String: Value],
-    timeout: Duration, pinned: Int? = nil
+    timeout: Duration, writes: Bool = true, pinned: Int? = nil
   ) async throws(BrowserWorkerCallError) -> (reply: BrowserWorkerReply, generation: Int) {
+    let operationId = Self.operationId(of: tool, arguments: arguments)
+    if isCancelled(operationId) { throw .cancelled(sent: false) }
     let profileId = instance.profileId
-    if let entry = entries[profileId], entry.contextId != instance.contextId {
+    if let stale = entries[profileId], stale.contextId != instance.contextId {
       // The profile's browser restarted: its worker drives a port that is gone.
-      entries[profileId] = nil
-      entry.idle?.cancel()
-      if let worker = entry.worker { Task { await worker.stop() } }
+      removeEntry(stale)
+      Task { await Self.stop(stale) }
     }
-    entries[profileId, default: Entry(contextId: instance.contextId)].inFlight += 1
-    entries[profileId]?.idle?.cancel()
+    let entry: PoolEntry
+    if let existing = entries[profileId] {
+      entry = existing
+    } else {
+      let created = PoolEntry(profileId: profileId, contextId: instance.contextId)
+      entries[profileId] = created
+      entry = created
+    }
+    entry.inFlight += 1
+    entry.idle?.cancel()
+    entry.idle = nil
+    let callID = UUID()
+    let record = InFlightCall(writes: writes)
+    if let operationId { inFlightByOperation[operationId, default: [:]][callID] = record }
+    defer { removeInFlight(operationId: operationId, callID: callID) }
     let lease: Lease
     do {
-      lease = try await self.lease(instance)
+      lease = try await self.lease(
+        entry, instance: instance, record: record, operationId: operationId)
     } catch {
-      release(profileId, generation: nil)
+      release(entry)
       throw error
     }
-    defer { release(profileId, generation: lease.generation) }
+    defer { release(entry) }
+    if isCancelled(operationId) { throw .cancelled(sent: false) }
     if let pinned, pinned != lease.generation { throw .generationChanged }
-    do {
-      let reply = try await lease.worker.call(tool, arguments, timeout: timeout)
-      entries[profileId]?.crashes = 0
-      return (reply, lease.generation)
-    } catch {
-      if error == .exited { exited(profileId, generation: lease.generation) }
-      throw error
+    record.sent = true
+    let worker = lease.worker
+    let workerCall = Task { () async -> Result<BrowserWorkerReply, BrowserWorkerCallError> in
+      do throws(BrowserWorkerCallError) {
+        return .success(try await worker.call(tool, arguments, timeout: timeout))
+      } catch {
+        return .failure(error)
+      }
     }
-  }
-
-  /// Asks every running worker to abort the calls carrying `operationId`.
-  func cancel(operationId: String) async {
-    let workers = entries.values.compactMap(\.worker)
-    for worker in workers {
-      _ = try? await worker.call(
-        "cancel", ["operationId": .string(operationId)], timeout: .seconds(3))
+    record.cancel = { workerCall.cancel() }
+    defer { record.cancel = {} }
+    let outcome = await withTaskCancellationHandler {
+      await workerCall.value
+    } onCancel: {
+      workerCall.cancel()
+    }
+    switch outcome {
+    case .success(let reply):
+      if isLive(entry) { entry.crashes = 0 }
+      return (reply, lease.generation)
+    case .failure(let error):
+      switch error {
+      case .exited:
+        exited(entry, worker: worker)
+        if writes { await worker.stop(force: true) }
+      case .timedOut:
+        await evict(entry, worker: worker, reason: "timed out on \(tool)", waitForExit: writes)
+      case .cancelled(let sent) where writes && sent:
+        await evict(entry, worker: worker, reason: "cancelled write \(tool)", waitForExit: true)
+      case .failed where writes:
+        await evict(entry, worker: worker, reason: "failed write \(tool)", waitForExit: true)
+      case .cancelled, .rejected, .failed, .unavailable, .generationChanged:
+        break
+      }
+      throw error
     }
   }
 
   /// Stops every worker and waits until each is reaped.
   func shutdownAll() async {
-    let current = entries
+    let current = Array(entries.values)
     entries = [:]
-    for entry in current.values { await Self.stop(entry) }
+    for entry in current { entry.isRemoved = true }
+    for entry in current { await Self.stop(entry) }
   }
 
   /// Stops the worker of `profileId` while it drives `contextId`'s browser, which went away, and
   /// waits until it is reaped; the next call starts a new generation.
   func stop(profileId: String, contextId: String) async {
     guard let entry = entries[profileId], entry.contextId == contextId else { return }
-    entries[profileId] = nil
+    removeEntry(entry)
     await Self.stop(entry)
   }
 
-  private static func stop(_ entry: Entry) async {
+  func isLive(_ entry: PoolEntry) -> Bool {
+    !entry.isRemoved && entries[entry.profileId] === entry
+  }
+
+  func removeEntry(_ entry: PoolEntry) {
+    entry.isRemoved = true
+    if entries[entry.profileId] === entry { entries[entry.profileId] = nil }
     entry.idle?.cancel()
-    entry.starting?.cancel()
-    if let worker = entry.worker {
+    entry.idle = nil
+  }
+
+  private static func stop(_ entry: PoolEntry) async {
+    entry.isRemoved = true
+    entry.idle?.cancel()
+    entry.idle = nil
+    let starting = entry.starting
+    entry.starting = nil
+    entry.startingGeneration = nil
+    let waiters = entry.startingWaiters
+    entry.startingWaiters = [:]
+    let worker = entry.worker
+    entry.worker = nil
+    starting?.cancel()
+    for continuation in waiters.values {
+      continuation.resume(returning: .failure(.unavailable("The browser worker stopped.")))
+    }
+    if let worker {
       await worker.stop()
-    } else if let started = try? await entry.starting?.value {
-      await started.stop()
+    }
+    if let started = try? await starting?.value {
+      await started.stop(force: true)
     }
   }
 
   // MARK: Generations
 
-  private func lease(_ instance: any BrowserWorkerEndpoint) async throws(BrowserWorkerCallError)
-    -> Lease
-  {
-    let profileId = instance.profileId
-    var entry = entries[profileId] ?? Entry(contextId: instance.contextId)
-    if let worker = entry.worker {
-      if await worker.isRunning { return Lease(worker: worker, generation: worker.generation) }
-      exited(profileId, generation: worker.generation)
-      entry = entries[profileId] ?? entry
+  private func lease(
+    _ entry: PoolEntry, instance: any BrowserWorkerEndpoint, record: InFlightCall,
+    operationId: String?
+  ) async throws(BrowserWorkerCallError) -> Lease {
+    guard isLive(entry) else { throw .unavailable("The browser worker stopped.") }
+    while let worker = entry.worker {
+      if await worker.isRunning, isLive(entry), entry.worker === worker {
+        return Lease(worker: worker, generation: worker.generation)
+      }
+      guard isLive(entry) else { throw .unavailable("The browser worker stopped.") }
+      if entry.worker === worker { exited(entry, worker: worker) }
     }
-    let task: Task<BrowserWorkerProcess, any Error>
-    if let starting = entry.starting {
-      task = starting
-    } else {
+    if isCancelled(operationId) { throw .cancelled(sent: false) }
+    if entry.starting == nil {
       guard let script = binaries.browserWorker else {
         throw .unavailable("The browser worker add-on is not installed.")
       }
@@ -157,73 +241,62 @@ final class BrowserWorkerPool {
       let launch = BrowserWorkerProcess.Launch(
         node: binaries.node, worker: script, webSocket: instance.webSocketURL,
         channel: instance.channel, uploadRoot: uploadRoot,
-        log: logDirectory.appending(path: "\(profileId).log", directoryHint: .notDirectory))
+        log: logDirectory.appending(
+          path: "\(entry.profileId).log", directoryHint: .notDirectory))
       let generation = lastGeneration
       let wait = restartWait(entry)
-      task = Task {
-        if wait > .zero { try await Task.sleep(for: wait) }
-        return try await BrowserWorkerProcess.start(
-          launch, generation: generation, timeout: Self.startTimeout)
+      entry.startingGeneration = generation
+      entry.starting = Task { [weak self] in
+        do {
+          if wait > .zero { try await Task.sleep(for: wait) }
+          let worker = try await BrowserWorkerProcess.start(
+            launch, generation: generation, timeout: Self.startTimeout)
+          self?.finishStart(entry, generation: generation, result: .success(worker))
+          return worker
+        } catch {
+          self?.finishStart(entry, generation: generation, result: .failure(error))
+          throw error
+        }
       }
-      entry.starting = task
-      entries[profileId] = entry
     }
-    do {
-      let worker = try await task.value
-      if entries[profileId]?.starting == task {
-        entries[profileId]?.starting = nil
-        entries[profileId]?.worker = worker
+    let waiterID = UUID()
+    record.cancel = { [weak self] in self?.cancelLeaseWaiter(entry, id: waiterID) }
+    defer { record.cancel = {} }
+    let outcome = await withTaskCancellationHandler {
+      await withCheckedContinuation {
+        (
+          continuation: CheckedContinuation<
+            Result<BrowserWorkerProcess, BrowserWorkerCallError>, Never
+          >
+        )
+        in
+        if isCancelled(operationId) {
+          continuation.resume(returning: .failure(.cancelled(sent: false)))
+          return
+        }
+        guard isLive(entry) else {
+          continuation.resume(returning: .failure(.unavailable("The browser worker stopped.")))
+          return
+        }
+        if let worker = entry.worker {
+          continuation.resume(returning: .success(worker))
+          return
+        }
+        guard entry.starting != nil else {
+          continuation.resume(returning: .failure(.unavailable("The browser worker stopped.")))
+          return
+        }
+        entry.startingWaiters[waiterID] = continuation
       }
+    } onCancel: {
+      Task { @MainActor [weak self] in self?.cancelLeaseWaiter(entry, id: waiterID) }
+    }
+    switch outcome {
+    case .success(let worker):
+      guard isLive(entry) else { throw .unavailable("The browser worker stopped.") }
       return Lease(worker: worker, generation: worker.generation)
-    } catch {
-      if entries[profileId]?.starting == task { entries[profileId]?.starting = nil }
-      Self.log.error(
-        "The browser worker did not start: \(String(describing: error), privacy: .public)")
-      throw .unavailable("The browser worker did not start: \(error.localizedDescription)")
+    case .failure(let error):
+      throw error
     }
-  }
-
-  /// How long a start waits after crashes: the backoff minus the time since the last exit.
-  private func restartWait(_ entry: Entry) -> Duration {
-    guard let lastExit = entry.lastExit else { return .zero }
-    let elapsed = ContinuousClock.now - lastExit
-    let remaining = ManagedChromeLaunch.restartDelay(afterCrashes: entry.crashes) - elapsed
-    return max(.zero, remaining)
-  }
-
-  /// A worker exited on its own: its generation ends and the next start backs off.
-  private func exited(_ profileId: String, generation: Int) {
-    guard var entry = entries[profileId], entry.worker?.generation == generation else { return }
-    if let worker = entry.worker { Task { await worker.stop() } }
-    entry.worker = nil
-    entry.crashes += 1
-    entry.lastExit = .now
-    entries[profileId] = entry
-    Self.log.error("A browser worker exited.")
-  }
-
-  private func release(_ profileId: String, generation: Int?) {
-    guard var entry = entries[profileId] else { return }
-    entry.inFlight = max(0, entry.inFlight - 1)
-    if entry.inFlight == 0, let worker = entry.worker,
-      generation == nil || worker.generation == generation
-    {
-      let running = worker.generation
-      entry.idle?.cancel()
-      entry.idle = Task { [weak self] in
-        try? await Task.sleep(for: Self.idleGrace)
-        guard !Task.isCancelled else { return }
-        self?.stopIdle(profileId, generation: running)
-      }
-    }
-    entries[profileId] = entry
-  }
-
-  private func stopIdle(_ profileId: String, generation: Int) {
-    guard let entry = entries[profileId], entry.inFlight == 0,
-      let worker = entry.worker, worker.generation == generation
-    else { return }
-    entries[profileId] = nil
-    Task { await worker.stop() }
   }
 }

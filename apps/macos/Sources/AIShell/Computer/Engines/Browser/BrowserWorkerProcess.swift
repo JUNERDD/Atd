@@ -3,22 +3,6 @@ import Foundation
 import MCP
 import System
 
-/// Why a call to the browser worker produced no reply of its own.
-enum BrowserWorkerCallError: Error, Equatable {
-  /// The worker process is gone; whatever the call sent may or may not have reached the page.
-  case exited
-  /// No reply within the call's limit; the request was cancelled and its effect is unknown.
-  case timedOut
-  /// The SDK refused the arguments (`isError` without structured content): nothing was sent.
-  case rejected(String)
-  /// A reply that is not the worker's result shape, or a transport failure mid-call.
-  case failed(String)
-  /// No worker could be started for the call, so nothing was sent.
-  case unavailable(String)
-  /// The call names element refs or a baseline of another worker generation; nothing was sent.
-  case generationChanged
-}
-
 /// One generation of the browser worker (`apps/agent-service/src/computer/worker/`, playwright-core
 /// over CDP): the bundled Node running the built worker for one managed profile or one connected
 /// Chrome of the person's, spoken to with the Swift MCP SDK's `Client` over a `StdioTransport` on
@@ -55,22 +39,26 @@ actor BrowserWorkerProcess {
     "upload", "cancel", "preview_start", "preview_read", "preview_stop", "page_focus", "open_page",
     "restore_windows",
   ]
+  /// Bound for writing an MCP `notifications/cancelled` before assuming the worker's stdio pipe
+  /// is wedged and force-stopping the process.
+  private static let cancelNotificationLimit: Duration = .milliseconds(500)
 
   let generation: Int
   private let process: Process
   private let client: Client
-  private let toWorker: FileHandle
-  private let fromWorker: FileHandle
+  private let transport: BrowserWorkerTransport
+  private var exited = false
+  private var stopTask: Task<Void, Never>?
+  private var connectWaiter: BrowserWorkerSignalWaiter?
+  private var activeCalls: [UUID: BrowserWorkerCallWaiter] = [:]
 
   private init(
-    generation: Int, process: Process, client: Client, toWorker: FileHandle,
-    fromWorker: FileHandle
+    generation: Int, process: Process, client: Client, transport: BrowserWorkerTransport
   ) {
     self.generation = generation
     self.process = process
     self.client = client
-    self.toWorker = toWorker
-    self.fromWorker = fromWorker
+    self.transport = transport
   }
 
   /// Starts the worker and completes the MCP handshake within `timeout`.
@@ -90,21 +78,33 @@ actor BrowserWorkerProcess {
     defer { try? log.close() }
     process.standardError = log
     _ = fcntl(input.fileHandleForWriting.fileDescriptor, F_SETFD, FD_CLOEXEC)
+    _ = fcntl(input.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
     _ = fcntl(output.fileHandleForReading.fileDescriptor, F_SETFD, FD_CLOEXEC)
-    try process.run()
+    let transport = BrowserWorkerTransport(
+      input: output.fileHandleForReading, output: input.fileHandleForWriting)
     let worker = BrowserWorkerProcess(
       generation: generation, process: process, client: Client(name: "Atd", version: "1"),
-      toWorker: input.fileHandleForWriting, fromWorker: output.fileHandleForReading)
+      transport: transport)
+    process.terminationHandler = { _ in
+      Task { await worker.handleProcessExit() }
+    }
+    do {
+      try process.run()
+    } catch {
+      process.terminationHandler = nil
+      await transport.disconnect()
+      throw error
+    }
     do {
       try await worker.connect(timeout: timeout)
     } catch {
-      await worker.stop()
+      await worker.stop(force: true)
       throw error
     }
     return worker
   }
 
-  var isRunning: Bool { process.isRunning }
+  var isRunning: Bool { !exited && stopTask == nil && process.isRunning }
 
   /// Calls one tool of the closed set and decodes its structured result. A refusal or failure
   /// the worker reports is a reply (`ok: false`), not a thrown error.
@@ -112,22 +112,54 @@ actor BrowserWorkerProcess {
     async throws(BrowserWorkerCallError) -> BrowserWorkerReply
   {
     guard Self.tools.contains(tool) else { throw .rejected("\(tool) is not a worker tool.") }
-    guard process.isRunning else { throw .exited }
-    let result: CallTool.Result
+    guard isRunning else { throw .exited }
+    if Task.isCancelled { throw .cancelled(sent: false) }
+    let context: RequestContext<CallTool.Result>
     do {
-      let context: RequestContext<CallTool.Result> = try await client.send(
+      context = try await client.send(
         CallTool.request(.init(name: tool, arguments: arguments)))
-      guard let reply = try await Self.within(timeout, { try await context.value }) else {
-        try? await client.cancelRequest(context.requestID, reason: "timed out")
-        throw BrowserWorkerCallError.timedOut
-      }
-      result = reply
-    } catch let error as BrowserWorkerCallError {
-      throw error
     } catch {
-      throw process.isRunning ? .failed(String(describing: error)) : .exited
+      throw isRunning ? .failed(String(describing: error)) : .exited
     }
-    return try Self.reply(result, of: tool)
+    let id = UUID()
+    let waiter = BrowserWorkerCallWaiter()
+    activeCalls[id] = waiter
+    defer { activeCalls[id] = nil }
+    if !isRunning { waiter.finish(.exited) }
+    let responseTask = Task {
+      do {
+        waiter.finish(.completed(try await context.value))
+      } catch {
+        waiter.finish(.failed(error))
+      }
+    }
+    let timerTask = Task {
+      do {
+        try await Task.sleep(for: timeout)
+        waiter.finish(.timedOut)
+      } catch {}
+    }
+    let outcome = await withTaskCancellationHandler {
+      await waiter.wait()
+    } onCancel: {
+      waiter.finish(.cancelled)
+    }
+    timerTask.cancel()
+    responseTask.cancel()
+    switch outcome {
+    case .completed(let result):
+      return try Self.reply(result, of: tool)
+    case .timedOut:
+      await cancelRequestBounded(context.requestID, reason: "timed out")
+      throw .timedOut
+    case .cancelled:
+      await cancelRequestBounded(context.requestID, reason: "cancelled")
+      throw .cancelled(sent: true)
+    case .exited:
+      throw .exited
+    case .failed(let error):
+      throw isRunning ? .failed(String(describing: error)) : .exited
+    }
   }
 
   /// The worker's reply in one tool result. A result without structured content is the SDK
@@ -150,31 +182,114 @@ actor BrowserWorkerProcess {
   }
 
   /// Disconnects, closes the worker's stdin (it exits on EOF), then escalates to SIGTERM and
-  /// SIGKILL, and returns once Foundation reaped the process.
-  func stop() async {
-    await client.disconnect()
-    try? toWorker.close()
-    try? fromWorker.close()
-    for (limit, signal) in [(Duration.seconds(3), SIGTERM), (.seconds(2), SIGKILL)] {
-      let deadline = ContinuousClock.now.advanced(by: limit)
-      while process.isRunning, ContinuousClock.now < deadline {
-        try? await Task.sleep(for: .milliseconds(20))
-      }
-      guard process.isRunning else { return }
-      kill(process.processIdentifier, signal)
+  /// SIGKILL, and returns once Foundation reaped the process. With `force`, immediately sends
+  /// SIGKILL so an unresponsive worker cannot flush buffered CDP writes while its claim settles.
+  func stop(force: Bool = false) async {
+    if force, process.isRunning { kill(process.processIdentifier, SIGKILL) }
+    if let existing = stopTask {
+      await existing.value
+      return
     }
-    while process.isRunning { try? await Task.sleep(for: .milliseconds(20)) }
+    let task = Task { await self.performStop(force: force) }
+    stopTask = task
+    await task.value
+  }
+
+  private func performStop(force: Bool) async {
+    if force, process.isRunning { kill(process.processIdentifier, SIGKILL) }
+    await transport.disconnect()
+    await client.disconnect()
+    if !force {
+      let stages: [(Duration, Int32)] = [(.seconds(3), SIGTERM), (.seconds(2), SIGKILL)]
+      for (limit, signal) in stages {
+        let deadline = ContinuousClock.now.advanced(by: limit)
+        while process.isRunning, ContinuousClock.now < deadline {
+          try? await Task.sleep(for: .milliseconds(20))
+        }
+        if !process.isRunning { break }
+        kill(process.processIdentifier, signal)
+      }
+    }
+    while process.isRunning { try? await Task.sleep(for: .milliseconds(5)) }
+    exited = true
+    failPendingWaiters()
+  }
+
+  /// Wakes every in-flight call on unexpected exit and disconnects the transport and `MCP.Client`.
+  private func handleProcessExit() async {
+    exited = true
+    failPendingWaiters()
+    await transport.disconnect()
+    await client.disconnect()
+  }
+
+  private func failPendingWaiters() {
+    connectWaiter?.finish(.exited)
+    connectWaiter = nil
+    for waiter in activeCalls.values { waiter.finish(.exited) }
+    activeCalls = [:]
+  }
+
+  private func cancelRequestBounded(_ requestID: ID, reason: String) async {
+    let client = client
+    let done = BrowserWorkerSignalWaiter()
+    let cancelTask = Task {
+      try? await client.cancelRequest(requestID, reason: reason)
+      done.finish(.completed)
+    }
+    let timerTask = Task {
+      do {
+        try await Task.sleep(for: Self.cancelNotificationLimit)
+        done.finish(.timedOut)
+      } catch {}
+    }
+    let outcome = await done.wait()
+    timerTask.cancel()
+    if case .timedOut = outcome {
+      cancelTask.cancel()
+      Task { await self.stop(force: true) }
+    }
   }
 
   private func connect(timeout: Duration) async throws {
-    let transport = StdioTransport(
-      input: FileDescriptor(rawValue: fromWorker.fileDescriptor),
-      output: FileDescriptor(rawValue: toWorker.fileDescriptor))
+    guard isRunning else { throw BrowserWorkerCallError.exited }
+    if Task.isCancelled { throw BrowserWorkerCallError.cancelled(sent: false) }
+    let transport = transport
     let client = client
-    guard
-      try await Self.within(timeout, { _ = try await client.connect(transport: transport) })
-        != nil
-    else { throw BrowserWorkerCallError.timedOut }
+    let waiter = BrowserWorkerSignalWaiter()
+    connectWaiter = waiter
+    defer { connectWaiter = nil }
+    if !isRunning { waiter.finish(.exited) }
+    let connectTask = Task {
+      do {
+        _ = try await client.connect(transport: transport)
+        waiter.finish(.completed)
+      } catch {
+        waiter.finish(.failed(error))
+      }
+    }
+    let timerTask = Task {
+      do {
+        try await Task.sleep(for: timeout)
+        waiter.finish(.timedOut)
+      } catch {}
+    }
+    let outcome = await withTaskCancellationHandler {
+      await waiter.wait()
+    } onCancel: {
+      waiter.finish(.cancelled)
+    }
+    timerTask.cancel()
+    connectTask.cancel()
+    switch outcome {
+    case .completed: return
+    case .timedOut: throw BrowserWorkerCallError.timedOut
+    case .cancelled: throw BrowserWorkerCallError.cancelled(sent: false)
+    case .exited: throw BrowserWorkerCallError.exited
+    case .failed(let error):
+      if !isRunning { throw BrowserWorkerCallError.exited }
+      throw error
+    }
   }
 
   /// Built from scratch: the browser endpoint, the upload root, a home and a fixed `PATH`, plus
@@ -207,21 +322,5 @@ actor BrowserWorkerProcess {
     let handle = try FileHandle(forWritingTo: url)
     try handle.seekToEnd()
     return handle
-  }
-
-  /// `operation`'s result, or nil when `limit` passes first (the operation is then cancelled).
-  private static func within<T: Sendable>(
-    _ limit: Duration, _ operation: @escaping @Sendable () async throws -> T
-  ) async throws -> T? {
-    try await withThrowingTaskGroup(of: T?.self) { group in
-      group.addTask { try await operation() }
-      group.addTask {
-        try await Task.sleep(for: limit)
-        return nil
-      }
-      let first = try await group.next() ?? nil
-      group.cancelAll()
-      return first
-    }
   }
 }

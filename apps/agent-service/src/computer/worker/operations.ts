@@ -52,7 +52,10 @@ export function throwIfCancelled(op: Operation): void {
  * cancelled dispatch stays `dispatched` with an unknown outcome.
  */
 export function untilCancelled<T>(op: Operation, promise: Promise<T>): Promise<T> {
-  throwIfCancelled(op);
+  if (op.signal.aborted) {
+    void promise.catch(() => undefined);
+    return Promise.reject(new WorkerError('cancelled', 'The operation was cancelled.'));
+  }
   return new Promise<T>((resolve, reject) => {
     const onAbort = (): void =>
       reject(new WorkerError('cancelled', 'The operation was cancelled.'));
@@ -67,6 +70,23 @@ export function untilCancelled<T>(op: Operation, promise: Promise<T>): Promise<T
         reject(error instanceof Error ? error : new Error(String(error)));
       },
     );
+  });
+}
+
+/** `untilCancelled` when an operation is present, else `promise` directly. */
+export function whileActive<T>(op: Operation | undefined, promise: Promise<T>): Promise<T> {
+  return op === undefined ? promise : untilCancelled(op, promise);
+}
+
+/** Resolves `promise` with `fallback` on non-cancellation errors, rethrowing once `op` aborts. */
+export function orIfActive<T>(
+  op: Operation | undefined,
+  promise: Promise<T>,
+  fallback: T,
+): Promise<T> {
+  return whileActive(op, promise).catch((error: unknown) => {
+    if (op?.signal.aborted === true) throw error;
+    return fallback;
   });
 }
 

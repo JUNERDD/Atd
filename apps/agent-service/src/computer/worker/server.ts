@@ -160,7 +160,7 @@ async function main(): Promise<void> {
     'Lists the page targets of this browser profile (pageId = CDP target id, url, title).',
     z.strictObject(schemas.listPagesInput),
     schemas.listPagesOutput,
-    async () => ({ pages: await pages.list() }),
+    async (op) => ({ pages: await pages.list(op) }),
   );
   register(
     'observe',

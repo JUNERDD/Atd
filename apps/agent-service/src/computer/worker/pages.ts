@@ -2,7 +2,15 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { Browser, Frame, Locator, Page } from 'playwright-core';
 import { connectBrowser, type BrowserChannel } from './connection.js';
 import type { Downloads } from './downloads.js';
-import { untilCancelled, WorkerError, type Operation } from './operations.js';
+import {
+  orIfActive,
+  throwIfCancelled,
+  untilCancelled,
+  whileActive,
+  WorkerError,
+  type Operation,
+} from './operations.js';
+import { readPageIdentity, type PageIdentity } from './page-identity.js';
 import { parseSnapshot, type SnapshotElement } from './snapshot.js';
 
 /**
@@ -43,11 +51,6 @@ interface PageState {
   identityHash: string;
   observationVersion: number;
   baselines: Map<string, string>;
-}
-
-interface PageIdentity {
-  targetId: string;
-  openerId?: string;
 }
 
 /** One listed element with the frame and role/name locator that addresses it. */
@@ -159,44 +162,38 @@ export class Pages {
     return chain;
   }
 
-  private async identity(page: Page): Promise<PageIdentity> {
+  private async identity(page: Page, op?: Operation): Promise<PageIdentity> {
     const known = this.ids.get(page);
     if (known !== undefined) return known;
-    const session = await page.context().newCDPSession(page);
-    try {
-      const { targetInfo } = await session.send('Target.getTargetInfo');
-      const id: PageIdentity =
-        targetInfo.openerId === undefined
-          ? { targetId: targetInfo.targetId }
-          : { targetId: targetInfo.targetId, openerId: targetInfo.openerId };
-      this.ids.set(page, id);
-      return id;
-    } finally {
-      await session.detach().catch(() => undefined);
-    }
+    const id = await readPageIdentity(page, op);
+    this.ids.set(page, id);
+    return id;
   }
 
-  private async attached(): Promise<({ page: Page } & PageIdentity)[]> {
-    const browser = await this.connect();
+  private async attached(op?: Operation): Promise<({ page: Page } & PageIdentity)[]> {
+    const browser = await whileActive(op, this.connect());
     const result: ({ page: Page } & PageIdentity)[] = [];
     for (const context of browser.contexts())
       for (const page of context.pages()) {
+        if (op !== undefined) throwIfCancelled(op);
         if (page.isClosed()) continue;
-        const id = await this.identity(page).catch(() => undefined);
+        const id = await orIfActive(op, this.identity(page, op), undefined);
         if (id !== undefined) result.push({ page, ...id });
       }
     return result;
   }
 
   /** The page targets of the browser, with the page that opened each, when Chrome knows it. */
-  async list(): Promise<{ pageId: string; url: string; title: string; openerId?: string }[]> {
-    const pages = await this.attached();
+  async list(
+    op: Operation,
+  ): Promise<{ pageId: string; url: string; title: string; openerId?: string }[]> {
+    const pages = await this.attached(op);
     const ids = new Set(pages.map((entry) => entry.targetId));
     for (const pageId of this.states.keys()) if (!ids.has(pageId)) this.states.delete(pageId);
     this.downloads.keepOnly(ids);
     return Promise.all(
       pages.map(async ({ page, targetId, openerId }) => {
-        const title = await page.title().catch(() => '');
+        const title = await orIfActive(op, page.title(), '');
         const entry = { pageId: targetId, url: page.url(), title };
         return openerId === undefined ? entry : { ...entry, openerId };
       }),
@@ -206,7 +203,7 @@ export class Pages {
   /** Runs `work` on exactly `pageId`; an unknown page is `notFound` before anything is sent. */
   async withPage<T>(op: Operation, pageId: string, work: (page: Page) => Promise<T>): Promise<T> {
     if (!PAGE_ID.test(pageId)) throw new WorkerError('notFound', 'The page id is malformed.');
-    const pages = await untilCancelled(op, this.attached()).catch((error: unknown) => {
+    const pages = await this.attached(op).catch((error: unknown) => {
       if (error instanceof WorkerError) throw error;
       throw new WorkerError('engineFailed', 'Could not connect to the browser.');
     });
