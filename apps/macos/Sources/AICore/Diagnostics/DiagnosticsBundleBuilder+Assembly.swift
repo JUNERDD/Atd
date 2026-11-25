@@ -31,8 +31,7 @@ extension DiagnosticsBundleBuilder {
   }
 
   func assembleScrubbedEntries(inputs: Inputs) -> AssembledBundle {
-    let isoGenerated = inputs.generatedAt.formatted(
-      .iso8601.year().month().day().time(includingFractionalSeconds: true))
+    let isoGenerated = DiagnosticsTimestamp.iso8601UTC(inputs.generatedAt)
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
 

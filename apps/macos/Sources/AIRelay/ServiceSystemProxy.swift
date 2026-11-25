@@ -12,7 +12,7 @@ enum ServiceSystemProxy {
     guard let snapshot = current() else { return environment }
     do {
       environment[environmentKey] = String(
-        decoding: try JSONEncoder().encode(snapshot), as: UTF8.self)
+        decoding: try makeEncoder().encode(snapshot), as: UTF8.self)
     } catch {
       RelayLog.service.error("Could not encode the system proxy settings for the service.")
     }
@@ -44,7 +44,13 @@ enum ServiceSystemProxy {
       let type = "system.proxy"
       let settings: Snapshot
     }
-    return String(decoding: try JSONEncoder().encode(Update(settings: snapshot)), as: UTF8.self)
+    return String(decoding: try makeEncoder().encode(Update(settings: snapshot)), as: UTF8.self)
+  }
+
+  private static func makeEncoder() -> JSONEncoder {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    return encoder
   }
 
   static func snapshot(_ settings: [String: Any]) -> Snapshot {

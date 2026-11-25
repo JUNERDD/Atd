@@ -270,6 +270,6 @@ public final class ShellLogWriter: Sendable {
 
   private static func isoTimestamp(epochMs: Int64) -> String {
     let date = Date(timeIntervalSince1970: Double(epochMs) / 1_000.0)
-    return date.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: true))
+    return DiagnosticsTimestamp.iso8601UTC(date)
   }
 }

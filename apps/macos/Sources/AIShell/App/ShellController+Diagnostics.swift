@@ -54,9 +54,10 @@ extension ShellController {
   /// Menu-bar, app-menu, and ``WindowRecoveryView`` export flow:
   /// 1. Shows a compact native confirmation alert via ``NestedRunLoop/runModal(_:)`` explaining
   ///    automatic redaction and offering an **unchecked-by-default** crash summary opt-in checkbox.
-  /// 2. Samples live renderer breadcrumbs with a hard `1s` `ContinuousClock` timeout.
-  /// 3. Presents ``SystemPanels/chooseEmergencyDiagnosticSaveURL(suggestedName:ring:)`` (bypassing
-  ///    any wedged `.interactiveScreen` claim) and runs ``DiagnosticsExporter`` off `@MainActor`.
+  /// 2. Presents ``SystemPanels/chooseEmergencyDiagnosticSaveURL(suggestedName:ring:)`` (bypassing
+  ///    any wedged `.interactiveScreen` claim).
+  /// 3. Samples live renderer breadcrumbs with a hard `1s` `ContinuousClock` timeout, stamps
+  ///    `generatedAt` at export start, and runs ``DiagnosticsExporter`` off `@MainActor`.
   func exportDiagnosticsFromNativeUI(
     triggerSurface: DiagnosticsTriggerSurface
   ) async throws -> Bool {
@@ -67,9 +68,7 @@ extension ShellController {
       return false
     }
 
-    let breadcrumbs = await collectDiagnosticsBreadcrumbs()
-    let now = Date()
-    let suggestedName = DiagnosticsBundleBuilder.suggestedArchiveName(at: now)
+    let suggestedName = DiagnosticsBundleBuilder.suggestedArchiveName(at: Date())
 
     guard
       let destinationURL = try await systemPanels.chooseEmergencyDiagnosticSaveURL(
@@ -79,11 +78,12 @@ extension ShellController {
       return false
     }
 
+    let breadcrumbs = await collectDiagnosticsBreadcrumbs()
     let request = makeDiagnosticsExportRequest(
       triggerSurface: triggerSurface,
       includeCrashSummaries: includeCrashSummaries,
       rendererBreadcrumbs: breadcrumbs,
-      generatedAt: now)
+      generatedAt: Date())
 
     let archive = try await DiagnosticsExporter.exportZip(
       request: request, destinationZipURL: destinationURL)

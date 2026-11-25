@@ -55,8 +55,7 @@ nonisolated enum ShellEnvironmentChecks {
     decisionRings: ShellDecisionRings,
     now: Date = Date()
   ) async -> Evaluation {
-    let capturedAt = now.formatted(
-      .iso8601.year().month().day().time(includingFractionalSeconds: true))
+    let capturedAt = DiagnosticsTimestamp.iso8601UTC(now)
 
     var checks: [ShellDoctorCheck] = []
     checks.reserveCapacity(12)

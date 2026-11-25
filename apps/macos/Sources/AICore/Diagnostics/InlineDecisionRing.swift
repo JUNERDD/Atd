@@ -25,8 +25,17 @@ public struct DecisionRingSnapshot<Entry: Sendable>: Sendable {
   }
 }
 
-/// Monotonic clock anchor converting `CLOCK_UPTIME_RAW` nanoseconds into UTC ISO-8601 strings
-/// exclusively on slow export/report paths (zero `DateFormatter` calls on hot paths).
+/// Shared UTC ISO-8601 timestamp formatter (`YYYY-MM-DDTHH:mm:ss.SSSZ`) for native diagnostics
+/// exports, logs, and live probes so Swift timestamps match JS `Date.prototype.toISOString()`.
+public nonisolated enum DiagnosticsTimestamp {
+  public static func iso8601UTC(_ date: Date = Date()) -> String {
+    date.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true, timeZone: .gmt))
+  }
+}
+
+/// Monotonic clock anchor converting `CLOCK_MONOTONIC_RAW` (`mach_continuous_time`,
+/// sleep-continuous) nanoseconds into UTC ISO-8601 strings exclusively on slow export/report paths
+/// (zero `DateFormatter` calls on hot paths).
 public struct MonotonicTimestampAnchor: Sendable {
   public let baseWallEpochMs: Int64
   public let baseUptimeNs: UInt64
@@ -41,20 +50,22 @@ public struct MonotonicTimestampAnchor: Sendable {
     self.baseUptimeNs = baseUptimeNs
   }
 
+  /// Returns sleep-continuous monotonic nanoseconds (`CLOCK_MONOTONIC_RAW` / `mach_continuous_time`)
+  /// so exported ring timestamps do not drift backwards across macOS sleep/wake cycles.
   @inline(__always)
   public static func nowUptimeNs() -> UInt64 {
-    clock_gettime_nsec_np(CLOCK_UPTIME_RAW)
+    clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW)
   }
 
   public func iso8601String(forUptimeNs uptimeNs: UInt64) -> String {
     let deltaMs: Int64
     if uptimeNs >= baseUptimeNs {
-      deltaMs = Int64((uptimeNs - baseUptimeNs) / 1_000_000)
+      deltaMs = Int64(clamping: (uptimeNs - baseUptimeNs) / 1_000_000)
     } else {
-      deltaMs = -Int64((baseUptimeNs - uptimeNs) / 1_000_000)
+      deltaMs = -Int64(clamping: (baseUptimeNs - uptimeNs) / 1_000_000)
     }
     let date = Date(timeIntervalSince1970: Double(baseWallEpochMs + deltaMs) / 1_000.0)
-    return date.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: true))
+    return DiagnosticsTimestamp.iso8601UTC(date)
   }
 }
 

@@ -136,6 +136,6 @@ extension LiveProbeCoordinator {
   }
 
   private static func nowIso() -> String {
-    Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: true))
+    DiagnosticsTimestamp.iso8601UTC()
   }
 }

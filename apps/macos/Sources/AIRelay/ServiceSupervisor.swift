@@ -262,8 +262,7 @@ public final class ServiceSupervisor: ServiceEndpointSource {
   }
 
   private func recordProcessExit(_ exit: ServiceProcess.ExitSummary) {
-    let nowIso = Date().formatted(
-      .iso8601.year().month().day().time(includingFractionalSeconds: true))
+    let nowIso = DiagnosticsTimestamp.iso8601UTC()
     let summary = DiagnosticsScrubber.scrubInlineSummary(
       exit.failureDetail ?? exit.description, maxUTF8Bytes: 170)
     recentExits.append(

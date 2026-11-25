@@ -142,7 +142,7 @@ public nonisolated enum IpsCrashSummarizer {
         .omitted(status: .omittedSizeCap, errorCode: .stagingCapExceeded, durationMs: 0))
     }
 
-    let isoNow = now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: true))
+    let isoNow = DiagnosticsTimestamp.iso8601UTC(now)
     let trimmedExits = Array(recentServiceExits.suffix(10))
     let document = SummaryDocument(
       generatedAt: isoNow,

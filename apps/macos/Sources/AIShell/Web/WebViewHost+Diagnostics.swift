@@ -20,8 +20,7 @@ extension WebViewHost {
 
   static func emptyBreadcrumbs(now: Date = Date()) -> RendererBreadcrumbsPayload {
     RendererBreadcrumbsPayload(
-      capturedAt: now.formatted(
-        .iso8601.year().month().day().time(includingFractionalSeconds: true)),
+      capturedAt: DiagnosticsTimestamp.iso8601UTC(now),
       droppedCount: 0,
       entries: [])
   }
@@ -60,8 +59,17 @@ extension WebViewHost {
   func readDiagnosticsBreadcrumbs(timeout: Duration = .seconds(1)) async
     -> RendererBreadcrumbsPayload
   {
-    guard !isClosed else { return Self.emptyBreadcrumbs() }
-    return await Self.readBreadcrumbs(
+    await readDiagnosticsBreadcrumbsIfAvailable(timeout: timeout) ?? Self.emptyBreadcrumbs()
+  }
+
+  /// Reads live renderer breadcrumbs when the host is open on the trusted renderer origin,
+  /// returning `nil` if closed, off-origin, timed out, or invalid so callers can fall back to an
+  /// earlier snapshot without losing entries.
+  func readDiagnosticsBreadcrumbsIfAvailable(timeout: Duration = .seconds(1)) async
+    -> RendererBreadcrumbsPayload?
+  {
+    guard !isClosed else { return nil }
+    return await Self.readBreadcrumbsIfAvailable(
       from: webView, verifyRendererOrigin: true, timeout: timeout)
   }
 
@@ -70,9 +78,19 @@ extension WebViewHost {
     verifyRendererOrigin: Bool = true,
     timeout: Duration = .seconds(1)
   ) async -> RendererBreadcrumbsPayload {
+    await readBreadcrumbsIfAvailable(
+      from: webView, verifyRendererOrigin: verifyRendererOrigin, timeout: timeout)
+      ?? emptyBreadcrumbs()
+  }
+
+  static func readBreadcrumbsIfAvailable(
+    from webView: WKWebView,
+    verifyRendererOrigin: Bool = true,
+    timeout: Duration = .seconds(1)
+  ) async -> RendererBreadcrumbsPayload? {
     if verifyRendererOrigin {
       guard RendererOrigin.allowsNavigation(to: webView.url, target: .mainFrame) else {
-        return emptyBreadcrumbs()
+        return nil
       }
     }
 
@@ -99,7 +117,7 @@ extension WebViewHost {
       let decoded = try? JSONDecoder().decode(
         RendererBreadcrumbsPayload.self, from: Data(rawJson.utf8))
     else {
-      return emptyBreadcrumbs()
+      return nil
     }
     return decoded
   }

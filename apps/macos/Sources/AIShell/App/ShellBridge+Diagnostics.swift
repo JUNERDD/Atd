@@ -62,8 +62,7 @@ extension ShellBridge {
 
     case .exportBundle(let params):
       try validateBreadcrumbsSize(params.rendererBreadcrumbs)
-      let now = Date()
-      let suggestedName = DiagnosticsBundleBuilder.suggestedArchiveName(at: now)
+      let suggestedName = DiagnosticsBundleBuilder.suggestedArchiveName(at: Date())
       let chosenURL: URL?
       do {
         chosenURL = try await shell.systemPanels.chooseEmergencyDiagnosticSaveURL(
@@ -78,13 +77,21 @@ extension ShellBridge {
         return try encode(DiagnosticsExportBundleResult.cancelled(.init()))
       }
 
+      let callerBreadcrumbs: RendererBreadcrumbsPayload
+      if !host.isClosed, host.document == document,
+        let refreshed = await host.readDiagnosticsBreadcrumbsIfAvailable(timeout: .seconds(1))
+      {
+        callerBreadcrumbs = refreshed
+      } else {
+        callerBreadcrumbs = params.rendererBreadcrumbs
+      }
       let mergedBreadcrumbs = await shell.collectDiagnosticsBreadcrumbs(
-        callerHost: host, callerPayload: params.rendererBreadcrumbs)
+        callerHost: host, callerPayload: callerBreadcrumbs)
       let request = shell.makeDiagnosticsExportRequest(
         triggerSurface: .settings,
         includeCrashSummaries: params.includeCrashSummaries,
         rendererBreadcrumbs: mergedBreadcrumbs,
-        generatedAt: now)
+        generatedAt: Date())
       do {
         let archive = try await DiagnosticsExporter.exportZip(
           request: request, destinationZipURL: destinationURL)
