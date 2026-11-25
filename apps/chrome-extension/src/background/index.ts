@@ -7,6 +7,7 @@ import {
   handleInvalidContent,
   type ContentIntentDeps,
 } from './content-intents.ts';
+import { watchDevBuilds } from './dev-reload.ts';
 import { FollowUps } from './follow-ups.ts';
 import { HiddenRuns } from './hidden-runs.ts';
 import { setLanguage } from './i18n.ts';
@@ -142,6 +143,13 @@ owned.onChange(() => {
 });
 
 const booted = boot();
+// A literal mode, so the release build leaves the dev reloader out entirely.
+if (import.meta.env.MODE === 'dev') {
+  void watchDevBuilds(
+    { contentTabs: () => surfaces.contentTabs(), inject: (tabId) => injector.ensure(tabId) },
+    booted,
+  );
+}
 
 chrome.runtime.onConnect.addListener((port) => surfaces.accept(port));
 chrome.commands.onCommand.addListener((command, tab) => {

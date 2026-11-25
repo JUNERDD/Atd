@@ -22,11 +22,18 @@ kept, so the extension cannot be re-signed with them.
 
 From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev` directly):
 
-| Command                | Does                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------- |
-| `pnpm build:extension` | Builds both flavors into `dist/release` and `dist/dev`                                |
-| `pnpm dev:extension`   | Rebuilds `dist/dev` on change; reload the extension in `chrome://extensions` after it |
+| Command                | Does                                                                                                |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `pnpm build:extension` | Builds both flavors into `dist/release` and `dist/dev`                                              |
+| `pnpm dev:extension`   | Rebuilds `dist/dev` on every change to its sources; the loaded dev extension then reloads by itself |
 
+- Dev reload (`dev-plugins.ts`, `src/background/dev-reload.ts`): each dev build writes a stamp,
+  `dev-build.json`, after its other files. The dev service worker reads it every second and reloads
+  the extension when it changes, then injects the content script again into the tabs that had one,
+  so their pages keep their state; an open popup closes. The watch follows the content script's
+  imports (workspace packages included) because crxjs builds it in a separate pass that Vite's
+  watcher does not see. A dev extension loaded from a build without this reloads by hand once.
+  The release flavor has neither the stamp nor the reloader.
 - Load unpacked: `chrome://extensions` → Developer mode → Load unpacked → `dist/dev` (with the Debug
   app) or `dist/release` (with the Release app). Open the matching Atd build once so its shell
   installs the native host manifest; until then the popup reports that Atd is not set up.
