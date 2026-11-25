@@ -1,5 +1,6 @@
 import { h } from '../dom.ts';
 import { reducedMotion } from '../motion.ts';
+import { fitRow } from './compact.ts';
 import {
   CONTENT_BLUR,
   CONTENT_EXIT,
@@ -112,6 +113,8 @@ export class IslandStage {
     const face = this.mount(next);
     const target = this.measure();
     this.observer.observe(this.capsule);
+    // The capsule's room: a wider window can give a crowded row its labels back.
+    if (this.capsule.parentElement) this.observer.observe(this.capsule.parentElement);
     if (reduce) {
       this.morph.place(target);
       this.shape.animate({ opacity: [0, 1] }, { duration: REDUCED_FADE_MS, easing: 'ease' });
@@ -151,6 +154,7 @@ export class IslandStage {
     const before = snapshot(face, previous.node);
     if (previous.node.parentNode === face) previous.node.replaceWith(next.node);
     else face.prepend(next.node);
+    this.fit(next);
     const target = this.measure();
     changeInPlace(face, before, next.node, reduce);
     this.morph.track(face, target, reduce ? 'clip' : 'scale');
@@ -158,13 +162,14 @@ export class IslandStage {
   }
 
   /**
-   * The content changed size on its own (the composer's field gaining a line, the window): the
-   * shape follows on a quick spring with no bounce, the content at its own size, so the text under
-   * the caret holds still.
+   * The content changed size on its own (the composer's field gaining a line, the window), or its
+   * room did and a row laid itself out again: the shape follows on a quick spring with no bounce,
+   * the content at its own size, so the text under the caret holds still.
    */
   private resized(): void {
     const face = this.face;
-    if (this.phase !== 'shown' || !face) return;
+    if (this.phase !== 'shown' || !face || !this.content) return;
+    this.fit(this.content);
     const target = this.measure();
     const at = this.morph.target;
     if (Math.abs(target.w - at.w) < 0.5 && Math.abs(target.h - at.h) < 0.5) return;
@@ -212,7 +217,16 @@ export class IslandStage {
     const face = h('div', { class: 'hud-face' }, next.node);
     this.capsule.append(face);
     this.face = face;
+    this.fit(next);
     return face;
+  }
+
+  /**
+   * A content placed in the capsule lays itself out for the room it has before the shape takes its
+   * size: a row stays one line by showing its secondary actions as icons (`compact.ts`).
+   */
+  private fit(content: StageContent): void {
+    if (content.shape === 'row') fitRow(content.node);
   }
 
   /** `face` stops being the content: it keeps its size and anchor as it leaves into a blur. */

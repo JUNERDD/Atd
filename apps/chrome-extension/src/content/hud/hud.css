@@ -164,6 +164,17 @@
   max-width: 300px;
 }
 
+/* A crowded row's secondary action shows only its icon, as a square icon button (`compact.ts`). */
+.gbtn.compact {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+.gbtn.compact .gbtn-label {
+  display: none;
+}
+
 .hud-div {
   width: 1px;
   height: 18px;
@@ -243,6 +254,23 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/*
+ * A card's button never outgrows its row. One whose label does not fit (an input's options are the
+ * agent's own words) wraps inside the button, as the task panel's question options do, instead of
+ * running past the card's leading edge, where the face clips it. One line keeps the 32 px control:
+ * an 18 px line 7 px from each edge. The capsule's row stays one line and keeps `.gbtn` as it is.
+ */
+.hud-card-actions .gbtn {
+  max-width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding-block: 7px;
+  line-height: 18px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: start;
 }
 
 .hud-card-actions .lead {

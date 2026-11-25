@@ -58,7 +58,10 @@ export interface ButtonOptions {
   onClick: () => void;
 }
 
-/** One glass button (`.gbtn`), the HUD's only button. */
+/**
+ * One glass button (`.gbtn`), the HUD's only button. Its label is its own element (`.gbtn-label`),
+ * so a crowded row can show only the icon beside it (`hud/compact.ts`).
+ */
 export function gbtn(options: ButtonOptions): HTMLButtonElement {
   const label = options.ariaLabel ?? (options.variant === 'icon' ? options.label : undefined);
   return h(
@@ -75,7 +78,9 @@ export function gbtn(options: ButtonOptions): HTMLButtonElement {
       on: { click: () => options.onClick() },
     },
     options.icon ?? null,
-    options.variant === 'icon' ? null : (options.label ?? null),
+    options.variant === 'icon' || !options.label
+      ? null
+      : h('span', { class: 'gbtn-label' }, options.label),
   );
 }
 
