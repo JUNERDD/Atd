@@ -2,13 +2,14 @@
 /**
  * Exports every raster of the Atd mark from its vector master,
  * `packages/ui/src/assets/brands/atd/symbol.svg`: the padded symbol and the app icon (with their
- * development variants), both macOS app icon sets, the menu bar state images, and the website's
- * icons. Edit the master, never the PNGs, then run this again.
+ * development variants), both macOS app icon sets, the menu bar state images, the website's icons
+ * and the icons of both Atd for Chrome flavors. Edit the master, never the PNGs, then run this again.
  *
  * Needs `rsvg-convert` (librsvg, `brew install librsvg`) on PATH; the DEV labels use the system's
  * Helvetica Neue Bold.
  *
- * Usage: node scripts/export-brand.mjs
+ * Usage: node scripts/export-brand.mjs [path-prefix …]
+ * With path prefixes (such as `apps/chrome-extension`), only the outputs under them are written.
  */
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -18,6 +19,7 @@ import { join } from 'node:path';
 const BRAND = 'packages/ui/src/assets/brands/atd';
 const ASSETS = 'apps/macos/App/Assets.xcassets';
 const WEBSITE = 'apps/website/public';
+const EXTENSION = 'apps/chrome-extension/icons';
 const INK = '#111';
 
 const master = readFileSync(`${BRAND}/symbol.svg`, 'utf8');
@@ -135,9 +137,35 @@ for (const state of ['idle', 'running', 'attention', 'unavailable']) {
   }
 }
 
+// Atd for Chrome. Chrome draws toolbar icons as they are (it has no template images), so a bare
+// #111 mark would vanish on a dark toolbar: the toolbar icon is the app icon's off-white tile,
+// filling the 16pt slot but for a 1/16 margin, with the mark at 56%. The development flavor adds an
+// amber dot in the tile's lower-right corner, the DEV badge's color and place. The manifest icons
+// (chrome://extensions, the Web Store) are the app icons themselves.
+function toolbarIcon(dev) {
+  const tile = `<rect x="1" y="1" width="30" height="30" rx="7" fill="#f5f5f4"/>`;
+  const dot = dev
+    ? `<circle cx="25" cy="25" r="5" fill="#fbbf24" stroke="#f5f5f4" stroke-width="1.5"/>`
+    : '';
+  return svg(32, 32, tile + mark(16, 16, 32 * 0.56) + dot);
+}
+for (const [flavor, source, toolbar] of [
+  ['release', appIcon, toolbarIcon(false)],
+  ['dev', appIconDev, toolbarIcon(true)],
+]) {
+  for (const size of [16, 32])
+    outputs.push([toolbar, `${EXTENSION}/${flavor}/toolbar-${size}.png`, size]);
+  for (const size of [16, 32, 48, 128])
+    outputs.push([source, `${EXTENSION}/${flavor}/icon-${size}.png`, size]);
+}
+
+const only = process.argv.slice(2);
+const selected = only.length
+  ? outputs.filter(([, out]) => only.some((prefix) => out.startsWith(prefix)))
+  : outputs;
 try {
-  for (const [source, out, width, height] of outputs) rasterize(source, out, width, height);
+  for (const [source, out, width, height] of selected) rasterize(source, out, width, height);
 } finally {
   rmSync(work, { recursive: true, force: true });
 }
-console.log(`Exported ${outputs.length} images.`);
+console.log(`Exported ${selected.length} images.`);

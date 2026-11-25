@@ -1,0 +1,11 @@
+{
+  "extends": "@atd/typescript-config/react.json",
+  "compilerOptions": {
+    // Chrome 125 is the minimum (`minimum_chrome_version`): ES2024 plus the Set methods.
+    "lib": ["ES2024", "ES2025.Collection", "DOM", "DOM.Iterable"],
+    "types": ["chrome", "vite/client", "node", "@crxjs/vite-plugin/client"],
+    // Vite loads its config natively, which needs the `.ts` file names of the files it imports.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "*.ts"]
+}

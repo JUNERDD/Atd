@@ -1,0 +1,80 @@
+{
+  "common": {
+    "copy": "复制",
+    "copied": "已复制",
+    "dismiss": "关闭",
+    "working": "处理中…"
+  },
+  "hud": {
+    "label": "Atd · {{title}}",
+    "takeOver": "接管",
+    "stop": "停止",
+    "stopping": "正在停止…",
+    "starting": "正在开始…",
+    "heldTitle": "由你操作",
+    "heldDetail": "Atd 正在等你",
+    "handBack": "交还",
+    "done": "已完成",
+    "stopped": "已停止",
+    "failed": "未能完成",
+    "lostTitle": "与 Atd 的连接已断开",
+    "lostDetail": "显示的是最后已知状态，最后一步可能未完成。",
+    "lostStep": "最后一步：{{step}}，可能未完成。",
+    "openInAtd": "在 Atd 中打开",
+    "openAtd": "打开 Atd",
+    "allow": "允许本次",
+    "deny": "不允许",
+    "saveAutomation": "存为自动化",
+    "sentToAtd": "已发送给 Atd",
+    "clipped": "此处只显示部分内容，完整回复请在 Atd 中查看。",
+    "needsApp": "Atd 需要你在应用中处理",
+    "saveFailed": "未能发送给 Atd · 重试",
+    "covered": "此页面上有内容遮挡了这张卡片，无法在这里回答。请在 Atd 中回答。"
+  },
+  "ask": {
+    "label": "问 Atd",
+    "placeholder": "问问这个页面，或让 Atd 做点什么",
+    "send": "发送",
+    "removePage": "不附上此页面",
+    "addPage": "附上此页面",
+    "quote": "“{{text}}”",
+    "removeQuote": "不附上选中内容",
+    "lost": "与 Atd 的连接已断开，你的请求已保留。",
+    "count": "{{used}} / {{limit}}",
+    "failure": {
+      "notConnected": "未连接到 Atd。请打开 Atd 后再发送。",
+      "notPaired": "请先通过工具栏中的 Atd 按钮将此浏览器连接到 Atd。",
+      "tooLong": "此请求过长，Atd 无法接收。请缩短后再发送。",
+      "otherHost": "另一个 Atd 版本已连接到此浏览器。请先退出那个版本，再重新发送。",
+      "serviceUnavailable": "Atd 没有响应，请稍后再发送。",
+      "failed": "Atd 未能接收此请求，请重新发送。"
+    }
+  },
+  "pointer": {
+    "locating": "查找中",
+    "clicking": "点击中",
+    "filling": "填写中",
+    "acting": "操作中",
+    "typing": "输入中",
+    "clearing": "清空中",
+    "scrollUp": "向上滚动",
+    "scrollDown": "向下滚动",
+    "scrollLeft": "向左滚动",
+    "scrollRight": "向右滚动",
+    "waiting": "等待中",
+    "verifying": "核对中",
+    "done": "已完成"
+  },
+  "selection": {
+    "toolbar": "Atd 命令",
+    "askAtd": "问 Atd",
+    "summarize": "总结",
+    "translate": "翻译",
+    "more": "更多命令",
+    "yourCommands": "你的 Atd 命令",
+    "noCommands": "没有可用于选中文字的命令",
+    "fromSelection": "{{title}} · 来自你的选中内容",
+    "continueInAtd": "在 Atd 中继续",
+    "failed": "未能运行此命令。"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "extName": { "message": "Atd for Chrome" },
+  "extNameDev": { "message": "Atd for Chrome (Dev)" },
+  "extDescription": {
+    "message": "Atd acts in the tabs you hand to a task, shows its progress there, and hands control back to you."
+  },
+  "actionTitle": { "message": "Atd" },
+  "commandAsk": { "message": "Ask Atd on this page" }
+}

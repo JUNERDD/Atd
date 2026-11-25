@@ -1,0 +1,19 @@
+/*
+ * The tab's light fills the viewport behind the HUD. Opacity carries only its fades (durations are
+ * set from `GLOW_TIMING`); the strength is drawn in the shader.
+ */
+.glow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  opacity: 0;
+  transition-property: opacity;
+  transition-timing-function: ease;
+}
+
+.glow.on {
+  opacity: 1;
+}

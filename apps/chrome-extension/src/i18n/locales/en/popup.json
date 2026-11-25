@@ -1,0 +1,100 @@
+{
+  "loading": "Loading…",
+  "header": {
+    "connected": "Connected",
+    "notConnected": "Not Connected",
+    "connecting": "Connecting…"
+  },
+  "page": {
+    "heading": "This Page",
+    "ask": "Ask Atd on This Page…",
+    "blocked": {
+      "notPaired": "Connect to Atd first",
+      "connecting": "Available once Atd connects",
+      "notConnected": "Reconnect to Atd first",
+      "otherHost": "Another Atd build is connected",
+      "serviceUnavailable": "Atd isn’t responding",
+      "page": "Not available on this page",
+      "busy": "Available when the current task ends"
+    },
+    "siteLabel": "Allow Atd on {{host}}",
+    "siteOn": "Atd can act here only in tasks you start, and always asks before submitting.",
+    "siteOff": "Atd asks before it does anything on this site.",
+    "unavailableNote": "Atd works on websites. Built-in browser pages, such as Settings and new tabs, stay off limits."
+  },
+  "runs": {
+    "running": "Running in This Browser",
+    "recent": "Recent in This Browser",
+    "untitled": "Untitled Task",
+    "working": "Working…",
+    "waitingOk": "Waiting for your OK",
+    "waitingYou": "Waiting for you",
+    "held": "You’re in control",
+    "stopping": "Stopping…",
+    "lost": "Lost connection",
+    "done": "Done",
+    "failed": "Couldn’t finish",
+    "stopped": "Stopped",
+    "stop": "Stop",
+    "stopLabel": "Stop {{title}}",
+    "reconnect": "Reconnect",
+    "showTab": "Show Tab: {{title}}",
+    "openInAtd": "Open in Atd: {{title}}"
+  },
+  "actions": {
+    "openApp": "Open Atd",
+    "settings": "Computer Use Settings…"
+  },
+  "connect": {
+    "title": "Connect to Atd",
+    "body": "Atd acts only in tabs you hand to a task, and asks before it submits anything.",
+    "browser": "Browser",
+    "button": "Connect…",
+    "waiting": "Waiting for Atd…",
+    "code": "Code",
+    "confirmNote": "Confirm in the Atd app and check that it shows the same code.",
+    "cancel": "Cancel",
+    "failure": {
+      "busy": "Atd is showing another connection request.",
+      "cooldown": "Wait a moment before trying again.",
+      "generic": "Couldn’t connect to Atd. Try again.",
+      "otherHost": "Another Atd build is connected to this browser. Quit it, then try again.",
+      "serviceUnavailable": "Atd isn’t responding. Try again in a moment.",
+      "denied": "You didn’t allow the connection in Atd.",
+      "notConnected": "Lost the connection to Atd before you confirmed."
+    }
+  },
+  "notice": {
+    "reconnect": "Reconnect",
+    "tryAgain": "Try Again",
+    "connectingButton": "Connecting…",
+    "connecting": {
+      "title": "Connecting to Atd",
+      "body": "Atd for Chrome is reaching the Atd app on this Mac."
+    },
+    "disconnected": {
+      "title": "Lost Connection to Atd",
+      "body": "Atd for Chrome reconnects on its own while Atd is running."
+    },
+    "otherHost": {
+      "title": "Another Atd Build Is Connected",
+      "body": "Another build of Atd is using this browser’s connection. Quit that build, then reconnect."
+    },
+    "serviceUnavailable": {
+      "title": "Atd Isn’t Responding",
+      "body": "The Atd app is open, but its service isn’t answering yet. Reconnect, or quit and reopen Atd."
+    },
+    "hostMissing": {
+      "title": "Open Atd to Finish Setup",
+      "body": "This browser can’t reach Atd yet. Open Atd on this Mac—or click Refresh in Settings › Computer use—then try again."
+    },
+    "browserNotVerified": {
+      "title": "This Browser Can’t Be Verified",
+      "body": "Atd connects only to browsers signed with an Apple Developer ID. Switch to a signed browser build, then try again."
+    },
+    "browserMismatch": {
+      "title": "Browser Signature Changed",
+      "body": "This connection is paired with a different signed browser. Disconnect it in Atd’s Settings › Computer use and pair again, or switch back to the original browser."
+    }
+  }
+}

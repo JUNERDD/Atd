@@ -1,0 +1,16 @@
+{
+  "group": {
+    "needsYou": "需要你"
+  },
+  "action": {
+    "working_one": "Atd 正在执行 {{count}} 个任务",
+    "working_other": "Atd 正在执行 {{count}} 个任务",
+    "needsYou": "Atd 需要你处理",
+    "disconnected": "Atd for Chrome 未连接到 Atd"
+  },
+  "errors": {
+    "notConnected": "未连接到 Atd。请打开 Atd 后重试。",
+    "notPaired": "请先将此浏览器连接到 Atd。",
+    "selectionTooLong": "所选文本过长，Atd 无法处理。"
+  }
+}

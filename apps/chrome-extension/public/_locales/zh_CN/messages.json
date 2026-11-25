@@ -1,0 +1,9 @@
+{
+  "extName": { "message": "Atd 浏览器扩展" },
+  "extNameDev": { "message": "Atd 浏览器扩展（开发版）" },
+  "extDescription": {
+    "message": "Atd 在你交给任务的标签页里操作，在页面上显示进度，并随时把控制交还给你。"
+  },
+  "actionTitle": { "message": "Atd" },
+  "commandAsk": { "message": "在此页面问 Atd" }
+}

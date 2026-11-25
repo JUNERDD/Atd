@@ -1,0 +1,80 @@
+{
+  "common": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "dismiss": "Dismiss",
+    "working": "Working…"
+  },
+  "hud": {
+    "label": "Atd · {{title}}",
+    "takeOver": "Take over",
+    "stop": "Stop",
+    "stopping": "Stopping…",
+    "starting": "Starting…",
+    "heldTitle": "You’re in control",
+    "heldDetail": "Atd is waiting for you",
+    "handBack": "Hand back",
+    "done": "Done",
+    "stopped": "Stopped",
+    "failed": "Couldn’t finish",
+    "lostTitle": "Lost connection to Atd",
+    "lostDetail": "Last known state. The last step may not have finished.",
+    "lostStep": "Last step: {{step}}. It may not have finished.",
+    "openInAtd": "Open in Atd",
+    "openAtd": "Open Atd",
+    "allow": "Allow once",
+    "deny": "Don’t allow",
+    "saveAutomation": "Save as automation",
+    "sentToAtd": "Sent to Atd",
+    "clipped": "Shortened here. Open in Atd for the full reply.",
+    "needsApp": "Atd needs you in the app",
+    "saveFailed": "Couldn’t send to Atd · Retry",
+    "covered": "Something on this page is covering this card, so it can’t take answers here. Answer in Atd."
+  },
+  "ask": {
+    "label": "Ask Atd",
+    "placeholder": "Ask about this page, or tell Atd what to do",
+    "send": "Send",
+    "removePage": "Don’t include this page",
+    "addPage": "Include this page",
+    "quote": "“{{text}}”",
+    "removeQuote": "Don’t include the selection",
+    "lost": "Lost connection to Atd. Your request is kept.",
+    "count": "{{used}} / {{limit}}",
+    "failure": {
+      "notConnected": "Atd isn’t connected. Open Atd, then send again.",
+      "notPaired": "Connect this browser to Atd first, from the Atd button in the toolbar.",
+      "tooLong": "This request is too long for Atd. Shorten it, then send again.",
+      "otherHost": "Another Atd build is connected to this browser. Quit it, then send again.",
+      "serviceUnavailable": "Atd isn’t responding. Send again in a moment.",
+      "failed": "Atd couldn’t take this request. Send it again."
+    }
+  },
+  "pointer": {
+    "locating": "Finding",
+    "clicking": "Clicking",
+    "filling": "Filling in",
+    "acting": "Acting",
+    "typing": "Typing",
+    "clearing": "Clearing",
+    "scrollUp": "Scrolling up",
+    "scrollDown": "Scrolling down",
+    "scrollLeft": "Scrolling left",
+    "scrollRight": "Scrolling right",
+    "waiting": "Waiting",
+    "verifying": "Checking",
+    "done": "Done"
+  },
+  "selection": {
+    "toolbar": "Atd commands",
+    "askAtd": "Ask Atd",
+    "summarize": "Summarize",
+    "translate": "Translate",
+    "more": "More commands",
+    "yourCommands": "Your Atd commands",
+    "noCommands": "No commands for selected text",
+    "fromSelection": "{{title}} · from your selection",
+    "continueInAtd": "Continue in Atd",
+    "failed": "Couldn’t run this command."
+  }
+}

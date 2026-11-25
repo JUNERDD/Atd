@@ -1,0 +1,165 @@
+/*
+ * The live pointer (PointerMark): a coral arrow with its label pill, the target ring (dashed while
+ * the host looks or waits, solid while it acts), the input or scroll bar and the click ripple.
+ * Colours are `PointerPalette`, sizes `PointerStyle` (`apps/macos/Sources/AIShell/Computer/Pointer/`);
+ * change both together. Nothing here takes pointer events.
+ */
+.root {
+  --p-coral: rgb(255 106 61);
+  --p-deep: rgb(226 71 28);
+  --p-label: rgb(226 71 28 / 96%);
+  --p-halo: rgb(255 255 255 / 85%);
+  --p-fill: rgb(255 106 61 / 10%);
+  --p-ink: rgb(20 20 20 / 92%);
+  --p-ring: 2px;
+  --p-glide: ease;
+  --p-glide-ms: 0ms;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pm {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.pm.shown {
+  opacity: 1;
+  transition-duration: 0.15s;
+}
+
+.pm.frozen {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.pm-ring {
+  position: absolute;
+  border-radius: 6px;
+  border: var(--p-ring) solid var(--p-deep);
+  background: var(--p-fill);
+  box-shadow:
+    0 0 0 1px var(--p-halo),
+    inset 0 0 0 1px var(--p-halo);
+}
+
+.pm-ring.dashed {
+  border-style: dashed;
+}
+
+.pm-bar {
+  position: absolute;
+  border-radius: 1.5px;
+  background: var(--p-deep);
+  box-shadow: 0 0 0 1px var(--p-halo);
+}
+
+.pm-ripple {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border-radius: 50%;
+  border: 2px solid var(--p-deep);
+  opacity: 0;
+}
+
+.pm-ripple.go {
+  animation: ripple 0.5s ease-out;
+}
+
+@keyframes ripple {
+  from {
+    transform: scale(0.35);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.pm-tip,
+.pm-pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.pm-arrow {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 35%));
+}
+
+.pm-arrow path {
+  fill: var(--p-coral);
+  stroke: #fff;
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+}
+
+.pm-pill {
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--p-label);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* A glide between nearby targets: one spring (no overshoot) for the whole mark. */
+.pm.glide :is(.pm-ring, .pm-bar, .pm-tip, .pm-pill, .pm-ripple) {
+  transition-property: transform, left, top, width, height;
+  transition-duration: var(--p-glide-ms);
+  transition-timing-function: var(--p-glide);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-ripple.go {
+    animation-name: ripple-fade;
+  }
+
+  @keyframes ripple-fade {
+    from {
+      transform: scale(1);
+      opacity: 0.9;
+    }
+    to {
+      transform: scale(1);
+      opacity: 0;
+    }
+  }
+}
+
+/* Increase Contrast: a dark edge instead of the light one, a stronger ring, an ink label. */
+@media (prefers-contrast: more) {
+  .root {
+    --p-halo: var(--p-ink);
+    --p-fill: rgb(255 106 61 / 18%);
+    --p-ring: 3px;
+  }
+
+  .pm-arrow path {
+    fill: var(--p-deep);
+    stroke-width: 2px;
+  }
+
+  .pm-arrow {
+    filter: drop-shadow(0 1px 1px var(--p-ink));
+  }
+
+  .pm-pill {
+    background: var(--p-ink);
+    box-shadow: inset 0 0 0 1.5px var(--p-coral);
+  }
+}

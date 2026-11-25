@@ -9,6 +9,8 @@
     "dev:renderer": "turbo run dev:renderer --filter=@atd/desktop",
     "dev:website": "pnpm --filter @atd/website dev",
     "preview:website": "pnpm --filter @atd/website build && pnpm --filter @atd/website preview",
+    "dev:extension": "pnpm --filter @atd/chrome-extension dev",
+    "build:extension": "pnpm --filter @atd/chrome-extension build",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",

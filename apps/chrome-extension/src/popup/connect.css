@@ -1,0 +1,75 @@
+/* Atd for Chrome · toolbar popup: first connection and the explanatory states (ConnectView,
+   NoticeView). Loaded after popup.css, which holds the shell, the groups and their rows; like it,
+   unlayered on top of the generated kit. */
+/* The centered block above the action, and the action itself. */
+.pp-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 8px 12px 16px;
+}
+.pp-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: var(--secondary-system-grouped-background);
+  box-shadow: inset 0 0 0 0.5px var(--separator);
+  margin-bottom: 4px;
+}
+.pp-tile .pp-mark {
+  width: 24px;
+  height: 24px;
+  color: var(--label);
+}
+.pp-hero h2,
+.pp-hero p {
+  margin: 0;
+}
+.pp-hero-body {
+  color: var(--secondary-label);
+}
+.pp-primary {
+  margin-top: 2px;
+}
+.pp-primary .activity-indicator {
+  width: 14px;
+  height: 14px;
+}
+.pp-center {
+  justify-content: center;
+  text-align: center;
+}
+.pp-primary ~ .field-message {
+  margin: 8px 0 0;
+}
+/* The kit fills message symbols (SF style); Lucide symbols are strokes, which a fill would cover. */
+.field-message > svg.lucide {
+  fill: none;
+}
+.pp-cancel {
+  --_btn-h: 24px;
+  display: flex;
+  margin: 6px auto 0;
+  padding: 0 12px;
+  font-weight: 400;
+}
+
+/* The pairing code, compared character by character with Atd's confirmation. */
+.pp-code-chars {
+  display: inline-flex;
+  gap: 4px;
+}
+.pp-code-char {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--fill-tertiary);
+  font: 600 var(--fs-title3) / 1 var(--ff-mono);
+  color: var(--label);
+}

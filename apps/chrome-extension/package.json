@@ -1,0 +1,32 @@
+{
+  "name": "@atd/chrome-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Atd for Chrome: the browser channel of Atd's computer use in the person's own Chrome.",
+  "author": "JUNERDD",
+  "type": "module",
+  "scripts": {
+    "build": "vite build --mode release && vite build --mode dev",
+    "dev": "vite build --watch --mode dev",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "oxlint src *.ts"
+  },
+  "devDependencies": {
+    "@atd/agent-contracts": "workspace:*",
+    "@atd/typescript-config": "workspace:*",
+    "@atd/ui": "workspace:*",
+    "@crxjs/vite-plugin": "3.0.0",
+    "@types/chrome": "0.3.7",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "6.3.0",
+    "i18next": "27.2.3",
+    "lucide": "catalog:",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-i18next": "18.0.3",
+    "typebox": "catalog:",
+    "vite": "8.3.8"
+  }
+}

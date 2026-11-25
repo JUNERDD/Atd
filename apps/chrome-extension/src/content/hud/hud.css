@@ -1,0 +1,230 @@
+/*
+ * The in-tab HUD: the command island's 44 px glass capsule. Values are the prototype's
+ * (`tmp/browser-extension-prototype/prototype.css`, "In-tab HUD (island capsule)"), kept here as
+ * plain CSS scoped to the HUD's shadow root. The HUD rests at one of six anchors; flex alignment
+ * makes cards and the composer grow away from that corner, and entrances rise from its edge.
+ */
+.wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 22px 16px;
+  pointer-events: none;
+  --hud-ox: 50%;
+  --hud-oy: 100%;
+}
+
+.wrap[data-v='top'] {
+  align-items: flex-start;
+  --hud-oy: 0%;
+}
+
+.wrap[data-h='left'] {
+  justify-content: flex-start;
+  --hud-ox: 0%;
+}
+
+.wrap[data-h='right'] {
+  justify-content: flex-end;
+  --hud-ox: 100%;
+}
+
+.hud {
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  max-width: 100%;
+  min-height: 44px;
+  border-radius: 22px;
+  transform-origin: var(--hud-ox) var(--hud-oy);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+/*
+ * The box the click guard observes (`guard.ts`), kept over the capsule: above it, transparent and
+ * with no effects, so the browser's visibility check sees what covers the card, not its glass.
+ */
+.hud-guard {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* A drag owns the cursor until release (the capsule holds the pointer capture). */
+.hud.dragging,
+.hud.dragging * {
+  cursor: grabbing !important;
+}
+
+.hud.card {
+  border-radius: 18px;
+}
+
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 44px;
+  padding: 6px;
+}
+
+.hud-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 0 8px;
+  min-width: 0;
+}
+
+.hud-glyph {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.hud-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.hud-title {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.hud-sub {
+  font-size: 12px;
+  color: var(--fg-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.hud-div {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+  flex: none;
+}
+
+.hud-card {
+  width: 372px;
+  max-width: 100%;
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hud-card.wide {
+  width: min(440px, calc(100vw - 40px));
+}
+
+.hud-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hud-card-head .hud-glyph {
+  margin-top: 1px;
+}
+
+.hud-card-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.hud-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.hud-card-body {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--fg-2);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+
+/* A run's reply: kept as written (line breaks), scrolled within the card when it is long. */
+.hud-card-body.reply {
+  max-height: 220px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: var(--fg);
+  font-size: 13px;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: auto;
+}
+
+.hud-card-note {
+  font-size: 11px;
+  color: var(--fg-2);
+  margin-top: 6px;
+}
+
+.hud-card-note.attn {
+  color: var(--attn);
+}
+
+.hud-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hud-card-actions .lead {
+  margin-right: auto;
+}
+
+/*
+ * A card's answers count only once it has stayed put (`guard.ts`): until then they look inactive,
+ * with the arrow cursor and no hover, and a click on them does nothing.
+ */
+.hud-card-actions .gbtn.guarded {
+  transition: opacity 120ms ease-out;
+}
+
+.hud[data-settling] .hud-card-actions .gbtn.guarded {
+  opacity: 0.5;
+  cursor: default;
+  filter: none;
+  background: none;
+}
+
+.hud[data-settling] .hud-card-actions .gbtn.guarded.solid {
+  background: var(--primary);
+}
+
+@media (max-width: 760px) {
+  .hud-title,
+  .hud-sub {
+    max-width: 150px;
+  }
+
+  .hud-card,
+  .hud-card.wide {
+    width: calc(100vw - 40px);
+  }
+}

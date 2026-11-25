@@ -53,6 +53,14 @@ regexTarget = "line"
 regexes = ['''^\s*SUPublicEDKey: [A-Za-z0-9+/]{43}=$''']
 
 [[allowlists]]
+description = "Atd for Chrome's public manifest keys (they fix the extension IDs); the private halves were never kept"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/chrome-extension/flavors\.ts$''']
+regexTarget = "line"
+regexes = ['''^\s*key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA[A-Za-z0-9+/]{342}IDAQAB',$''']
+
+[[allowlists]]
 description = "Exact public EdDSA key shipped to existing Atd users, pinned by the upgrade gate"
 targetRules = ["generic-api-key"]
 condition = "AND"

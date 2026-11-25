@@ -1,0 +1,166 @@
+/*
+ * The in-page composer: the HUD's glass with the product composer's expanded anatomy (the request
+ * on top, context and send on a 28 px row below; 14 px text, 18 px corners). Its bottom row centres
+ * on the same line, and its mark on the same point, as the working HUD it turns into. Values are the
+ * prototype's (`prototype.css`, "In-page composer").
+ */
+.hud.compose {
+  width: min(560px, 100%);
+  border-radius: 18px;
+}
+
+.ask-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  grid-template-areas: 'prompt prompt' 'meta send' 'note note';
+  gap: 6px 8px;
+  padding: 10px 8px 8px 14px;
+}
+
+.ask-input {
+  grid-area: prompt;
+  display: block;
+  width: 100%;
+  height: 22px;
+  max-height: 110px;
+  margin: 0;
+  padding: 0 6px 0 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: none;
+  color: var(--fg);
+  caret-color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.ask-input::placeholder {
+  color: var(--fg-2);
+}
+
+.ask-input:focus-visible {
+  outline: none;
+}
+
+.ask-meta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 28px;
+}
+
+.ask-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.ask-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 220px;
+  height: 24px;
+  padding: 0 3px 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--wash);
+  color: var(--fg-2);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.ask-chip .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.ask-chip .x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  color: var(--fg-2);
+}
+
+.ask-chip .x:hover {
+  background: var(--wash-strong);
+  color: var(--fg);
+}
+
+.ask-chip.add {
+  padding: 0 8px 0 7px;
+  background: none;
+  border: 1px dashed var(--border);
+}
+
+.ask-chip.add .name {
+  color: var(--fg-2);
+}
+
+.ask-chip.add:hover {
+  background: var(--wash);
+}
+
+/* How much of the field's limit is used, near the limit only. */
+.ask-count {
+  flex: none;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ask-count.full {
+  color: var(--attn);
+}
+
+.ask-send {
+  grid-area: send;
+  align-self: end;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--primary);
+  color: var(--primary-fg);
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.ask-send:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.ask-send:disabled {
+  opacity: 0.5;
+}
+
+.ask-note {
+  grid-area: note;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--attn);
+  padding-right: 6px;
+  overflow-wrap: anywhere;
+}

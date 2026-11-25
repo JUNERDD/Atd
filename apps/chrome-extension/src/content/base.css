@@ -1,0 +1,229 @@
+/*
+ * Tokens and controls shared by the in-page surfaces (HUD, composer, selection bar). The values are
+ * the prototype's (`tmp/browser-extension-prototype/prototype.css`, its tokens and "In-tab HUD"
+ * section), which mirror `packages/ui/src/styles.css` (Rhea b27GcrRo) in plain CSS: page styles
+ * never reach a closed shadow root and Tailwind's @property rules do not apply inside one. Tokens sit
+ * on `.root`, not `:host`, so custom properties a page sets on the host element cannot override them.
+ * Glass is a translucent fill over a 20 px blur with no tint of its own: the page and the tab's light
+ * show through in their own colours.
+ */
+:host {
+  all: initial;
+}
+
+/* A page may style the host's own pseudo-elements; important rules here outrank the page's. */
+:host::before,
+:host::after {
+  content: none !important;
+  display: none !important;
+}
+
+.root {
+  --fg: #0a0a0a;
+  --fg-2: #636363;
+  --border: rgb(0 0 0 / 10%);
+  --primary: #171717;
+  --primary-fg: #fafafa;
+  --wash: rgb(0 0 0 / 6%);
+  --wash-strong: rgb(0 0 0 / 10%);
+  --ring: rgb(0 0 0 / 30%);
+  --attn: #c2570c;
+  --ok: #15803d;
+  --glass-fill: rgb(255 255 255 / 50%);
+  --glass-edge: rgb(0 0 0 / 10%);
+  --glass-shadow: 0 10px 30px rgb(0 0 0 / 14%), 0 1px 2px rgb(0 0 0 / 8%);
+  --glass-backdrop: blur(20px);
+  /* System fonts only: a page's fonts never load into the shadow root and no web font ships. */
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+  font-size: 13px;
+  line-height: normal;
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .root {
+    --fg: #fafafa;
+    --fg-2: #b4b4b4;
+    --border: rgb(255 255 255 / 10%);
+    --primary: #e5e5e5;
+    --primary-fg: #171717;
+    --wash: rgb(255 255 255 / 8%);
+    --wash-strong: rgb(255 255 255 / 14%);
+    --ring: rgb(255 255 255 / 40%);
+    --attn: #fbbf24;
+    --ok: #4ade80;
+    --glass-fill: rgb(36 36 40 / 50%);
+    --glass-edge: rgb(255 255 255 / 11%);
+    --glass-shadow: 0 10px 30px rgb(0 0 0 / 40%), 0 1px 2px rgb(0 0 0 / 30%);
+    color-scheme: dark;
+  }
+}
+
+:where(.root) *,
+:where(.root) *::before,
+:where(.root) *::after {
+  box-sizing: border-box;
+}
+
+.root [hidden] {
+  display: none !important;
+}
+
+/* Zero-specificity resets, so every control class below overrides them. */
+:where(.root) button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  margin: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+:where(.root) button:disabled {
+  cursor: default;
+}
+
+/* Focus draws inside the control's box, as on the product's glass. */
+.root :focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.glass {
+  color: var(--fg);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: var(--glass-backdrop);
+  backdrop-filter: var(--glass-backdrop);
+  box-shadow:
+    var(--glass-shadow),
+    inset 0 0 0 1px var(--glass-edge);
+}
+
+.i,
+.mark {
+  display: block;
+  flex: none;
+}
+
+.gbtn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.gbtn:hover:not(:disabled) {
+  background: var(--wash);
+}
+
+.gbtn:active:not(:disabled) {
+  background: var(--wash-strong);
+}
+
+.gbtn:disabled {
+  opacity: 0.5;
+}
+
+.gbtn.icon {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
+.gbtn.solid {
+  background: var(--primary);
+  color: var(--primary-fg);
+}
+
+.gbtn.solid:hover:not(:disabled) {
+  background: var(--primary);
+  filter: brightness(1.12);
+}
+
+.gbtn.outline {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.kbd {
+  height: 20px;
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fg-2);
+  background: var(--wash);
+  display: inline-grid;
+  place-items: center;
+}
+
+.attn {
+  color: var(--attn);
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--fg-2) 0%,
+    var(--fg-2) 35%,
+    var(--fg) 50%,
+    var(--fg-2) 65%,
+    var(--fg-2) 100%
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 2.2s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+/* With glow effects off or Reduce Motion, the step text is still; the spinner keeps turning. */
+.root[data-effects='off'] .shimmer {
+  animation: none;
+  color: var(--fg-2);
+  background: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    color: var(--fg-2);
+    background: none;
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "loading": "正在载入…",
+  "header": {
+    "connected": "已连接",
+    "notConnected": "未连接",
+    "connecting": "正在连接…"
+  },
+  "page": {
+    "heading": "此页面",
+    "ask": "在此页面问 Atd…",
+    "blocked": {
+      "notPaired": "请先连接到 Atd",
+      "connecting": "连接到 Atd 后可用",
+      "notConnected": "请先重新连接 Atd",
+      "otherHost": "另一个 Atd 版本已连接",
+      "serviceUnavailable": "Atd 没有响应",
+      "page": "此页面不可用",
+      "busy": "当前任务结束后可用"
+    },
+    "siteLabel": "允许 Atd 在 {{host}} 上操作",
+    "siteOn": "Atd 只在你发起的任务中在此操作，提交前总会先问你。",
+    "siteOff": "在此网站做任何操作前，Atd 都会先问你。",
+    "unavailableNote": "Atd 只在网站上工作；设置、新标签页等浏览器自带页面不在其列。"
+  },
+  "runs": {
+    "running": "正在此浏览器中运行",
+    "recent": "最近在此浏览器中",
+    "untitled": "未命名任务",
+    "working": "处理中…",
+    "waitingOk": "等你确认",
+    "waitingYou": "正在等你",
+    "held": "由你操作",
+    "stopping": "正在停止…",
+    "lost": "连接已断开",
+    "done": "已完成",
+    "failed": "未能完成",
+    "stopped": "已停止",
+    "stop": "停止",
+    "stopLabel": "停止“{{title}}”",
+    "reconnect": "重新连接",
+    "showTab": "前往标签页：{{title}}",
+    "openInAtd": "在 Atd 中打开：{{title}}"
+  },
+  "actions": {
+    "openApp": "打开 Atd",
+    "settings": "电脑操作设置…"
+  },
+  "connect": {
+    "title": "连接到 Atd",
+    "body": "Atd 只在你交给任务的标签页里操作，提交任何内容前都会先问你。",
+    "browser": "浏览器",
+    "button": "连接…",
+    "waiting": "正在等待 Atd…",
+    "code": "配对码",
+    "confirmNote": "请在 Atd 应用中确认，并核对那里显示的配对码是否与此一致。",
+    "cancel": "取消",
+    "failure": {
+      "busy": "Atd 正在显示另一个连接请求。",
+      "cooldown": "请稍等片刻再试。",
+      "generic": "无法连接到 Atd，请重试。",
+      "otherHost": "另一个 Atd 版本已连接到此浏览器。请先退出那个版本，再重试。",
+      "serviceUnavailable": "Atd 没有响应，请稍后再试。",
+      "denied": "你没有在 Atd 中允许此次连接。",
+      "notConnected": "在你确认之前，与 Atd 的连接已断开。"
+    }
+  },
+  "notice": {
+    "reconnect": "重新连接",
+    "tryAgain": "重试",
+    "connectingButton": "正在连接…",
+    "connecting": {
+      "title": "正在连接到 Atd",
+      "body": "Atd 浏览器扩展正在连接这台 Mac 上的 Atd 应用。"
+    },
+    "disconnected": {
+      "title": "与 Atd 的连接已断开",
+      "body": "只要 Atd 在运行，Atd 浏览器扩展会自动重新连接。"
+    },
+    "otherHost": {
+      "title": "另一个 Atd 版本已连接",
+      "body": "另一个 Atd 版本正在使用此浏览器的连接。请先退出那个版本，再重新连接。"
+    },
+    "serviceUnavailable": {
+      "title": "Atd 没有响应",
+      "body": "Atd 应用已打开，但其服务暂未响应。请重新连接，或退出后重新打开 Atd。"
+    },
+    "hostMissing": {
+      "title": "打开 Atd 以完成设置",
+      "body": "此浏览器暂时无法连接 Atd。请在这台 Mac 上打开 Atd，或在“设置 › 电脑操作”中点击“刷新”，然后重试。"
+    },
+    "browserNotVerified": {
+      "title": "无法验证此浏览器",
+      "body": "Atd 仅连接到使用 Apple Developer ID 签名的浏览器。请改用已签名的浏览器版本后重试。"
+    },
+    "browserMismatch": {
+      "title": "浏览器签名已变化",
+      "body": "此连接已与另一个已签名浏览器配对。请在 Atd 的“设置 › 电脑操作”中断开并重新配对，或换回原浏览器。"
+    }
+  }
+}
