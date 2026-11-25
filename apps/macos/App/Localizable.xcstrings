@@ -37,6 +37,78 @@
         }
       }
     },
+    "chrome.pair.title" : {
+      "comment" : "Title of the alert that asks whether a Chrome profile with the Atd for Chrome extension may connect to Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow “Atd for Chrome” to connect?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许“Atd for Chrome”连接吗？"
+          }
+        }
+      }
+    },
+    "chrome.pair.message" : {
+      "comment" : "Body of the Atd for Chrome pairing alert; %1$@ is the browser profile (an email or a name), %2$@ the browser (Google Chrome, Aside…), %3$@ the browser's signed developer label, %4$@ the 4-character code the extension shows",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%1$@” in %2$@ (%3$@) wants to use Atd. Atd can then work in the tabs you hand it and show its progress there; it never reads your other tabs, bookmarks or history. Connect only if %2$@ shows the code %4$@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%2$@（%3$@）中的“%1$@”想要使用 Atd。连接后，Atd 可以在你交给它的标签页中工作并在那里显示进度，但绝不会读取你的其他标签页、书签或历史记录。只有当 %2$@ 显示代码 %4$@ 时才连接。"
+          }
+        }
+      }
+    },
+    "chrome.pair.messageUnnamed" : {
+      "comment" : "Body of the Atd for Chrome pairing alert for a browser profile without a name or account; %1$@ is the browser (Google Chrome, Aside…), %2$@ the browser's signed developer label, %3$@ the 4-character code the extension shows",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A profile in %1$@ (%2$@) wants to use Atd. Atd can then work in the tabs you hand it and show its progress there; it never reads your other tabs, bookmarks or history. Connect only if %1$@ shows the code %3$@."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@（%2$@）中的一个个人资料想要使用 Atd。连接后，Atd 可以在你交给它的标签页中工作并在那里显示进度，但绝不会读取你的其他标签页、书签或历史记录。只有当 %1$@ 显示代码 %3$@ 时才连接。"
+          }
+        }
+      }
+    },
+    "chrome.pair.allow" : {
+      "comment" : "Button of the Atd for Chrome pairing alert that connects the Chrome profile",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connect"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连接"
+          }
+        }
+      }
+    },
     "artifact.open.message" : {
       "comment" : "Message of the confirmation before opening a downloaded file that can run code",
       "extractionState" : "manual",
@@ -12889,6 +12961,24 @@
         }
       }
     },
+    "taskActivity.access.chrome" : {
+      "comment" : "How Atd uses a website in the person's own Chrome, shown on a computer access approval",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd will use this website in your own Chrome, in a tab of the Atd tab group, with the accounts you are signed in to. It never types your passwords."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atd 将在你自己的 Chrome 中使用此网站：在“Atd”标签页组的标签页里操作，沿用你已登录的账号。Atd 绝不会输入你的密码。"
+          }
+        }
+      }
+    },
     "taskActivity.access.run" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13875,6 +13965,132 @@
         }
       }
     },
+    "taskActivity.problem.targetUnavailable" : {
+      "comment" : "Task activity detail for a computer step that stopped: the page or app it works in is gone or changed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The page or app isn't available right now."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "页面或应用现在不可用。"
+          }
+        }
+      }
+    },
+    "taskActivity.problem.inUse" : {
+      "comment" : "Task activity detail for a computer step that stopped: the person was using the page or app, so Atd waited",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused while you were using it."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你正在使用，已暂停。"
+          }
+        }
+      }
+    },
+    "taskActivity.problem.permission" : {
+      "comment" : "Task activity detail for a computer step that stopped: the step needs a permission the person grants in Atd",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Needs your permission in Atd."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要你在 Atd 中授权。"
+          }
+        }
+      }
+    },
+    "taskActivity.problem.timeout" : {
+      "comment" : "Task activity detail for a computer step that stopped: the step took too long",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A step took too long."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "某个步骤耗时过长。"
+          }
+        }
+      }
+    },
+    "taskActivity.problem.cancelled" : {
+      "comment" : "Task activity detail for a computer step that stopped: the step was stopped",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The step was stopped."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "该步骤已停止。"
+          }
+        }
+      }
+    },
+    "taskActivity.problem.unconfirmed" : {
+      "comment" : "Task activity detail for a computer step that stopped: Atd cannot tell what the last step changed",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check what the last step changed."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请检查上一步做了哪些更改。"
+          }
+        }
+      }
+    },
+    "taskActivity.problem.failed" : {
+      "comment" : "Task activity detail for a computer step that stopped: any other problem",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A step didn't work. Open the task for details."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有一个步骤未完成。打开任务查看详情。"
+          }
+        }
+      }
+    },
     "taskActivity.fromSubagent" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14487,6 +14703,60 @@
         }
       }
     },
+    "taskActivity.scope.computerAct" : {
+      "comment" : "Title of an approval for one computer action on a registered website or app; %@ is the target's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Act on %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "操作 %@"
+          }
+        }
+      }
+    },
+    "taskActivity.scope.computerAct.submit" : {
+      "comment" : "Title of an approval for a submit (sending a form, a purchase, a message) on a registered target; %@ is the target's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Submit on %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 %@ 上提交"
+          }
+        }
+      }
+    },
+    "taskActivity.scope.computerAct.invoke" : {
+      "comment" : "Title of an approval for an action whose effect Atd cannot know on a registered target; %@ is the target's name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run an action on %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 %@ 上执行操作"
+          }
+        }
+      }
+    },
     "taskActivity.scope.bash" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14521,23 +14791,6 @@
         }
       }
     },
-    "taskActivity.scope.computer" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Act on a registered website or app"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "操作已登记的网站或应用"
-          }
-        }
-      }
-    },
     "taskActivity.scope.computerAccess" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -14551,6 +14804,24 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "授权电脑操作"
+          }
+        }
+      }
+    },
+    "taskActivity.scope.computerAccess.chrome" : {
+      "comment" : "Title of an approval that lets Atd use a website in the person's own Chrome through Atd for Chrome",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow access in your Chrome"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "允许在你的 Chrome 中访问"
           }
         }
       }

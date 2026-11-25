@@ -48,15 +48,19 @@ import.meta.hot?.dispose(() => {
 /**
  * The service's computer status while it is connected: the host, the registered targets and which
  * of them runs are using. `status` is null until the first read answers or without the bridge.
- * A `live` view (the settings page) reads it again every few seconds to follow busy targets.
+ * A `live` view (the settings page) reads it again every few seconds to follow busy targets; a
+ * view that needs it only in some states passes `enabled: false` in the others to skip the read.
  */
-export function useComputerStatus({ live = false }: { live?: boolean } = {}) {
+export function useComputerStatus({
+  live = false,
+  enabled = true,
+}: { live?: boolean; enabled?: boolean } = {}) {
   const connected = useServiceStatus().status?.state === 'connected';
   const bridge = computerBridge();
   const { data, error, refetch } = useQuery<ComputerStatusResponse>(
     {
       queryKey: computerKeys.status,
-      queryFn: bridge && connected ? () => bridge.status() : skipToken,
+      queryFn: bridge && connected && enabled ? () => bridge.status() : skipToken,
       meta: { errorToast: false },
       refetchInterval: live ? STATUS_REFRESH_MS : false,
       refetchIntervalInBackground: false,

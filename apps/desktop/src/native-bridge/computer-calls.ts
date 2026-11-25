@@ -12,6 +12,7 @@
  * TypeScript syntax.
  */
 import { Type } from 'typebox';
+import { ComputerChromeStateSchema } from './chrome-calls.ts';
 import { ComputerPreviewSourceSchema } from './computer-preview-calls.ts';
 import { Empty } from './primitives.ts';
 
@@ -294,6 +295,8 @@ export const NativeComputerEvents = {
        * one shows the Accessibility guidance.
        */
       postEventAccess: Type.Boolean(),
+      /** Atd for Chrome: the host manifest and the paired Chrome profiles (`chrome-calls.ts`). */
+      chrome: ComputerChromeStateSchema,
     },
     { additionalProperties: false },
   ),

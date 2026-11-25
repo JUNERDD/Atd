@@ -11,12 +11,16 @@ import {
 } from '@atd/agent-contracts';
 import { clip } from '../automations/prompt.js';
 
+/** The label a person recognizes a registered computer target by, when it is still registered. */
+export type TargetLabel = (bindingId: string) => string | undefined;
+
 /**
  * The pending requests that belong to a root task's run, as the activity card decides them: the
  * root's own requests of this run and those of its subagents (a subagent task carries its root's
  * id, and a child cannot delegate, so the link is one level). Oldest first, at most
  * `TASK_ACTIVITY_MAX_REQUESTS`. `viewCalls` are the ids of the `show_ui` calls the run's
  * transcript shows still running: an input request raised by one of them waits on that view.
+ * `label` names the target of a computer action's approval.
  */
 export function activityRequests(
   pending: readonly PermissionRequest[],
@@ -24,6 +28,7 @@ export function activityRequests(
   run: TaskRun,
   tasks: ReadonlyMap<string, AgentTask>,
   viewCalls: ReadonlySet<string>,
+  label: TargetLabel,
 ): TaskActivityRequest[] {
   const owned = pending.filter((request) =>
     request.taskId === task.id
@@ -34,7 +39,7 @@ export function activityRequests(
   owned.sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
   return owned.slice(0, TASK_ACTIVITY_MAX_REQUESTS).map((request) => {
     const asker = request.taskId === task.id ? undefined : tasks.get(request.taskId);
-    return activityRequest(request, asker, viewCalls);
+    return activityRequest(request, asker, viewCalls, label);
   });
 }
 
@@ -42,6 +47,7 @@ function activityRequest(
   request: PermissionRequest,
   subagent: AgentTask | undefined,
   viewCalls: ReadonlySet<string>,
+  label: TargetLabel,
 ): TaskActivityRequest {
   const base = {
     requestId: request.id,
@@ -64,7 +70,7 @@ function activityRequest(
   return {
     kind: 'confirmation',
     ...base,
-    scope: grant(request.scope),
+    scope: grant(request.scope, label),
     title: clip(request.title, 500),
     detail: detailClipped ? request.detail.slice(0, TASK_ACTIVITY_DETAIL_CHARS) : request.detail,
     detailClipped,
@@ -80,8 +86,12 @@ function activityRequest(
   };
 }
 
-/** What an approval would allow, without the binding ids and revisions only the service needs. */
-function grant(scope: GrantScope): TaskActivityGrant {
+/**
+ * What an approval would allow, without the revisions only the service needs. A computer action
+ * keeps its binding id, so a card can tell targets apart, and names the target by its label; a
+ * target deleted while the approval waits (whose run is being stopped) keeps its id as the label.
+ */
+function grant(scope: GrantScope, label: TargetLabel): TaskActivityGrant {
   if ('location' in scope) return { kind: 'file', tool: scope.tool, location: scope.location };
   if (scope.tool === 'computerAccess') {
     const { target } = scope;
@@ -89,10 +99,18 @@ function grant(scope: GrantScope): TaskActivityGrant {
     return {
       kind: 'computerAccess',
       targetKind: browser ? 'browser' : 'application',
+      ...(browser ? { channel: target.channel ?? 'managed' } : {}),
       targetLabel: clip(target.label, 256),
       origins: browser ? target.allowedOrigins.slice(0, 32) : [],
       persistence: scope.persistence,
     };
   }
+  if (scope.tool === 'computer')
+    return {
+      kind: 'computerAct',
+      bindingId: scope.bindingId,
+      targetLabel: clip(label(scope.bindingId) ?? scope.bindingId, 256),
+      effect: scope.effect,
+    };
   return { kind: 'tool', tool: scope.tool };
 }

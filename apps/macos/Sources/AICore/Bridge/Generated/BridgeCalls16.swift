@@ -4,6 +4,54 @@
 
 import Foundation
 
+/// Result of the `computer.preview.show` call.
+public struct ComputerPreviewShowResult: Codable, Equatable, Sendable {
+  public let shown: Bool
+
+  public init(shown: Bool) {
+    self.shown = shown
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    shown = try container.boolean(.shown)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case shown
+  }
+}
+
+/// Params of the `approval.request` call.
+public struct ApprovalRequestParams: Codable, Equatable, Sendable {
+  public let serverId: String
+
+  public init(serverId: String) {
+    self.serverId = serverId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    try container.literal(.kind, "mcpServer")
+    serverId = try container.string(
+      .serverId, minLength: 1, maxLength: 193,
+      pattern:
+        "^(?:[a-zA-Z0-9_-]{1,128}|(?:[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?:)?[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
+    )
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode("mcpServer", forKey: .kind)
+    try container.encode(serverId, forKey: .serverId)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case kind
+    case serverId
+  }
+}
+
 /// Result of the `approval.request` call.
 public enum ApprovalRequestResult: Codable, Equatable, Sendable {
   case approved(Approved)
@@ -191,67 +239,3 @@ public typealias ScreenRecordingRequestResult = NativeEmpty
 
 /// Params of the `apps.pick` call.
 public typealias AppsPickParams = NativeEmpty
-
-/// Result of the `apps.pick` call.
-public struct AppsPickResult: Codable, Equatable, Sendable {
-  public let apps: [App]
-
-  public init(apps: [App]) {
-    self.apps = apps
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    apps = try container.array(.apps, of: App.self, maxItems: 20)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case apps
-  }
-
-  public struct App: Codable, Equatable, Sendable {
-    public let bundleId: String
-    public let name: String
-
-    public init(bundleId: String, name: String) {
-      self.bundleId = bundleId
-      self.name = name
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      bundleId = try container.string(.bundleId, minLength: 1, maxLength: 255)
-      name = try container.string(.name, minLength: 1, maxLength: 255)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case bundleId
-      case name
-    }
-  }
-}
-
-/// Params of the `shortcuts.recording` call.
-public struct ShortcutsRecordingParams: Codable, Equatable, Sendable {
-  public let session: Int
-  public let active: Bool
-
-  public init(session: Int, active: Bool) {
-    self.session = session
-    self.active = active
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    session = try container.integer(.session, minimum: 1)
-    active = try container.boolean(.active)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case session
-    case active
-  }
-}
-
-/// Result of the `shortcuts.recording` call.
-public typealias ShortcutsRecordingResult = NativeEmpty

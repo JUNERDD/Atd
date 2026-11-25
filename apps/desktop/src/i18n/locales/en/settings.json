@@ -116,6 +116,7 @@
       "computerBrowser": "browser chrome profile website sign in login site",
       "computerStop": "stop cancel halt emergency computer",
       "computerEngines": "engine add-on download install remove browser component",
+      "computerChrome": "chrome chromium arc aside brave edge dia vivaldi extension browser profile pair connect disconnect tab daily signed in",
       "computerApplication": "application app program window native mac",
       "computerTyping": "computer typing typewriter highlight animation input command",
       "computerVision": "vision model screen monitor sharing",
@@ -1270,6 +1271,46 @@
     },
     "engines": {
       "searchDescription": "Download or remove the browser engine that website targets run on."
+    },
+    "chrome": {
+      "title": "Atd for Chrome",
+      "searchDescription": "Connect your own Chromium browser so Atd can work in the tabs you hand it, signed in as you.",
+      "extension": "Extension: {{name}} · ID {{id}}",
+      "browsers": "Browsers: {{browsers}}",
+      "refresh": "Refresh",
+      "manifest": {
+        "installed": {
+          "title": "Ready to connect",
+          "description": "Your browser can reach Atd. In each Chromium browser profile you want Atd to work in, install {{name}} and choose Connect… from its toolbar button."
+        },
+        "chromeMissing": {
+          "title": "No compatible browser found",
+          "description": "Open a Chromium browser (such as Chrome, Arc, Aside, Brave, Edge, Dia, or Vivaldi), install {{name}}, then click Refresh."
+        },
+        "blockedLocation": {
+          "title": "Move Atd to Applications",
+          "description": "Browsers can’t start Atd from where it is now: Downloads, Documents, Desktop or a temporary copy. Move Atd to the Applications folder and open it again."
+        },
+        "failed": {
+          "title": "Couldn’t set up the browser connection",
+          "description": "Atd couldn’t register itself with your browsers. Click Refresh or reopen Atd to try again."
+        }
+      },
+      "install": {
+        "title": "No browser profile connected",
+        "description": "To let Atd work in your own Chromium browser, signed in as you:",
+        "extensions": "In your browser, open chrome://extensions and turn on Developer mode.",
+        "load": "Click Load unpacked and choose the {{folder}} folder of the {{name}} build.",
+        "connect": "Click {{name}} in your browser’s toolbar, choose Connect…, and confirm in Atd."
+      },
+      "connected": "Connected",
+      "sites_one": "{{count}} site allowed",
+      "sites_other": "{{count}} sites allowed",
+      "noSites": "No sites allowed",
+      "lastSeen": "Last connected {{time}}",
+      "disconnect": "Disconnect",
+      "disconnectTitle": "Disconnect {{name}}?",
+      "disconnectDescription": "Atd will no longer work in this browser profile, and the sites you allowed there are removed. To use it again, choose Connect… in {{name}}."
     },
     "application": {
       "title": "Add application",

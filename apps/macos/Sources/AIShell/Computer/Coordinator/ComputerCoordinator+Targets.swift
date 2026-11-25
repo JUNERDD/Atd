@@ -23,7 +23,7 @@ extension ComputerCoordinator {
     for binding in bindings {
       do throws(ComputerFailure) {
         try context.check()
-        let engine = try usableEngine(binding.kind, request: request, screenshot: false)
+        let engine = try usableEngine(binding, request: request, screenshot: false)
         try await engines.ensureStarted(engine)
         try context.check()
         let ref = try await engine.resolve(binding, generation: generation, context: context)
@@ -74,23 +74,33 @@ extension ComputerCoordinator {
 
   // MARK: Shared checks
 
-  /// The engine for targets of `kind`, if this request may use it: registered, qualified for an
-  /// unattended request, with the permissions it needs granted now, and, for an unattended
-  /// screenshot of a native target, with screen-capture consent prepared in Settings, since an
-  /// unattended run never prompts (plan §8.3, I7).
-  func usableEngine(_ kind: ComputerTargetKind, request: HostRequestWire, screenshot: Bool)
+  /// The engine of `binding` (``TargetBindingWire/engine``: its kind and, for a browser, its
+  /// channel), if this request may use it: registered, qualified for an unattended request (never
+  /// the person's own Chrome, which serves attended runs only, D5), with the permissions it needs
+  /// granted now, and, for an unattended screenshot of a native target, with screen-capture
+  /// consent prepared in Settings, since an unattended run never prompts (plan §8.3, I7).
+  func usableEngine(_ binding: TargetBindingWire, request: HostRequestWire, screenshot: Bool)
     throws(ComputerFailure) -> any ComputerEngine
   {
-    let id = kind.engine
+    let id = binding.engine
+    let kind = binding.kind
     guard let engine = engines.engine(id) else {
       throw ComputerFailure(.notQualified, "No \(id.rawValue) engine is available on this Mac.")
     }
     let unattended = request.envelope.unattended
+    if unattended, id == .chrome {
+      throw ComputerFailure(
+        .notQualified,
+        "The target is the person's own Chrome (Atd for Chrome), which serves only tasks the "
+          + "person runs themselves, never unattended runs; nothing was sent.")
+    }
     if unattended, engine.profile.qualification != .qualified {
       throw ComputerFailure(
         .notQualified, "The \(id.rawValue) engine is not qualified for unattended runs.")
     }
-    if let missing = ComputerScreenState.missingPermission(kind: kind, screenshot: screenshot) {
+    if let missing = ComputerScreenState.missingPermission(
+      engine: id, kind: kind, screenshot: screenshot)
+    {
       throw missing
     }
     if screenshot, kind == .native, unattended, !captureConsent.isPrepared {

@@ -25,6 +25,9 @@ import type { Pages } from './pages.js';
  * Playwright learns of the new target from the browser's own attach event; the call waits for that
  * and for the document to commit, so the page the host lists next is the page at its address and
  * not a blank one.
+ *
+ * The person's own Chrome is refused: Atd for Chrome opens a run's tabs in its Atd tab group, and
+ * its windows are the person's, never parked.
  */
 
 /** How long the new page may take to be attached, then to commit its first document. */
@@ -128,6 +131,11 @@ export async function openPage(
   op: Operation,
   input: { url: string; allowedOrigins: readonly string[]; parkAt?: WindowFrame | undefined },
 ): Promise<Record<string, unknown>> {
+  if (pages.channel === 'chrome')
+    throw new WorkerError(
+      'unsupported',
+      "open_page is not available in the person's own Chrome: Atd for Chrome opens a run's tabs.",
+    );
   let target: URL;
   try {
     target = new URL(input.url);

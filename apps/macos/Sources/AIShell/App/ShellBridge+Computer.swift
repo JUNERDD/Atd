@@ -14,6 +14,24 @@ extension ShellBridge {
     case setPointerVisible(ComputerSetPointerVisibleParams)
     case prepareApplication(ComputerPrepareApplicationParams)
     case primeCaptureConsent
+    case chromeDisconnect(ComputerChromeDisconnectParams)
+    case chromeRefresh
+  }
+
+  /// The answer of a computer call that would open a dialog while a capture runs, which would
+  /// run modal beneath the overlays and freeze them; nil for every other call.
+  static func busyComputerAnswer(_ call: NativeCall) throws(BridgeError) -> JSONValue? {
+    switch call {
+    case .computerAuthorizeAutomation:
+      try encode(ComputerAuthorizeAutomationResult.notApproved(.init(reason: .busy)))
+    case .computerPrepareBrowser:
+      try encode(ComputerPrepareBrowserResult.notOk(.init(reason: .busy)))
+    case .computerPrepareApplication:
+      try encode(ComputerPrepareApplicationResult.notOk(.init(reason: .busy)))
+    case .computerPrimeCaptureConsent:
+      try encode(ComputerPrimeCaptureConsentResult.unavailable(.init()))
+    default: nil
+    }
   }
 
   static func handleComputer(
@@ -50,6 +68,13 @@ extension ShellBridge {
       return try encode(await shell.prepareComputerApplication(params))
     case .primeCaptureConsent:
       return try encode(await shell.primeComputerCaptureConsent())
+    // Settings › Computer use › Atd for Chrome: the person disconnects a paired profile.
+    case .chromeDisconnect(let params):
+      await shell.disconnectChrome(installationId: params.installationId)
+      return try encode(ComputerChromeDisconnectResult())
+    case .chromeRefresh:
+      await shell.refreshChrome()
+      return try encode(ComputerChromeRefreshResult())
     }
   }
 }

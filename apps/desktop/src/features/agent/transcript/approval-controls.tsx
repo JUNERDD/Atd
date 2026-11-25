@@ -9,8 +9,10 @@ import { messageOf } from '../../../lib/errors';
 import { shortcutKeys } from '../../../lib/shortcuts';
 import { isTextEntryFocused } from '../../../lib/text-entry';
 import { HitlActions } from '../../../components/hitl-actions';
+import { ComputerApprovalNote } from './computer-approval-note';
 import { DetailBox } from './detail-box';
 import { scopeKey } from './permission-copy';
+import { useComputerActTarget } from './use-computer-act-target';
 
 /** Display cap for the approval detail; the full value stays one copy click away. */
 const DETAIL_PREVIEW_CHARS = 2000;
@@ -55,11 +57,14 @@ export function ApprovalControls({
 
   // Shell commands off the allowlist get allow once / add to allowlist / deny. A session grant
   // (the same tool, allowed for the rest of the task) is offered only where the service caches
-  // one: never for bash or MCP, which it would downgrade to once.
+  // one: never for bash or MCP, which it would downgrade to once, nor for a submit in the person's
+  // own Chrome, which always asks.
   const bash = request.scope.tool === 'bash';
   const allowlistEntry = bash ? request.allowlistEntry : undefined;
   const access = request.scope.tool === 'computerAccess' ? request.scope : null;
-  const sessionGrant = !bash && request.scope.tool !== 'mcp' && !access;
+  const act = useComputerActTarget(request.scope);
+  const sessionGrant =
+    !bash && request.scope.tool !== 'mcp' && !access && !(act?.chrome && act.effect === 'submit');
   // Why the auto tier's review handed this call to the user. The reason is model-written runtime
   // text in the user's language, so it is shown as-is and wraps inside the card.
   const review = request.review;
@@ -128,27 +133,7 @@ export function ApprovalControls({
       {bash && (
         <p className="text-xs text-muted-foreground">{t('permission.bash.notAllowlisted')}</p>
       )}
-      {access && (
-        <div className="space-y-1 text-xs text-muted-foreground">
-          <p>
-            {t(access.persistence === 'saved' ? 'permission.accessSaved' : 'permission.accessRun', {
-              target: access.target.label,
-            })}
-          </p>
-          {/* A website stays in the background; an app may be brought forward for a step that
-              nothing in the background can do. */}
-          <p>
-            {t(
-              access.target.kind === 'browser'
-                ? 'permission.accessBackground'
-                : 'permission.accessApplication',
-            )}
-          </p>
-          {access.target.kind === 'browser' && (
-            <p className="wrap-anywhere">{access.target.allowedOrigins.join(', ')}</p>
-          )}
-        </div>
-      )}
+      <ComputerApprovalNote scope={request.scope} act={act} />
       {review && <p className="text-xs text-muted-foreground">{reviewNote}</p>}
       {detail ? (
         <DetailBox variant="output" size="sm" copyText={detail} className="approval-detail">

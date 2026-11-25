@@ -9,7 +9,7 @@ extension ComputerCoordinator {
       return .failed(request, .unsupported, "New access requires an attended task.")
     }
     do throws(ComputerFailure) {
-      let content = try await accessPreparer.resolve(target)
+      let content = try await accessPreparer.resolve(target, runId: request.envelope.runId)
       guard accessIsLive(request) else {
         return .failed(request, .cancelled, "The access request ended.")
       }

@@ -172,9 +172,21 @@
     },
     "allowAccess": "Allow access",
     "accessSaved": "Allow access to {{target}} and save it in Computer use settings for later tasks. Remove it there at any time.",
+    "accessSavedChrome": "Allow access to {{target}} in your Chrome and remember it for later tasks. Turn it off for that site in Atd for Chrome at any time.",
     "accessRun": "Allow access to {{target}} for this run only. Access ends when the run finishes or stops.",
     "accessBackground": "Atd will operate this target in the background, without bringing it forward or using your pointer and keyboard.",
-    "accessApplication": "Atd will operate this app in the background. When the background can’t do a step, Atd briefly brings the app forward and sends that step’s clicks and keys straight to it, without moving your pointer, then switches back to the app and window you were using."
+    "accessApplication": "Atd will operate this app in the background. When the background can’t do a step, Atd briefly brings the app forward and sends that step’s clicks and keys straight to it, without moving your pointer, then switches back to the app and window you were using.",
+    "accessChrome": "Atd will work in your own Chrome, signed in as you, only in tabs it puts in the “Atd” tab group. Your other tabs, bookmarks, history and cookies stay untouched, and Atd asks before it submits anything.",
+    "act": {
+      "read": "Read {{target}}",
+      "navigate": "Open a page on {{target}}",
+      "input": "Enter text on {{target}}",
+      "click": "Click on {{target}}",
+      "invoke": "Run an action on {{target}}",
+      "submit": "Submit on {{target}}"
+    },
+    "actChrome": "Atd does this in your own Chrome, signed in as you, in a tab of the “Atd” tab group.",
+    "actChromeSubmit": "Atd does this in your own Chrome, signed in as you, and asks every time before it submits there."
   },
   "question": {
     "skip": "Skip",
@@ -766,7 +778,8 @@
       "openBrowser": "Atd couldn’t start the browser in the background.",
       "screenLocked": "Your Mac was locked, and macOS hides app windows while it’s locked.",
       "covered": "Atd brought the app forward, but another window (possibly Atd’s own panel) still covered the spot, so Atd sent nothing and put things back.",
-      "notActivated": "macOS wouldn’t let Atd bring the app to the front, so Atd sent nothing and put back anything it had changed."
+      "notActivated": "macOS wouldn’t let Atd bring the app to the front, so Atd sent nothing and put back anything it had changed.",
+      "chromeDisconnected": "Your Chrome isn’t connected to Atd right now."
     },
     "retry": {
       "never": "Atd won’t repeat this on its own.",
@@ -842,7 +855,8 @@
         "openBrowser": "Open the browser for {{target}}, then tell Atd to continue.",
         "screenLocked": "Once your Mac is unlocked, tell Atd to continue.",
         "covered": "Move the window covering {{target}}, or do this step yourself, then tell Atd to continue.",
-        "notActivated": "Do this step yourself in {{target}}, then tell Atd to continue."
+        "notActivated": "Do this step yourself in {{target}}, then tell Atd to continue.",
+        "chromeDisconnected": "Open Chrome and make sure Atd for Chrome is connected, then tell Atd to continue."
       },
       "inUse": "When you’re done in {{target}}, tell Atd to continue.",
       "consent": "Prepare screen access in Settings, then tell Atd to continue.",

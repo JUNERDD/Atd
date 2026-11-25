@@ -24,6 +24,10 @@ final class ComputerProgressReporter {
 
   /// Sends a frame on the control stream (dropped while no connection is open).
   var send: ((ComputerProgressWire) -> Void)?
+  /// Told every frame with the ref of the target it is about, whether or not a connection is open:
+  /// the shell's Chrome channel turns frames on the person's own Chrome into the extension's
+  /// pointer.
+  var observe: ((ComputerProgressWire, TargetRefWire) -> Void)?
   private let pointer: ActivityPointerController
   private var seq = 0
   /// The latest geometry per mark, so verify and done frames stay where the step acted.
@@ -54,12 +58,13 @@ final class ComputerProgressReporter {
       case .done, .failed: Self.endValidity
       case .locating, .dispatching, .waiting, .verifying: Self.activeValidity
       }
-    send?(
-      ComputerProgressWire(
-        taskId: subject.taskId, runId: subject.runId, operationId: subject.operationId,
-        actionId: subject.actionId, hostGeneration: subject.hostGeneration, seq: seq, phase: phase,
-        observationRefId: subject.observationRefId, validUntil: now.addingTimeInterval(validity),
-        label: step?.kind, geometry: current ?? .unavailable))
+    let frame = ComputerProgressWire(
+      taskId: subject.taskId, runId: subject.runId, operationId: subject.operationId,
+      actionId: subject.actionId, hostGeneration: subject.hostGeneration, seq: seq, phase: phase,
+      observationRefId: subject.observationRefId, validUntil: now.addingTimeInterval(validity),
+      label: step?.kind, geometry: current ?? .unavailable)
+    send?(frame)
+    observe?(frame, subject.ref)
     // An input that returned normally without verification keeps only its neutral dispatch
     // feedback. The wire result remains unknown; real failures still withdraw immediately.
     guard let pointerPhase = Self.pointerPhase(finishedUnverified ? .done : phase, action: action)

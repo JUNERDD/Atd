@@ -55,6 +55,8 @@ final class ComputerCoordinator: ComputerRequestHandling {
   var announce: (() -> Void)?
   /// The host, its engines or the pointer setting changed (`computer.state`).
   var onStateChange: (() -> Void)?
+  /// Atd for Chrome's part of `computer.state`, owned by the shell's Chrome channel.
+  var chromeState: () -> ComputerStateEvent.Chrome = { ChromeChannelState.unavailable }
 
   /// Actions in flight, by action id.
   var executions: [String: ActionExecution] = [:]

@@ -128,3 +128,19 @@ export async function checkMachO(roots, { machOArch, maxMinos }) {
     throw new Error(`Native code breaks the Mach-O rules:\n${violations.join('\n')}`);
   return checked;
 }
+
+/**
+ * Applies the Mach-O rules to one executable the app embeds beside its main executable, which must
+ * hold exactly the app's slice (`machOArch`) as the main executable does. Returns its minimum
+ * macOS, for the check's report line.
+ */
+export async function checkThinExecutable(file, { machOArch, maxMinos }) {
+  const archs = sliceArchs(file);
+  if (archs?.join(' ') !== machOArch)
+    throw new Error(
+      `${file} must hold exactly ${machOArch}, as the main executable does, not ${archs?.join(', ') ?? 'unreadable'}.`,
+    );
+  if ((await checkMachO([file], { machOArch, maxMinos })) !== 1)
+    throw new Error(`${file} is not a Mach-O executable.`);
+  return minimumSystem(file, machOArch);
+}

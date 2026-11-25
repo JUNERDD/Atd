@@ -15,10 +15,12 @@ public struct ComputerStateEvent: Codable, Equatable, Sendable {
   public let unsettled: Unsettled
   public let captureConsent: CaptureConsent?
   public let postEventAccess: Bool
+  public let chrome: Chrome
 
   public init(
     host: Host, pointerVisible: Bool, typing: Bool, typingAnimation: Bool, previews: [Preview],
-    engines: [Engine], unsettled: Unsettled, captureConsent: CaptureConsent?, postEventAccess: Bool
+    engines: [Engine], unsettled: Unsettled, captureConsent: CaptureConsent?, postEventAccess: Bool,
+    chrome: Chrome
   ) {
     self.host = host
     self.pointerVisible = pointerVisible
@@ -29,6 +31,7 @@ public struct ComputerStateEvent: Codable, Equatable, Sendable {
     self.unsettled = unsettled
     self.captureConsent = captureConsent
     self.postEventAccess = postEventAccess
+    self.chrome = chrome
   }
 
   public init(from decoder: any Decoder) throws {
@@ -44,6 +47,7 @@ public struct ComputerStateEvent: Codable, Equatable, Sendable {
       try container.value($0, CaptureConsent.self)
     }
     postEventAccess = try container.boolean(.postEventAccess)
+    chrome = try container.value(.chrome, Chrome.self)
   }
 
   public func encode(to encoder: any Encoder) throws {
@@ -57,6 +61,7 @@ public struct ComputerStateEvent: Codable, Equatable, Sendable {
     try container.encode(unsettled, forKey: .unsettled)
     try container.encode(captureConsent, forKey: .captureConsent)
     try container.encode(postEventAccess, forKey: .postEventAccess)
+    try container.encode(chrome, forKey: .chrome)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -69,6 +74,7 @@ public struct ComputerStateEvent: Codable, Equatable, Sendable {
     case unsettled
     case captureConsent
     case postEventAccess
+    case chrome
   }
 
   public enum Host: String, Codable, Equatable, Sendable {
@@ -198,58 +204,119 @@ public struct ComputerStateEvent: Codable, Equatable, Sendable {
       case primedAt
     }
   }
-}
 
-/// Payload of the `shortcuts.changed` event.
-public typealias ShortcutsChangedEvent = NativeEmpty
+  public struct Chrome: Codable, Equatable, Sendable {
+    public let hostManifest: HostManifest
+    public let browsers: [String]
+    public let extensionIds: ExtensionIds
+    public let connections: [Connection]
 
-/// Payload of the `socket.frames` event.
-public struct SocketFramesEvent: Codable, Equatable, Sendable {
-  public let frames: [SocketFrame]
+    public init(
+      hostManifest: HostManifest, browsers: [String], extensionIds: ExtensionIds,
+      connections: [Connection]
+    ) {
+      self.hostManifest = hostManifest
+      self.browsers = browsers
+      self.extensionIds = extensionIds
+      self.connections = connections
+    }
 
-  public init(frames: [SocketFrame]) {
-    self.frames = frames
-  }
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      hostManifest = try container.value(.hostManifest, HostManifest.self)
+      browsers = try container.array(.browsers, of: String.self, maxItems: 32)
+      extensionIds = try container.value(.extensionIds, ExtensionIds.self)
+      connections = try container.array(.connections, of: Connection.self, maxItems: 32)
+    }
 
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    frames = try container.array(.frames, of: SocketFrame.self, minItems: 1)
-  }
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case hostManifest
+      case browsers
+      case extensionIds
+      case connections
+    }
 
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case frames
-  }
-}
+    public enum HostManifest: String, Codable, Equatable, Sendable {
+      case installed
+      case chromeMissing
+      case blockedLocation
+      case failed
+    }
 
-/// Payload of the `userApp.state` event.
-public struct UserAppStateEvent: Codable, Equatable, Sendable {
-  public let appId: String
-  public let open: Bool
-  public let version: Int?
+    public struct ExtensionIds: Codable, Equatable, Sendable {
+      public let expected: String
 
-  public init(appId: String, open: Bool, version: Int?) {
-    self.appId = appId
-    self.open = open
-    self.version = version
-  }
+      public init(expected: String) {
+        self.expected = expected
+      }
 
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
-    open = try container.boolean(.open)
-    version = try container.nullable(.version) { try container.integer($0, minimum: 1) }
-  }
+      public init(from decoder: any Decoder) throws {
+        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+        expected = try container.string(
+          .expected, minLength: 32, maxLength: 32, pattern: "^[a-p]{32}$")
+      }
 
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(appId, forKey: .appId)
-    try container.encode(open, forKey: .open)
-    try container.encode(version, forKey: .version)
-  }
+      private enum CodingKeys: String, CodingKey, CaseIterable {
+        case expected
+      }
+    }
 
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case appId
-    case open
-    case version
+    public struct Connection: Codable, Equatable, Sendable {
+      public let installationId: String
+      public let label: String
+      public let email: String?
+      public let browser: String
+      public let connected: Bool
+      public let lastSeenAt: String
+      public let sites: Int
+
+      public init(
+        installationId: String, label: String, email: String?, browser: String, connected: Bool,
+        lastSeenAt: String, sites: Int
+      ) {
+        self.installationId = installationId
+        self.label = label
+        self.email = email
+        self.browser = browser
+        self.connected = connected
+        self.lastSeenAt = lastSeenAt
+        self.sites = sites
+      }
+
+      public init(from decoder: any Decoder) throws {
+        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+        installationId = try container.string(
+          .installationId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+        label = try container.string(.label, minLength: 1, maxLength: 320)
+        email = try container.optional(.email) {
+          try container.string($0, minLength: 1, maxLength: 320)
+        }
+        browser = try container.string(.browser, minLength: 1, maxLength: 120)
+        connected = try container.boolean(.connected)
+        lastSeenAt = try container.dateTime(.lastSeenAt, maxLength: 64)
+        sites = try container.integer(.sites, minimum: 0)
+      }
+
+      public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(installationId, forKey: .installationId)
+        try container.encode(label, forKey: .label)
+        try container.encodeIfPresent(email, forKey: .email)
+        try container.encode(browser, forKey: .browser)
+        try container.encode(connected, forKey: .connected)
+        try container.encode(lastSeenAt, forKey: .lastSeenAt)
+        try container.encode(sites, forKey: .sites)
+      }
+
+      private enum CodingKeys: String, CodingKey, CaseIterable {
+        case installationId
+        case label
+        case email
+        case browser
+        case connected
+        case lastSeenAt
+        case sites
+      }
+    }
   }
 }

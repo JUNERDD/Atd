@@ -1,5 +1,12 @@
 import Foundation
 
+/// A browser binding's channel (`TargetBindingContent` `channel`): `chrome` is the person's own
+/// Chrome through Atd for Chrome, which serves attended runs only, in the tabs handed to them. A
+/// binding without one is a browser profile the host manages.
+public enum ComputerBrowserChannel: String, Codable, CaseIterable, Sendable {
+  case chrome
+}
+
 /// `TargetBindingSchema`: a target a person registered, owned by the service. The host only
 /// resolves it to a ``TargetRefWire`` for its own generation; it never stores one as
 /// authorization.
@@ -12,7 +19,10 @@ public enum TargetBindingWire: Decodable, Equatable, Sendable {
     public let revision: Int
     public let hash: String
     public let label: String
-    /// The host-managed browser profile; never the person's own profile.
+    /// `chrome` for the person's own Chrome; nil for a host-managed browser profile.
+    public let channel: ComputerBrowserChannel?
+    /// Without a channel, the host-managed browser profile, never the person's own profile; on
+    /// the `chrome` channel, the paired Atd for Chrome's installation id.
     public let profileId: String
     public let allowedOrigins: [String]
     public let startUrl: String
@@ -62,6 +72,13 @@ public enum TargetBindingWire: Decodable, Equatable, Sendable {
     }
   }
 
+  /// `computerEngineFor`: the engine that drives the binding, by its kind and, for a browser, its
+  /// channel (``ComputerTargetKind/engine`` is only the kind's default).
+  public var engine: ComputerEngineID {
+    if case .browser(let browser) = self, browser.channel == .chrome { return .chrome }
+    return kind.engine
+  }
+
   public init(from decoder: any Decoder) throws {
     let kind = try decoder.container(keyedBy: Discriminator.self)
       .decode(ComputerTargetKind.self, forKey: .kind)
@@ -75,6 +92,9 @@ public enum TargetBindingWire: Decodable, Equatable, Sendable {
           revision: try container.integer(.revision, minimum: 1),
           hash: try container.computerHash(.hash),
           label: try container.string(.label, minLength: 1, maxLength: 120),
+          channel: try container.optional(.channel) {
+            try container.value($0, ComputerBrowserChannel.self)
+          },
           profileId: try container.identifier(.profileId),
           allowedOrigins: try Self.origins(container),
           startUrl: try container.computerURL(.startUrl),
@@ -128,7 +148,8 @@ public enum TargetBindingWire: Decodable, Equatable, Sendable {
 
   private enum Discriminator: String, CodingKey { case kind }
   private enum BrowserKeys: String, CodingKey, CaseIterable {
-    case bindingId, revision, hash, kind, label, profileId, allowedOrigins, startUrl, pageRule
+    case bindingId, revision, hash, kind, channel, label, profileId, allowedOrigins, startUrl
+    case pageRule
   }
   private enum NativeKeys: String, CodingKey, CaseIterable {
     case bindingId, revision, hash, kind, label, bundleId, appName, appPath, teamId

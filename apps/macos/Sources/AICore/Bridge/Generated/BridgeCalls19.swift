@@ -4,161 +4,236 @@
 
 import Foundation
 
-/// Result of the `diagnostics.exportBundle` call.
-public enum DiagnosticsExportBundleResult: Codable, Equatable, Sendable {
-  case saved(Saved)
-  case cancelled(Cancelled)
+/// Result of the `diagnostics.shellReport` call.
+public struct DiagnosticsShellReportResult: Codable, Equatable, Sendable {
+  public let capturedAt: String
+  public let appVersion: String
+  public let buildNumber: String
+  public let isDevelopment: Bool
+  public let serviceState: ServiceState
+  public let serviceFailureCode: ServiceFailureCode?
+  public let serviceFailureSummary: String?
+  public let checks: [ShellDoctorCheck]
+  public let rings: [DecisionRingSummary]
+
+  public init(
+    capturedAt: String, appVersion: String, buildNumber: String, isDevelopment: Bool,
+    serviceState: ServiceState, serviceFailureCode: ServiceFailureCode?,
+    serviceFailureSummary: String?, checks: [ShellDoctorCheck], rings: [DecisionRingSummary]
+  ) {
+    self.capturedAt = capturedAt
+    self.appVersion = appVersion
+    self.buildNumber = buildNumber
+    self.isDevelopment = isDevelopment
+    self.serviceState = serviceState
+    self.serviceFailureCode = serviceFailureCode
+    self.serviceFailureSummary = serviceFailureSummary
+    self.checks = checks
+    self.rings = rings
+  }
 
   public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: Discriminator.self)
-    switch try container.decode(String.self, forKey: .outcome) {
-    case "saved": self = try .saved(Saved(from: decoder))
-    case "cancelled": self = try .cancelled(Cancelled(from: decoder))
-    default:
-      throw DecodingError.dataCorruptedError(
-        forKey: .outcome, in: container,
-        debugDescription: "Unknown DiagnosticsExportBundleResult outcome.")
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    capturedAt = try container.string(.capturedAt, maxLength: 64)
+    appVersion = try container.string(.appVersion, maxLength: 64)
+    buildNumber = try container.string(.buildNumber, maxLength: 64)
+    isDevelopment = try container.boolean(.isDevelopment)
+    serviceState = try container.value(.serviceState, ServiceState.self)
+    serviceFailureCode = try container.nullable(.serviceFailureCode) {
+      try container.value($0, ServiceFailureCode.self)
     }
+    serviceFailureSummary = try container.nullable(.serviceFailureSummary) {
+      try container.string($0, maxLength: 240)
+    }
+    checks = try container.array(.checks, of: ShellDoctorCheck.self, maxItems: 48)
+    rings = try container.array(.rings, of: DecisionRingSummary.self, maxItems: 8)
   }
 
   public func encode(to encoder: any Encoder) throws {
-    switch self {
-    case .saved(let value): try value.encode(to: encoder)
-    case .cancelled(let value): try value.encode(to: encoder)
-    }
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(capturedAt, forKey: .capturedAt)
+    try container.encode(appVersion, forKey: .appVersion)
+    try container.encode(buildNumber, forKey: .buildNumber)
+    try container.encode(isDevelopment, forKey: .isDevelopment)
+    try container.encode(serviceState, forKey: .serviceState)
+    try container.encode(serviceFailureCode, forKey: .serviceFailureCode)
+    try container.encode(serviceFailureSummary, forKey: .serviceFailureSummary)
+    try container.encode(checks, forKey: .checks)
+    try container.encode(rings, forKey: .rings)
   }
 
-  private enum Discriminator: String, CodingKey {
-    case outcome
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case capturedAt
+    case appVersion
+    case buildNumber
+    case isDevelopment
+    case serviceState
+    case serviceFailureCode
+    case serviceFailureSummary
+    case checks
+    case rings
   }
 
-  public struct Saved: Codable, Equatable, Sendable {
-    public let fileName: String
-    public let archiveBytes: Int
-    public let omittedFileCount: Int
-
-    public init(fileName: String, archiveBytes: Int, omittedFileCount: Int) {
-      self.fileName = fileName
-      self.archiveBytes = archiveBytes
-      self.omittedFileCount = omittedFileCount
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.outcome, "saved")
-      fileName = try container.string(.fileName, minLength: 1, maxLength: 255)
-      archiveBytes = try container.integer(.archiveBytes, minimum: 1)
-      omittedFileCount = try container.integer(.omittedFileCount, minimum: 0)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode("saved", forKey: .outcome)
-      try container.encode(fileName, forKey: .fileName)
-      try container.encode(archiveBytes, forKey: .archiveBytes)
-      try container.encode(omittedFileCount, forKey: .omittedFileCount)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case outcome
-      case fileName
-      case archiveBytes
-      case omittedFileCount
-    }
+  public enum ServiceState: String, Codable, Equatable, Sendable {
+    case idle
+    case starting
+    case running
+    case restarting
+    case unavailable
   }
 
-  public struct Cancelled: Codable, Equatable, Sendable {
-    public init() {}
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.outcome, "cancelled")
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode("cancelled", forKey: .outcome)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case outcome
-    }
+  public enum ServiceFailureCode: String, Codable, Equatable, Sendable {
+    case serviceStarting = "service_starting"
+    case serviceStartFailed = "service_start_failed"
+    case serviceStoppedTooOften = "service_stopped_too_often"
+    case serviceNotRunning = "service_not_running"
   }
 }
 
-/// Params of the `diagnostics.restartService` call.
-public typealias DiagnosticsRestartServiceParams = NativeEmpty
+/// Params of the `diagnostics.liveProbe.start` call.
+public struct DiagnosticsLiveProbeStartParams: Codable, Equatable, Sendable {
+  public let kind: Kind
 
-/// Result of the `diagnostics.restartService` call.
-public enum DiagnosticsRestartServiceResult: Codable, Equatable, Sendable {
-  case ok(Ok)
-  case notOk(NotOk)
+  public init(kind: Kind) {
+    self.kind = kind
+  }
 
   public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: Discriminator.self)
-    switch try container.decode(Bool.self, forKey: .ok) {
-    case true: self = try .ok(Ok(from: decoder))
-    case false: self = try .notOk(NotOk(from: decoder))
-    }
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    kind = try container.value(.kind, Kind.self)
   }
 
-  public func encode(to encoder: any Encoder) throws {
-    switch self {
-    case .ok(let value): try value.encode(to: encoder)
-    case .notOk(let value): try value.encode(to: encoder)
-    }
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case kind
   }
 
-  private enum Discriminator: String, CodingKey {
-    case ok
+  public enum Kind: String, Codable, Equatable, Sendable {
+    case selection
+    case hotkey
+    case capture
+  }
+}
+
+/// Result of the `diagnostics.liveProbe.start` call.
+public struct DiagnosticsLiveProbeStartResult: Codable, Equatable, Sendable {
+  public let probeId: String
+  public let kind: Kind
+  public let durationMs: Int
+
+  public init(probeId: String, kind: Kind, durationMs: Int) {
+    self.probeId = probeId
+    self.kind = kind
+    self.durationMs = durationMs
   }
 
-  public struct Ok: Codable, Equatable, Sendable {
-    public init() {}
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.ok, true)
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(true, forKey: .ok)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case ok
-    }
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    probeId = try container.string(.probeId, minLength: 1, maxLength: 64)
+    kind = try container.value(.kind, Kind.self)
+    durationMs = try container.integer(.durationMs, minimum: 1_000, maximum: 10_000)
   }
 
-  public struct NotOk: Codable, Equatable, Sendable {
-    public let reasonCode: String
-    public let summary: String
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case probeId
+    case kind
+    case durationMs
+  }
 
-    public init(reasonCode: String, summary: String) {
-      self.reasonCode = reasonCode
-      self.summary = summary
-    }
+  public enum Kind: String, Codable, Equatable, Sendable {
+    case selection
+    case hotkey
+    case capture
+  }
+}
 
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      try container.literal(.ok, false)
-      reasonCode = try container.string(
-        .reasonCode, minLength: 1, maxLength: 96, pattern: "^[a-z][a-z0-9_.-]{0,95}$")
-      summary = try container.string(.summary, maxLength: 240)
-    }
+/// Params of the `diagnostics.liveProbe.stop` call.
+public typealias DiagnosticsLiveProbeStopParams = NativeEmpty
 
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(false, forKey: .ok)
-      try container.encode(reasonCode, forKey: .reasonCode)
-      try container.encode(summary, forKey: .summary)
-    }
+/// Result of the `diagnostics.liveProbe.stop` call.
+public typealias DiagnosticsLiveProbeStopResult = NativeEmpty
 
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case ok
-      case reasonCode
-      case summary
-    }
+/// Params of the `diagnostics.previewBundle` call.
+public struct DiagnosticsPreviewBundleParams: Codable, Equatable, Sendable {
+  public let rendererBreadcrumbs: RendererBreadcrumbsPayload
+  public let includeCrashSummaries: Bool
+
+  public init(rendererBreadcrumbs: RendererBreadcrumbsPayload, includeCrashSummaries: Bool) {
+    self.rendererBreadcrumbs = rendererBreadcrumbs
+    self.includeCrashSummaries = includeCrashSummaries
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    rendererBreadcrumbs = try container.value(.rendererBreadcrumbs, RendererBreadcrumbsPayload.self)
+    includeCrashSummaries = try container.boolean(.includeCrashSummaries)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case rendererBreadcrumbs
+    case includeCrashSummaries
+  }
+}
+
+/// Result of the `diagnostics.previewBundle` call.
+public struct DiagnosticsPreviewBundleResult: Codable, Equatable, Sendable {
+  public let generatedAt: String
+  public let suggestedFileName: String
+  public let totalUncompressedBytes: Int
+  public let totalRedactionHits: Int
+  public let omittedFileCount: Int
+  public let files: [BundlePreviewFile]
+
+  public init(
+    generatedAt: String, suggestedFileName: String, totalUncompressedBytes: Int,
+    totalRedactionHits: Int, omittedFileCount: Int, files: [BundlePreviewFile]
+  ) {
+    self.generatedAt = generatedAt
+    self.suggestedFileName = suggestedFileName
+    self.totalUncompressedBytes = totalUncompressedBytes
+    self.totalRedactionHits = totalRedactionHits
+    self.omittedFileCount = omittedFileCount
+    self.files = files
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    generatedAt = try container.string(.generatedAt, maxLength: 64)
+    suggestedFileName = try container.string(.suggestedFileName, minLength: 1, maxLength: 128)
+    totalUncompressedBytes = try container.integer(
+      .totalUncompressedBytes, minimum: 0, maximum: 8_388_608)
+    totalRedactionHits = try container.integer(.totalRedactionHits, minimum: 0)
+    omittedFileCount = try container.integer(.omittedFileCount, minimum: 0)
+    files = try container.array(.files, of: BundlePreviewFile.self, maxItems: 32)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case generatedAt
+    case suggestedFileName
+    case totalUncompressedBytes
+    case totalRedactionHits
+    case omittedFileCount
+    case files
+  }
+}
+
+/// Params of the `diagnostics.exportBundle` call.
+public struct DiagnosticsExportBundleParams: Codable, Equatable, Sendable {
+  public let rendererBreadcrumbs: RendererBreadcrumbsPayload
+  public let includeCrashSummaries: Bool
+
+  public init(rendererBreadcrumbs: RendererBreadcrumbsPayload, includeCrashSummaries: Bool) {
+    self.rendererBreadcrumbs = rendererBreadcrumbs
+    self.includeCrashSummaries = includeCrashSummaries
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    rendererBreadcrumbs = try container.value(.rendererBreadcrumbs, RendererBreadcrumbsPayload.self)
+    includeCrashSummaries = try container.boolean(.includeCrashSummaries)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case rendererBreadcrumbs
+    case includeCrashSummaries
   }
 }

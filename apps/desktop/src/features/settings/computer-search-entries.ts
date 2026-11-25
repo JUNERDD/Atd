@@ -22,6 +22,14 @@ export const computerSearchEntries: readonly SettingsSearchEntry[] = [
     keywords: 'search.keywords.computerEngines',
   },
   {
+    id: 'computer-chrome',
+    section: 'computer',
+    anchor: 'computer-chrome',
+    label: 'computer.chrome.title',
+    description: 'computer.chrome.searchDescription',
+    keywords: 'search.keywords.computerChrome',
+  },
+  {
     id: 'computer-capture',
     section: 'computer',
     anchor: 'computer-capture',

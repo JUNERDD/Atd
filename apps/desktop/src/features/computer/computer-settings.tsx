@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { AddonView, TargetBinding } from '@atd/agent-contracts';
+import { isChromeBinding, type AddonView, type TargetBinding } from '@atd/agent-contracts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +22,7 @@ import { SettingsHeading } from '../settings/settings-heading';
 import { AddTargetEmpty, AddTargetMenu } from './computer-add-target';
 import { ComputerApplicationDialog } from './computer-application-dialog';
 import { ComputerBrowserDialog } from './computer-browser-dialog';
+import { ComputerChromeCard } from './computer-chrome-card';
 import { ComputerControlsCard } from './computer-controls-card';
 import { ComputerStatusCard } from './computer-status-card';
 import { ComputerTargetRow } from './computer-target-row';
@@ -65,13 +66,16 @@ function ComputerGroup({
  * application (a browser environment only once its engine is installed; the app engine is part of
  * Atd); then, under a pause notice while background computer use waits on unconfirmed actions,
  * the Engines group (the browser engine, an add-on the installer does not carry, to download or
- * remove), the Status group (what the background host and its engines can do now, the system
- * permissions they need, and Prepare screen access, so macOS asks about screen capture here
- * rather than during a task), the Targets group (the registered targets, each with Sign in again
- * for a browser environment and Disconnect, or an empty state that adds the first), and the
- * Controls group (the live pointer and Stop all). Targets are added only through the shell, which
- * prepares and registers them; disconnecting first makes the automations authorized for a target
- * stop, so the confirmation says so. Nothing shows outside the app.
+ * remove), the Atd for Chrome group (whether Chrome can reach Atd and the paired Chrome profiles,
+ * each with the sites allowed from its extension, to disconnect), the Status group (what the
+ * background host and its engines can do now, the system permissions they need, and Prepare
+ * screen access, so macOS asks about screen capture here rather than during a task), the Targets
+ * group (the registered targets, each with Sign in again for a browser environment and
+ * Disconnect, or an empty state that adds the first; a site allowed in the person's own Chrome
+ * counts under its Chrome profile instead), and the Controls group (the live pointer and Stop
+ * all). Targets are added only through the shell, which prepares and registers them;
+ * disconnecting first makes the automations authorized for a target stop, so the confirmation
+ * says so. Nothing shows outside the app.
  */
 export function ComputerSettings({ snapshot }: { snapshot: SettingsSnapshot | null }) {
   const { t } = useTranslation('settings');
@@ -91,7 +95,8 @@ export function ComputerSettings({ snapshot }: { snapshot: SettingsSnapshot | nu
   if (!available) return <section className="settings-computer-settings">{heading()}</section>;
   const bridge = computerBridge();
   const offline = !status;
-  const bindings = status?.bindings ?? [];
+  // A site allowed in the person's own Chrome counts under its profile in Atd for Chrome instead.
+  const bindings = (status?.bindings ?? []).filter((binding) => !isChromeBinding(binding));
 
   // The new row confirms an added target, and a removed row a plain disconnect; only what lands
   // out of sight (automations to authorize again) is said in a toast.
@@ -124,6 +129,9 @@ export function ComputerSettings({ snapshot }: { snapshot: SettingsSnapshot | nu
           <div data-settings-anchor="computer-engines">
             <ComputerAddons />
           </div>
+        </ComputerGroup>
+        <ComputerGroup id="settings-computer-chrome" title={t('computer.chrome.title')}>
+          <ComputerChromeCard shell={shell} offline={offline} />
         </ComputerGroup>
         <ComputerGroup id="settings-computer-status" title={t('computer.groups.status')}>
           <ComputerStatusCard shell={shell} status={status} snapshot={snapshot} />

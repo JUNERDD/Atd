@@ -22,8 +22,11 @@ public enum ComputerWireLimits {
   /// 8's background routes, with refusals and disturbances as facts, and adds the foreground
   /// fallback: in an attended request the service allows (`foregroundAllowed`), a step every
   /// background route refused is done in the foreground instead and reported as such.
-  /// Protocol 10 preserves each unavailable target's full error and refusal reason.
-  public static let protocolVersion = 10
+  /// Protocol 10 preserves each unavailable target's full error and refusal reason. Protocol 11
+  /// adds the person's own Chrome as a browser channel: the ``ComputerEngineID/chrome`` engine,
+  /// browser bindings with `channel: 'chrome'`, `prepareAccess` websites that always name their
+  /// browser, and the refusal reason ``ComputerRefusalReason/chromeDisconnected``.
+  public static let protocolVersion = 11
   /// `COMPUTER_MAX_SURFACES`: surfaces one observation lists.
   public static let maxSurfaces = 16
   /// `COMPUTER_MAX_TEXT_BOXES`: recognized text boxes one observation carries.
@@ -147,17 +150,24 @@ public enum ComputerDelivery: String, Codable, CaseIterable, Sendable {
 }
 
 /// `ComputerEngineSchema`: the engines a host drives: `playwright` for managed browser profiles
-/// (playwright-core over CDP), `atd` (the app's own background driver, built in) for native apps.
+/// (playwright-core over CDP), `chrome` for the person's own Chrome through Atd for Chrome (the
+/// same worker, in the tabs handed to a run; browser bindings on the `chrome` channel), `atd` (the
+/// app's own background driver, built in) for native apps. Code that has a binding or a ref reads
+/// its engine from it (``TargetBindingWire/engine``, ``TargetRefWire/engine``), never from its
+/// kind alone.
 public enum ComputerEngineID: String, Codable, CaseIterable, Sendable {
   case playwright
+  case chrome
   case atd
 }
 
-/// `ComputerTargetKindSchema`; each kind has exactly one engine (`COMPUTER_ENGINE_FOR_KIND`).
+/// `ComputerTargetKindSchema`. ``engine`` is the kind's default engine
+/// (`COMPUTER_ENGINE_FOR_KIND`): a browser binding without a channel runs on a managed profile.
 public enum ComputerTargetKind: String, Codable, CaseIterable, Sendable {
   case browser
   case native
 
+  /// The kind's default engine; a binding's own is ``TargetBindingWire/engine``.
   public var engine: ComputerEngineID {
     switch self {
     case .browser: .playwright

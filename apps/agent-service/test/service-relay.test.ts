@@ -83,6 +83,7 @@ function isShellPath(pathPattern: string): boolean {
     pathPattern === '/v1/resources/import' ||
     pathPattern === '/v1/folders/register' ||
     pathPattern === '/v1/computer/bindings' ||
+    pathPattern === '/v1/computer/chrome-sites' ||
     pathPattern === '/v1/integrations/wps-selection' ||
     pathPattern === '/v1/tasks/:taskId/views/:callId' ||
     pathPattern === '/v1/tasks/:taskId/views/:callId/widget' ||
@@ -136,10 +137,12 @@ test('the route manifest classifies every route the service serves', async () =>
     'POST /v1/system-activity',
     'GET /v1/task-notices',
     'POST /v1/task-notices/ack',
-    // Computer use: only the shell writes a target's content; the page reads, deletes and stops.
+    // Computer use: only the shell writes a target's content, including a site the person allowed
+    // in Atd for Chrome; the page reads, deletes and stops.
     'GET /v1/computer',
     'GET /v1/computer/progress',
     'POST /v1/computer/bindings',
+    'POST /v1/computer/chrome-sites',
     'DELETE /v1/computer/bindings/:id',
     'GET /v1/computer/facts/unresolved',
     'POST /v1/computer/facts/resolve',

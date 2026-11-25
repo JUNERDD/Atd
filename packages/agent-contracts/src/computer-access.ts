@@ -2,21 +2,56 @@ import { Type, type Static } from 'typebox';
 import { ComputerUrlSchema } from './computer-actions.js';
 import { TargetBindingContentSchema, TargetBindingSchema } from './computer-targets.js';
 
-/** An attended request for a specific installed application or website, never arbitrary paths. */
+/**
+ * Which browser opens a website: `chrome`, the person's own Chrome through Atd for Chrome (their
+ * signed-in sessions, attended runs only, a binding on the `chrome` channel), or `managed`, a
+ * separate browser profile the host manages.
+ */
+export const ComputerAccessBrowserSchema = Type.Union([
+  Type.Literal('chrome'),
+  Type.Literal('managed'),
+]);
+export type ComputerAccessBrowser = Static<typeof ComputerAccessBrowserSchema>;
+
+const applicationTarget = Type.Object(
+  {
+    kind: Type.Literal('application'),
+    application: Type.String({ minLength: 1, maxLength: 255 }),
+  },
+  { additionalProperties: false },
+);
+
+/**
+ * An attended request for a specific installed application or website, never arbitrary paths. A
+ * website without `browser` opens in the run's default browser: `chrome` when the run was started
+ * with `browser: 'chrome'` (`RunComputer.browser`), else `managed`.
+ */
 export const ComputerAccessTargetSchema = Type.Union([
+  applicationTarget,
   Type.Object(
     {
-      kind: Type.Literal('application'),
-      application: Type.String({ minLength: 1, maxLength: 255 }),
+      kind: Type.Literal('website'),
+      url: ComputerUrlSchema,
+      browser: Type.Optional({
+        ...ComputerAccessBrowserSchema,
+        description:
+          "website only: chrome = the person's own Chrome through Atd for Chrome, with their signed-in sessions (attended only; submits always ask); managed = Atd's separate browser profile. Omit for the run's default: chrome when the task came from Atd for Chrome, else managed.",
+      }),
     },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    { kind: Type.Literal('website'), url: ComputerUrlSchema },
     { additionalProperties: false },
   ),
 ]);
 export type ComputerAccessTarget = Static<typeof ComputerAccessTargetSchema>;
+
+/** What the host is asked to prepare: a website always names the browser the service resolved. */
+export const PreparedComputerAccessTargetSchema = Type.Union([
+  applicationTarget,
+  Type.Object(
+    { kind: Type.Literal('website'), url: ComputerUrlSchema, browser: ComputerAccessBrowserSchema },
+    { additionalProperties: false },
+  ),
+]);
+export type PreparedComputerAccessTarget = Static<typeof PreparedComputerAccessTargetSchema>;
 
 /**
  * Approval is scoped to the identity the host resolved and how long it lasts. The scope carries no
@@ -32,11 +67,15 @@ export const ComputerAccessScopeSchema = Type.Object(
   { additionalProperties: false },
 );
 
-/** Resolution reads installation metadata only; opening is sent only after the service gate. */
+/**
+ * Resolution reads installation metadata only; opening is sent only after the service gate. A
+ * website's candidate carries `channel: 'chrome'` exactly when `browser` is `chrome`, with the
+ * paired Chrome's installation id as its `profileId`.
+ */
 export const PrepareComputerAccessSchema = Type.Object(
   {
     kind: Type.Literal('prepareAccess'),
-    target: ComputerAccessTargetSchema,
+    target: PreparedComputerAccessTargetSchema,
   },
   { additionalProperties: false },
 );

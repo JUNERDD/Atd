@@ -112,7 +112,8 @@ final class BrowserTargetPreparer {
       } catch {
         throw BridgeError(ShellBridge.message(error, "The browser target could not be read."))
       }
-      guard case .browser(let saved)? = binding else {
+      // A site of the person's own Chrome (Atd for Chrome) has no managed profile to open.
+      guard case .browser(let saved)? = binding, saved.channel == nil else {
         throw BridgeError("This target has no browser profile.")
       }
       browser = saved

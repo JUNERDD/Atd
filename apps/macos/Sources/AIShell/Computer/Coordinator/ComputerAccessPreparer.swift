@@ -1,30 +1,39 @@
 import AICore
 import AppKit
 
-/// On-demand access uses the same app identities and managed browser profiles as Settings.
-/// Resolution is read-only. Only the service's approved open operation launches a target, and it
-/// never activates one.
+/// On-demand access uses the same app identities and managed browser profiles as Settings, or the
+/// person's own Chrome connected through Atd for Chrome (``ComputerAccessPreparer+Chrome``).
+/// Resolution is read-only. Only the service's approved open operation launches a target or opens
+/// a tab, and it never activates one.
 final class ComputerAccessPreparer {
   /// How long after a launch an app that activates itself is still noticed.
   static let activationGrace: Duration = .milliseconds(300)
 
   private let profiles: ManagedBrowserProfiles
   private let chromes: ManagedChromes
+  /// The paired Chrome profiles connected now, where a `chrome` website opens.
+  let links: ChromeLinks
   private var temporary: [String: Set<String>] = [:]
 
-  init(profiles: ManagedBrowserProfiles, chromes: ManagedChromes) {
+  init(profiles: ManagedBrowserProfiles, chromes: ManagedChromes, links: ChromeLinks) {
     self.profiles = profiles
     self.chromes = chromes
+    self.links = links
   }
 
-  func resolve(_ target: ComputerAccessTargetWire) async throws(ComputerFailure)
+  /// The binding content for `target` as run `runId` would use it: a website on the browser the
+  /// service named (a new managed profile, or the person's own Chrome the run is on).
+  func resolve(_ target: ComputerAccessTargetWire, runId: String) async throws(ComputerFailure)
     -> SaveComputerBindingRequestWire.Content
   {
     switch target {
-    case .website(let url):
+    case .website(let url, let browser):
       guard let origin = BrowserOrigins.origin(of: url),
         let prefix = BrowserOrigins.pageRulePrefix(startUrl: url)
       else { throw ComputerFailure(.unsupported, "Use an http(s) URL without credentials.") }
+      if browser == .chrome {
+        return try chromeCandidate(url: url, origin: origin, prefix: prefix, runId: runId)
+      }
       guard chromes.applicationURL != nil else {
         throw ComputerFailure(.targetUnavailable, "Google Chrome is not installed.")
       }
@@ -57,13 +66,16 @@ final class ComputerAccessPreparer {
   /// Opens the approved target for a run without bringing anything forward (plan §7, I2): an
   /// application that is not running launches without activation, and one that runs is left as
   /// it is, since reopening it could put a window over the person's; a website's start page opens
-  /// as a background tab of its managed browser. Returns whether an app became active anyway (some
-  /// activate themselves as they launch), which the reply reports: only another activation could
-  /// undo it.
+  /// as a background tab of its managed browser, or of the Atd group in the person's own Chrome.
+  /// Returns whether an app became active anyway (some activate themselves as they launch), which
+  /// the reply reports: only another activation could undo it.
   func open(_ access: OpenComputerAccessWire, runId: String) async throws(ComputerFailure) -> Bool {
     switch access.binding {
     case .native(let native):
       return try await launch(native)
+    case .browser(let browser) where browser.channel == .chrome:
+      try await openInChrome(browser, runId: runId)
+      return false
     case .browser(let browser):
       do {
         if profiles.locate(browser.profileId) == nil {

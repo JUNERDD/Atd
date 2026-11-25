@@ -20,7 +20,7 @@ extension ShellController {
   /// `notInstalled` until the add-ons are read (``startAddons()``); an installed one starts on
   /// the first request that needs it; quitting stops both (`ComputerCoordinator.shutdown`).
   func startComputer() {
-    let browser = makeBrowserComputer()
+    let browser = makeBrowserComputer(links: chrome.links)
     let native = makeNativeComputer()
     computer.engines.register(browser.engine)
     computer.engines.register(native.engine)
@@ -37,6 +37,7 @@ extension ShellController {
       self?.installedLongScreenshots?.pageDidUnload()
       self?.screenshots.textRuns?.pageDidUnload()
     }
+    startChrome()
     computer.start()
     startAddons()
   }
@@ -44,6 +45,8 @@ extension ShellController {
   func broadcastComputerState() {
     broadcast(.computerState(computer.stateEvent()))
     taskActivity.refresh()
+    // The host lock and its generation are part of the extension's welcome.
+    chrome.refreshWelcomes()
   }
 
   /// A page opened later learns the state too.

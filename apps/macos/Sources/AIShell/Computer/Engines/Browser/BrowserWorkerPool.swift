@@ -3,7 +3,8 @@ import Foundation
 import MCP
 import OSLog
 
-/// The browser workers, one generation per managed profile at a time (plan §4.2): started on
+/// The browser workers, one generation per browser endpoint at a time (plan §4.2: a managed
+/// profile, or a connected Chrome of the person's in the chrome engine's own pool): started on
 /// demand, kept while calls use them, stopped after ``idleGrace`` without a call. A worker that
 /// exits on its own ends its generation; the next call starts a new one after a bounded backoff
 /// (``ManagedChromeLaunch/restartDelay(afterCrashes:)``) and never replays the call whose
@@ -43,6 +44,21 @@ final class BrowserWorkerPool {
     self.uploadRoot = uploadRoot
   }
 
+  /// Whether the pinned Node and the add-on's worker are where this build runs them from.
+  static func isStaged(_ binaries: EngineBinaries) -> Bool {
+    guard let worker = binaries.browserWorker else { return false }
+    return EngineBinaries.isExecutable(binaries.node) && EngineBinaries.isReadable(worker)
+  }
+
+  /// Why no worker can start from `binaries`.
+  static func notStaged(_ binaries: EngineBinaries) -> ComputerFailure {
+    let worker = binaries.browserWorker?.path(percentEncoded: false) ?? "not installed"
+    return ComputerFailure(
+      .engineFailed,
+      "The browser worker cannot run (Node \(binaries.node.path(percentEncoded: false)), "
+        + "worker \(worker)).")
+  }
+
   /// The running generation of a profile's worker, if one runs for `contextId`'s browser.
   func generation(profileId: String, contextId: String) -> Int? {
     guard let entry = entries[profileId], entry.contextId == contextId else { return nil }
@@ -53,7 +69,7 @@ final class BrowserWorkerPool {
   /// `pinned`, the call goes only to that generation: element refs, versions and baselines mean
   /// nothing to another (a new worker even restarts them at the same numbers).
   func call(
-    _ instance: ManagedChromeInstance, _ tool: String, _ arguments: [String: Value],
+    _ instance: any BrowserWorkerEndpoint, _ tool: String, _ arguments: [String: Value],
     timeout: Duration, pinned: Int? = nil
   ) async throws(BrowserWorkerCallError) -> (reply: BrowserWorkerReply, generation: Int) {
     let profileId = instance.profileId
@@ -97,20 +113,30 @@ final class BrowserWorkerPool {
   func shutdownAll() async {
     let current = entries
     entries = [:]
-    for entry in current.values {
-      entry.idle?.cancel()
-      entry.starting?.cancel()
-      if let worker = entry.worker {
-        await worker.stop()
-      } else if let started = try? await entry.starting?.value {
-        await started.stop()
-      }
+    for entry in current.values { await Self.stop(entry) }
+  }
+
+  /// Stops the worker of `profileId` while it drives `contextId`'s browser, which went away, and
+  /// waits until it is reaped; the next call starts a new generation.
+  func stop(profileId: String, contextId: String) async {
+    guard let entry = entries[profileId], entry.contextId == contextId else { return }
+    entries[profileId] = nil
+    await Self.stop(entry)
+  }
+
+  private static func stop(_ entry: Entry) async {
+    entry.idle?.cancel()
+    entry.starting?.cancel()
+    if let worker = entry.worker {
+      await worker.stop()
+    } else if let started = try? await entry.starting?.value {
+      await started.stop()
     }
   }
 
   // MARK: Generations
 
-  private func lease(_ instance: ManagedChromeInstance) async throws(BrowserWorkerCallError)
+  private func lease(_ instance: any BrowserWorkerEndpoint) async throws(BrowserWorkerCallError)
     -> Lease
   {
     let profileId = instance.profileId
@@ -130,7 +156,7 @@ final class BrowserWorkerPool {
       lastGeneration += 1
       let launch = BrowserWorkerProcess.Launch(
         node: binaries.node, worker: script, webSocket: instance.webSocketURL,
-        uploadRoot: uploadRoot,
+        channel: instance.channel, uploadRoot: uploadRoot,
         log: logDirectory.appending(path: "\(profileId).log", directoryHint: .notDirectory))
       let generation = lastGeneration
       let wait = restartWait(entry)
@@ -173,7 +199,7 @@ final class BrowserWorkerPool {
     entry.crashes += 1
     entry.lastExit = .now
     entries[profileId] = entry
-    Self.log.error("The browser worker of a managed profile exited.")
+    Self.log.error("A browser worker exited.")
   }
 
   private func release(_ profileId: String, generation: Int?) {

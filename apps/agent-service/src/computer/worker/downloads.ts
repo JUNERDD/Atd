@@ -3,6 +3,7 @@ import { mkdir, realpath, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { Download } from 'playwright-core';
 import { COMPUTER_MAX_DOWNLOADS } from '@atd/agent-contracts';
+import type { BrowserChannel } from './connection.js';
 import { WorkerError } from './operations.js';
 import { freeName } from './profile-downloads.js';
 import { markDownloaded } from './quarantine.js';
@@ -23,6 +24,10 @@ import { markDownloaded } from './quarantine.js';
  * call that names its directory (`take`); the person's own are never reported. Every saved file
  * carries the quarantine and origin metadata Chrome gives its own downloads (quarantine.ts); one
  * that could not be marked is deleted rather than kept unquarantined.
+ *
+ * In the person's own Chrome (`chrome` channel) the worker touches no download: Playwright does
+ * not take them over there (connection.ts), Chrome saves each where the person chose, and naming a
+ * run directory is refused, so nothing is reported as saved for a run.
  */
 
 const RUN_DIR = /^[A-Za-z0-9_-]{1,128}$/;
@@ -78,17 +83,24 @@ export class Downloads {
   private readonly records: DownloadRecord[] = [];
 
   /**
-   * `root`: the download root, or undefined. `profileDir`: the managed profile's own download
-   * folder, read when a person's download arrives (their preference may change meanwhile).
+   * `root`: the download root, or undefined. `channel`: which browser this worker drives.
+   * `profileDir`: the managed profile's own download folder, read when a person's download arrives
+   * (their preference may change meanwhile).
    */
   constructor(
     private readonly root: string | undefined,
+    private readonly channel: BrowserChannel,
     private readonly profileDir: () => Promise<string | undefined> = async () => undefined,
   ) {}
 
-  /** This worker's Playwright artifacts directory, inside the root; undefined without a root. */
+  /** Whether this worker saves and reports downloads: not in the person's own Chrome. */
+  get reports(): boolean {
+    return this.channel === 'managed';
+  }
+
+  /** This worker's Playwright artifacts directory, inside the root; undefined without one. */
   staging(): string | undefined {
-    return this.root === undefined
+    return this.root === undefined || !this.reports
       ? undefined
       : path.join(this.root, '.staging', String(process.pid));
   }
@@ -104,6 +116,11 @@ export class Downloads {
    * the root, created when missing, and not a link elsewhere.
    */
   async runDir(downloadDir: string): Promise<string> {
+    if (!this.reports)
+      throw new WorkerError(
+        'unsupported',
+        "Downloads are not reported in the person's own Chrome: Chrome saves them where the person chose.",
+      );
     if (this.root === undefined)
       throw new WorkerError('unsupported', 'This worker has no download root.');
     const resolved = path.resolve(downloadDir);
@@ -135,6 +152,8 @@ export class Downloads {
    * throws.
    */
   async handle(download: Download, chain: readonly string[], origin: string): Promise<void> {
+    // The person's own Chrome keeps its downloads, which the worker never saves or cancels.
+    if (!this.reports) return;
     const dir = chain.map((pageId) => this.dirs.get(pageId)).find((item) => item !== undefined);
     if (dir === undefined) return this.toProfile(download, chain.length > 0, origin);
     const record: DownloadRecord = {

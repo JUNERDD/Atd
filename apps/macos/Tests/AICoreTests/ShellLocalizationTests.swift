@@ -69,6 +69,7 @@ struct ShellLocalizationTests {
       + CaptureToolsStringKey.allCases.map(\.rawValue)
       + DiagnosticsStringKey.allCases.map(\.rawValue)
       + AttachFailureStringKey.allCases.map(\.rawValue)
+      + ChromeChannelStringKey.allCases.map(\.rawValue)
     #expect(Set(catalog.strings.keys) == Set(keys))
     for (key, entry) in catalog.strings {
       for language in ShellLanguage.allCases {

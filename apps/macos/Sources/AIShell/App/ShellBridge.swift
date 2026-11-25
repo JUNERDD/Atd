@@ -73,17 +73,10 @@ final class ShellBridge {
     guard let shell else { throw BridgeError("The app is shutting down.") }
     // A dialog opened during a capture would run modal beneath the overlays and freeze them.
     if shell.isCapturingScreenshot {
+      if let busy = try Self.busyComputerAnswer(call) { return busy }
       switch call {
       case .approvalRequest:
         return try Self.encode(ApprovalRequestResult.notApproved(.init(reason: .busy)))
-      case .computerAuthorizeAutomation:
-        return try Self.encode(ComputerAuthorizeAutomationResult.notApproved(.init(reason: .busy)))
-      case .computerPrepareBrowser:
-        return try Self.encode(ComputerPrepareBrowserResult.notOk(.init(reason: .busy)))
-      case .computerPrepareApplication:
-        return try Self.encode(ComputerPrepareApplicationResult.notOk(.init(reason: .busy)))
-      case .computerPrimeCaptureConsent:
-        return try Self.encode(ComputerPrimeCaptureConsentResult.unavailable(.init()))
       case .filesPick, .filesPickFolder, .filesSave, .diagnosticsExportBundle, .artifact,
         .shareText, .appsPick, .saveLocationPick:
         throw BridgeError("Finish the screenshot first.")
@@ -302,6 +295,10 @@ final class ShellBridge {
       return try await Self.handleComputer(.prepareApplication(params), from: host, shell: shell)
     case .computerPrimeCaptureConsent:
       return try await Self.handleComputer(.primeCaptureConsent, from: host, shell: shell)
+    case .computerChromeDisconnect(let params):
+      return try await Self.handleComputer(.chromeDisconnect(params), from: host, shell: shell)
+    case .computerChromeRefresh:
+      return try await Self.handleComputer(.chromeRefresh, from: host, shell: shell)
     case .panelModalSetAvailable(let params):
       guard host === shell.panelHost else {
         throw BridgeError("Only the task panel can set panel modals.")

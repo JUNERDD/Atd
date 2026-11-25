@@ -90,7 +90,8 @@ final class ShellTaskActivity {
           run, phase: lifecycle,
           canShowPreview: current && shell.control.state == .connected
             && shell.computer.previews.contains(taskId: key.taskID, runId: key.runID),
-          hostLocked: current && snapshot?.hostState == .locked)
+          hostLocked: current && snapshot?.hostState == .locked,
+          isChromeBinding: { shell.chromeBinding($0) != nil })
       } ?? []
     // The service's root-task counts: a task waiting for the person wins over running work.
     let status = current && shell.control.state == .connected ? shell.control.status : nil

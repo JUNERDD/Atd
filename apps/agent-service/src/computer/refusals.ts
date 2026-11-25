@@ -35,7 +35,17 @@ const TYPING: { ask: string; resume: string } = {
     'observe again and continue, sending the step in a new act with actionId omitted only once they say they switched',
 };
 
-const LIMITS: Readonly<Record<ComputerRefusalReason, Limit>> = {
+/** The no-route limits; `chromeDisconnected` makes a target unreachable (`CHROME_RECONNECT`). */
+type NoRouteReason = Exclude<ComputerRefusalReason, 'chromeDisconnected'>;
+
+/**
+ * What to ask when the paired Chrome is not connected (`chromeDisconnected`); the person's own
+ * Chrome is the only way to that target, so the agent waits for them rather than retrying.
+ */
+export const CHROME_RECONNECT =
+  "The person's own Chrome is not connected to Atd: Chrome or the profile they paired is closed, Atd for Chrome is turned off or removed, or its connection dropped. Ask the person to open Chrome with that profile and check that Atd for Chrome is on and connected (its toolbar popup offers Reconnect), and wait until they say it is; do not retry before that or reach the site another way.";
+
+const LIMITS: Readonly<Record<NoRouteReason, Limit>> = {
   dragAndDrop: {
     limit:
       "it needs a native drag and drop with the real pointer, such as between windows or apps, and Atd never moves the person's pointer",
@@ -105,7 +115,7 @@ function handOver(ask: string | undefined, resume: string | undefined): string {
   return `${request}, wait until they say it is done, then ${resume ?? 'observe again and continue'}`;
 }
 
-function noRouteGuidance(reason: ComputerRefusalReason | undefined): string {
+function noRouteGuidance(reason: NoRouteReason | undefined): string {
   const entry = LIMITS[reason ?? 'noRoute'];
   const next = 'next' in entry ? entry.next : handOver(entry.ask, entry.resume);
   return `This step has no background route: ${entry.limit}. Atd already tried every way this task allows, including the foreground where it may use it, and no call can ask for another, so do not retry it or work around it with other tools: ${next}.`;
@@ -126,11 +136,15 @@ const GUIDANCE: Readonly<Partial<Record<ComputerErrorCode, string>>> = {
 /**
  * What to do after an error a refusal or the host's guard caused, or null for any other error:
  * `noBackgroundRoute` hands the step to the person, `targetInUse` waits for them, `inputInUse`
- * waits a moment and tries again, `needsConsent` needs screen capture prepared in Settings, and
- * `disturbed` stops work on the target.
+ * waits a moment and tries again, `needsConsent` needs screen capture prepared in Settings,
+ * `disturbed` stops work on the target, and a disconnected Chrome (`chromeDisconnected`) needs the
+ * person to reconnect it.
  */
 export function refusalGuidance(error: Pick<ComputerError, 'code' | 'reason'>): string | null {
-  if (error.code === 'noBackgroundRoute') return noRouteGuidance(error.reason);
+  const { reason } = error;
+  if (reason === 'chromeDisconnected')
+    return `${CHROME_RECONNECT} Then call requestAccess again, or targets when this run already had the target.`;
+  if (error.code === 'noBackgroundRoute') return noRouteGuidance(reason);
   return GUIDANCE[error.code] ?? null;
 }
 

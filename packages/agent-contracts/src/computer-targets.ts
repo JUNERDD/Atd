@@ -24,11 +24,16 @@ export const COMPUTER_MAX_BINDINGS = 50;
 
 /**
  * The engines a host drives: `playwright` (playwright-core attached over CDP) for managed browser
- * profiles, `atd` (the app's own background driver, built in) for native apps. Each target kind
- * has exactly one engine (`COMPUTER_ENGINE_FOR_KIND`); code that branches on an engine reads it
- * from that table rather than naming a literal.
+ * profiles, `chrome` (the same worker driving the person's own Chrome through Atd for Chrome, in
+ * the tabs handed to a run) for browser bindings on the `chrome` channel, and `atd` (the app's own
+ * background driver, built in) for native apps. `computerEngineFor` names a binding's or a ref's
+ * engine; code that branches on an engine reads it from there rather than naming a literal.
  */
-export const ComputerEngineSchema = Type.Union([Type.Literal('playwright'), Type.Literal('atd')]);
+export const ComputerEngineSchema = Type.Union([
+  Type.Literal('playwright'),
+  Type.Literal('chrome'),
+  Type.Literal('atd'),
+]);
 export type ComputerEngine = Static<typeof ComputerEngineSchema>;
 
 export const ComputerTargetKindSchema = Type.Union([
@@ -37,6 +42,10 @@ export const ComputerTargetKindSchema = Type.Union([
 ]);
 export type ComputerTargetKind = Static<typeof ComputerTargetKindSchema>;
 
+/**
+ * Each kind's default engine: a browser binding without a channel runs on a managed profile. Where
+ * the binding or ref is known, `computerEngineFor` gives its actual engine.
+ */
 export const COMPUTER_ENGINE_FOR_KIND: Readonly<Record<ComputerTargetKind, ComputerEngine>> = {
   browser: 'playwright',
   native: 'atd',
@@ -57,11 +66,23 @@ export const ComputerOriginSchema = Type.String({
   pattern: '^https?://[^/?#\\s]+$',
 });
 
-/** What a browser binding stores beside its identity; part of its `hash`. */
+/**
+ * What a browser binding stores beside its identity; part of its `hash`. Absent `channel` (every
+ * binding stored before it existed, whose hash it leaves unchanged) is a host-managed profile.
+ */
 const browserFields = {
   kind: Type.Literal('browser'),
+  /**
+   * `chrome`: the person's own Chrome through Atd for Chrome, which serves attended runs only, in
+   * tabs handed to them; absent: a browser profile the host manages.
+   */
+  channel: Type.Optional(Type.Literal('chrome')),
   label: Type.String({ minLength: 1, maxLength: 120 }),
-  /** The host-managed browser profile the person signed in to; never their own browser profile. */
+  /**
+   * Without a channel, the host-managed browser profile the person signed in to, never their own
+   * browser profile; on the `chrome` channel, the installation id of the paired Atd for Chrome,
+   * which names the person's own Chrome profile.
+   */
   profileId: Identifier,
   /** Origins navigation and actions may reach; `navigate` URLs outside them are refused. */
   allowedOrigins: Type.Array(ComputerOriginSchema, {
@@ -116,6 +137,11 @@ export const TargetBindingContentSchema = Type.Union([
 ]);
 export type TargetBindingContent = Static<typeof TargetBindingContentSchema>;
 
+/** Whether a binding is the person's own Chrome (`channel: 'chrome'`): attended runs only. */
+export function isChromeBinding(content: TargetBindingContent): boolean {
+  return content.kind === 'browser' && content.channel === 'chrome';
+}
+
 /**
  * Locator kinds a target action accepts: an element ref, a semantic description, or a capture
  * point.
@@ -153,9 +179,11 @@ export type TargetCapability = Static<typeof TargetCapabilitySchema>;
 /**
  * A binding resolved by one host generation. Opaque to the model, which only passes `id` back;
  * every host or engine restart resolves bindings again and invalidates older refs. `browser` is
- * set for `playwright` targets and `native` for `atd` targets, whose `windowId` is the root window
- * the host resolved for the application (its main window, else its focused window, else its
- * frontmost one); the app's other top-level windows are surfaces of the target.
+ * set for `playwright` and `chrome` targets and `native` for `atd` targets, whose `windowId` is the
+ * root window the host resolved for the application (its main window, else its focused window,
+ * else its frontmost one); the app's other top-level windows are surfaces of the target. On the
+ * `chrome` engine `browser.profileId` is the pairing's installation id, `contextId` the generation
+ * of that Chrome's connection, and `pageId` the CDP target id the extension reports for the tab.
  */
 export const TargetRefSchema = Type.Object(
   {
@@ -195,6 +223,15 @@ export const TargetRefSchema = Type.Object(
 export type TargetRef = Static<typeof TargetRefSchema>;
 
 /**
+ * The engine that drives a target: a ref names its own; a binding's follows its kind and, for a
+ * browser, its channel (`COMPUTER_ENGINE_FOR_KIND` is only the kind's default).
+ */
+export function computerEngineFor(target: TargetBindingContent | TargetRef): ComputerEngine {
+  if ('engine' in target) return target.engine;
+  return isChromeBinding(target) ? 'chrome' : COMPUTER_ENGINE_FOR_KIND[target.kind];
+}
+
+/**
  * What one engine of the connected host can do at most, published by the host in
  * `computer.hello`; the model never claims support itself. `delivery` lists how it can deliver:
  * always `background`, which every action relies on, and `foreground` when its host can fall back
@@ -203,7 +240,8 @@ export type TargetRef = Static<typeof TargetRefSchema>;
  * (never the pointer), and no unattended request allows it. Targets narrow this per action and
  * request (`TargetRef.capabilities`).
  * Only a `qualified` profile may serve unattended runs; `evidence` names the qualification it
- * rests on (test suite and version).
+ * rests on (test suite and version). The `chrome` engine serves attended runs only, whatever its
+ * profile says: the service refuses its bindings in unattended runs and in recipes.
  */
 export const CapabilityProfileSchema = Type.Object(
   {

@@ -8,6 +8,7 @@ public enum TaskActivityGrantWire: Codable, Equatable, Sendable {
   case file(File)
   case tool(Tool)
   case computerAccess(ComputerAccess)
+  case computerAct(ComputerAct)
 
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: Discriminator.self)
@@ -15,6 +16,7 @@ public enum TaskActivityGrantWire: Codable, Equatable, Sendable {
     case "file": self = try .file(File(from: decoder))
     case "tool": self = try .tool(Tool(from: decoder))
     case "computerAccess": self = try .computerAccess(ComputerAccess(from: decoder))
+    case "computerAct": self = try .computerAct(ComputerAct(from: decoder))
     default:
       throw DecodingError.dataCorruptedError(
         forKey: .kind, in: container, debugDescription: "Unknown TaskActivityGrantWire kind.")
@@ -26,6 +28,7 @@ public enum TaskActivityGrantWire: Codable, Equatable, Sendable {
     case .file(let value): try value.encode(to: encoder)
     case .tool(let value): try value.encode(to: encoder)
     case .computerAccess(let value): try value.encode(to: encoder)
+    case .computerAct(let value): try value.encode(to: encoder)
     }
   }
 
@@ -109,7 +112,6 @@ extension TaskActivityGrantWire {
       case web
       case app
       case automation
-      case computer
     }
   }
 }
@@ -117,14 +119,17 @@ extension TaskActivityGrantWire {
 extension TaskActivityGrantWire {
   public struct ComputerAccess: Codable, Equatable, Sendable {
     public let targetKind: TargetKind
+    public let channel: Channel?
     public let targetLabel: String
     public let origins: [String]
     public let persistence: Persistence
 
     public init(
-      targetKind: TargetKind, targetLabel: String, origins: [String], persistence: Persistence
+      targetKind: TargetKind, channel: Channel?, targetLabel: String, origins: [String],
+      persistence: Persistence
     ) {
       self.targetKind = targetKind
+      self.channel = channel
       self.targetLabel = targetLabel
       self.origins = origins
       self.persistence = persistence
@@ -134,6 +139,7 @@ extension TaskActivityGrantWire {
       let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
       try container.literal(.kind, "computerAccess")
       targetKind = try container.value(.targetKind, TargetKind.self)
+      channel = try container.optional(.channel) { try container.value($0, Channel.self) }
       targetLabel = try container.string(.targetLabel, maxLength: 256)
       origins = try container.array(.origins, of: String.self, maxItems: 32)
       persistence = try container.value(.persistence, Persistence.self)
@@ -143,6 +149,7 @@ extension TaskActivityGrantWire {
       var container = encoder.container(keyedBy: CodingKeys.self)
       try container.encode("computerAccess", forKey: .kind)
       try container.encode(targetKind, forKey: .targetKind)
+      try container.encodeIfPresent(channel, forKey: .channel)
       try container.encode(targetLabel, forKey: .targetLabel)
       try container.encode(origins, forKey: .origins)
       try container.encode(persistence, forKey: .persistence)
@@ -151,6 +158,7 @@ extension TaskActivityGrantWire {
     private enum CodingKeys: String, CodingKey, CaseIterable {
       case kind
       case targetKind
+      case channel
       case targetLabel
       case origins
       case persistence
@@ -161,9 +169,61 @@ extension TaskActivityGrantWire {
       case application
     }
 
+    public enum Channel: String, Codable, Equatable, Sendable {
+      case managed
+      case chrome
+    }
+
     public enum Persistence: String, Codable, Equatable, Sendable {
       case run
       case saved
+    }
+  }
+}
+
+extension TaskActivityGrantWire {
+  public struct ComputerAct: Codable, Equatable, Sendable {
+    public let bindingId: String
+    public let targetLabel: String
+    public let effect: Effect
+
+    public init(bindingId: String, targetLabel: String, effect: Effect) {
+      self.bindingId = bindingId
+      self.targetLabel = targetLabel
+      self.effect = effect
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      try container.literal(.kind, "computerAct")
+      bindingId = try container.string(
+        .bindingId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+      targetLabel = try container.string(.targetLabel, maxLength: 256)
+      effect = try container.value(.effect, Effect.self)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode("computerAct", forKey: .kind)
+      try container.encode(bindingId, forKey: .bindingId)
+      try container.encode(targetLabel, forKey: .targetLabel)
+      try container.encode(effect, forKey: .effect)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case kind
+      case bindingId
+      case targetLabel
+      case effect
+    }
+
+    public enum Effect: String, Codable, Equatable, Sendable {
+      case read
+      case navigate
+      case input
+      case click
+      case invoke
+      case submit
     }
   }
 }

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import {
   canonicalJson,
-  COMPUTER_ENGINE_FOR_KIND,
+  computerEngineFor,
   type Automation,
   type AutomationComputerPolicy,
   type AutomationDraft,
@@ -69,7 +69,7 @@ export function engineProfilesHash(
   for (const id of policy.bindingIds) {
     const binding = bindings.get(id);
     if (!binding) return null;
-    engines.add(COMPUTER_ENGINE_FOR_KIND[binding.kind]);
+    engines.add(computerEngineFor(binding));
   }
   const used: CapabilityProfile[] = [];
   for (const engine of [...engines].sort()) {

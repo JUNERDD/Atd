@@ -11,7 +11,7 @@ import { pageFocus } from './occupancy.js';
 import { openPage } from './open.js';
 import * as openingSchemas from './opening-schemas.js';
 import { OperationRegistry, WorkerError, type Operation } from './operations.js';
-import { browserSocketFromEnvironment } from './connection.js';
+import { browserChannelFromEnvironment, browserSocketFromEnvironment } from './connection.js';
 import { Pages } from './pages.js';
 import { Previews } from './preview.js';
 import * as previewSchemas from './preview-schemas.js';
@@ -23,7 +23,9 @@ import { restoreWindows } from './windows.js';
 /**
  * The browser worker's entry (`dist/computer/worker/server.js`): a private MCP server on
  * stdin/stdout that the Swift shell starts with the bundled Node, one process per managed browser
- * profile, attached with playwright-core over CDP. The host builds the environment from scratch:
+ * profile or connected Chrome of the person's (`ATD_BROWSER_CHANNEL=chrome`, connection.ts, where
+ * `open_page`, `restore_windows` and download reporting are refused), attached with playwright-core
+ * over CDP. The host builds the environment from scratch:
  * the verified browser socket in `ATD_CDP_WS` and the upload root in `ATD_UPLOAD_ROOT`
  * (`<dataDir>/resources`), whose data directory also holds the download root
  * (`<dataDir>/computer/downloads`, downloads.ts). It is never registered as a user MCP server and
@@ -103,10 +105,11 @@ async function runOperation(
 async function main(): Promise<void> {
   const uploadRoot = process.env['ATD_UPLOAD_ROOT'];
   const socket = browserSocketFromEnvironment();
-  const downloads = new Downloads(downloadRootFor(uploadRoot), () =>
+  const channel = browserChannelFromEnvironment();
+  const downloads = new Downloads(downloadRootFor(uploadRoot), channel, () =>
     profileDownloadDir(uploadRoot, socket),
   );
-  const pages = new Pages(socket, downloads);
+  const pages = new Pages(socket, downloads, channel);
   const previews = new Previews(pages);
   const registry = new OperationRegistry();
   const server = new McpServer({ name: 'atd-computer-browser-worker', version: WORKER_VERSION });
@@ -128,9 +131,10 @@ async function main(): Promise<void> {
       const ids = parsed as { pageId?: string; operationId?: string; downloadDir?: string };
       let dir: string | undefined;
       // Before the work: a download the call causes goes to the run directory it names; after
-      // it, success or not, the reply lists what was saved there and not reported before.
+      // it, success or not, the reply lists what was saved there and not reported before (never
+      // in the person's own Chrome, which keeps its downloads).
       const prepare = async (): Promise<void> => {
-        if (ids.pageId === undefined || ids.downloadDir === undefined) return;
+        if (ids.pageId === undefined || ids.downloadDir === undefined || !downloads.reports) return;
         dir = await downloads.runDir(ids.downloadDir);
         downloads.assign(ids.pageId, dir);
       };

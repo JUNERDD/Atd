@@ -39,14 +39,14 @@ const HOST_ICONS: Record<HostState, ReactNode> = {
 };
 
 /**
- * One row of the card: an icon, a title and a wrapping description, and at the trailing edge an
- * optional action or a secondary value such as an engine's version. The text keeps at least
- * 200px, as in the other settings cards, so a trailing part that does not fit beside it moves
- * below instead of squeezing it. `note` adds a line of what it can do; `detail` is the shell's own
- * words for a failure: kept to two lines so a long path or error cannot flood the card, with the
- * whole text on hover.
+ * One row of a status card (this one and Atd for Chrome's): an icon, a title and a wrapping
+ * description, and at the trailing edge an optional action or a secondary value such as an
+ * engine's version. The text keeps at least 200px, as in the other settings cards, so a trailing
+ * part that does not fit beside it moves below instead of squeezing it. `note` adds a line of what
+ * it can do; `detail` is the shell's own words for a failure: kept to two lines so a long path or
+ * error cannot flood the card, with the whole text on hover.
  */
-function StatusRow({
+export function StatusRow({
   icon,
   title,
   description,

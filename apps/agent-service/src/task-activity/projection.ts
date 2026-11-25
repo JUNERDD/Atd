@@ -11,6 +11,7 @@ import {
   type TaskRun,
 } from '@atd/agent-contracts';
 import type { ComputerActivityBoard } from '../computer/activity.js';
+import type { ComputerBindingStore } from '../computer/bindings.js';
 import type { ComputerCoordinator } from '../computer/coordinator.js';
 import type { Ledger } from '../ledger.js';
 import { activityRequests } from './requests.js';
@@ -21,6 +22,8 @@ interface ProjectionDeps {
   steps: TaskStepBoard;
   ledger: Ledger;
   coordinator: ComputerCoordinator;
+  /** Names the target of a pending computer action's approval. */
+  bindings: Pick<ComputerBindingStore, 'get'>;
   serviceId: string;
   epoch: number;
 }
@@ -124,7 +127,7 @@ export class TaskActivityProjection {
     tasks: ReadonlyMap<string, AgentTask>,
     terminalAt?: number,
   ): TaskActivityRun {
-    const { board, steps, ledger } = this.deps;
+    const { board, steps, ledger, bindings } = this.deps;
     const ended = terminalAt !== undefined;
     const requests = ended
       ? []
@@ -134,6 +137,7 @@ export class TaskActivityProjection {
           run,
           tasks,
           steps.viewCalls(task.id, run.id),
+          (bindingId) => bindings.get(bindingId)?.label,
         );
     const step = ended ? undefined : steps.current(task.id, run.id);
     const observed = board.entries().get(key);

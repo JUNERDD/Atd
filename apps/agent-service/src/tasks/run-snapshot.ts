@@ -120,8 +120,9 @@ export function freezeRunSnapshot(
 /**
  * The computer use a run freezes (`RunSnapshot.computer`). An automation's run takes exactly what
  * the automation passed (its grant or trial, `InternalSubmitOptions.computer`), and no other run
- * it starts may act on the computer. A person's run takes the bindings the request names, else
- * those of the task's last run; a follow-up copies only the binding ids, never a grant or a trial.
+ * it starts may act on the computer. A person's run takes the bindings and default browser the
+ * request names, else those of the task's last run; a follow-up copies only those, never a grant
+ * or a trial, so a task started from Atd for Chrome keeps opening websites there.
  * Nothing here selects a delivery: the host picks one per step, and only a person's run lets it
  * fall back to the foreground on an app (computer/foreground.ts).
  */
@@ -132,8 +133,12 @@ function runComputer(
 ): RunComputer | undefined {
   if (internal.computer) return internal.computer;
   if (internal.trigger) return undefined;
-  const bindingIds = request.computer?.bindingIds ?? last?.snapshot.computer?.bindingIds;
-  return bindingIds ? { bindingIds: [...bindingIds] } : undefined;
+  const source = request.computer ?? last?.snapshot.computer;
+  if (!source) return undefined;
+  return {
+    bindingIds: [...source.bindingIds],
+    ...(source.browser ? { browser: source.browser } : {}),
+  };
 }
 
 /**

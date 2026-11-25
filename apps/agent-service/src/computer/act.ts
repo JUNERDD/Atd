@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   canonicalJson,
-  COMPUTER_ENGINE_FOR_KIND,
+  computerEngineFor,
   COMPUTER_TOOL,
   isUnresolvedFact,
   type ActionResult,
@@ -9,6 +9,7 @@ import {
   type ComputerActionInput,
   type ComputerError,
   type ComputerFact,
+  type TargetBinding,
 } from '@atd/agent-contracts';
 import { answerText } from './act-answer.js';
 import {
@@ -18,6 +19,7 @@ import {
   type CallContext,
   type ToolAnswer,
 } from './call-context.js';
+import { asksAlways } from './chrome-channel.js';
 import type { HostOutcome } from './coordinator.js';
 import { computerDetails, stepSummary } from './details.js';
 import { foregroundAllowed } from './foreground.js';
@@ -170,7 +172,7 @@ export async function runAct(
       unattended: ctx.unattended,
       binding,
       targetRef,
-      profile: coordinator.profile(COMPUTER_ENGINE_FOR_KIND[binding.kind]),
+      profile: coordinator.profile(computerEngineFor(binding)),
       facts,
       taskUnresolved: runtime.records
         .unresolved()
@@ -287,13 +289,14 @@ export async function runAct(
  * (`computer:<binding>@<revision>:<effect>`) in attended runs, trial runs included, so an approval
  * never covers an edited target. The scope names no delivery: approving an action approves it
  * however the host delivers it, and a step the host completes in the foreground asks nothing more
- * (foreground.ts). An unattended run acts only under its live grant, which the scope check already
- * verified; it never reaches the gate, whose tier would not apply to it.
+ * (foreground.ts). A submit in the person's own Chrome always asks (chrome-channel.ts). An
+ * unattended run acts only under its live grant, which the scope check already verified; it never
+ * reaches the gate, whose tier would not apply to it.
  */
 async function authorize(
   ctx: CallContext,
   allowed: AllowedAction,
-  binding: { bindingId: string; revision: number; label: string },
+  binding: TargetBinding,
 ): Promise<void> {
   const { bindingId, revision, label } = binding;
   const { effect } = allowed;
@@ -308,5 +311,6 @@ async function authorize(
     title: `${label}: ${effect}`,
     detail: [`Target: ${label}`, ...lines].join('\n'),
     signal: ctx.signal,
+    ...(asksAlways(binding, effect) ? { askAlways: true } : {}),
   });
 }

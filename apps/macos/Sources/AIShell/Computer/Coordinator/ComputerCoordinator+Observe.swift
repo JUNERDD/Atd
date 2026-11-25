@@ -14,7 +14,7 @@ extension ComputerCoordinator {
     let engine: any ComputerEngine
     do throws(ComputerFailure) {
       engine = try usableEngine(
-        try targets.kind(of: ref.id), request: request, screenshot: screenshot)
+        try targets.binding(of: ref.id), request: request, screenshot: screenshot)
       _ = try targets.current(ref, engineGeneration: engine.generation)
     } catch {
       return HostReplyWire(identity: request.identity, outcome: .failed(error.wire))

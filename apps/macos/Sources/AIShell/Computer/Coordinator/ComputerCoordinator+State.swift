@@ -21,7 +21,7 @@ extension ComputerCoordinator {
       captureConsent: captureConsent.record.map {
         ComputerStateEvent.CaptureConsent(bundleId: $0.bundleId, primedAt: $0.primedAt)
       },
-      postEventAccess: ComputerScreenState.canPostEvents)
+      postEventAccess: ComputerScreenState.canPostEvents, chrome: chromeState())
   }
 
   /// `computer.setPointerVisible`: display only; stopping work keeps its own entry points.

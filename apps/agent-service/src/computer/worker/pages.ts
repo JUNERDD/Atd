@@ -1,17 +1,17 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Browser, Frame, Locator, Page } from 'playwright-core';
-import { connectBrowser } from './connection.js';
+import { connectBrowser, type BrowserChannel } from './connection.js';
 import type { Downloads } from './downloads.js';
 import { untilCancelled, WorkerError, type Operation } from './operations.js';
 import { parseSnapshot, type SnapshotElement } from './snapshot.js';
 
 /**
  * Exact page access over one playwright-core `connectOverCDP` connection per worker, with
- * Playwright's defaults (downloads accepted into the artifacts directory, focus emulation) except
- * for JavaScript dialogs: Playwright closes a dialog nobody listens for at once (dismissing
- * `alert`/`confirm`/`prompt`, accepting `beforeunload`), so the worker listens on every context
- * and page and leaves each dialog open for the person, as Chrome does without a client attached.
- *
+ * Playwright's defaults on a managed profile (downloads accepted into the artifacts directory,
+ * focus emulation; none in the person's own Chrome) except for JavaScript dialogs: Playwright
+ * closes a dialog nobody listens for at once (dismissing `alert`/`confirm`/`prompt`, accepting
+ * `beforeunload`), so the worker listens on every context and page and leaves each dialog open
+ * for the person, as Chrome does without a client attached.
  * The worker connects only to the browser socket the host verified (connection.ts).
  * Playwright attaches to every page of the browser, so the worker itself
  * enforces "only the host-named page": a `pageId` is a CDP target id, mapped to a `Page` through
@@ -110,6 +110,8 @@ export class Pages {
   constructor(
     private readonly socket: string | undefined,
     readonly downloads: Downloads,
+    /** Which browser the socket is (connection.ts): a managed profile or the person's Chrome. */
+    readonly channel: BrowserChannel,
   ) {}
 
   connect(): Promise<Browser> {
@@ -117,7 +119,7 @@ export class Pages {
     if (socket === undefined)
       throw new WorkerError('engineFailed', 'ATD_CDP_WS is missing or not a local browser socket.');
     this.browser ??= (async () => {
-      const browser = await connectBrowser(socket, this.downloads.staging());
+      const browser = await connectBrowser(socket, this.channel, this.downloads.staging());
       for (const context of browser.contexts()) {
         // The context listener also covers a page between its creation and `track`.
         context.on('dialog', leaveOpen);

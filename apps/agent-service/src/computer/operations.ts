@@ -1,6 +1,6 @@
 import {
   COMPUTER_MAX_STATUS_IDS,
-  COMPUTER_ENGINE_FOR_KIND,
+  computerEngineFor,
   type ComputerError,
   type ComputerFact,
   type HostReplyValue,
@@ -14,6 +14,7 @@ import {
   type CallBase,
   type ToolAnswer,
 } from './call-context.js';
+import { chromeProblem } from './chrome-channel.js';
 import type { HostOutcome } from './coordinator.js';
 import { computerDetails } from './details.js';
 import { readRunFacts } from './records.js';
@@ -82,7 +83,9 @@ export function wrongKind(ctx: CallBase, op: string, bindingId?: string): never 
 /**
  * Resolves the run's bindings and retains the host's current refs for subsequent calls. Their
  * capabilities list `foreground` for a step only when the run may let the host fall back to it
- * (foreground.ts), so the envelope names the kinds of the bindings asked for.
+ * (foreground.ts), so the envelope names the kinds of the bindings asked for. A binding on the
+ * person's own Chrome is not resolved for a run that may not use it (chrome-channel.ts), and only
+ * a ref on the binding's own engine is kept.
  */
 export async function resolveTargets(ctx: CallContext, timeoutMs = TARGETS_TIMEOUT_MS) {
   const deadline = performance.now() + timeoutMs;
@@ -91,12 +94,14 @@ export async function resolveTargets(ctx: CallContext, timeoutMs = TARGETS_TIMEO
   const missing: { bindingId: string; reason: string; error?: ComputerError }[] = [];
   for (const bindingId of ctx.computer.bindingIds) {
     const binding = bindings.get(bindingId);
+    const chrome = binding && chromeProblem(binding, ctx.unattended, ctx.scope.mode !== 'free');
     if (!binding) missing.push({ bindingId, reason: 'removed' });
-    else if (!ctx.runtime.engineInstalled(COMPUTER_ENGINE_FOR_KIND[binding.kind]))
+    else if (chrome) missing.push({ bindingId, reason: `attendedOnly: ${chrome}` });
+    else if (!ctx.runtime.engineInstalled(computerEngineFor(binding)))
       missing.push({
         bindingId,
         reason:
-          'engineNotInstalled: the person installs its engine in Settings → Computer use → Engines; then call targets again.',
+          'engineNotInstalled: the person installs the browser engine in Settings → Computer use → Engines (it also drives their own Chrome through Atd for Chrome); then call targets again.',
       });
     else found.push(binding);
   }
@@ -115,10 +120,15 @@ export async function resolveTargets(ctx: CallContext, timeoutMs = TARGETS_TIMEO
   const value = replyValue(ctx, outcome, 'targets');
   if (value.kind !== 'targets') wrongKind(ctx, 'targets');
   const generation = coordinator.hostGeneration();
-  // Only refs of the bindings asked for, at their current revision and host generation.
+  // Only refs of the bindings asked for, at their current revision and host generation, on the
+  // engine the binding names (a managed profile and the person's own Chrome are never swapped).
   const refs = value.refs.filter((ref) => {
     const binding = found.find((item) => item.bindingId === ref.bindingId);
-    return binding?.revision === ref.bindingRevision && ref.hostGeneration === generation;
+    return (
+      binding?.revision === ref.bindingRevision &&
+      ref.hostGeneration === generation &&
+      computerEngineFor(binding) === ref.engine
+    );
   });
   coordinator.rememberTargets(ctx.taskId, ctx.runId, refs);
   auditComputer(ctx, 'targets', { refs: refs.length, unavailable: value.unavailable.length });

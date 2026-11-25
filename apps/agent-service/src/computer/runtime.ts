@@ -1,7 +1,7 @@
 import {
   COMPUTER_ADDONS,
   COMPUTER_BROWSER_ADDON,
-  COMPUTER_ENGINE_FOR_KIND,
+  computerEngineFor,
   type ComputerCancelReason,
   type ComputerEngine,
 } from '@atd/agent-contracts';
@@ -18,10 +18,12 @@ import { VISUAL_QUALIFICATION_ENV, visualOverrideEnabled } from './visual-qualif
 /**
  * The add-on that provides each engine that is not built in (design §1): the host runs such an
  * engine only while its add-on is installed. The native engine (`atd`) ships inside the app, so it
- * has no add-on and is always installed.
+ * has no add-on and is always installed. The person's own Chrome (`chrome`) needs the browser
+ * add-on too: its Playwright worker drives the tabs Atd for Chrome hands to a run.
  */
 const COMPUTER_ADDON_FOR_ENGINE: Readonly<Partial<Record<ComputerEngine, string>>> = {
   playwright: COMPUTER_BROWSER_ADDON,
+  chrome: COMPUTER_BROWSER_ADDON,
 };
 
 /** Why a computer add-on cannot be removed while computer use acts (`AddonUseCheck`). */
@@ -85,13 +87,14 @@ export class ComputerRuntime {
 
   /**
    * Whether the engine of at least one of these targets is installed, read when a run freezes its
-   * material: an app target always has its built-in engine, a browser target needs the browser
-   * engine's add-on. Targets that no longer exist count for nothing.
+   * material: an app target always has its built-in engine, a browser target (managed or the
+   * person's own Chrome) needs the browser engine's add-on. Targets that no longer exist count
+   * for nothing.
    */
   hasEngineFor(bindingIds: readonly string[]): boolean {
     return bindingIds.some((id) => {
-      const kind = this.bindings.get(id)?.kind;
-      return kind !== undefined && this.engineInstalled(COMPUTER_ENGINE_FOR_KIND[kind]);
+      const binding = this.bindings.get(id);
+      return binding !== undefined && this.engineInstalled(computerEngineFor(binding));
     });
   }
 

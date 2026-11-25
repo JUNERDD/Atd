@@ -137,7 +137,7 @@ extension ManagedChromes {
       instance, "open_page",
       [
         "url": .string(browser.startUrl),
-        "allowedOrigins": PlaywrightBrowserEngine.origins(browser),
+        "allowedOrigins": BrowserPageDriver.origins(browser),
       ], timeout: .seconds(20), writes: true)
     _ = try reply.checked("open_page")
   }

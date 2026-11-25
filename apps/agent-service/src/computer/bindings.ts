@@ -21,7 +21,10 @@ import type { Logger } from '../logging.js';
 /**
  * The store file: every registered binding, rewritten whole on each change. Only version 2 is
  * read or written; nothing is rehashed at load, so a stored hash keeps matching the grants that
- * froze it until its content really changes.
+ * froze it until its content really changes. Browser bindings' optional `channel` kept version 2:
+ * every older file reads unchanged and its hashes still match, while a bump would make every file
+ * unreadable to an older Atd, not only one that holds a binding on the person's own Chrome (which
+ * an older Atd reports as damaged and leaves untouched).
  */
 const BINDINGS_VERSION = 2;
 const BindingsFileSchema = Type.Object(
@@ -161,30 +164,43 @@ export class ComputerBindingStore {
    * moved on). Unchanged content keeps revision and hash and notifies nobody.
    */
   save(request: SaveComputerBindingRequest): Promise<TargetBinding> {
-    return this.serialized(async () => {
-      this.writable();
-      const hash = bindingHash(request.content);
-      const current = request.bindingId ? this.get(request.bindingId) : undefined;
-      if (request.bindingId && !current) throw new LedgerNotFound('Binding', request.bindingId);
-      if (current && request.expectedRevision !== undefined)
-        if (current.revision !== request.expectedRevision)
-          throw new ConflictError(`Binding ${current.bindingId} changed since it was read.`);
-      if (current && current.hash === hash) return current;
-      if (!current && this.bindings.length >= COMPUTER_MAX_BINDINGS)
-        throw new ConflictError(`At most ${COMPUTER_MAX_BINDINGS} computer targets can be saved.`);
-      const binding = parse(TargetBindingSchema, {
-        ...request.content,
-        bindingId: current?.bindingId ?? randomUUID(),
-        revision: (current?.revision ?? 0) + 1,
-        hash,
-      });
-      const next = current
-        ? this.bindings.map((item) => (item.bindingId === binding.bindingId ? binding : item))
-        : [...this.bindings, binding];
-      await this.write(next);
-      if (current) await this.notify(binding.bindingId);
-      return binding;
+    return this.serialized(() => this.apply(request));
+  }
+
+  /**
+   * The registered binding `find` picks, else a new one with `content`, decided in one step of the
+   * change chain so that two calls for the same target register it once.
+   */
+  findOrSave(
+    find: (bindings: readonly TargetBinding[]) => TargetBinding | undefined,
+    content: TargetBindingContent,
+  ): Promise<TargetBinding> {
+    return this.serialized(async () => find(this.bindings) ?? this.apply({ content }));
+  }
+
+  private async apply(request: SaveComputerBindingRequest): Promise<TargetBinding> {
+    this.writable();
+    const hash = bindingHash(request.content);
+    const current = request.bindingId ? this.get(request.bindingId) : undefined;
+    if (request.bindingId && !current) throw new LedgerNotFound('Binding', request.bindingId);
+    if (current && request.expectedRevision !== undefined)
+      if (current.revision !== request.expectedRevision)
+        throw new ConflictError(`Binding ${current.bindingId} changed since it was read.`);
+    if (current && current.hash === hash) return current;
+    if (!current && this.bindings.length >= COMPUTER_MAX_BINDINGS)
+      throw new ConflictError(`At most ${COMPUTER_MAX_BINDINGS} computer targets can be saved.`);
+    const binding = parse(TargetBindingSchema, {
+      ...request.content,
+      bindingId: current?.bindingId ?? randomUUID(),
+      revision: (current?.revision ?? 0) + 1,
+      hash,
     });
+    const next = current
+      ? this.bindings.map((item) => (item.bindingId === binding.bindingId ? binding : item))
+      : [...this.bindings, binding];
+    await this.write(next);
+    if (current) await this.notify(binding.bindingId);
+    return binding;
   }
 
   /**

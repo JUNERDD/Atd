@@ -172,9 +172,12 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // Version 5 says that app targets need no engine install (their engine is built in) but are not
   // qualified for unattended runs, so a computer scope uses browser targets, whose engine is the
   // add-on a trial and each run need.
-  skill('create-automation', 5, [
+  // Version 6: only managed browser targets run unattended; a scope naming a target in the
+  // person's own Chrome (Atd for Chrome) is refused, so its sites become managed targets first.
+  skill('create-automation', 6, [
     'f390806f5e7adad1ce065e0c01c93ce4aaab1422bd7b776ffe6e05e1213f2fc1', // v0.7.0
     'fedcfc22a10b6877f5deef0aa01cc31d31e6b12ae2b230463aead37f8264a0ea', // v0.8.0
+    'a00c31ca75d36fdce649564ceff17e711803c02b96c57bec2d401d10705d4c96', // v0.10.0
   ]),
   // Version 2 requires ChatGPT background consent for both model calls and app-started agents, and
   // asks at most three questions, one per ask_user call, never about the app's look, name or layout.
@@ -279,7 +282,15 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // Version 34 explains fresh observations attached to no-input native click locator refusals.
   // Version 35 attaches a fresh observation after an explicit single native wait times out.
   // Version 36 distinguishes target-resolution refusals from startup loading.
-  skill('computer-use', 36, []),
+  // Version 37 adds the person's own Chrome through Atd for Chrome: `requestAccess` names
+  // `target.browser` (default `chrome` for a task started from it, else `managed`); work there is
+  // attended and visible (an Atd tab group, Chrome's debugging bar), every submit asks, passwords
+  // are never typed (a sign-in page asks the person through `ask_user` with an "I've signed in"
+  // option), downloads stay in Chrome, `chromeDisconnected` asks the person to reconnect it, and
+  // automations re-create its sites as managed browser targets.
+  skill('computer-use', 37, [
+    '95e7f156fded86138d9a94d342e6b7ffc76fd145636c79df9174965b957eba67', // v0.10.0
+  ]),
   // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
   // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
   // write messages that read as the user's own; close every loop with `update_ui`; and build to

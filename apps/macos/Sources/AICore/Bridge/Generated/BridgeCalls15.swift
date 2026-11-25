@@ -173,6 +173,66 @@ public enum ComputerPrimeCaptureConsentResult: Codable, Equatable, Sendable {
   }
 }
 
+/// Params of the `computer.chrome.disconnect` call.
+public struct ComputerChromeDisconnectParams: Codable, Equatable, Sendable {
+  public let installationId: String
+
+  public init(installationId: String) {
+    self.installationId = installationId
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    installationId = try container.string(
+      .installationId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case installationId
+  }
+}
+
+/// Result of the `computer.chrome.disconnect` call.
+public struct ComputerChromeDisconnectResult: Codable, Equatable, Sendable {
+  public init() {}
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    try container.literal(.ok, true)
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(true, forKey: .ok)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case ok
+  }
+}
+
+/// Params of the `computer.chrome.refresh` call.
+public typealias ComputerChromeRefreshParams = NativeEmpty
+
+/// Result of the `computer.chrome.refresh` call.
+public struct ComputerChromeRefreshResult: Codable, Equatable, Sendable {
+  public init() {}
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    try container.literal(.ok, true)
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(true, forKey: .ok)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case ok
+  }
+}
+
 /// Params of the `computer.preview.show` call.
 public struct ComputerPreviewShowParams: Codable, Equatable, Sendable {
   public let taskId: String
@@ -189,53 +249,5 @@ public struct ComputerPreviewShowParams: Codable, Equatable, Sendable {
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
     case taskId
-  }
-}
-
-/// Result of the `computer.preview.show` call.
-public struct ComputerPreviewShowResult: Codable, Equatable, Sendable {
-  public let shown: Bool
-
-  public init(shown: Bool) {
-    self.shown = shown
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    shown = try container.boolean(.shown)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case shown
-  }
-}
-
-/// Params of the `approval.request` call.
-public struct ApprovalRequestParams: Codable, Equatable, Sendable {
-  public let serverId: String
-
-  public init(serverId: String) {
-    self.serverId = serverId
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    try container.literal(.kind, "mcpServer")
-    serverId = try container.string(
-      .serverId, minLength: 1, maxLength: 193,
-      pattern:
-        "^(?:[a-zA-Z0-9_-]{1,128}|(?:[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?:)?[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
-    )
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode("mcpServer", forKey: .kind)
-    try container.encode(serverId, forKey: .serverId)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case kind
-    case serverId
   }
 }

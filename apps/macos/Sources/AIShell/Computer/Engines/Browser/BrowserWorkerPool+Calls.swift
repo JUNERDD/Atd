@@ -9,7 +9,7 @@ extension BrowserWorkerPool {
   /// whether the tool can change the page, which decides whether a call that lost its reply may
   /// have reached it.
   func invoke(
-    _ instance: ManagedChromeInstance, _ tool: String, _ arguments: [String: Value],
+    _ instance: any BrowserWorkerEndpoint, _ tool: String, _ arguments: [String: Value],
     timeout: Duration, writes: Bool, pinned: Int? = nil
   ) async throws(ComputerFailure) -> (reply: BrowserWorkerReply, generation: Int) {
     do {

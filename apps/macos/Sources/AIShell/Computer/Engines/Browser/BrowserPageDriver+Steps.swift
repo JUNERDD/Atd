@@ -9,15 +9,17 @@ import MCP
 /// elements semantically), so a refusal never dispatches. The worker's `dispatched` decides
 /// whether a failure may have reached the page; `fill`, `clear` and `select`, which read the
 /// value back, can report the step verified. Every page-changing call names the run's download
-/// directory, and the downloads its reply reports go into the action's result.
-extension PlaywrightBrowserEngine {
+/// directory where the driver has a download root, and the downloads its reply reports go into the
+/// action's result.
+extension BrowserPageDriver {
   func perform(
     _ step: ComputerStepWire, on ref: TargetRefWire, observation: ObservationRefWire,
     context: EngineStepContext
   ) async throws(ComputerFailure) -> EngineStepOutcome {
-    let (page, instance, binding) = try await target(ref)
-    let record = try currentObservation(observation.id, ref: page, refId: ref.id)
-    let pageId = try await surfacePage(ref, context.surfaceRefId, instance, binding)
+    let target = try await target(ref)
+    let binding = target.binding
+    let record = try currentObservation(observation.id, ref: target.page, refId: ref.id)
+    let pageId = try await surfacePage(ref, context.surfaceRefId, target)
     guard record.pageId == pageId else {
       throw ComputerFailure(
         .staleObservation,
@@ -34,18 +36,19 @@ extension PlaywrightBrowserEngine {
       arguments["timeoutMs"] = .int(timeoutMs)
       context.report(.waiting)
       let (raw, _) = try await call(
-        instance, "wait", arguments, timeout: .milliseconds(timeoutMs) + .seconds(5),
+        target.endpoint, "wait", arguments, timeout: .milliseconds(timeoutMs) + .seconds(5),
         writes: false, pinned: record.workerGeneration)
-      let reply = try checked(raw, "wait")
+      let reply = try raw.checked("wait")
       guard reply.satisfied == true else {
         throw ComputerFailure(.timeout, "The condition did not hold within \(timeoutMs) ms.")
       }
       return EngineStepOutcome(.notDispatched, evidence: reply.evidenceWire)
     }
     let downloads = try downloadDirectory(runId: context.runId)
-    arguments["downloadDir"] = .string(downloads.path(percentEncoded: false))
+    if let downloads { arguments["downloadDir"] = .string(downloads.path(percentEncoded: false)) }
     let write = Write(
-      instance: instance, record: record, downloads: downloads, route: Self.route(of: step.kind))
+      endpoint: target.endpoint, record: record, downloads: downloads,
+      route: BrowserWorkerCapabilities.route(of: step.kind))
     switch step {
     case .navigate(let url):
       guard BrowserOrigins.allows(url, origins: binding.allowedOrigins) else {
@@ -171,10 +174,11 @@ extension PlaywrightBrowserEngine {
 
   /// What a page-changing call needs besides its arguments.
   struct Write {
-    let instance: ManagedChromeInstance
+    let endpoint: any BrowserWorkerEndpoint
     let record: ObservationRecord
-    let downloads: URL
-    /// The channel the step's input takes (``PlaywrightBrowserEngine/route(of:)``).
+    /// The run's download directory; nil where downloads are not saved for the run.
+    let downloads: URL?
+    /// The channel the step's input takes (``BrowserWorkerCapabilities/route(of:)``).
     let route: ActionResultWire.Route?
 
     /// The step's outcome with the downloads the reply reported. Every browser step is in the
@@ -186,7 +190,7 @@ extension PlaywrightBrowserEngine {
       var result = EngineStepOutcome(
         outcome, evidence: evidence ?? reply.evidenceWire, invalidated: invalidated,
         delivery: .background, route: route)
-      result.downloads = PlaywrightBrowserEngine.downloads(reply, in: downloads)
+      result.downloads = BrowserPageDriver.downloads(reply, in: downloads)
       return result
     }
   }
@@ -221,13 +225,13 @@ extension PlaywrightBrowserEngine {
   ) async throws(ComputerFailure) -> BrowserWorkerReply {
     context.report(.dispatching(nil))
     let (reply, _) = try await call(
-      write.instance, tool, arguments, timeout: .seconds(tool == "navigate" ? 20 : 15),
+      write.endpoint, tool, arguments, timeout: .seconds(tool == "navigate" ? 20 : 15),
       writes: true, pinned: write.record.workerGeneration)
     do {
-      return try checked(reply, tool)
+      return try reply.checked(tool)
     } catch {
       guard error.code == .targetChanged, !error.mayHaveDispatched,
-        let pages = try? await listPages(write.instance),
+        let pages = try? await listPages(write.endpoint),
         pages.contains(where: { $0.pageId == write.record.pageId })
       else { throw error }
       throw ComputerFailure(.notFound, error.message)

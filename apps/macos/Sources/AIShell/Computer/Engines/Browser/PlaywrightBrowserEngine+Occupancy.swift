@@ -17,15 +17,15 @@ extension PlaywrightBrowserEngine {
     guard let page = ref.browser, let instance = chromes.tracked(page.profileId),
       instance.contextId == page.contextId,
       NSWorkspace.shared.frontmostApplication?.processIdentifier == instance.pid,
-      let set = surfaces[ref.id]
+      let set = driver.surfaces[ref.id]
     else { return false }
     let pageIds = ([set.boundPageId] + set.popups.map(\.pageId))
       .prefix(ComputerWireLimits.maxSurfaces)
     do throws(ComputerFailure) {
-      let (raw, _) = try await call(
+      let (raw, _) = try await driver.call(
         instance, "page_focus", ["pageIds": .array(pageIds.map(Value.string))],
         timeout: Self.occupancyTimeout, writes: false)
-      return try checked(raw, "page_focus").focus?.contains(where: \.isInFront) ?? false
+      return try raw.checked("page_focus").focus?.contains(where: \.isInFront) ?? false
     } catch {
       // The person has this browser in front of them and its pages cannot be read: count the
       // target as in front.

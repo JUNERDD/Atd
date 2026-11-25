@@ -43,6 +43,10 @@ public enum ComputerRefusalReason: String, Codable, CaseIterable, Sendable {
   /// The foreground fallback could not make the target app active with the step's window in front
   /// and ready for input, so it sent nothing and put the person's screen back.
   case notActivated
+  /// With ``ComputerErrorCode/targetUnavailable``: a target on the person's own Chrome cannot be
+  /// reached because that paired Chrome is not connected to Atd (Chrome or that profile is closed,
+  /// Atd for Chrome is turned off or removed, or its connection dropped); the person reconnects it.
+  case chromeDisconnected
 }
 
 /// `ComputerDisturbanceSchema`: one disturbance the host's guard measured around an action, in the

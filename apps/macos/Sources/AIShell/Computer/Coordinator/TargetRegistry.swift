@@ -40,9 +40,14 @@ final class TargetRegistry {
     }
   }
 
-  /// Records a ref `runId` freshly resolved; older refs of the same binding go.
+  /// Records a ref `runId` freshly resolved; older refs of the same binding go, except, on the
+  /// person's own Chrome, those of other runs: each run acts in tabs of its own there, so another
+  /// run's ref of a shared site binding names another tab.
   func record(_ ref: TargetRefWire, binding: TargetBindingWire, runId: String) {
-    entries = entries.filter { $0.value.binding.bindingId != binding.bindingId }
+    entries = entries.filter { id, entry in
+      guard entry.binding.bindingId == binding.bindingId else { return true }
+      return ref.engine == .chrome && uses[id]?.runs.contains(runId) == false
+    }
     entries[ref.id] = Entry(binding: binding, ref: ref)
     uses[ref.id] = Use(ref: ref, runs: (uses[ref.id]?.runs ?? []).union([runId]))
   }
@@ -66,10 +71,19 @@ final class TargetRegistry {
     return entry
   }
 
-  /// The kind of a recorded ref's target, which decides its engine and the grants it needs.
-  func kind(of refId: String) throws(ComputerFailure) -> ComputerTargetKind {
+  /// The binding `bindingId` as a site of the person's own Chrome, when a ref of it is recorded.
+  func chromeBinding(_ bindingId: String) -> TargetBindingWire.Browser? {
+    for entry in entries.values where entry.binding.bindingId == bindingId {
+      if case .browser(let browser) = entry.binding, browser.channel == .chrome { return browser }
+    }
+    return nil
+  }
+
+  /// The binding a recorded ref was resolved from: its kind and channel decide its engine
+  /// (``TargetBindingWire/engine``) and the grants it needs.
+  func binding(of refId: String) throws(ComputerFailure) -> TargetBindingWire {
     guard let entry = entries[refId] else { throw Self.changed }
-    return entry.binding.kind
+    return entry.binding
   }
 
   func observed(_ observation: ObservationWire, refId: String) {

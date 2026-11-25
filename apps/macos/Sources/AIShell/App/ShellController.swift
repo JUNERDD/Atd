@@ -67,6 +67,8 @@ public final class ShellController {
   /// The edge-docked quick entry, which every page follows as `miniPanel.state`.
   let miniPanel: MiniPanelController
   lazy var taskActivity = ShellTaskActivity(shell: self)
+  /// Atd for Chrome's channel; it starts with computer use (``startChrome()``).
+  lazy var chrome = makeChromeChannel()
   /// Generated apps' windows (`userApp.*`).
   let userApps: UserAppWindows
   /// Generative views' windows (`view.open`).

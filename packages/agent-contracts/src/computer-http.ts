@@ -11,6 +11,7 @@ import {
   COMPUTER_MAX_BINDINGS,
   COMPUTER_MAX_RUN_BINDINGS,
   CapabilityProfileSchema,
+  ComputerOriginSchema,
   TargetBindingContentSchema,
   TargetBindingSchema,
 } from './computer-targets.js';
@@ -19,8 +20,8 @@ import { Identifier } from './identifiers.js';
 /**
  * HTTP bodies of the computer routes. Renderer routes read status, delete bindings, stop all
  * computer work, resolve facts a person checked, start a trial and resolve a hold; the shell-only routes write binding content
- * from a host-prepared target and turn a native confirmation into a grant. No renderer route can
- * write a binding's content or a grant.
+ * from a host-prepared target or a site the person allowed in Atd for Chrome, and turn a native
+ * confirmation into a grant. No renderer route can write a binding's content or a grant.
  */
 
 /**
@@ -137,6 +138,26 @@ export const SaveComputerBindingResponseSchema = Type.Object(
   { additionalProperties: false },
 );
 export type SaveComputerBindingResponse = Static<typeof SaveComputerBindingResponseSchema>;
+
+/**
+ * POST `/v1/computer/chrome-sites`, shell only: the person turned a site's switch on in Atd for
+ * Chrome, which is their consent. The service keeps one persistent binding per paired Chrome
+ * (`installationId`, its `profileId`) and origin, `{kind: 'browser', channel: 'chrome', label:
+ * host, allowedOrigins: [origin], startUrl: origin + '/', pageRule: {urlPrefix: origin + '/'}}`,
+ * with saved access, and answers it; calling again for the same pair answers the same binding.
+ * Turning the switch off deletes it through `DELETE /v1/computer/bindings/:id`.
+ */
+export const SaveComputerChromeSiteRequestSchema = Type.Object(
+  { installationId: Identifier, origin: ComputerOriginSchema },
+  { additionalProperties: false },
+);
+export type SaveComputerChromeSiteRequest = Static<typeof SaveComputerChromeSiteRequestSchema>;
+
+export const SaveComputerChromeSiteResponseSchema = Type.Object(
+  { binding: TargetBindingSchema },
+  { additionalProperties: false },
+);
+export type SaveComputerChromeSiteResponse = Static<typeof SaveComputerChromeSiteResponseSchema>;
 
 /**
  * GET `/v1/admin/approvals/automation-computer/:automationId`, shell only: the exact scope a grant

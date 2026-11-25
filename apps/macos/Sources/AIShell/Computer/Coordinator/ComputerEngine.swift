@@ -270,6 +270,12 @@ protocol ComputerEngine: AnyObject {
   /// input that makes it in use, and the host yields (`targetInUse`) instead of acting under
   /// their hands (``ComputerCoordinator/interruption(_:engine:)``).
   func isInFront(_ ref: TargetRefWire) async -> Bool
+  /// Whether the person holds `ref` themselves (they took it over and have not handed it back),
+  /// which makes it in use whatever their input.
+  func isHeld(_ ref: TargetRefWire) -> Bool
+  /// When the person last typed, clicked or scrolled in `ref` itself, as the target reports it
+  /// (Atd for Chrome, per tab); nil when the engine knows only the host's own reading of input.
+  func lastInput(on ref: TargetRefWire) -> ContinuousClock.Instant?
   /// Undoes the engine's per-target preparation (occlusion keep-alive; web accessibility stays
   /// on) when the run releases `ref`, the run ends, its binding is deleted or the host quits.
   /// The host calls it once no live run uses `ref`, also for a ref that went stale meanwhile;
@@ -311,6 +317,10 @@ extension ComputerEngine {
     guard let pid = foregroundProcess(of: ref) else { return false }
     return NSWorkspace.shared.frontmostApplication?.processIdentifier == pid
   }
+
+  func isHeld(_ ref: TargetRefWire) -> Bool { false }
+
+  func lastInput(on ref: TargetRefWire) -> ContinuousClock.Instant? { nil }
 
   func releaseTarget(_ ref: TargetRefWire) async {}
 

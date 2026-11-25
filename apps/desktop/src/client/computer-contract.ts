@@ -11,6 +11,16 @@ import type { CallResult, EventPayload } from '../native-bridge/client';
 
 export type ComputerPreviewSource = EventPayload<'computer.state'>['previews'][number];
 
+/**
+ * Atd for Chrome as the shell reports it (`computer.state` `chrome`): whether Chromium browsers
+ * can reach this app (its host manifest), which browsers have the host manifest installed, the
+ * extension ID this build accepts, and the paired browser profiles with their connection and how
+ * many sites the person allowed from the extension.
+ */
+export type ComputerChromeState = EventPayload<'computer.state'>['chrome'];
+/** One paired browser profile (`ComputerChromeState.connections`). */
+export type ComputerChromeConnection = ComputerChromeState['connections'][number];
+
 /** An engine of the shell's computer host as `computer.state` reports it. */
 export interface ComputerEngineState {
   engine: 'playwright' | 'atd';
@@ -37,8 +47,8 @@ export type ComputerCaptureConsentResult = CallResult<'computer.primeCaptureCons
  * a service connection; whether the live pointer shows; each engine's readiness; the actions
  * whose effect nobody could confirm, which pause background computer use until a person checked
  * the affected apps and sites (ids only, at most 50 of `count`); whether screen capture was
- * prepared for this build (null until it was); and whether macOS lets the app post input to
- * other apps, a grant System Settings lists under Accessibility.
+ * prepared for this build (null until it was); whether macOS lets the app post input to other
+ * apps, a grant System Settings lists under Accessibility; and Atd for Chrome's connection.
  */
 export interface ComputerShellState {
   host: 'starting' | 'ready' | 'locked' | 'unavailable';
@@ -50,6 +60,7 @@ export interface ComputerShellState {
   previews: ComputerPreviewSource[];
   captureConsent: ComputerCaptureConsent | null;
   postEventAccess: boolean;
+  chrome: ComputerChromeState;
 }
 
 /** What adding a browser environment asks the shell to prepare (`computer.prepareBrowser`). */
@@ -126,6 +137,16 @@ export interface ComputerBridge {
   setPointerVisible(visible: boolean): Promise<void>;
   /** Local input effects, independent of the Commands preferences. */
   setTyping(setting: 'typing' | 'animation', enabled: boolean): Promise<void>;
+  /**
+   * Disconnects a paired browser profile: the shell forgets the pairing and the sites allowed from
+   * it, and tells its extension. The new state reaches `onState`.
+   */
+  disconnectChrome(installationId: string): Promise<void>;
+  /**
+   * Re-scans Chromium browsers and re-writes the Native Messaging host manifests on demand. The
+   * updated state reaches `onState`.
+   */
+  refreshChrome(): Promise<void>;
   /** The shell's application picker; empty when cancelled. */
   pickApp(): Promise<{ bundleId: string; name: string } | null>;
 }

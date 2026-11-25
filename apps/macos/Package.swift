@@ -31,6 +31,12 @@ let package = Package(
     // product is the same entry point for `swift build`, which needs no Xcode project.
     .library(name: "AIComputerDriver", targets: ["AIComputerDriver"]),
     .executable(name: "atd-computer-driver", targets: ["AtdComputerDriverCLI"]),
+    // The Atd for Chrome native messaging host Chrome starts for the extension: a byte pipe
+    // between Chrome's stdio and the shell's unix socket. Shipped like the driver, as the XcodeGen
+    // tool target of the same name embedded in `Contents/MacOS`.
+    .executable(name: "atd-chrome-host", targets: ["AtdChromeHostCLI"]),
+    // The host tool target in project.yml links the channel kit through this product.
+    .library(name: "AIChromeChannelKit", targets: ["AIChromeChannelKit"]),
   ],
   // Direct dependencies are pinned exactly; Package.resolved (checked in) pins their transitive
   // dependencies, and scripts/build.mjs makes xcodebuild use only those versions.
@@ -67,18 +73,25 @@ let package = Package(
     // The `atd-computer-driver` executable: a thin main that runs the driver server over
     // stdin/stdout. The shell spawns it directly (inheriting Atd's TCC grants).
     .executableTarget(name: "AtdComputerDriverCLI", dependencies: ["AIComputerDriver"]),
+    // The Atd for Chrome channel (K2): its little-endian framing, chunking and frame types,
+    // mirrored by hand from apps/chrome-extension/src/channel/{protocol,payloads}.ts, and the code
+    // signature check both ends of the host socket run. System frameworks only (Foundation,
+    // Security) so the native host and AICore share it without the host linking the shell.
+    .target(name: "AIChromeChannelKit"),
+    // `atd-chrome-host`: pipes Chrome's stdio to the shell's socket after one `host.hello`.
+    .executableTarget(name: "AtdChromeHostCLI", dependencies: ["AIChromeChannelKit"]),
     // Pure, Foundation-only policy: relay normalization and allow-listing, stream frame rules,
     // accelerator conversion and supervisor timing. No AppKit or WebKit, so all of it is
     // unit-testable. Depends on the driver kit so host code reads `DriverElement` and the
     // receipt/failure types without linking the driver executable's engine.
-    .target(name: "AICore", dependencies: ["AIComputerDriverKit"]),
+    .target(name: "AICore", dependencies: ["AIComputerDriverKit", "AIChromeChannelKit"]),
     // The app: windows, menus, hot keys and native capabilities, composed with the relay and
     // the service (Debug connects to `pnpm dev`, Release supervises the bundled service), and
     // Release builds' Sparkle updater.
     .target(
       name: "AIShell",
       dependencies: [
-        "AICore", "AIRelay", "AIWidgetModel", "AIWidgetRender",
+        "AICore", "AIRelay", "AIWidgetModel", "AIWidgetRender", "AIChromeChannelKit",
         .product(name: "Sparkle", package: "Sparkle"),
         .product(name: "MCP", package: "swift-sdk"),
         .product(name: "Markdown", package: "swift-markdown"),

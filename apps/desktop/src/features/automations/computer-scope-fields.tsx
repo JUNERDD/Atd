@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import {
   COMPUTER_MAX_SUBMITS,
   COMPUTER_TEXT_MAX_LENGTH,
+  isChromeBinding,
   type AutomationDraft,
   type AutomationItem,
 } from '@atd/agent-contracts';
@@ -30,8 +31,10 @@ const SUBMIT_LIMITS = Array.from({ length: COMPUTER_MAX_SUBMITS }, (_, index) =>
  * from a task where Atd did the work with the person, so here they read as a summary; a person
  * picks the targets, tightens how much text each fill may enter and how many submits a
  * run may make, and reads the condition that alone counts a run as done. Acting on it needs a
- * trial and an authorization (`ComputerAuthorization`). Consolidating memory never acts on a
- * computer, so the section only says so.
+ * trial and an authorization (`ComputerAuthorization`). A site of the person's own Chrome is never
+ * offered, since automations run unattended and Chrome serves attended runs only; one the scope
+ * already names (its task worked in Chrome) stays listed, to turn off. Consolidating memory never
+ * acts on a computer, so the section only says so.
  */
 export function ComputerScopeFields({
   draft,
@@ -70,8 +73,13 @@ export function ComputerScopeFields({
     ) : null;
   const set = (next: typeof scope) =>
     onChange({ ...draft, policy: { ...draft.policy, computer: next } });
-  const bindings = status?.bindings ?? [];
-  const labels = new Map(bindings.map((binding) => [binding.bindingId, binding.label]));
+  const all = status?.bindings ?? [];
+  // Every target keeps its name, so a step on a site of the person's Chrome still names it.
+  const labels = new Map(all.map((binding) => [binding.bindingId, binding.label]));
+  const bindings = all.filter((binding) => !isChromeBinding(binding));
+  const chrome = all.filter(
+    (binding) => isChromeBinding(binding) && scope.bindingIds.includes(binding.bindingId),
+  );
   const gone = scope.bindingIds.filter((id) => !labels.has(id));
   const toggle = (bindingId: string, on: boolean) =>
     set(
@@ -106,6 +114,17 @@ export function ComputerScopeFields({
                   />
                 );
               })}
+              {chrome.map((binding) => (
+                <SettingsSwitchRow
+                  key={binding.bindingId}
+                  id={`automation-computer-target-${binding.bindingId}`}
+                  title={binding.label}
+                  description={t('computer.chromeTargetDescription')}
+                  checked
+                  disabled={scope.bindingIds.length === 1}
+                  onCheckedChange={() => toggle(binding.bindingId, false)}
+                />
+              ))}
               {gone.map((bindingId) => (
                 <SettingsSwitchRow
                   key={bindingId}

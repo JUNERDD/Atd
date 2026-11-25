@@ -139,13 +139,27 @@ const RunBindingIds = Type.Array(Identifier, {
 });
 
 /**
- * Computer use requested for a run (`SubmitTaskRequest.computer`, `CommandRunRequest.computer`):
- * the registered bindings it may act on. Only an attended run accepts it.
+ * The run's default browser for websites it requests (`ComputerAccessTarget.browser`): `chrome`,
+ * the person's own Chrome through Atd for Chrome. Absent: the managed browser.
  */
-export const ComputerRunRequestSchema = Type.Object(
-  { bindingIds: RunBindingIds },
-  { additionalProperties: false },
-);
+export const ComputerRunBrowserSchema = Type.Literal('chrome');
+
+/**
+ * Computer use requested for a run (`SubmitTaskRequest.computer`, `CommandRunRequest.computer`):
+ * the registered bindings it may act on and, with `browser`, its default browser. Only an attended
+ * run accepts it. `bindingIds` may be empty only with `browser`: a run the shell starts from Atd
+ * for Chrome on a site the person has not allowed yet, which gets access through `requestAccess`.
+ */
+export const ComputerRunRequestSchema = Type.Union([
+  Type.Object(
+    { bindingIds: RunBindingIds, browser: Type.Optional(ComputerRunBrowserSchema) },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    { bindingIds: Type.Array(Identifier, { maxItems: 0 }), browser: ComputerRunBrowserSchema },
+    { additionalProperties: false },
+  ),
+]);
 export type ComputerRunRequest = Static<typeof ComputerRunRequestSchema>;
 
 /**
@@ -173,10 +187,14 @@ export type ComputerRunTrial = Static<typeof ComputerRunTrialSchema>;
  * trial run carries `trial` instead (never both); a follow-up does not inherit it either. Nothing
  * here selects a delivery: the host picks it per step, and only an attended run with neither
  * `grant` nor `trial` lets it fall back to the foreground (`ExecutionEnvelope.foregroundAllowed`).
+ * `browser` is the attended run's default browser from its request, which follow-ups copy; it
+ * never comes with a grant or a trial, and `bindingIds` is empty only beside it, before any site
+ * was allowed.
  */
 export const RunComputerSchema = Type.Object(
   {
-    bindingIds: RunBindingIds,
+    bindingIds: Type.Array(Identifier, { maxItems: COMPUTER_MAX_RUN_BINDINGS, uniqueItems: true }),
+    browser: Type.Optional(ComputerRunBrowserSchema),
     grant: Type.Optional(ComputerRunGrantSchema),
     trial: Type.Optional(ComputerRunTrialSchema),
   },

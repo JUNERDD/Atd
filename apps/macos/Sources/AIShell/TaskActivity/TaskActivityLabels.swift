@@ -79,6 +79,15 @@ struct TaskActivityLabels: Equatable {
 
   /// What an approval would allow, in the conversation's words.
   func scope(_ scope: TaskActivityGrantWire) -> String {
+    if case .computerAct(let act) = scope {
+      let key: TaskActivityStringKey =
+        switch act.effect {
+        case .submit: .activityScopeComputerSubmit
+        case .invoke: .activityScopeComputerInvoke
+        case .read, .navigate, .input, .click: .activityScopeComputerAct
+        }
+      return format(key, act.targetLabel)
+    }
     let key: TaskActivityStringKey =
       switch scope {
       case .file(let file):
@@ -98,9 +107,12 @@ struct TaskActivityLabels: Equatable {
         case .web: .activityScopeWeb
         case .app: .activityScopeApp
         case .automation: .activityScopeAutomation
-        case .computer: .activityScopeComputer
         }
-      case .computerAccess: .activityScopeComputerAccess
+      case .computerAccess(let access):
+        access.channel == .chrome
+          ? .activityScopeComputerAccessChrome : .activityScopeComputerAccess
+      // Titled with its target above.
+      case .computerAct: .activityScopeComputerAct
       }
     return text(key)
   }

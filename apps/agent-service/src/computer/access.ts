@@ -75,7 +75,12 @@ export class ComputerAccess {
     return new ComputerAccess(file, bindings, grants);
   }
 
-  /** A saved binding is reusable only while the host resolves the same identity and scope. */
+  /**
+   * A saved binding is reusable only while the host resolves the same identity and scope: an app's
+   * bundle, path and team; a website's browser channel and origins and, on the person's own Chrome,
+   * the same paired installation (`profileId`). A managed profile id is minted for each
+   * preparation, so it never decides a match.
+   */
   matching(content: TargetBindingContent, runId: string): TargetBinding | undefined {
     const available = [...this.bindings.list(), ...this.bindings.temporaryFor(runId)];
     return available.find((binding) => {
@@ -88,6 +93,8 @@ export class ComputerAccess {
       return (
         content.kind === 'browser' &&
         binding.kind === 'browser' &&
+        binding.channel === content.channel &&
+        (content.channel !== 'chrome' || binding.profileId === content.profileId) &&
         binding.allowedOrigins.length === content.allowedOrigins.length &&
         binding.allowedOrigins.every((origin) => content.allowedOrigins.includes(origin))
       );
@@ -107,15 +114,22 @@ export class ComputerAccess {
   }
 
   async allow(runId: string, binding: TargetBinding, persistent: boolean): Promise<void> {
-    const grant = { bindingId: binding.bindingId, hash: binding.hash };
-    if (persistent)
-      await this.change(() => [
-        ...this.grants.filter((item) => item.bindingId !== binding.bindingId),
-        grant,
-      ]);
+    if (persistent) await this.save(binding);
     const run = this.runs.get(runId) ?? new Map<string, AccessGrant>();
-    run.set(binding.bindingId, grant);
+    run.set(binding.bindingId, { bindingId: binding.bindingId, hash: binding.hash });
     this.runs.set(runId, run);
+  }
+
+  /**
+   * Saves access to the binding at its current content for later attended runs, replacing an
+   * older grant of it; also for a site the person allowed outside any run (Atd for Chrome).
+   */
+  save(binding: TargetBinding): Promise<void> {
+    const grant = { bindingId: binding.bindingId, hash: binding.hash };
+    return this.change(() => [
+      ...this.grants.filter((item) => item.bindingId !== binding.bindingId),
+      grant,
+    ]);
   }
 
   effective(runId: string, frozen: RunComputer | undefined): RunComputer | undefined {

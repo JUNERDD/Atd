@@ -407,6 +407,7 @@
     "targets": "目标",
     "targetGone": "已断开的目标",
     "targetGoneDescription": "请在“设置 › 电脑操作”中重新登记，或在这里关闭它。",
+    "chromeTargetDescription": "这是你自己的 Chrome 中的网站。自动化在你不在时运行，无法使用它，请在这里关闭它。",
     "targetsNote": "自动化至少需要一个目标，所以不能关闭最后一个。",
     "steps": "步骤",
     "stepsNote": "步骤来自录制它们的任务，无法在这里调整顺序。如需修改，请让 Atd 修改。",

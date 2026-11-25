@@ -1,6 +1,7 @@
 import {
   COMPUTER_STEP_KINDS_FOR_KIND,
   isBusinessEffect,
+  isChromeBinding,
   recipeStepEffect,
   type AutomationComputerPolicy,
   type AutomationDraft,
@@ -12,11 +13,13 @@ import { completionSteps } from './computer-outcome.js';
 
 /**
  * What a saved computer scope must satisfy beyond its schema (plan §7.3): only a prompt or command
- * may act on the computer, every binding is registered, each step acts on one of the policy's
- * bindings with a step kind that target supports, a navigation stays inside the binding's origins,
- * a step that submits on an app proves it with more than any new text in its window, step ids are
- * unique and every branch names a step, the steps never loop, and some step lets the host verify
- * the completion condition, since only that verification makes a run delivered.
+ * may act on the computer, every binding is registered and none is the person's own Chrome (Atd
+ * for Chrome serves attended runs only; automations act on the managed browser), each step acts
+ * on one of the policy's bindings with a step kind that target supports, a navigation stays
+ * inside the binding's origins, a step that submits on an app proves it with more than any new
+ * text in its window, step ids are unique and every branch names a step, the steps never loop,
+ * and some step lets the host verify the completion condition, since only that verification
+ * makes a run delivered.
  * Recipe steps keep their own closed kinds (`ComputerRecipeStepSchema`): the pointer, key, typing,
  * clearing, menu and drag steps of attended runs and their capture points never enter a recipe, so
  * no unattended run carries an `invoke` effect.
@@ -97,8 +100,14 @@ export function checkComputerDraft(
   if (draft.action.kind === 'consolidateMemory')
     throw invalid('a memory consolidation cannot act on the computer.');
   if (!bindings) throw invalid('computer use is not available in this version of Atd.');
-  for (const id of policy.bindingIds)
-    if (!bindings.get(id)) throw invalid('a computer target it names is not registered.');
+  for (const id of policy.bindingIds) {
+    const binding = bindings.get(id);
+    if (!binding) throw invalid('a computer target it names is not registered.');
+    if (isChromeBinding(binding))
+      throw invalid(
+        `computer target "${binding.label}" is the person's own Chrome (Atd for Chrome), which serves only tasks the person runs; name a target on Atd's managed browser instead.`,
+      );
+  }
   const { steps } = policy.recipe;
   const ids = new Set(steps.map((step) => step.stepId));
   if (ids.size !== steps.length) throw invalid('two recipe steps share an id.');

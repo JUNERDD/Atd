@@ -47,8 +47,11 @@ import {
  * fallback within one `act` (`ExecutionEnvelope.foregroundAllowed`, `ComputerDelivery`
  * `foreground`, refusal reasons `covered` and `notActivated`).
  * Protocol 10 preserves the full error for each unavailable target, including the refusal reason.
+ * Protocol 11 adds the person's own Chrome as a browser channel: the `chrome` engine, browser
+ * bindings with `channel: 'chrome'`, `prepareAccess` websites that always name their `browser`,
+ * and the refusal reason `chromeDisconnected`.
  */
-export const COMPUTER_PROTOCOL = 10;
+export const COMPUTER_PROTOCOL = 11;
 
 /** Action ids a `status` request or a `computer.hello` names. */
 export const COMPUTER_MAX_STATUS_IDS = 100;

@@ -7,15 +7,18 @@ import {
   Identifier,
   parse,
   SaveComputerBindingRequestSchema,
+  SaveComputerChromeSiteRequestSchema,
   type ComputerProgress,
   type ComputerResolveFactsResponse,
   type ComputerUnresolvedFactsResponse,
   type ComputerStatusResponse,
   type DeleteComputerBindingResponse,
   type SaveComputerBindingResponse,
+  type SaveComputerChromeSiteResponse,
   type StopAllComputerResponse,
 } from '@atd/agent-contracts';
 import { RENDERER_ROUTE, SHELL_ROUTE } from '../relay-routes.js';
+import { chromeSiteBinding, chromeSiteContent } from './chrome-channel.js';
 import { resolveByPerson } from './resolve.js';
 import type { ComputerRuntime } from './runtime.js';
 
@@ -35,7 +38,7 @@ export interface ComputerProgressResponse {
 /**
  * The computer routes (D7). The renderer reads status and progress, deletes bindings, resolves
  * facts a person checked and stops all computer work; only the shell writes a binding's content,
- * from a target its host prepared.
+ * from a target its host prepared or a site the person allowed in Atd for Chrome.
  * A binding whose content changes or that is deleted first invalidates the grants naming it (the
  * store's listeners), then stops the runs acting on it and asks the host to release its targets.
  */
@@ -70,6 +73,23 @@ export function registerComputerRoutes(app: FastifyInstance, computer: ComputerR
       const binding = await bindings.save(body);
       if (before && before.revision !== binding.revision)
         await coordinator.revokeBinding(binding.bindingId);
+      return { binding };
+    },
+  );
+
+  // The person's site switch in Atd for Chrome is their consent, so the site's binding comes with
+  // saved access. One binding per paired Chrome and origin; switching it off deletes it below.
+  app.post(
+    '/v1/computer/chrome-sites',
+    SHELL_ROUTE,
+    async (request): Promise<SaveComputerChromeSiteResponse> => {
+      const body = parse(SaveComputerChromeSiteRequestSchema, request.body);
+      const origin = new URL(body.origin).origin;
+      const binding = await bindings.findOrSave(
+        (list) => chromeSiteBinding(list, body.installationId, origin),
+        chromeSiteContent(body.installationId, origin),
+      );
+      if (!computer.access.allows(binding)) await computer.access.save(binding);
       return { binding };
     },
   );

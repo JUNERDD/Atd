@@ -6,10 +6,12 @@ import Foundation
 public struct SaveComputerBindingRequestWire: Encodable, Equatable, Sendable {
   /// `TargetBindingContentSchema`: a binding without its id, revision and hash.
   public enum Content: Equatable, Sendable {
-    /// A managed browser profile; `urlPrefix` is the page rule's prefix.
+    /// A browser target; `urlPrefix` is the page rule's prefix. Without `channel`, `profileId` is
+    /// a managed browser profile; on the `chrome` channel, the paired Atd for Chrome's
+    /// installation id.
     case browser(
       label: String, profileId: String, allowedOrigins: [String], startUrl: String,
-      urlPrefix: String)
+      urlPrefix: String, channel: ComputerBrowserChannel? = nil)
     /// The app `bundleId`, at the `.app` path the host verified, with the code-signing team it
     /// read when there is one.
     case native(
@@ -37,11 +39,22 @@ public struct SaveComputerBindingRequestWire: Encodable, Equatable, Sendable {
 }
 
 extension SaveComputerBindingRequestWire.Content: Encodable {
+  /// `computerEngineFor`: the engine the saved binding will run on.
+  public var engine: ComputerEngineID {
+    switch self {
+    case .browser(_, _, _, _, _, let channel):
+      channel == .chrome ? .chrome : ComputerTargetKind.browser.engine
+    case .native: ComputerTargetKind.native.engine
+    }
+  }
+
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     switch self {
-    case .browser(let label, let profileId, let allowedOrigins, let startUrl, let urlPrefix):
+    case .browser(
+      let label, let profileId, let allowedOrigins, let startUrl, let urlPrefix, let channel):
       try container.encode(ComputerTargetKind.browser, forKey: .kind)
+      try container.encodeIfPresent(channel, forKey: .channel)
       try container.encode(label, forKey: .label)
       try container.encode(profileId, forKey: .profileId)
       try container.encode(allowedOrigins, forKey: .allowedOrigins)
@@ -58,7 +71,7 @@ extension SaveComputerBindingRequestWire.Content: Encodable {
   }
 
   private enum CodingKeys: String, CodingKey {
-    case kind, label, profileId, allowedOrigins, startUrl, pageRule, bundleId, appName, appPath
-    case teamId
+    case kind, channel, label, profileId, allowedOrigins, startUrl, pageRule, bundleId, appName
+    case appPath, teamId
   }
 }

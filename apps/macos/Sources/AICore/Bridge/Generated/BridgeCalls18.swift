@@ -4,236 +4,224 @@
 
 import Foundation
 
-/// Result of the `diagnostics.shellReport` call.
-public struct DiagnosticsShellReportResult: Codable, Equatable, Sendable {
-  public let capturedAt: String
-  public let appVersion: String
-  public let buildNumber: String
-  public let isDevelopment: Bool
-  public let serviceState: ServiceState
-  public let serviceFailureCode: ServiceFailureCode?
-  public let serviceFailureSummary: String?
-  public let checks: [ShellDoctorCheck]
-  public let rings: [DecisionRingSummary]
+/// Params of the `captureText.progress` call.
+public struct CaptureTextProgressParams: Codable, Equatable, Sendable {
+  public let runId: String
+  public let state: State
+  public let output: CommandOutputAction
+  public let text: String
+  public let result: CaptureTextResult?
+  public let awaitsApply: Bool
+  public let review: Review?
+  public let draft: Draft?
 
   public init(
-    capturedAt: String, appVersion: String, buildNumber: String, isDevelopment: Bool,
-    serviceState: ServiceState, serviceFailureCode: ServiceFailureCode?,
-    serviceFailureSummary: String?, checks: [ShellDoctorCheck], rings: [DecisionRingSummary]
+    runId: String, state: State, output: CommandOutputAction, text: String,
+    result: CaptureTextResult?, awaitsApply: Bool, review: Review?, draft: Draft?
   ) {
-    self.capturedAt = capturedAt
-    self.appVersion = appVersion
-    self.buildNumber = buildNumber
-    self.isDevelopment = isDevelopment
-    self.serviceState = serviceState
-    self.serviceFailureCode = serviceFailureCode
-    self.serviceFailureSummary = serviceFailureSummary
-    self.checks = checks
-    self.rings = rings
+    self.runId = runId
+    self.state = state
+    self.output = output
+    self.text = text
+    self.result = result
+    self.awaitsApply = awaitsApply
+    self.review = review
+    self.draft = draft
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    capturedAt = try container.string(.capturedAt, maxLength: 64)
-    appVersion = try container.string(.appVersion, maxLength: 64)
-    buildNumber = try container.string(.buildNumber, maxLength: 64)
-    isDevelopment = try container.boolean(.isDevelopment)
-    serviceState = try container.value(.serviceState, ServiceState.self)
-    serviceFailureCode = try container.nullable(.serviceFailureCode) {
-      try container.value($0, ServiceFailureCode.self)
-    }
-    serviceFailureSummary = try container.nullable(.serviceFailureSummary) {
-      try container.string($0, maxLength: 240)
-    }
-    checks = try container.array(.checks, of: ShellDoctorCheck.self, maxItems: 48)
-    rings = try container.array(.rings, of: DecisionRingSummary.self, maxItems: 8)
+    runId = try container.string(.runId, minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9_-]+$")
+    state = try container.value(.state, State.self)
+    output = try container.value(.output, CommandOutputAction.self)
+    text = try container.string(.text, maxLength: 1_000_000)
+    result = try container.optional(.result) { try container.value($0, CaptureTextResult.self) }
+    awaitsApply = try container.boolean(.awaitsApply)
+    review = try container.optional(.review) { try container.value($0, Review.self) }
+    draft = try container.optional(.draft) { try container.value($0, Draft.self) }
   }
 
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(capturedAt, forKey: .capturedAt)
-    try container.encode(appVersion, forKey: .appVersion)
-    try container.encode(buildNumber, forKey: .buildNumber)
-    try container.encode(isDevelopment, forKey: .isDevelopment)
-    try container.encode(serviceState, forKey: .serviceState)
-    try container.encode(serviceFailureCode, forKey: .serviceFailureCode)
-    try container.encode(serviceFailureSummary, forKey: .serviceFailureSummary)
-    try container.encode(checks, forKey: .checks)
-    try container.encode(rings, forKey: .rings)
+    try container.encode(runId, forKey: .runId)
+    try container.encode(state, forKey: .state)
+    try container.encode(output, forKey: .output)
+    try container.encode(text, forKey: .text)
+    try container.encodeIfPresent(result, forKey: .result)
+    try container.encode(awaitsApply, forKey: .awaitsApply)
+    try container.encodeIfPresent(review, forKey: .review)
+    try container.encodeIfPresent(draft, forKey: .draft)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case capturedAt
-    case appVersion
-    case buildNumber
-    case isDevelopment
-    case serviceState
-    case serviceFailureCode
-    case serviceFailureSummary
-    case checks
-    case rings
+    case runId
+    case state
+    case output
+    case text
+    case result
+    case awaitsApply
+    case review
+    case draft
   }
 
-  public enum ServiceState: String, Codable, Equatable, Sendable {
-    case idle
-    case starting
-    case running
-    case restarting
-    case unavailable
+  public enum State: String, Codable, Equatable, Sendable {
+    case thinking
+    case streaming
+    case done
+    case stopped
+    case failed
   }
 
-  public enum ServiceFailureCode: String, Codable, Equatable, Sendable {
-    case serviceStarting = "service_starting"
-    case serviceStartFailed = "service_start_failed"
-    case serviceStoppedTooOften = "service_stopped_too_often"
-    case serviceNotRunning = "service_not_running"
+  public struct Review: Codable, Equatable, Sendable {
+    public let source: String?
+    public let changes: [Change]?
+    public let version: Int
+    public let count: Int
+    public let options: [CommandOption]
+    public let summary: String?
+    public let adjustments: [String]
+    public let pending: Pending?
+
+    public init(
+      source: String?, changes: [Change]?, version: Int, count: Int, options: [CommandOption],
+      summary: String?, adjustments: [String], pending: Pending?
+    ) {
+      self.source = source
+      self.changes = changes
+      self.version = version
+      self.count = count
+      self.options = options
+      self.summary = summary
+      self.adjustments = adjustments
+      self.pending = pending
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      source = try container.optional(.source) {
+        try container.string($0, minLength: 1, maxLength: 100_000)
+      }
+      changes = try container.optional(.changes) {
+        try container.array($0, of: Change.self, minItems: 1, maxItems: 4_000)
+      }
+      version = try container.integer(.version, minimum: 1, maximum: 20)
+      count = try container.integer(.count, minimum: 1, maximum: 20)
+      options = try container.array(.options, of: CommandOption.self, maxItems: 20)
+      summary = try container.optional(.summary) {
+        try container.string($0, minLength: 1, maxLength: 200)
+      }
+      adjustments = try container.array(.adjustments, of: String.self, maxItems: 8)
+      pending = try container.optional(.pending) { try container.value($0, Pending.self) }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encodeIfPresent(source, forKey: .source)
+      try container.encodeIfPresent(changes, forKey: .changes)
+      try container.encode(version, forKey: .version)
+      try container.encode(count, forKey: .count)
+      try container.encode(options, forKey: .options)
+      try container.encodeIfPresent(summary, forKey: .summary)
+      try container.encode(adjustments, forKey: .adjustments)
+      try container.encodeIfPresent(pending, forKey: .pending)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case source
+      case changes
+      case version
+      case count
+      case options
+      case summary
+      case adjustments
+      case pending
+    }
+
+    public struct Change: Codable, Equatable, Sendable {
+      public let kind: Kind
+      public let text: String
+
+      public init(kind: Kind, text: String) {
+        self.kind = kind
+        self.text = text
+      }
+
+      public init(from decoder: any Decoder) throws {
+        let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+        kind = try container.value(.kind, Kind.self)
+        text = try container.string(.text, minLength: 1, maxLength: 1_000_000)
+      }
+
+      private enum CodingKeys: String, CodingKey, CaseIterable {
+        case kind
+        case text
+      }
+
+      public enum Kind: String, Codable, Equatable, Sendable {
+        case same
+        case insert
+        case delete
+      }
+    }
+
+    public enum Pending: String, Codable, Equatable, Sendable {
+      case regenerate
+      case adjust
+      case options
+    }
+  }
+
+  public struct Draft: Codable, Equatable, Sendable {
+    public let text: String
+    public let result: CaptureTextResult?
+
+    public init(text: String, result: CaptureTextResult?) {
+      self.text = text
+      self.result = result
+    }
+
+    public init(from decoder: any Decoder) throws {
+      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+      text = try container.string(.text, maxLength: 1_000_000)
+      result = try container.optional(.result) { try container.value($0, CaptureTextResult.self) }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(text, forKey: .text)
+      try container.encodeIfPresent(result, forKey: .result)
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+      case text
+      case result
+    }
   }
 }
 
-/// Params of the `diagnostics.liveProbe.start` call.
-public struct DiagnosticsLiveProbeStartParams: Codable, Equatable, Sendable {
-  public let kind: Kind
+/// Result of the `captureText.progress` call.
+public typealias CaptureTextProgressResult = NativeEmpty
 
-  public init(kind: Kind) {
-    self.kind = kind
+/// Params of the `panelModal.setAvailable` call.
+public struct PanelModalSetAvailableParams: Codable, Equatable, Sendable {
+  public let available: Bool
+
+  public init(available: Bool) {
+    self.available = available
   }
 
   public init(from decoder: any Decoder) throws {
     let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    kind = try container.value(.kind, Kind.self)
+    available = try container.boolean(.available)
   }
 
   private enum CodingKeys: String, CodingKey, CaseIterable {
-    case kind
-  }
-
-  public enum Kind: String, Codable, Equatable, Sendable {
-    case selection
-    case hotkey
-    case capture
+    case available
   }
 }
 
-/// Result of the `diagnostics.liveProbe.start` call.
-public struct DiagnosticsLiveProbeStartResult: Codable, Equatable, Sendable {
-  public let probeId: String
-  public let kind: Kind
-  public let durationMs: Int
+/// Result of the `panelModal.setAvailable` call.
+public typealias PanelModalSetAvailableResult = NativeEmpty
 
-  public init(probeId: String, kind: Kind, durationMs: Int) {
-    self.probeId = probeId
-    self.kind = kind
-    self.durationMs = durationMs
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    probeId = try container.string(.probeId, minLength: 1, maxLength: 64)
-    kind = try container.value(.kind, Kind.self)
-    durationMs = try container.integer(.durationMs, minimum: 1_000, maximum: 10_000)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case probeId
-    case kind
-    case durationMs
-  }
-
-  public enum Kind: String, Codable, Equatable, Sendable {
-    case selection
-    case hotkey
-    case capture
-  }
-}
-
-/// Params of the `diagnostics.liveProbe.stop` call.
-public typealias DiagnosticsLiveProbeStopParams = NativeEmpty
-
-/// Result of the `diagnostics.liveProbe.stop` call.
-public typealias DiagnosticsLiveProbeStopResult = NativeEmpty
-
-/// Params of the `diagnostics.previewBundle` call.
-public struct DiagnosticsPreviewBundleParams: Codable, Equatable, Sendable {
-  public let rendererBreadcrumbs: RendererBreadcrumbsPayload
-  public let includeCrashSummaries: Bool
-
-  public init(rendererBreadcrumbs: RendererBreadcrumbsPayload, includeCrashSummaries: Bool) {
-    self.rendererBreadcrumbs = rendererBreadcrumbs
-    self.includeCrashSummaries = includeCrashSummaries
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    rendererBreadcrumbs = try container.value(.rendererBreadcrumbs, RendererBreadcrumbsPayload.self)
-    includeCrashSummaries = try container.boolean(.includeCrashSummaries)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case rendererBreadcrumbs
-    case includeCrashSummaries
-  }
-}
-
-/// Result of the `diagnostics.previewBundle` call.
-public struct DiagnosticsPreviewBundleResult: Codable, Equatable, Sendable {
-  public let generatedAt: String
-  public let suggestedFileName: String
-  public let totalUncompressedBytes: Int
-  public let totalRedactionHits: Int
-  public let omittedFileCount: Int
-  public let files: [BundlePreviewFile]
-
-  public init(
-    generatedAt: String, suggestedFileName: String, totalUncompressedBytes: Int,
-    totalRedactionHits: Int, omittedFileCount: Int, files: [BundlePreviewFile]
-  ) {
-    self.generatedAt = generatedAt
-    self.suggestedFileName = suggestedFileName
-    self.totalUncompressedBytes = totalUncompressedBytes
-    self.totalRedactionHits = totalRedactionHits
-    self.omittedFileCount = omittedFileCount
-    self.files = files
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    generatedAt = try container.string(.generatedAt, maxLength: 64)
-    suggestedFileName = try container.string(.suggestedFileName, minLength: 1, maxLength: 128)
-    totalUncompressedBytes = try container.integer(
-      .totalUncompressedBytes, minimum: 0, maximum: 8_388_608)
-    totalRedactionHits = try container.integer(.totalRedactionHits, minimum: 0)
-    omittedFileCount = try container.integer(.omittedFileCount, minimum: 0)
-    files = try container.array(.files, of: BundlePreviewFile.self, maxItems: 32)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case generatedAt
-    case suggestedFileName
-    case totalUncompressedBytes
-    case totalRedactionHits
-    case omittedFileCount
-    case files
-  }
-}
-
-/// Params of the `diagnostics.exportBundle` call.
-public struct DiagnosticsExportBundleParams: Codable, Equatable, Sendable {
-  public let rendererBreadcrumbs: RendererBreadcrumbsPayload
-  public let includeCrashSummaries: Bool
-
-  public init(rendererBreadcrumbs: RendererBreadcrumbsPayload, includeCrashSummaries: Bool) {
-    self.rendererBreadcrumbs = rendererBreadcrumbs
-    self.includeCrashSummaries = includeCrashSummaries
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    rendererBreadcrumbs = try container.value(.rendererBreadcrumbs, RendererBreadcrumbsPayload.self)
-    includeCrashSummaries = try container.boolean(.includeCrashSummaries)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case rendererBreadcrumbs
-    case includeCrashSummaries
-  }
-}
+/// Params of the `diagnostics.shellReport` call.
+public typealias DiagnosticsShellReportParams = NativeEmpty

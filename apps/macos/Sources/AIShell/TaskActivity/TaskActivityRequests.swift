@@ -49,6 +49,9 @@ struct TaskActivityApproval: Equatable {
   let clipped: Bool
   let allowlistEntry: String?
   let review: Review?
+  /// The service asks for this call every time, so an answer never becomes a grant: a submit on
+  /// a site of the person's own Chrome (Atd for Chrome).
+  var asksAlways = false
 
   /// A row shows one line of the target; longer ones are read on the request's page.
   static let rowTargetLimit = 44
@@ -63,9 +66,15 @@ struct TaskActivityApproval: Equatable {
     return nil
   }
 
-  /// The row's one line: the access target, or the detail's first line.
+  /// One computer action's approval on a registered target.
+  var act: TaskActivityGrantWire.ComputerAct? {
+    if case .computerAct(let act) = scope { return act }
+    return nil
+  }
+
+  /// The row's one line: the access or action target, or the detail's first line.
   var target: String {
-    access?.targetLabel ?? String(detail.prefix { $0 != "\n" })
+    access?.targetLabel ?? act?.targetLabel ?? String(detail.prefix { $0 != "\n" })
   }
 
   /// Read before deciding: the review spoke, access to the computer is granted, or the detail
@@ -76,11 +85,12 @@ struct TaskActivityApproval: Equatable {
   }
 
   /// The grant broader than Allow once, as the panel offers it: a bash command's suggested
-  /// allowlist entry, or the tool for the session. Bash without an entry, MCP and computer
-  /// access have none, since the service would narrow a session grant to this call.
+  /// allowlist entry, or the tool for the session. Bash without an entry, MCP, computer access
+  /// and a call that always asks have none, since the service would narrow a session grant to
+  /// this call.
   var broader: TaskActivityControl? {
     if isBash { return allowlistEntry == nil ? nil : .always }
-    if access != nil { return nil }
+    if access != nil || asksAlways { return nil }
     if case .tool(let tool) = scope, tool.tool == .mcp { return nil }
     return .session
   }

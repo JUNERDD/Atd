@@ -17,6 +17,7 @@ export function registerStream(app: FastifyInstance, deps: ServerDeps): void {
     steps,
     ledger: deps.ledger,
     coordinator: deps.computer.coordinator,
+    bindings: deps.computer.bindings,
     serviceId: deps.config.serviceId,
     epoch: deps.config.epoch,
   });

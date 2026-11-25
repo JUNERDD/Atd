@@ -63,8 +63,9 @@ export const SubmitTaskRequestSchema = Type.Object(
      */
     sideChatOf: Type.Optional(Identifier),
     /**
-     * Registered computer targets the run may act on, frozen as `RunSnapshot.computer`. Absent
-     * keeps the task's last run's bindings (never an automation's grant), else no computer use.
+     * Registered computer targets the run may act on, and its default browser, frozen as
+     * `RunSnapshot.computer`. Absent keeps the task's last run's bindings and default browser
+     * (never an automation's grant), else no computer use.
      */
     computer: Type.Optional(ComputerRunRequestSchema),
     /**

@@ -12,6 +12,7 @@
 import { Type, type TSchema } from 'typebox';
 import { NativeCaptureCalls } from './capture-calls.ts';
 import { CaptureResultSchema, NativeCaptureTextCalls } from './capture-text-calls.ts';
+import { NativeChromeCalls } from './chrome-calls.ts';
 import { NativeCommandOptionsCalls } from './command-options.ts';
 import { NativeComputerCalls } from './computer-calls.ts';
 import { NativeComputerPreviewCalls } from './computer-preview-calls.ts';
@@ -240,6 +241,7 @@ export const NativeCalls = {
   ...NativeUpdateCalls,
   ...NativeNotificationCalls,
   ...NativeComputerCalls,
+  ...NativeChromeCalls,
   ...NativeComputerPreviewCalls,
   /**
    * Confirms a launch approval in a native dialog the page cannot forge. Only the server id

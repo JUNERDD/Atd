@@ -20,11 +20,13 @@ enum BrowserWorkerCallError: Error, Equatable {
 }
 
 /// One generation of the browser worker (`apps/agent-service/src/computer/worker/`, playwright-core
-/// over CDP): the bundled Node running the built worker for one managed profile, spoken to with
-/// the Swift MCP SDK's `Client` over a `StdioTransport` on the child's pipes. Its environment names the profile's verified browser websocket
-/// (`ATD_CDP_WS`) and the task resource store uploads must come from (`ATD_UPLOAD_ROOT`); the
-/// directory a call's downloads go to is an argument of that call. Only the worker's closed tool
-/// set is called, and a call whose outcome was not seen is never sent again.
+/// over CDP): the bundled Node running the built worker for one managed profile or one connected
+/// Chrome of the person's, spoken to with the Swift MCP SDK's `Client` over a `StdioTransport` on
+/// the child's pipes. Its environment names the browser's verified websocket (`ATD_CDP_WS`), the
+/// task resource store uploads must come from (`ATD_UPLOAD_ROOT`) and, for the person's own
+/// Chrome only, the channel (`ATD_BROWSER_CHANNEL=chrome`); the directory a call's downloads go to
+/// is an argument of that call. Only the worker's closed tool set is called, and a call whose
+/// outcome was not seen is never sent again.
 ///
 /// The worker exits when its stdin closes, which also happens when the shell dies: both pipe
 /// ends the host keeps are close-on-exec, so no other child inherits them.
@@ -32,8 +34,10 @@ actor BrowserWorkerProcess {
   struct Launch: Sendable {
     let node: URL
     let worker: URL
-    /// The browser websocket of the profile's managed Chrome, as the host verified it.
+    /// The browser websocket of the profile's managed Chrome, or of the relay to the person's
+    /// own Chrome, as the host verified or serves it.
     let webSocket: String
+    let channel: BrowserWorkerChannel
     /// `<dataDir>/resources`: the only directory upload files may come from.
     let uploadRoot: URL
     let log: URL
@@ -44,7 +48,8 @@ actor BrowserWorkerProcess {
   /// whether the person is using a page, `open_page` opens an approved website's page in a
   /// background tab (or a parked background window), and `restore_windows` puts parked windows
   /// back on a display for a person who opens the browser; no tool focuses, raises or activates
-  /// anything.
+  /// anything. The worker refuses the last two in the person's own Chrome, where the host never
+  /// calls them.
   static let tools: Set<String> = [
     "list_pages", "observe", "fill", "press", "scroll", "wait", "navigate", "key", "select",
     "upload", "cancel", "preview_start", "preview_read", "preview_stop", "page_focus", "open_page",
@@ -172,9 +177,10 @@ actor BrowserWorkerProcess {
     else { throw BrowserWorkerCallError.timedOut }
   }
 
-  /// Built from scratch: the browser endpoint, the upload root, a home and a fixed `PATH`;
-  /// nothing of the shell's own environment (no `NODE_OPTIONS`, no proxy or token variables)
-  /// reaches the worker.
+  /// Built from scratch: the browser endpoint, the upload root, a home and a fixed `PATH`, plus
+  /// the channel for the person's own Chrome (a managed profile's worker gets exactly the
+  /// variables it always did); nothing of the shell's own environment (no `NODE_OPTIONS`, no proxy
+  /// or token variables) reaches the worker.
   private static func environment(_ launch: Launch) -> [String: String] {
     var environment = [
       "ATD_CDP_WS": launch.webSocket,
@@ -182,6 +188,7 @@ actor BrowserWorkerProcess {
       "PATH": "/usr/bin:/bin",
       "HOME": FileManager.default.homeDirectoryForCurrentUser.path(percentEncoded: false),
     ]
+    if launch.channel == .chrome { environment["ATD_BROWSER_CHANNEL"] = "chrome" }
     if let tmp = ProcessInfo.processInfo.environment["TMPDIR"] { environment["TMPDIR"] = tmp }
     return environment
   }

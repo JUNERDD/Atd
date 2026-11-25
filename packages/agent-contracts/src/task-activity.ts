@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { ComputerEffectSchema } from './computer-actions.js';
 import { ComputerActivitySchema } from './computer-activity.js';
 import { ComputerHostStateSchema } from './computer-http.js';
 import { Identifier } from './identifiers.js';
@@ -43,8 +44,10 @@ export const TASK_ACTIVITY_MAX_REQUESTS = 16;
 
 /**
  * What an approval would allow (`GrantScopeSchema`), reduced to what the card names and decides
- * on: a file tool and whether the path is inside the task folder, another guarded tool, or computer
- * access with the target as the person recognizes it and how long the access lasts.
+ * on: a file tool and whether the path is inside the task folder, another guarded tool, computer
+ * access with the target as the person recognizes it, its browser channel and how long the access
+ * lasts, or one computer action's highest effect on a registered target (`computerAct`, the
+ * `computer` grant scope with the target's label for its binding).
  */
 export const TaskActivityGrantSchema = Type.Union([
   Type.Object(
@@ -65,7 +68,6 @@ export const TaskActivityGrantSchema = Type.Union([
         Type.Literal('web'),
         Type.Literal('app'),
         Type.Literal('automation'),
-        Type.Literal('computer'),
       ]),
     },
     { additionalProperties: false },
@@ -74,10 +76,24 @@ export const TaskActivityGrantSchema = Type.Union([
     {
       kind: Type.Literal('computerAccess'),
       targetKind: Type.Union([Type.Literal('browser'), Type.Literal('application')]),
+      /**
+       * A website's browser: `chrome`, the person's own Chrome through Atd for Chrome, or
+       * `managed`, a profile the host manages; absent for an application.
+       */
+      channel: Type.Optional(Type.Union([Type.Literal('managed'), Type.Literal('chrome')])),
       targetLabel: Type.String({ maxLength: 256 }),
       /** A website's allowed origins; empty for an application. */
       origins: Type.Array(Type.String({ maxLength: 2048 }), { maxItems: 32 }),
       persistence: Type.Union([Type.Literal('run'), Type.Literal('saved')]),
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object(
+    {
+      kind: Type.Literal('computerAct'),
+      bindingId: Identifier,
+      targetLabel: Type.String({ maxLength: 256 }),
+      effect: ComputerEffectSchema,
     },
     { additionalProperties: false },
   ),

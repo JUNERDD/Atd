@@ -1,4 +1,4 @@
-import { throwIfCancelled, untilCancelled, type Operation } from './operations.js';
+import { throwIfCancelled, untilCancelled, WorkerError, type Operation } from './operations.js';
 import type { WindowFrame } from './opening-schemas.js';
 import type { Pages } from './pages.js';
 
@@ -10,7 +10,8 @@ import type { Pages } from './pages.js';
  * on any display, so one the person dragged half off a display stays where it is, and windows are
  * found from the browser itself, which keeps working when the shell restarted since they were
  * parked. Only windows move: no page is focused, raised or activated, and the host brings the
- * browser forward itself, after this call.
+ * browser forward itself, after this call. The person's own Chrome is refused: nothing of it is
+ * parked, and listing its targets would reach every tab of theirs.
  */
 
 /** Windows with less than this share of their area on a display count as parked. */
@@ -52,6 +53,11 @@ export async function restoreWindows(
   op: Operation,
   input: { displays: readonly WindowFrame[]; frame: WindowFrame },
 ): Promise<Record<string, unknown>> {
+  if (pages.channel === 'chrome')
+    throw new WorkerError(
+      'unsupported',
+      "restore_windows is not available in the person's own Chrome, whose windows are theirs.",
+    );
   const browser = await untilCancelled(op, pages.connect());
   const session = await untilCancelled(op, browser.newBrowserCDPSession());
   const seen = new Set<number>();

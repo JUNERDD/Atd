@@ -7,29 +7,29 @@ import UniformTypeIdentifiers
 /// Exact-page JPEG transport. Keep one validated revision; presentation decodes it natively.
 final class BrowserPreviewStream: ComputerPreviewStream {
   private let previewId: String
-  private weak var engine: PlaywrightBrowserEngine?
-  private let instance: ManagedChromeInstance
+  private weak var driver: BrowserPageDriver?
+  private let endpoint: any BrowserWorkerEndpoint
   private let generation: Int
   private var stopped = false
   private var cached: ComputerPreviewFrame?
 
   init(
-    previewId: String, engine: PlaywrightBrowserEngine, instance: ManagedChromeInstance,
+    previewId: String, driver: BrowserPageDriver, endpoint: any BrowserWorkerEndpoint,
     generation: Int
   ) {
     self.previewId = previewId
-    self.engine = engine
-    self.instance = instance
+    self.driver = driver
+    self.endpoint = endpoint
     self.generation = generation
   }
 
   func latest() async throws -> ComputerPreviewFrame? {
-    guard !stopped, let engine else { throw PlaywrightBrowserEngine.surfaceGone }
-    let (raw, _) = try await engine.call(
-      instance, "preview_read", ["previewId": .string(previewId)], timeout: .seconds(3),
+    guard !stopped, let driver else { throw BrowserPageDriver.surfaceGone }
+    let (raw, _) = try await driver.call(
+      endpoint, "preview_read", ["previewId": .string(previewId)], timeout: .seconds(3),
       writes: false, pinned: generation)
-    let reply = try engine.checked(raw, "preview_read")
-    guard !stopped, reply.previewId == previewId else { throw PlaywrightBrowserEngine.surfaceGone }
+    let reply = try raw.checked("preview_read")
+    guard !stopped, reply.previewId == previewId else { throw BrowserPageDriver.surfaceGone }
     guard let frame = reply.frame else { return cached }
     if frame.sequence == cached?.sequence { return cached }
     guard frame.sequence > 0, frame.sequence > (cached?.sequence ?? 0), frame.capturedAt.isFinite,
@@ -53,12 +53,12 @@ final class BrowserPreviewStream: ComputerPreviewStream {
     guard !stopped else { return }
     stopped = true
     cached = nil
-    guard let engine,
-      engine.workers.generation(profileId: instance.profileId, contextId: instance.contextId)
+    guard let driver,
+      driver.workers.generation(profileId: endpoint.profileId, contextId: endpoint.contextId)
         == generation
     else { return }
-    _ = try? await engine.call(
-      instance, "preview_stop", ["previewId": .string(previewId)], timeout: .seconds(3),
+    _ = try? await driver.call(
+      endpoint, "preview_stop", ["previewId": .string(previewId)], timeout: .seconds(3),
       writes: false, pinned: generation)
   }
 }

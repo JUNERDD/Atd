@@ -12,8 +12,15 @@ enum ComputerScreenState {
   /// the driver (a child process with Atd's grants) reads and acts; Screen Recording for a
   /// screenshot. A run never asks the system for a grant (plan I7): granting happens in Settings,
   /// whose own buttons ask. Whether window-routed input can be posted is the native engine's to
-  /// check before it takes that route.
-  static func missingPermission(kind: ComputerTargetKind, screenshot: Bool) -> ComputerFailure? {
+  /// check before it takes that route. The person's own Chrome (`chrome`) needs neither: Atd for
+  /// Chrome reads and drives its tabs through the DevTools protocol, and a page's screenshot is
+  /// the page's own rendering, not a capture of the screen.
+  static func missingPermission(
+    engine: ComputerEngineID, kind: ComputerTargetKind, screenshot: Bool
+  )
+    -> ComputerFailure?
+  {
+    if engine == .chrome { return nil }
     if kind == .native, !SelectionReader.isTrusted {
       return ComputerFailure(.needsPermission, "Atd is not granted the Accessibility permission.")
     }

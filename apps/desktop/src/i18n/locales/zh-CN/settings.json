@@ -116,6 +116,7 @@
       "computerBrowser": "浏览器 Chrome 配置文件 网站 登录",
       "computerStop": "停止 取消 中止 紧急 电脑操作",
       "computerEngines": "引擎 组件 附加组件 下载 安装 移除 浏览器 engine addon",
+      "computerChrome": "Chrome Chromium Arc Aside Brave Edge Dia Vivaldi 扩展 浏览器 配置文件 配对 连接 断开 标签页 extension",
       "computerApplication": "应用 程序 窗口 原生 application app",
       "computerTyping": "电脑操作 打字机 逐步输入 高亮 动画 command",
       "computerVision": "视觉 模型 画面 监看 共享",
@@ -1265,6 +1266,45 @@
     },
     "engines": {
       "searchDescription": "下载或移除网站目标所用的浏览器引擎。"
+    },
+    "chrome": {
+      "title": "Atd for Chrome",
+      "searchDescription": "连接你自己的 Chromium 浏览器，让 Atd 以你的登录身份在你交给它的标签页中工作。",
+      "extension": "扩展：{{name}} · ID {{id}}",
+      "browsers": "已就绪浏览器：{{browsers}}",
+      "refresh": "刷新",
+      "manifest": {
+        "installed": {
+          "title": "可以连接",
+          "description": "浏览器可以连接到 Atd。在你希望 Atd 工作的每个 Chromium 浏览器配置文件中安装 {{name}}，然后点按它的工具栏按钮并选择“连接…”。"
+        },
+        "chromeMissing": {
+          "title": "未找到兼容的浏览器",
+          "description": "请打开 Chromium 浏览器（如 Chrome、Arc、Aside、Brave、Edge、Dia 或 Vivaldi），安装 {{name}}，然后点击“刷新”。"
+        },
+        "blockedLocation": {
+          "title": "请把 Atd 移到“应用程序”",
+          "description": "浏览器无法从 Atd 当前所在的位置启动它：下载、文稿、桌面或临时副本。请把 Atd 移到“应用程序”文件夹，然后重新打开。"
+        },
+        "failed": {
+          "title": "无法设置浏览器连接",
+          "description": "Atd 无法向你的浏览器注册自己。请点击“刷新”或重新打开 Atd 再试。"
+        }
+      },
+      "install": {
+        "title": "尚未连接浏览器配置文件",
+        "description": "要让 Atd 以你的登录身份在你自己的 Chromium 浏览器中工作：",
+        "extensions": "在浏览器中打开 chrome://extensions，并开启“开发者模式”。",
+        "load": "点击“加载已解压的扩展程序”，选择 {{name}} 构建产物中的 {{folder}} 文件夹。",
+        "connect": "点按浏览器工具栏中的 {{name}}，选择“连接…”，然后在 Atd 中确认。"
+      },
+      "connected": "已连接",
+      "sites_other": "已允许 {{count}} 个网站",
+      "noSites": "未允许任何网站",
+      "lastSeen": "上次连接于 {{time}}",
+      "disconnect": "断开",
+      "disconnectTitle": "要断开“{{name}}”吗？",
+      "disconnectDescription": "Atd 将不再在这个浏览器配置文件中工作，你在其中允许的网站也会被移除。如需再次使用，请在 {{name}} 中选择“连接…”。"
     },
     "application": {
       "title": "添加应用",

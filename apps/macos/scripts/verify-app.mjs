@@ -14,7 +14,9 @@
  * offline app toolchain with its sandbox and npm self-checks.
  * `app` runs on a built app: its Info.plist feeds and Sparkle key, the target architecture taken
  * from the main executable, the widget extension, Sparkle, the computer-use driver helper (thinned
- * to that architecture, and started once with its input closed), and every `pack` check run with
+ * to that architecture, and started once with its input closed), the Atd for Chrome native
+ * messaging host (thinned likewise, its Info.plist flavor keys valid, and started once with no
+ * shell to connect to), and every `pack` check run with
  * the app's own Node, with the Mach-O rules over the whole bundle and every binary's minimum macOS
  * at or below the app's `LSMinimumSystemVersion`. `addons` checks the add-on archives a lock pins
  * (the pack's or the app's own `addons.lock.json`) as found in a directory: digests, format and

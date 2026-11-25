@@ -4,6 +4,60 @@
 
 import Foundation
 
+/// Payload of the `shortcuts.changed` event.
+public typealias ShortcutsChangedEvent = NativeEmpty
+
+/// Payload of the `socket.frames` event.
+public struct SocketFramesEvent: Codable, Equatable, Sendable {
+  public let frames: [SocketFrame]
+
+  public init(frames: [SocketFrame]) {
+    self.frames = frames
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    frames = try container.array(.frames, of: SocketFrame.self, minItems: 1)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case frames
+  }
+}
+
+/// Payload of the `userApp.state` event.
+public struct UserAppStateEvent: Codable, Equatable, Sendable {
+  public let appId: String
+  public let open: Bool
+  public let version: Int?
+
+  public init(appId: String, open: Bool, version: Int?) {
+    self.appId = appId
+    self.open = open
+    self.version = version
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    appId = try container.string(.appId, pattern: "^app-[a-z0-9]{10}$")
+    open = try container.boolean(.open)
+    version = try container.nullable(.version) { try container.integer($0, minimum: 1) }
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(appId, forKey: .appId)
+    try container.encode(open, forKey: .open)
+    try container.encode(version, forKey: .version)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case appId
+    case open
+    case version
+  }
+}
+
 /// Payload of the `userApp.pins` event.
 public struct UserAppPinsEvent: Codable, Equatable, Sendable {
   public let pins: [Pin]
@@ -125,130 +179,6 @@ public struct TaskQueueWithdrawnEvent: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey, CaseIterable {
       case steering
       case followUp
-    }
-  }
-}
-
-/// Payload of the `commandProgress.action` event.
-public struct CommandProgressActionEvent: Codable, Equatable, Sendable {
-  public let target: String
-  public let action: Action
-  public let arguments: CommandArguments?
-  public let compose: Compose?
-  public let adjust: Adjust?
-  public let version: Int?
-
-  public init(
-    target: String, action: Action, arguments: CommandArguments?, compose: Compose?,
-    adjust: Adjust?, version: Int?
-  ) {
-    self.target = target
-    self.action = action
-    self.arguments = arguments
-    self.compose = compose
-    self.adjust = adjust
-    self.version = version
-  }
-
-  public init(from decoder: any Decoder) throws {
-    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-    target = try container.string(.target, minLength: 1, maxLength: 128)
-    action = try container.value(.action, Action.self)
-    arguments = try container.optional(.arguments) {
-      try container.value($0, CommandArguments.self)
-    }
-    compose = try container.optional(.compose) { try container.value($0, Compose.self) }
-    adjust = try container.optional(.adjust) { try container.value($0, Adjust.self) }
-    version = try container.optional(.version) {
-      try container.integer($0, minimum: 1, maximum: 20)
-    }
-  }
-
-  public func encode(to encoder: any Encoder) throws {
-    var container = encoder.container(keyedBy: CodingKeys.self)
-    try container.encode(target, forKey: .target)
-    try container.encode(action, forKey: .action)
-    try container.encodeIfPresent(arguments, forKey: .arguments)
-    try container.encodeIfPresent(compose, forKey: .compose)
-    try container.encodeIfPresent(adjust, forKey: .adjust)
-    try container.encodeIfPresent(version, forKey: .version)
-  }
-
-  private enum CodingKeys: String, CodingKey, CaseIterable {
-    case target
-    case action
-    case arguments
-    case compose
-    case adjust
-    case version
-  }
-
-  public enum Action: String, Codable, Equatable, Sendable {
-    case cancel
-    case open
-    case change
-    case run
-    case edit
-    case pick
-    case regenerate
-    case adjust
-    case version
-    case stop
-    case close
-  }
-
-  public struct Compose: Codable, Equatable, Sendable {
-    public let text: String
-    public let files: [FileRef]
-
-    public init(text: String, files: [FileRef]) {
-      self.text = text
-      self.files = files
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      text = try container.string(.text, maxLength: 100_000)
-      files = try container.array(.files, of: FileRef.self, maxItems: 10)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case text
-      case files
-    }
-  }
-
-  public struct Adjust: Codable, Equatable, Sendable {
-    public let text: String
-    public let adjustments: [String]
-    public let arguments: CommandArguments?
-
-    public init(text: String, adjustments: [String], arguments: CommandArguments?) {
-      self.text = text
-      self.adjustments = adjustments
-      self.arguments = arguments
-    }
-
-    public init(from decoder: any Decoder) throws {
-      let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
-      text = try container.string(.text, maxLength: 2_000)
-      adjustments = try container.array(.adjustments, of: String.self, maxItems: 8)
-      arguments = try container.optional(.arguments) {
-        try container.value($0, CommandArguments.self)
-      }
-    }
-
-    public func encode(to encoder: any Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      try container.encode(text, forKey: .text)
-      try container.encode(adjustments, forKey: .adjustments)
-      try container.encodeIfPresent(arguments, forKey: .arguments)
-    }
-
-    private enum CodingKeys: String, CodingKey, CaseIterable {
-      case text
-      case adjustments
-      case arguments
     }
   }
 }

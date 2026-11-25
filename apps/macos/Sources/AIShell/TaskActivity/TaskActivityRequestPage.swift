@@ -85,8 +85,10 @@ struct TaskActivityRequestPage: View {
         access.persistence == .saved ? .activityAccessSaved : .activityAccessRun
       notes.append((labels.format(key, access.targetLabel), false))
       let browser = access.targetKind == .browser
-      notes.append(
-        (labels.text(browser ? .activityAccessBackground : .activityAccessApplication), false))
+      let how: TaskActivityStringKey =
+        access.channel == .chrome
+        ? .activityAccessChrome : browser ? .activityAccessBackground : .activityAccessApplication
+      notes.append((labels.text(how), false))
       if browser && !access.origins.isEmpty {
         notes.append((access.origins.joined(separator: ", "), false))
       }

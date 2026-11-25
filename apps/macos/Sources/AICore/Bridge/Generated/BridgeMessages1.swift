@@ -97,6 +97,8 @@ public enum NativeCall: Equatable, Sendable {
   case computerSetTyping(ComputerSetTypingParams)
   case computerSetPointerVisible(ComputerSetPointerVisibleParams)
   case computerPrimeCaptureConsent(ComputerPrimeCaptureConsentParams)
+  case computerChromeDisconnect(ComputerChromeDisconnectParams)
+  case computerChromeRefresh(ComputerChromeRefreshParams)
   case computerPreviewShow(ComputerPreviewShowParams)
   case approvalRequest(ApprovalRequestParams)
   case toolbarSet(ToolbarSetParams)
@@ -178,6 +180,8 @@ public enum NativeCall: Equatable, Sendable {
     case .computerSetTyping: "computer.setTyping"
     case .computerSetPointerVisible: "computer.setPointerVisible"
     case .computerPrimeCaptureConsent: "computer.primeCaptureConsent"
+    case .computerChromeDisconnect: "computer.chrome.disconnect"
+    case .computerChromeRefresh: "computer.chrome.refresh"
     case .computerPreviewShow: "computer.preview.show"
     case .approvalRequest: "approval.request"
     case .toolbarSet: "toolbar.set"

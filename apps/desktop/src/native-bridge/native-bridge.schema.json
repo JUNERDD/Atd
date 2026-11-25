@@ -73,6 +73,8 @@
       "computer.setTyping",
       "computer.setPointerVisible",
       "computer.primeCaptureConsent",
+      "computer.chrome.disconnect",
+      "computer.chrome.refresh",
       "computer.preview.show",
       "approval.request",
       "toolbar.set",
@@ -3023,6 +3025,62 @@
             "method": {
               "type": "string",
               "const": "computer.primeCaptureConsent"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "computer.chrome.disconnect"
+            },
+            "params": {
+              "type": "object",
+              "required": ["installationId"],
+              "properties": {
+                "installationId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[a-zA-Z0-9_-]+$"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "computer.chrome.refresh"
             },
             "params": {
               "type": "object",
@@ -6008,7 +6066,8 @@
                 "engines",
                 "unsettled",
                 "captureConsent",
-                "postEventAccess"
+                "postEventAccess",
+                "chrome"
               ],
               "properties": {
                 "host": {
@@ -6182,6 +6241,106 @@
                 },
                 "postEventAccess": {
                   "type": "boolean"
+                },
+                "chrome": {
+                  "type": "object",
+                  "required": ["hostManifest", "browsers", "extensionIds", "connections"],
+                  "properties": {
+                    "hostManifest": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "installed"
+                        },
+                        {
+                          "type": "string",
+                          "const": "chromeMissing"
+                        },
+                        {
+                          "type": "string",
+                          "const": "blockedLocation"
+                        },
+                        {
+                          "type": "string",
+                          "const": "failed"
+                        }
+                      ]
+                    },
+                    "browsers": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "maxItems": 32
+                    },
+                    "extensionIds": {
+                      "type": "object",
+                      "required": ["expected"],
+                      "properties": {
+                        "expected": {
+                          "type": "string",
+                          "minLength": 32,
+                          "maxLength": 32,
+                          "pattern": "^[a-p]{32}$"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "connections": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "installationId",
+                          "label",
+                          "browser",
+                          "connected",
+                          "lastSeenAt",
+                          "sites"
+                        ],
+                        "properties": {
+                          "installationId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128,
+                            "pattern": "^[a-zA-Z0-9_-]+$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 320
+                          },
+                          "email": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 320
+                          },
+                          "browser": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "connected": {
+                            "type": "boolean"
+                          },
+                          "lastSeenAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "maxLength": 64
+                          },
+                          "sites": {
+                            "type": "integer",
+                            "minimum": 0
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 32
+                    }
+                  },
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -12152,6 +12311,46 @@
         }
       ]
     },
+    "ComputerChromeDisconnectParams": {
+      "type": "object",
+      "required": ["installationId"],
+      "properties": {
+        "installationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ComputerChromeDisconnectResult": {
+      "type": "object",
+      "required": ["ok"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ComputerChromeRefreshParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "ComputerChromeRefreshResult": {
+      "type": "object",
+      "required": ["ok"],
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
     "ComputerPreviewShowParams": {
       "type": "object",
       "required": ["taskId"],
@@ -14892,7 +15091,8 @@
         "engines",
         "unsettled",
         "captureConsent",
-        "postEventAccess"
+        "postEventAccess",
+        "chrome"
       ],
       "properties": {
         "host": {
@@ -15066,6 +15266,106 @@
         },
         "postEventAccess": {
           "type": "boolean"
+        },
+        "chrome": {
+          "type": "object",
+          "required": ["hostManifest", "browsers", "extensionIds", "connections"],
+          "properties": {
+            "hostManifest": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "installed"
+                },
+                {
+                  "type": "string",
+                  "const": "chromeMissing"
+                },
+                {
+                  "type": "string",
+                  "const": "blockedLocation"
+                },
+                {
+                  "type": "string",
+                  "const": "failed"
+                }
+              ]
+            },
+            "browsers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "maxItems": 32
+            },
+            "extensionIds": {
+              "type": "object",
+              "required": ["expected"],
+              "properties": {
+                "expected": {
+                  "type": "string",
+                  "minLength": 32,
+                  "maxLength": 32,
+                  "pattern": "^[a-p]{32}$"
+                }
+              },
+              "additionalProperties": false
+            },
+            "connections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "installationId",
+                  "label",
+                  "browser",
+                  "connected",
+                  "lastSeenAt",
+                  "sites"
+                ],
+                "properties": {
+                  "installationId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "pattern": "^[a-zA-Z0-9_-]+$"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 320
+                  },
+                  "email": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 320
+                  },
+                  "browser": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "connected": {
+                    "type": "boolean"
+                  },
+                  "lastSeenAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "maxLength": 64
+                  },
+                  "sites": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "additionalProperties": false
+              },
+              "maxItems": 32
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

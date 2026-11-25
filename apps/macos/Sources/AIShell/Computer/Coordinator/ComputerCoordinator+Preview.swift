@@ -16,6 +16,7 @@ extension ComputerCoordinator {
       let entry = try? targets.current(ref, engineGeneration: engine.generation)
     else { return }
     let kind = entry.binding.kind
+    let engineId = entry.binding.engine
     let captures = kind == .native
     if captures, request.envelope.unattended, !captureConsent.isPrepared { return }
     guard let source = try? await provider.previewSource(ref, observation: observation) else {
@@ -30,7 +31,9 @@ extension ComputerCoordinator {
         return .locked
       }
       if ComputerScreenState.writeBlock() != nil { return .locked }
-      if ComputerScreenState.missingPermission(kind: kind, screenshot: captures) != nil {
+      if ComputerScreenState.missingPermission(engine: engineId, kind: kind, screenshot: captures)
+        != nil
+      {
         return .permission
       }
       guard let engine,

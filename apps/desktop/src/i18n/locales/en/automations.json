@@ -413,6 +413,7 @@
     "targets": "Targets",
     "targetGone": "Disconnected target",
     "targetGoneDescription": "Register it again in Settings › Computer use, or turn it off here.",
+    "chromeTargetDescription": "A site in your own Chrome. Automations run without you and can’t use it, so turn it off here.",
     "targetsNote": "An automation needs at least one target, so the last one can’t be turned off.",
     "steps": "Steps",
     "stepsNote": "Steps come from the task they were recorded in and can’t be rearranged here. Ask Atd to change them.",

@@ -18,6 +18,7 @@ import {
   type TargetBinding,
 } from '@atd/agent-contracts';
 import type { ComputerBindingStore } from './bindings.js';
+import { chromeProblem } from './chrome-channel.js';
 import type { ComputerGrantCheck } from './grant-check.js';
 import { recipeAction, type Refusal } from './recipe-step.js';
 import { regionalConditionsProblem } from './regional-conditions.js';
@@ -128,7 +129,8 @@ export interface ActCheck extends Omit<StepScope, 'profile'> {
 }
 
 /**
- * Checks one `act` against the run's scope and returns the action as the host receives it. In a
+ * Checks one `act` against the run's scope and returns the action as the host receives it. A
+ * target on the person's own Chrome takes only attended runs that follow no recipe. In a
  * recipe-bound run the action must carry out an allowed next step of the recipe, and the
  * service, not the model, fills in its locator, condition, effect and postcondition; such a run
  * never takes visual steps or carries `invoke`. In a free run a new business action (`invoke`,
@@ -149,6 +151,8 @@ export function checkAct(
   const inputRegionProblem = regionalConditionsProblem(input, check);
   if (inputRegionProblem) return refuse(inputRegionProblem);
   if (!profile) return refuse('The computer host offers no engine for this target.');
+  const chrome = chromeProblem(check.binding, check.unattended, scope.mode !== 'free');
+  if (chrome) return refuse(chrome);
   if (check.unattended && (profile.qualification !== 'qualified' || profile.affectsSystemInput))
     return refuse('The engine for this target is not qualified for unattended use.');
   const built =

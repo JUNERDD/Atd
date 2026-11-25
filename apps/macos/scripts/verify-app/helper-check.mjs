@@ -11,7 +11,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { MACHO_ARCHS } from '../arch.mjs';
-import { checkMachO, minimumSystem, sliceArchs } from './macho.mjs';
+import { checkThinExecutable } from './macho.mjs';
 import { CHILD_ENV } from './pack-layout.mjs';
 
 /** The helper's file name in `Contents/MacOS` (project.yml: the `atd-computer-driver` target). */
@@ -54,15 +54,9 @@ function start(helper) {
  */
 export async function verifyDriverHelper({ helper, arch, maxMinos }) {
   const machOArch = MACHO_ARCHS[arch];
-  const archs = sliceArchs(helper);
-  if (archs?.join(' ') !== machOArch)
-    throw new Error(
-      `${helper} must hold exactly ${machOArch}, as the main executable does, not ${archs?.join(', ') ?? 'unreadable'}.`,
-    );
-  if ((await checkMachO([helper], { machOArch, maxMinos })) !== 1)
-    throw new Error(`${helper} is not a Mach-O executable.`);
+  const minos = await checkThinExecutable(helper, { machOArch, maxMinos });
   const ready = start(helper);
   process.stdout.write(
-    `${helper}: ${machOArch} only, signed, minos ${minimumSystem(helper, machOArch)} <= ${maxMinos}; starts, announces protocol ${ready.protocolVersion} and exits on end of input\n`,
+    `${helper}: ${machOArch} only, signed, minos ${minos} <= ${maxMinos}; starts, announces protocol ${ready.protocolVersion} and exits on end of input\n`,
   );
 }

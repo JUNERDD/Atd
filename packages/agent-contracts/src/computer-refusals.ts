@@ -13,7 +13,7 @@ import type { ComputerErrorCode } from './computer-results.js';
 
 /**
  * Which limit stopped a request (`ComputerError.reason`), mostly with `noBackgroundRoute`, and
- * with `targetUnavailable` for a window the host cannot read.
+ * with `targetUnavailable` for a window the host cannot read or a paired Chrome it cannot reach.
  * - `dragAndDrop`: the step needs a native drag-and-drop session; only drags inside the target's
  *   content have a background route, and one across apps or out of the window needs the real
  *   pointer, which the host never moves.
@@ -46,6 +46,9 @@ import type { ComputerErrorCode } from './computer-results.js';
  *   sent nothing and restored what the person had in front of them.
  * - `notActivated`: the step needed the foreground, but the host could not make the target app
  *   active with the target window frontmost; it sent nothing and restored what it changed.
+ * - `chromeDisconnected`: with `targetUnavailable`, a target on the person's own Chrome cannot be
+ *   reached because that paired Chrome is not connected to Atd (Chrome or that profile is closed,
+ *   Atd for Chrome is turned off or removed, or its connection dropped); the person reconnects it.
  */
 export const ComputerRefusalReasonSchema = Type.Union([
   Type.Literal('dragAndDrop'),
@@ -64,6 +67,7 @@ export const ComputerRefusalReasonSchema = Type.Union([
   Type.Literal('screenLocked'),
   Type.Literal('covered'),
   Type.Literal('notActivated'),
+  Type.Literal('chromeDisconnected'),
 ]);
 export type ComputerRefusalReason = Static<typeof ComputerRefusalReasonSchema>;
 

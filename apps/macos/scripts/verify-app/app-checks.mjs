@@ -1,17 +1,19 @@
 /**
  * The built app's checks on top of its service pack's: the Info.plist values each architecture's
  * build must carry, the main executable that decides the target architecture, the parts every
- * Release build embeds (widget extension, Sparkle, the computer-use driver helper, renderer,
- * service pack with its add-on lock, and Node) and the one it never does again (the retired Cua
- * driver), the helper's own checks (helper-check.mjs), the Mach-O rules across the whole bundle
- * with the app's own `LSMinimumSystemVersion`, and the bundle's signature, checked last so it
- * also proves the other checks left the bundle untouched. The add-on archives the lock pins are
- * checked with `verify-app.mjs addons`.
+ * Release build embeds (widget extension, Sparkle, the computer-use driver helper, the Atd for
+ * Chrome native messaging host, renderer, service pack with its add-on lock, and Node) and the one
+ * it never does again (the retired Cua driver), the helpers' own checks (helper-check.mjs,
+ * chrome-host-check.mjs, which also checks the host's Info.plist values), the Mach-O rules across
+ * the whole bundle with the app's own `LSMinimumSystemVersion`, and the bundle's signature,
+ * checked last so it also proves the other checks left the bundle untouched. The add-on archives
+ * the lock pins are checked with `verify-app.mjs addons`.
  */
 import { access, lstat } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { nodeArchOf } from '../arch.mjs';
+import { CHROME_HOST, verifyChromeHost } from './chrome-host-check.mjs';
 import { DRIVER_HELPER, verifyDriverHelper } from './helper-check.mjs';
 import { sliceArchs } from './macho.mjs';
 import { PACK_ADDONS_LOCK } from './pack-layout.mjs';
@@ -64,11 +66,13 @@ export async function verifyApp({ app, feedUrl, arm64FeedUrl, publicEdKey }) {
   const node = path.join(resources, 'node', 'bin', 'node');
   const pack = path.join(resources, 'agent-service');
   const helper = path.join(contents, 'MacOS', DRIVER_HELPER);
+  const chromeHost = path.join(contents, 'MacOS', CHROME_HOST);
   const embedded = [
     path.join(contents, 'PlugIns', 'AtdWidgets.appex', 'Contents', 'MacOS', 'AtdWidgets'),
     path.join(contents, 'PlugIns', 'AtdFinderSync.appex', 'Contents', 'MacOS', 'AtdFinderSync'),
     path.join(contents, 'Frameworks', 'Sparkle.framework', 'Sparkle'),
     helper,
+    chromeHost,
     path.join(resources, 'renderer', 'index.html'),
     path.join(pack, 'build-info.json'),
     path.join(pack, PACK_ADDONS_LOCK),
@@ -82,6 +86,7 @@ export async function verifyApp({ app, feedUrl, arm64FeedUrl, publicEdKey }) {
   if (await lstat(retired).catch(() => null))
     throw new Error(`${retired} must not ship; the Cua driver is retired.`);
   await verifyDriverHelper({ helper, arch, maxMinos: info.LSMinimumSystemVersion });
+  await verifyChromeHost({ host: chromeHost, arch, info, infoFile });
   await verifyPack({ node, pack, arch, maxMinos: info.LSMinimumSystemVersion, machORoots: [app] });
 
   const seal = spawnSync('codesign', ['--verify', '--strict', app], { encoding: 'utf8' });

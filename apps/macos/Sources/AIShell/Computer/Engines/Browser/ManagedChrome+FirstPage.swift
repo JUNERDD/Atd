@@ -52,7 +52,7 @@ extension ManagedChromes {
       instance, "open_page",
       [
         "url": .string(browser.startUrl),
-        "allowedOrigins": PlaywrightBrowserEngine.origins(browser),
+        "allowedOrigins": BrowserPageDriver.origins(browser),
         "parkAt": park.value,
       ], timeout: .seconds(20), writes: true)
     let opened = try reply.checked("open_page")

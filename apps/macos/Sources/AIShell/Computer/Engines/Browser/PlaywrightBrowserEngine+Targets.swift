@@ -10,8 +10,9 @@ extension PlaywrightBrowserEngine {
   func resolve(
     _ binding: TargetBindingWire, generation host: Int, context _: EngineResolveContext
   ) async throws(ComputerFailure) -> TargetRefWire {
-    guard case .browser(let browser) = binding else {
-      throw ComputerFailure(.unsupported, "The browser engine serves browser targets only.")
+    guard case .browser(let browser) = binding, browser.channel == nil else {
+      throw ComputerFailure(
+        .unsupported, "The browser engine serves managed browser targets only.")
     }
     guard let engineGeneration = generation else {
       throw ComputerFailure(.engineFailed, "The browser engine is not running.")
@@ -26,7 +27,7 @@ extension PlaywrightBrowserEngine {
         "The managed browser of \(browser.label) is not running; request access to the website "
           + "to start it in the background.")
     }
-    let pages = try await listPages(instance)
+    let pages = try await driver.listPages(instance)
     let onRule = pages.filter {
       BrowserOrigins.isTarget(
         url: $0.url, urlPrefix: browser.urlPrefix, origins: browser.allowedOrigins)
@@ -45,12 +46,7 @@ extension PlaywrightBrowserEngine {
         profileId: browser.profileId, contextId: instance.contextId, pageId: page.pageId,
         navigationGeneration: 0),
       capabilities: Self.targetCapabilities)
-    bindings = bindings.filter { $0.value.bindingId != browser.bindingId }
-    surfaces = surfaces.filter { bindings[$0.key] != nil }
-    bindings[ref.id] = browser
-    var set = BrowserSurfaceSet(targetRefId: ref.id, boundPageId: page.pageId)
-    set.reconcile(pages, origins: browser.allowedOrigins)
-    surfaces[ref.id] = set
+    driver.track(ref, binding: browser, boundPageId: page.pageId, pages: pages)
     return ref
   }
 }

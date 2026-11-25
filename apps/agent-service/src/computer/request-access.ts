@@ -1,6 +1,6 @@
 import {
-  COMPUTER_ENGINE_FOR_KIND,
   COMPUTER_MAX_RUN_BINDINGS,
+  isChromeBinding,
   type ComputerAccessTarget,
   type ComputerError,
   type ComputerTargetKind,
@@ -14,7 +14,9 @@ import {
   type ToolAnswer,
 } from './call-context.js';
 import { accessObservation, type AccessWait } from './access-observation.js';
+import { onPreparedBrowser, preparedEngine, preparedTarget } from './chrome-channel.js';
 import { computerDetails } from './details.js';
+import { CHROME_RECONNECT } from './refusals.js';
 import { replyValue, wrongKind } from './operations.js';
 import { activityTarget } from './activity-call.js';
 
@@ -28,7 +30,9 @@ const KIND_FOR_TARGET: Readonly<Record<ComputerAccessTarget['kind'], ComputerTar
  * Resolve the real target first, then authorize access through the task's existing gate. Opening
  * is always in the background: the host opens the target without bringing anything forward
  * (`accessOpened.activated` says when opening it made an app active anyway, such as a browser
- * that had to start), and refuses with `noBackgroundRoute` (`openBrowser`) when it cannot.
+ * that had to start), and refuses with `noBackgroundRoute` (`openBrowser`) when it cannot. A
+ * website opens in the browser the call names, else the run's default (chrome-channel.ts); the
+ * host is asked for exactly that browser and its candidate must be on it.
  */
 export async function requestAccess(
   base: CallBase,
@@ -45,10 +49,13 @@ export async function requestAccess(
     refuse(base, 'Only an attended parent task can request new computer access.');
   const { runtime, runId } = base;
   const kind = KIND_FOR_TARGET[target.kind];
-  if (!runtime.engineInstalled(COMPUTER_ENGINE_FOR_KIND[kind]))
+  const prepared = preparedTarget(target, base.snapshot.computer);
+  // Only a website's engine is an add-on: the browser engine, which also drives the person's
+  // own Chrome through Atd for Chrome.
+  if (!runtime.engineInstalled(preparedEngine(prepared)))
     refuse(
       base,
-      'This target needs an engine that is not installed: the person installs it in Settings → Computer use → Engines, then request access again.',
+      "This website needs the browser engine, which is not installed (it also drives the person's own Chrome through Atd for Chrome): the person installs it in Settings → Computer use → Engines, then request access again.",
     );
   const computer = runtime.access.effective(runId, base.snapshot.computer) ?? { bindingIds: [] };
   const ctx: CallContext = { ...base, computer, scope: { ok: true, mode: 'free' } };
@@ -56,7 +63,7 @@ export async function requestAccess(
     ctx,
     await runtime.coordinator.request(
       envelopeFor(ctx, 30_000),
-      { kind: 'prepareAccess', target },
+      { kind: 'prepareAccess', target: prepared },
       { signal: ctx.signal, timeoutMs: 30_000 },
     ),
     'requestAccess',
@@ -64,6 +71,8 @@ export async function requestAccess(
   if (candidate.kind !== 'accessCandidate') wrongKind(ctx, 'requestAccess');
   const { content } = candidate;
   if (content.kind !== kind) refuse(ctx, 'The host resolved a different target kind.');
+  if (!onPreparedBrowser(prepared, content))
+    refuse(ctx, 'The host resolved the website in a different browser than the one requested.');
   runtime.activity.target(base, activityTarget(content));
   let binding = runtime.access.matching(content, runId);
   if (
@@ -87,6 +96,9 @@ export async function requestAccess(
       detail: reason,
       signal: ctx.signal,
       sessionGrant: false,
+      // A new site in the person's own Chrome is theirs to allow (or the popup's switch): no tier
+      // or review grants it.
+      ...(isChromeBinding(content) ? { askAlways: true } : {}),
     });
   }
   try {
@@ -179,7 +191,9 @@ function unavailableNext(error: ComputerError | undefined): string {
   const next =
     error.reason === 'screenLocked'
       ? 'Ask the person to unlock the Mac, not to do the app task themselves.'
-      : 'Explain this limit and wait for its cause to change.';
+      : error.reason === 'chromeDisconnected'
+        ? CHROME_RECONNECT
+        : 'Explain this limit and wait for its cause to change.';
   return `Access remains approved, but the target could not be resolved: ${error.message} (${reason}). ${next} This is not startup loading: do not retry it repeatedly or work around it with another tool. No target reference is available yet; resume with requestAccess after the cause is resolved.`;
 }
 

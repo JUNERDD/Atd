@@ -41,18 +41,26 @@ settings:
   # share: the extension's bundle id, the directory it may read and the links it opens derive
   # from them. AI_SERVICE_MENU_TITLE is the Finder entry's title, the Services entry's
   # (NSServices) and the Finder Sync extension's alike. Debug and Release differ, so both builds
-  # can be installed side by side.
+  # can be installed side by side. AI_CHROME_HOST_NAME and AI_CHROME_EXTENSION_ID pick the Atd
+  # for Chrome flavor each build pairs with (Debug the `dev` extension, Release the `release` one;
+  # apps/chrome-extension/flavors.ts and ChromeChannelIdentity.configured carry the same pairs):
+  # the native messaging host name the shell's manifest registers, and the one extension ID it
+  # admits.
   configs:
     Debug:
       AI_HOST_BUNDLE_ID: com.junerdd.ai.dev
       AI_URL_SCHEME: atd-dev
       AI_SERVICE_MENU_TITLE: Add to Atd Dev
+      AI_CHROME_HOST_NAME: com.junerdd.atd.chrome.dev
+      AI_CHROME_EXTENSION_ID: eolengaocpdgjapbjdfpfcokjpgjaedi
     Release:
       ENABLE_HARDENED_RUNTIME: YES
       CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
       AI_HOST_BUNDLE_ID: com.junerdd.ai
       AI_URL_SCHEME: atd
       AI_SERVICE_MENU_TITLE: Add to Atd
+      AI_CHROME_HOST_NAME: com.junerdd.atd.chrome
+      AI_CHROME_EXTENSION_ID: lcjihbdaipfphmofnhlocknjpnocbjbf
 packages:
   AIMac:
     path: .
@@ -93,6 +101,15 @@ targets:
       # shell spawns it from Contents/MacOS as a direct child. Never linked into the app: it is a
       # separate process, so a crash or hang in its private-symbol calls stays out of the shell.
       - target: atd-computer-driver
+        embed: true
+        codeSign: true
+        link: false
+        copy:
+          destination: executables
+      # The Atd for Chrome native messaging host (the `atd-chrome-host` target below), embedded
+      # the same way. Chrome, not the shell, starts it, from the path in the manifest the shell
+      # installs (ChromeHostManifest); the shell admits only this file's code on its socket.
+      - target: atd-chrome-host
         embed: true
         codeSign: true
         link: false
@@ -153,6 +170,11 @@ targets:
         # extensions.
         AtdHostBundleIdentifier: $(AI_HOST_BUNDLE_ID)
         AtdURLScheme: $(AI_URL_SCHEME)
+        # The Atd for Chrome flavor this build pairs with (ChromeChannelIdentity): the native
+        # messaging host name and the extension ID its host manifest admits. The embedded
+        # atd-chrome-host also reads AtdHostBundleIdentifier above to find the shell's socket.
+        AtdChromeHostName: $(AI_CHROME_HOST_NAME)
+        AtdChromeExtensionID: $(AI_CHROME_EXTENSION_ID)
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSPrincipalClass: NSApplication
         # Sparkle (AppUpdater, Release builds only): the R2 mirror's appcast for this build's
@@ -336,6 +358,33 @@ targets:
         # entitlement (the app and its extension get none), an identifier that belongs to
         # provisioning profiles, which an ad hoc or self-signed build does not have. The helper
         # needs no entitlements; an ad hoc build still gets the base get-task-allow, like the app.
+        ENTITLEMENTS_REQUIRED: NO
+  # The Atd for Chrome native messaging host (Sources/AtdChromeHostCLI): the package's
+  # `atd-chrome-host` executable built as a command-line tool and embedded at
+  # Contents/MacOS/atd-chrome-host, like the driver above. Its sources are the whole entry target
+  # (shared with the SwiftPM executable, so inside its lint and format scope); the channel's framing,
+  # frame types and the listener's code signature check come from the AIChromeChannelKit library
+  # product, the host's only dependency.
+  # Chrome starts it with its own stdio; it pipes frames to the shell's unix socket and never links
+  # anything of the shell. It takes the build settings above (architecture, deployment target,
+  # signing identity); scripts/verify-app.mjs checks the embedded binary: architecture, signature,
+  # minimum macOS, and a start with no shell listening.
+  atd-chrome-host:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Sources/AtdChromeHostCLI
+    dependencies:
+      - package: AIMac
+        product: AIChromeChannelKit
+    settings:
+      base:
+        PRODUCT_NAME: atd-chrome-host
+        # One binary in Debug too: Chrome runs this file directly, and the shell's peer check
+        # compares its cdhash, which a `.debug.dylib` stub would leave out.
+        ENABLE_DEBUG_DYLIB: NO
+        SKIP_INSTALL: YES
+        # As for the driver: no provisioning-profile application identifier on a tool.
         ENTITLEMENTS_REQUIRED: NO
 schemes:
   AI:

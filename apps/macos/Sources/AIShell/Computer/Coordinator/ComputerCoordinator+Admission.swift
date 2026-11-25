@@ -10,9 +10,10 @@ extension ComputerCoordinator {
   func admit(_ action: ComputerActionWire, request: HostRequestWire)
     throws(ComputerFailure) -> any ComputerEngine
   {
-    let kind = try targets.kind(of: action.targetRefId)
+    let binding = try targets.binding(of: action.targetRefId)
+    let kind = binding.kind
     let writes = Self.writes(action)
-    let engine = try usableEngine(kind, request: request, screenshot: false)
+    let engine = try usableEngine(binding, request: request, screenshot: false)
     let profile = engine.profile
     let conditions =
       action.steps.compactMap { step -> ComputerConditionWire? in

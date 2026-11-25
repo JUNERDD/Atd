@@ -77,6 +77,13 @@ export function nativeComputer(connection: NativeConnection, native: NativeBridg
       void (await native.call('computer.setPointerVisible', { visible })),
     setTyping: async (setting, enabled) =>
       void (await native.call('computer.setTyping', { setting, enabled })),
+    disconnectChrome: async (installationId) => {
+      await native.call('computer.chrome.disconnect', { installationId });
+      changed();
+    },
+    refreshChrome: async () => {
+      await native.call('computer.chrome.refresh', {});
+    },
     pickApp: async () => (await native.call('apps.pick', {})).apps[0] ?? null,
   };
 }

@@ -133,6 +133,12 @@ public enum JsMessage: Decodable, Equatable, Sendable {
       case "computer.primeCaptureConsent":
         call = try .computerPrimeCaptureConsent(
           container.value(.params, ComputerPrimeCaptureConsentParams.self))
+      case "computer.chrome.disconnect":
+        call = try .computerChromeDisconnect(
+          container.value(.params, ComputerChromeDisconnectParams.self))
+      case "computer.chrome.refresh":
+        call = try .computerChromeRefresh(
+          container.value(.params, ComputerChromeRefreshParams.self))
       case "computer.preview.show":
         call = try .computerPreviewShow(container.value(.params, ComputerPreviewShowParams.self))
       case "approval.request":

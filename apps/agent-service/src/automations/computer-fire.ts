@@ -1,6 +1,6 @@
 import {
   COMPUTER_BROWSER_ADDON,
-  COMPUTER_ENGINE_FOR_KIND,
+  computerEngineFor,
   type Automation,
   type AutomationComputerPolicy,
   type AutomationRunReason,
@@ -151,8 +151,8 @@ function neededEngines(
   policy: AutomationComputerPolicy,
   bindings: ComputerBindingSource,
 ): ComputerEngine[] {
-  const kinds = policy.bindingIds.flatMap((id) => bindings.get(id)?.kind ?? []);
-  return [...new Set(kinds.map((kind) => COMPUTER_ENGINE_FOR_KIND[kind]))];
+  const registered = policy.bindingIds.flatMap((id) => bindings.get(id) ?? []);
+  return [...new Set(registered.map((binding) => computerEngineFor(binding)))];
 }
 
 /**

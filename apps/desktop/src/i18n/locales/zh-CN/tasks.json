@@ -172,9 +172,21 @@
     },
     "allowAccess": "允许访问",
     "accessSaved": "允许访问 {{target}}，并保存到“电脑操作”设置供后续任务使用。你可以随时在设置中移除授权。",
+    "accessSavedChrome": "允许在你的 Chrome 中访问 {{target}}，并为后续任务记住此授权。你可以随时在 Atd for Chrome 中关闭该网站的授权。",
     "accessRun": "仅在本次运行中允许访问 {{target}}。运行结束或停止后，临时授权失效。",
     "accessBackground": "Atd 将在后台操作此目标，不会把它切到前台，也不会占用你的指针和键盘。",
-    "accessApplication": "Atd 将在后台操作此应用。后台无法完成某一步时，Atd 会短暂把应用调到前面，把这一步的点击和按键直接发给它，不会移动你的指针，然后切回你原来的应用和窗口。"
+    "accessApplication": "Atd 将在后台操作此应用。后台无法完成某一步时，Atd 会短暂把应用调到前面，把这一步的点击和按键直接发给它，不会移动你的指针，然后切回你原来的应用和窗口。",
+    "accessChrome": "Atd 将以你的登录身份在你自己的 Chrome 中工作，只操作它放入“Atd”标签页组的标签页。你的其他标签页、书签、历史记录和 Cookie 不会被触及；提交任何内容前，Atd 都会先询问你。",
+    "act": {
+      "read": "读取“{{target}}”",
+      "navigate": "在“{{target}}”上打开页面",
+      "input": "在“{{target}}”中输入文字",
+      "click": "在“{{target}}”中点击",
+      "invoke": "在“{{target}}”中执行操作",
+      "submit": "在“{{target}}”中提交"
+    },
+    "actChrome": "Atd 会以你的登录身份，在你自己的 Chrome 中“Atd”标签页组的标签页里完成这一步。",
+    "actChromeSubmit": "Atd 会以你的登录身份在你自己的 Chrome 中完成这一步；在那里提交前，每次都会先询问你。"
   },
   "question": {
     "skip": "跳过",
@@ -766,7 +778,8 @@
       "openBrowser": "Atd 无法在后台启动浏览器。",
       "screenLocked": "你的 Mac 当时已锁定，锁定期间 macOS 会隐藏应用窗口。",
       "covered": "Atd 已把应用调到前面，但要操作的位置仍被其他窗口（可能是 Atd 自己的面板）遮住，所以没有发送任何操作，并已还原现场。",
-      "notActivated": "macOS 没有允许 Atd 把应用调到前面，所以没有发送任何操作，Atd 改动过的地方也已还原。"
+      "notActivated": "macOS 没有允许 Atd 把应用调到前面，所以没有发送任何操作，Atd 改动过的地方也已还原。",
+      "chromeDisconnected": "你的 Chrome 目前没有连接到 Atd。"
     },
     "retry": {
       "never": "Atd 不会自动重复此操作。",
@@ -842,7 +855,8 @@
         "openBrowser": "请打开“{{target}}”的浏览器，然后告诉 Atd 继续。",
         "screenLocked": "Mac 解锁后，告诉 Atd 继续即可。",
         "covered": "请移开遮住“{{target}}”的窗口，或自行完成这一步，然后告诉 Atd 继续。",
-        "notActivated": "请在“{{target}}”中自行完成这一步，然后告诉 Atd 继续。"
+        "notActivated": "请在“{{target}}”中自行完成这一步，然后告诉 Atd 继续。",
+        "chromeDisconnected": "请打开 Chrome 并确认 Atd for Chrome 已连接，然后告诉 Atd 继续。"
       },
       "inUse": "你在“{{target}}”中操作完后，告诉 Atd 继续即可。",
       "consent": "请先在设置中准备屏幕访问，然后告诉 Atd 继续。",
