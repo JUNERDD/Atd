@@ -117,6 +117,7 @@ export class Hud {
       return this.reuse('compose', () => ({
         node: this.ask.composer.node,
         shape: 'compose',
+        scene: 'compose',
         role: 'dialog',
         label: t('hud.label', { title: t('ask.label') }),
         guarded: null,
@@ -127,6 +128,8 @@ export class Hud {
       return this.reuse(`starting:${text}:${tab.prefs.glowEffects}`, () => ({
         node: startingRow(text, tab.prefs.glowEffects),
         shape: 'row',
+        // The run it starts takes over the same row in place, as its working row.
+        scene: 'row:working',
         role: 'status',
         label: t('hud.label', { title: text }),
         guarded: null,

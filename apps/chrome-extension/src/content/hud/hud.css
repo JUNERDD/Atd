@@ -2,7 +2,8 @@
  * The in-tab HUD: the command island's 44 px glass capsule. Values are the prototype's
  * (`tmp/browser-extension-prototype/prototype.css`, "In-tab HUD (island capsule)"), kept here as
  * plain CSS scoped to the HUD's shadow root. The HUD rests at one of six anchors; flex alignment
- * makes cards and the composer grow away from that corner, and entrances rise from its edge.
+ * makes cards and the composer grow away from that corner, and the glass opens out of its edge.
+ * `--ax` and `--ay` are the anchor as shares of a box (`morph.ts`, `AnchorPoint`).
  */
 .wrap {
   position: absolute;
@@ -14,27 +15,36 @@
   pointer-events: none;
   --hud-ox: 50%;
   --hud-oy: 100%;
+  --ax: 0.5;
+  --ay: 1;
 }
 
 .wrap[data-v='top'] {
   align-items: flex-start;
   --hud-oy: 0%;
+  --ay: 0;
 }
 
 .wrap[data-h='left'] {
   justify-content: flex-start;
   --hud-ox: 0%;
+  --ax: 0;
 }
 
 .wrap[data-h='right'] {
   justify-content: flex-end;
   --hud-ox: 100%;
+  --ax: 1;
 }
 
+/*
+ * The capsule's box is its content's own layout, the shape at rest; its corner is the shape's.
+ * The glass and the faces move over it (`stage.ts`): the glass is its own layer behind the
+ * content, so fading or blurring content never cuts the glass off from the page behind it.
+ */
 .hud {
   pointer-events: auto;
   position: relative;
-  overflow: hidden;
   max-width: 100%;
   min-height: 44px;
   border-radius: 22px;
@@ -43,6 +53,46 @@
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
+}
+
+/* The glass: at rest it fills the capsule; in motion `morph.ts` sizes it about the anchor. */
+.hud-shape {
+  position: absolute;
+  left: calc(var(--ax) * 100%);
+  top: calc(var(--ay) * 100%);
+  width: 100%;
+  height: 100%;
+  translate: calc(var(--ax) * -100%) calc(var(--ay) * -100%);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* One content. At rest it is clipped to the capsule's corners, as the glass is. */
+.hud-face {
+  position: relative;
+  border-radius: inherit;
+  overflow: clip;
+}
+
+/* A content on its way out keeps its size, standing on the same anchor as the glass. */
+.hud-face.leaving {
+  position: absolute;
+  left: calc(var(--ax) * 100%);
+  top: calc(var(--ay) * 100%);
+  translate: calc(var(--ax) * -100%) calc(var(--ay) * -100%);
+}
+
+/* Clipped to the glass in motion instead, so what fades out past its new edge still shows. */
+.hud-face[data-follow='clip'] {
+  overflow: visible;
+}
+
+/* A part of a content changing in place, fading out where it was drawn (`parts.ts`). */
+.hud-ghost {
+  position: absolute;
+  margin: 0;
+  max-width: none;
+  pointer-events: none;
 }
 
 /*

@@ -28,8 +28,9 @@ export type GuardVerdict = 'allowed' | 'settling' | 'covered';
  * Keeps clicks on the HUD's run-affecting card controls (Allow once, Don't allow, an input's
  * options) from being tricked: a click counts only while the browser reports the card fully
  * visible (IntersectionObserver v2: nothing of the page over it, nothing applied to the page's
- * root or the HUD's host that could disguise it), and not within 500 ms of the card appearing,
- * moving or changing size (a drag, a snap, a resize, any animation of the capsule).
+ * root or the HUD's host that could disguise it), and not while the card or its answers are still
+ * moving (a drag, a snap, its glass morphing, its content arriving) nor within 500 ms of it
+ * appearing, moving or changing size.
  *
  * While a click would wait, the capsule carries `data-settling` and its guarded controls look
  * inactive, so a click that does nothing is not a surprise.
@@ -49,11 +50,15 @@ export class ClickGuard {
   private rect: DOMRect | null = null;
   private settleTimer = 0;
 
-  /** `frame` spans the layer (the sentinel's containing block), so the sentinel can be placed. */
+  /**
+   * `frame` spans the layer (the sentinel's containing block), so the sentinel can be placed;
+   * `moving` says whether the capsule or what it shows is still on its way somewhere.
+   */
   constructor(
     private readonly capsule: HTMLElement,
     private readonly frame: HTMLElement,
     private readonly sentinel: HTMLElement,
+    private readonly moving: () => boolean,
   ) {}
 
   /**
@@ -102,9 +107,8 @@ export class ClickGuard {
 
   private settling(): boolean {
     const now = performance.now();
-    // An animation of the capsule moves it under the pointer: wait for it to come to rest.
-    const animating = this.capsule.getAnimations().length > 0;
-    return animating || now - this.appearedAt < SETTLE_MS || now - this.movedAt < SETTLE_MS;
+    // Motion moves the card or its answers under the pointer: wait for them to come to rest.
+    return this.moving() || now - this.appearedAt < SETTLE_MS || now - this.movedAt < SETTLE_MS;
   }
 
   /** Shows the wait on the capsule (`data-settling`) and looks again once it may be over. */

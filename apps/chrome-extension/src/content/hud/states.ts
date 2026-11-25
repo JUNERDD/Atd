@@ -3,15 +3,30 @@ import { gbtn, h, iconAttrs } from '../dom.ts';
 import { t } from '../i18n.ts';
 import { atdMark } from '../mark.ts';
 import { dismissButton, openButton, saveButton, stopButton } from './buttons.ts';
-import { answerableRequest, appNeededCard, attentionCard, replyCard } from './card.ts';
+import {
+  answerableRequest,
+  appNeededCard,
+  attentionCard,
+  cardIdentity,
+  replyCard,
+} from './card.ts';
 import type { RunRender } from './intents.ts';
 
 export interface RunNode {
   node: HTMLElement;
   shape: 'row' | 'card';
+  /**
+   * As the island's content kinds: each status's row is its own scene, changing in place as its
+   * step or its glyph changes, and another status replaces it. So is each card, so a new request
+   * or a reply replaces what showed.
+   */
+  scene: string;
 }
 
-/** The capsule's one-line anatomy: glyph, title over a detail line, a divider, then actions. */
+/**
+ * The capsule's one-line anatomy: glyph, title over a detail line, a divider, then actions. Its
+ * parts are named (`data-part`), so a state changing in place moves each to its new place.
+ */
 export function hudRow(
   glyph: Element,
   title: string,
@@ -25,20 +40,23 @@ export function hudRow(
     h(
       'div',
       { class: 'hud-status' },
-      h('span', { class: 'hud-glyph' }, glyph),
+      h('span', { class: 'hud-glyph', attrs: { 'data-part': 'glyph' } }, glyph),
       h(
         'span',
         { class: 'hud-text' },
         // Titles truncate; the full text stays available on hover.
-        h('span', { class: 'hud-title', attrs: { title } }, title),
+        h('span', { class: 'hud-title', attrs: { title, 'data-part': 'title' } }, title),
         h(
           'span',
-          { class: shimmer ? 'hud-sub shimmer' : 'hud-sub', attrs: { title: detail } },
+          {
+            class: shimmer ? 'hud-sub shimmer' : 'hud-sub',
+            attrs: { title: detail, 'data-part': 'detail' },
+          },
           detail,
         ),
       ),
     ),
-    actions.length > 0 ? h('span', { class: 'hud-div' }) : null,
+    actions.length > 0 ? h('span', { class: 'hud-div', attrs: { 'data-part': 'divider' } }) : null,
     ...actions,
   );
 }
@@ -51,6 +69,7 @@ export function startingRow(text: string, effects: boolean): HTMLElement {
 /** One run state, from the shell's status (or the local `stopping` right after Stop). */
 export function runNode(ctx: RunRender): RunNode {
   const { run } = ctx;
+  const row = (node: HTMLElement): RunNode => ({ node, shape: 'row', scene: `row:${ctx.status}` });
   switch (ctx.status) {
     case 'working':
       return row(
@@ -73,7 +92,9 @@ export function runNode(ctx: RunRender): RunNode {
     case 'attention': {
       const request = answerableRequest(run);
       // A run waiting with nothing the HUD can answer is waiting in Atd itself.
-      return { node: request ? attentionCard(ctx, request) : appNeededCard(ctx), shape: 'card' };
+      if (!request) return { node: appNeededCard(ctx), shape: 'card', scene: 'card:app' };
+      const scene = `card:request:${cardIdentity(request)}`;
+      return { node: attentionCard(ctx, request), shape: 'card', scene };
     }
     case 'held':
       return row(
@@ -94,7 +115,8 @@ export function runNode(ctx: RunRender): RunNode {
     }
     case 'done':
       if (run.fromExtension && run.result) {
-        return { node: replyCard(ctx, run.result), shape: 'card' };
+        const scene = `card:reply:${run.runId}`;
+        return { node: replyCard(ctx, run.result), shape: 'card', scene };
       }
       return row(
         hudRow(createElement(CircleCheck, iconAttrs(16, 'ok')), run.title, t('hud.done'), [
@@ -132,8 +154,4 @@ export function runNode(ctx: RunRender): RunNode {
         ),
       );
   }
-}
-
-function row(node: HTMLElement): RunNode {
-  return { node, shape: 'row' };
 }

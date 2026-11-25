@@ -5,7 +5,10 @@ import { t } from '../i18n.ts';
 import { copyButton, dismissButton, openButton, saveButton, stopButton } from './buttons.ts';
 import type { RunRender } from './intents.ts';
 
-/** The card anatomy: a glyph beside title and body, actions right-aligned below. */
+/**
+ * The card anatomy: a glyph beside title and body, actions right-aligned below. Its parts are named
+ * (`data-part`; a body and a note name themselves), so a change in place moves each to its place.
+ */
 function card(
   glyph: Element,
   title: string,
@@ -19,10 +22,30 @@ function card(
     h(
       'div',
       { class: 'hud-card-head' },
-      h('span', { class: 'hud-glyph' }, glyph),
-      h('div', { class: 'hud-card-text' }, h('div', { class: 'hud-card-title' }, title), ...body),
+      h('span', { class: 'hud-glyph', attrs: { 'data-part': 'glyph' } }, glyph),
+      h(
+        'div',
+        { class: 'hud-card-text' },
+        h('div', { class: 'hud-card-title', attrs: { 'data-part': 'title' } }, title),
+        ...body,
+      ),
     ),
     h('div', { class: 'hud-card-actions' }, ...actions),
+  );
+}
+
+function bodyText(text: string): HTMLElement {
+  return h('div', { class: 'hud-card-body', attrs: { 'data-part': 'body' } }, text);
+}
+
+function note(text: string, alert = false): HTMLElement {
+  return h(
+    'div',
+    {
+      class: alert ? 'hud-card-note attn' : 'hud-card-note',
+      attrs: { 'data-part': 'note', role: alert ? 'alert' : undefined },
+    },
+    text,
   );
 }
 
@@ -57,15 +80,13 @@ export function cardIdentity(request: HudRequest): string {
  */
 export function attentionCard(ctx: RunRender, request: HudRequest): HTMLElement {
   const waiting = ctx.answering;
-  const covered = ctx.covered
-    ? h('div', { class: 'hud-card-note attn', attrs: { role: 'alert' } }, t('hud.covered'))
-    : null;
+  const covered = ctx.covered ? note(t('hud.covered'), true) : null;
   const lead = [stopButton(ctx, 'lead'), ...(ctx.covered ? [openButton(ctx)] : [])];
   if (request.kind === 'confirmation') {
     return card(
       createElement(ShieldCheck, iconAttrs(16, 'attn')),
       request.title,
-      [request.detail ? h('div', { class: 'hud-card-body' }, request.detail) : null, covered],
+      [request.detail ? bodyText(request.detail) : null, covered],
       [
         ...lead,
         answerButton({
@@ -110,7 +131,7 @@ export function appNeededCard(ctx: RunRender): HTMLElement {
   return card(
     createElement(MessageCircleQuestionMark, iconAttrs(16, 'attn')),
     t('hud.needsApp'),
-    [h('div', { class: 'hud-card-body' }, ctx.run.title)],
+    [bodyText(ctx.run.title)],
     [
       stopButton(ctx, 'lead'),
       gbtn({
@@ -130,8 +151,12 @@ export function replyCard(ctx: RunRender, result: { text: string; clipped: boole
     createElement(CircleCheck, iconAttrs(16, 'ok')),
     ctx.run.title,
     [
-      h('div', { class: 'hud-card-body reply', attrs: { tabindex: 0 } }, result.text),
-      result.clipped ? h('div', { class: 'hud-card-note' }, t('hud.clipped')) : null,
+      h(
+        'div',
+        { class: 'hud-card-body reply', attrs: { tabindex: 0, 'data-part': 'body' } },
+        result.text,
+      ),
+      result.clipped ? note(t('hud.clipped')) : null,
     ],
     [copyButton(ctx, result.text), openButton(ctx), saveButton(ctx), dismissButton(ctx)],
     true,
