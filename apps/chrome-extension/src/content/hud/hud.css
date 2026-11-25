@@ -41,6 +41,11 @@
  * The capsule's box is its content's own layout, the shape at rest; its corner is the shape's.
  * The glass and the faces move over it (`stage.ts`): the glass is its own layer behind the
  * content, so fading or blurring content never cuts the glass off from the page behind it.
+ *
+ * Every shape (the row, a card, the composer) has the same 22 px corner, and its content sits on
+ * that corner's centre, 22 px in from each edge: a 32 px control 6 px from the edge is concentric
+ * with the corner (6 + 16), and a glyph and the first line of text beside it are centred on it.
+ * Text ends 14 px from the edge, as far as the glyph starts from the other.
  */
 .hud {
   pointer-events: auto;
@@ -110,10 +115,6 @@
   cursor: grabbing !important;
 }
 
-.hud.card {
-  border-radius: 18px;
-}
-
 .hud-row {
   display: flex;
   align-items: center;
@@ -126,7 +127,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 10px 0 8px;
+  padding: 0 8px 0 7px;
   min-width: 0;
 }
 
@@ -171,10 +172,11 @@
   flex: none;
 }
 
+/* The actions stand in the corners, 6 px from the edges; the head keeps to the row's insets. */
 .hud-card {
   width: 372px;
   max-width: 100%;
-  padding: 14px 14px 12px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -189,10 +191,7 @@
   align-items: flex-start;
   gap: 10px;
   min-width: 0;
-}
-
-.hud-card-head .hud-glyph {
-  margin-top: 1px;
+  padding: 7px 8px 0 7px;
 }
 
 .hud-card-text {
@@ -200,9 +199,11 @@
   flex: 1;
 }
 
+/* As tall a line as the glyph, so the two centre on the same point. */
 .hud-card-title {
   font-size: 13px;
   font-weight: 600;
+  line-height: 18px;
   overflow-wrap: anywhere;
 }
 

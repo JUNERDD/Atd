@@ -1,20 +1,21 @@
 /*
  * The in-page composer: the HUD's glass with the product composer's expanded anatomy (the request
- * on top, context and send on a 28 px row below; 14 px text, 18 px corners). Its bottom row centres
- * on the same line, and its mark on the same point, as the working HUD it turns into. Values are the
- * prototype's (`prototype.css`, "In-page composer").
+ * on top, context and send on a 28 px row below; 14 px text) and the HUD's 22 px corner. Its first
+ * line, its mark and its send button stand on that corner's centre, 22 px from the edges, so its
+ * bottom row centres on the same line, and its mark on the same point, as the working HUD it turns
+ * into. Values are the prototype's (`prototype.css`, "In-page composer").
  */
 .hud.compose {
   width: min(560px, 100%);
-  border-radius: 18px;
 }
 
+/* The rows space themselves: a grid gap would stand below the note's row while it is hidden. */
 .ask-box {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 28px;
   grid-template-areas: 'prompt prompt' 'meta send' 'note note';
-  gap: 6px 8px;
-  padding: 10px 8px 8px 14px;
+  column-gap: 8px;
+  padding: 11px 8px 8px 14px;
 }
 
 .ask-input {
@@ -23,7 +24,7 @@
   width: 100%;
   height: 22px;
   max-height: 110px;
-  margin: 0;
+  margin: 0 0 6px;
   padding: 0 6px 0 0;
   border: 0;
   outline: none;
@@ -158,6 +159,7 @@
 
 .ask-note {
   grid-area: note;
+  margin-top: 6px;
   font-size: 12px;
   line-height: 1.4;
   color: var(--attn);
