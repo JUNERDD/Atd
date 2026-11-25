@@ -85,11 +85,10 @@ export class HudView {
     addEventListener(
       'keydown',
       (event) => {
-        if (!this.shown || !isArrow(event.key) || event.shiftKey) return;
-        if (!(event.ctrlKey && event.altKey && event.metaKey)) return;
+        if (!this.isMoveShortcut(event)) return;
         event.preventDefault();
         event.stopPropagation();
-        this.mover.step(event.key);
+        this.mover.step(event.key as 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown');
       },
       { capture: true, signal },
     );
@@ -97,6 +96,19 @@ export class HudView {
 
   get visible(): boolean {
     return this.shown;
+  }
+
+  /** Whether `event` is the HUD's global ⌃⌥⌘ + arrow move shortcut while the capsule is shown. */
+  isMoveShortcut(event: Event): boolean {
+    return (
+      this.shown &&
+      event instanceof KeyboardEvent &&
+      isArrow(event.key) &&
+      !event.shiftKey &&
+      event.ctrlKey &&
+      event.altKey &&
+      event.metaKey
+    );
   }
 
   /**

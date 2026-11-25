@@ -49,9 +49,22 @@ final class DisturbanceGuard {
   private var lastSeenActivity: ContinuousClock.Instant?
   /// The person's latest key press (not a modifier or system key on its own) the monitors saw.
   private var lastSeenKeyDown: ContinuousClock.Instant?
+  /// Hardware input events (`systemUptime` seconds) attributed to Atd's own UI (`+OwnUI`).
+  var ownUIHardwareEvents: [CGEventType: [OwnUIEvent]] = [:]
+  /// Non-motion input sightings from the global monitor (other apps only), keyed by `CGEventType`.
+  var lastSeenExternalByType: [CGEventType: (uptime: TimeInterval, at: ContinuousClock.Instant)] =
+    [:]
+  /// Non-motion global-monitor input without a matching `targetInputTypes` key (e.g. gestures).
+  var lastSeenExternalOther: ContinuousClock.Instant?
+  /// Permanent local monitor for Atd's own windows while the computer host runs (`+OwnUI`).
+  var ownUIMonitor: Any?
   /// `kCGAnyInputEventType`: an event of any input type, for the HID system's event state.
   private static let anyInput = CGEventType(rawValue: ~0)
   private static let log = Logger(subsystem: "com.junerdd.ai", category: "computer-input")
+
+  isolated deinit {
+    stopOwnUIMonitor()
+  }
 
   /// Watches a write action on `target`'s processes until ``stop(_:)``.
   func watch(target: Set<pid_t>) -> Watch {
@@ -173,14 +186,14 @@ final class DisturbanceGuard {
       .gesture, .magnify, .swipe, .rotate, .smartMagnify, .beginGesture, .endGesture, .pressure,
     ]
     if let global = NSEvent.addGlobalMonitorForEvents(
-      matching: events, handler: { [weak self] event in self?.received(event) })
+      matching: events, handler: { [weak self] event in self?.received(event, local: false) })
     {
       monitors.append(global)
     }
     if let local = NSEvent.addLocalMonitorForEvents(
       matching: events,
       handler: { [weak self] event in
-        self?.received(event)
+        self?.received(event, local: true)
         return event
       })
     {
@@ -220,21 +233,35 @@ final class DisturbanceGuard {
     observers = []
   }
 
-  private nonisolated func received(_ event: NSEvent) {
+  private nonisolated func received(_ event: NSEvent, local: Bool) {
+    let hasCGEvent = event.cgEvent != nil
     let source = event.cgEvent?.getIntegerValueField(.eventSourceUnixProcessID) ?? 0
     let synthesized = KeyPress.isSynthesized(event)
     let input = Self.input(of: event.type)
-    let keyDown = event.type == .keyDown
+    let type = event.type
+    let timestamp = event.timestamp
+    let keyDown = type == .keyDown
     MainActor.assumeIsolated {
       guard !synthesized, !isEngine(source) else { return }
-      if input != .motion { lastSeenInput = .now }
-      if keyDown { lastSeenKeyDown = .now }
-      lastSeenActivity = .now
+      let now = ContinuousClock.now
+      if input != .motion {
+        lastSeenInput = now
+        if local {
+          recordOwnUILocalEvent(type: type, timestamp: timestamp, hasCGEvent: hasCGEvent)
+        } else if let cgType = Self.targetInputType(of: type) {
+          let uptime = timestamp > 0 ? timestamp : ProcessInfo.processInfo.systemUptime
+          lastSeenExternalByType[cgType] = (uptime: uptime, at: now)
+        } else if Self.isStandaloneExternalGesture(type) {
+          lastSeenExternalOther = now
+        }
+      }
+      if keyDown { lastSeenKeyDown = now }
+      lastSeenActivity = now
       for watch in watches { watch.step?.input.insert(input) }
     }
   }
 
-  private func isEngine(_ source: Int64) -> Bool {
+  func isEngine(_ source: Int64) -> Bool {
     source > 0 && engineProcesses().contains(pid_t(clamping: source))
   }
 

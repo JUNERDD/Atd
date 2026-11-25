@@ -1,3 +1,4 @@
+import type { OwnInput } from '../../channel/payloads.ts';
 import type { BackgroundToContent, ContentMessage } from '../../messages/content.ts';
 import { ACTIVE_RUN_STATUSES, type AskFailure, type TabView } from '../../messages/views.ts';
 import { t } from '../i18n.ts';
@@ -15,6 +16,7 @@ const STARTING_LIMIT_MS = 20_000;
 
 export interface AskDeps {
   send(message: ContentMessage): void;
+  takeOwnInput(): OwnInput | undefined;
   /** The phase or the composer's content changed; the HUD renders again. */
   changed(): void;
 }
@@ -145,11 +147,13 @@ export class AskFlow {
     this.phase = 'sending';
     this.composer.setError(null);
     this.composer.setState(true, true);
+    const ownInput = this.deps.takeOwnInput();
     this.deps.send({
       type: 'ask',
       requestId: this.requestId,
       text,
       includePage: this.composer.includePage,
+      ...(ownInput === undefined ? {} : { ownInput }),
     });
     this.deps.changed();
   }

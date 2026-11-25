@@ -77,6 +77,17 @@ extension KeyedDecodingContainer {
     return value
   }
 
+  /// An optional finite number `>= 0`; an absent member is nil, `null` is refused.
+  public func optionalNonNegativeFinite(_ key: Key) throws -> Double? {
+    guard contains(key) else { return nil }
+    let value = try decode(Double.self, forKey: key)
+    guard value.isFinite, value >= 0 else {
+      throw DecodingError.dataCorruptedError(
+        forKey: key, in: self, debugDescription: "\(key.stringValue) must be non-negative.")
+    }
+    return value
+  }
+
   /// The protocol version member every frame carries.
   public func version(_ key: Key) throws {
     guard try decode(Int.self, forKey: key) == ChromeChannelProtocol.version else {

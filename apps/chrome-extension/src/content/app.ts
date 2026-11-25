@@ -35,20 +35,21 @@ export function startContent(): void {
 
   const light = new EdgeLight(() => hud.view.bounds());
   const pointerLayer = new PointerLayer();
-  const hud = new Hud({
-    send,
-    changed: () => light.show(hud.glowMode()),
-  });
-  setLayersLanguage(currentDocumentLanguage());
-
   const runActive = () => !!tab?.run && ACTIVE_RUN_STATUSES.includes(tab.run.status);
   const frozen = () =>
     tab !== null && (tab.connection !== 'ready' || tab.run?.status === 'disconnected');
-  watchActivity({
+  const activity = watchActivity({
     active: runActive,
     dispatchingUntil: () => pointerLayer.dispatchingUntil,
+    ownEvent: (event) => hud.view.isMoveShortcut(event),
     report: () => send({ type: 'input' }),
   });
+  const hud = new Hud({
+    send,
+    takeOwnInput: () => activity.takeOwnInput(),
+    changed: () => light.show(hud.glowMode()),
+  });
+  setLayersLanguage(currentDocumentLanguage());
   onReducedMotionChange(() => light.refresh());
 
   function apply(view: TabView): void {

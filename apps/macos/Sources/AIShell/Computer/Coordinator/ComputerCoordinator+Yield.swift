@@ -27,7 +27,13 @@ extension ComputerCoordinator {
         "The person took over the target and has not handed it back; nothing more was sent.")
     }
     // Input first: it is a cheap read, and a browser asks its worker whether a page is in front.
-    let input = [disturbance.lastPersonInput(), engine.lastInput(on: ref)].compactMap { $0 }.max()
+    // Exclude hardware events verified against Atd's own UI (Chrome HUD for that browserPid, or
+    // NSApp panels) so approving or handing back does not self-trigger `targetInUse`.
+    let targetPid = engine.foregroundProcess(of: ref)
+    let input = [
+      disturbance.lastTargetInput(forTargetPid: targetPid),
+      engine.lastInput(on: ref),
+    ].compactMap { $0 }.max()
     if let input, ContinuousClock.now - input < Self.inUseInput, await engine.isInFront(ref) {
       return ComputerFailure(.targetInUse, "The person is using the target; nothing more was sent.")
     }

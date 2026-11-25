@@ -31,7 +31,10 @@ extension ShellController {
       },
       stopRun: { [weak self] taskId, runId in self?.stopChromeRun(taskId: taskId, runId: runId) },
       onStateChange: { [weak self] in self?.broadcastComputerState() },
-      chromeBinding: { [weak self] in self?.chromeBinding($0) })
+      chromeBinding: { [weak self] in self?.chromeBinding($0) },
+      onChromeOwnInput: { [weak self] input, browserPid in
+        self?.computer.disturbance.noteChromeOwnInput(input, browserPid: browserPid)
+      })
     return ChromeChannel(
       identity: identity, environment: environment,
       pairing: ChromePairingPrompt(

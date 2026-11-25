@@ -99,6 +99,12 @@ public enum ChromeHudRequest: Encodable, Equatable, Sendable {
     }
   }
 
+  public var revision: Int {
+    switch self {
+    case .confirmation(_, let revision, _, _, _), .input(_, let revision, _, _): revision
+    }
+  }
+
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: Keys.self)
     switch self {

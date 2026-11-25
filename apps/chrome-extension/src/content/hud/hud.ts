@@ -1,4 +1,4 @@
-import type { RunView } from '../../channel/payloads.ts';
+import type { OwnInput, RunView } from '../../channel/payloads.ts';
 import type { ContentMessage } from '../../messages/content.ts';
 import type { TabView } from '../../messages/views.ts';
 import { AskFlow } from '../ask/flow.ts';
@@ -21,6 +21,7 @@ const COPIED_MS = 1500;
 
 export interface HudDeps {
   send(message: ContentMessage): void;
+  takeOwnInput(): OwnInput | undefined;
   /** The HUD's state or place changed: the light follows. */
   changed(): void;
 }
@@ -42,7 +43,11 @@ export class Hud {
 
   constructor(private readonly deps: HudDeps) {
     this.view = new HudView(() => deps.changed());
-    this.ask = new AskFlow({ send: (message) => deps.send(message), changed: () => this.render() });
+    this.ask = new AskFlow({
+      send: (message) => deps.send(message),
+      takeOwnInput: () => deps.takeOwnInput(),
+      changed: () => this.render(),
+    });
     void loadAnchor().then((anchor) => this.view.mover.place(anchor));
     // A click elsewhere closes the composer and keeps its draft.
     addEventListener(
@@ -231,8 +236,16 @@ export class Hud {
     switch (intent.kind) {
       case 'takeOver':
         return send({ type: 'run.hold', taskId, runId, held: true });
-      case 'handBack':
-        return send({ type: 'run.hold', taskId, runId, held: false });
+      case 'handBack': {
+        const ownInput = this.deps.takeOwnInput();
+        return send({
+          type: 'run.hold',
+          taskId,
+          runId,
+          held: false,
+          ...(ownInput === undefined ? {} : { ownInput }),
+        });
+      }
       case 'stop':
         this.overlays.stop(run, Date.now());
         send({ type: 'run.stop', taskId, runId });
@@ -271,7 +284,16 @@ export class Hud {
         }
         this.overlays.cover(null);
         this.overlays.answering(requestId, revision, Date.now());
-        send({ type: 'request.answer', taskId, requestId, revision, answer: intent.answer });
+        const ownInput = this.deps.takeOwnInput();
+        const declined = 'decision' in intent.answer && intent.answer.decision === 'declined';
+        send({
+          type: 'request.answer',
+          taskId,
+          requestId,
+          revision,
+          answer: intent.answer,
+          ...(!declined && ownInput !== undefined ? { ownInput } : {}),
+        });
         return this.render();
       }
     }

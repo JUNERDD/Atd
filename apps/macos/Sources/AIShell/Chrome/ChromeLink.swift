@@ -175,7 +175,7 @@ final class ChromeLink {
     case .tabReleased(let tabId, _):
       tabs[tabId] = nil
       hands = hands.filter { $0.tabId != tabId }
-    case .runHold(_, let runId, let tabId, let held):
+    case .runHold(_, let runId, let tabId, let held, _):
       guard tabs[tabId]?.runId == runId else { return true }
       tabs[tabId]?.held = held
     case .cdp(let conn, let msg):

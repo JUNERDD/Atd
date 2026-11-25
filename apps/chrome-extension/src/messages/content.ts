@@ -1,5 +1,6 @@
 import { PermissionAnswerSchema } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
+import { OwnInputSchema } from '../channel/payloads.ts';
 import type { AskFailure, PointerView, TabView } from './views.ts';
 
 /**
@@ -33,6 +34,7 @@ export const ContentMessageSchema = Type.Union([
     requestId: Id,
     text: Type.String({ minLength: 1, maxLength: MAX_REQUEST_TEXT }),
     includePage: Type.Boolean(),
+    ownInput: Type.Optional(OwnInputSchema),
   }),
   Type.Object({ type: Type.Literal('run.stop'), taskId: Id, runId: Id }),
   /**
@@ -46,13 +48,20 @@ export const ContentMessageSchema = Type.Union([
    */
   Type.Object({ type: Type.Literal('run.hide'), taskId: Id, runId: Id }),
   /** Take over (`held: true`) or Hand back (`held: false`) this tab. */
-  Type.Object({ type: Type.Literal('run.hold'), taskId: Id, runId: Id, held: Type.Boolean() }),
+  Type.Object({
+    type: Type.Literal('run.hold'),
+    taskId: Id,
+    runId: Id,
+    held: Type.Boolean(),
+    ownInput: Type.Optional(OwnInputSchema),
+  }),
   Type.Object({
     type: Type.Literal('request.answer'),
     taskId: Id,
     requestId: Id,
     revision: Type.Integer({ minimum: 0 }),
     answer: PermissionAnswerSchema,
+    ownInput: Type.Optional(OwnInputSchema),
   }),
   /** Done → Save as automation: Atd is asked to turn the run into an automation ("Sent to Atd"). */
   Type.Object({

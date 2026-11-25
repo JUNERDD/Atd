@@ -23,17 +23,17 @@ struct ChromeChannelEnvironment {
   let onStateChange: () -> Void
   /// The binding of that id as a site of the person's own Chrome, when the shell knows it is one.
   let chromeBinding: (String) -> TargetBindingWire.Browser?
+  /// Notes verified HUD input timestamps for `browserPid` so host yield ignores only those events.
+  var onChromeOwnInput: (ChromeOwnInput?, pid_t) -> Void = { _, _ in }
 }
 
-/// The shell's side of Atd for Chrome (D3, D4, D12): it installs the native messaging host
-/// manifest, listens on the host socket, runs one ``ChromeSession`` per connection, pairs profiles
-/// through the native confirmation, keeps the paired profiles (``ChromePairingStore``) and their
-/// site bindings, and turns the extension's requests into service calls.
+/// The shell's side of Atd for Chrome (D3, D4, D12): installs the native messaging host manifest,
+/// listens on the host socket, runs one ``ChromeSession`` per connection, pairs profiles through
+/// the native confirmation, keeps ``ChromePairingStore`` and site bindings, and turns requests into
+/// service calls.
 final class ChromeChannel {
   typealias ManifestInstaller =
-    @Sendable (
-      ChromeChannelIdentity, URL?, URL, URL
-    ) -> ChromeHostManifest.Result
+    @Sendable (ChromeChannelIdentity, URL?, URL, URL) -> ChromeHostManifest.Result
 
   static let log = Logger(subsystem: "com.junerdd.ai", category: "chrome")
 
@@ -69,6 +69,7 @@ final class ChromeChannel {
   var siteBindings: [TargetBindingWire.Browser] = []
   /// Runs the extension started, by run id; the projection forgets them once the service does.
   var extensionRuns: [String: ChromeExtensionRun] = [:]
+  var attributedInputs = ChromeAttributionDedup()
   lazy var projection = ChromeProjection(channel: self)
 
   var observerCount: Int { observers.count }

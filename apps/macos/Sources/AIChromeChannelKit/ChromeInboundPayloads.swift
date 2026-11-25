@@ -53,6 +53,39 @@ public struct ChromeHello: Equatable, Sendable {
   }
 }
 
+/// `ownInput`: hardware input timestamps (ms since 1970) recorded on Atd's in-page HUD layer.
+public struct ChromeOwnInput: Decodable, Equatable, Sendable {
+  public let keyDown: Double?
+  public let leftMouseDown: Double?
+  public let rightMouseDown: Double?
+  public let otherMouseDown: Double?
+  public let scrollWheel: Double?
+
+  public init(
+    keyDown: Double? = nil, leftMouseDown: Double? = nil, rightMouseDown: Double? = nil,
+    otherMouseDown: Double? = nil, scrollWheel: Double? = nil
+  ) {
+    self.keyDown = keyDown
+    self.leftMouseDown = leftMouseDown
+    self.rightMouseDown = rightMouseDown
+    self.otherMouseDown = otherMouseDown
+    self.scrollWheel = scrollWheel
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try ChromeChannelCoding.object(decoder, Keys.self)
+    keyDown = try container.optionalNonNegativeFinite(.keyDown)
+    leftMouseDown = try container.optionalNonNegativeFinite(.leftMouseDown)
+    rightMouseDown = try container.optionalNonNegativeFinite(.rightMouseDown)
+    otherMouseDown = try container.optionalNonNegativeFinite(.otherMouseDown)
+    scrollWheel = try container.optionalNonNegativeFinite(.scrollWheel)
+  }
+
+  private enum Keys: String, CodingKey {
+    case keyDown, leftMouseDown, rightMouseDown, otherMouseDown, scrollWheel
+  }
+}
+
 /// `ask`: the person's question from the in-page input capsule. `url` and `title` are empty when
 /// the person removed the page from the request.
 public struct ChromeAsk: Equatable, Sendable {
@@ -61,6 +94,7 @@ public struct ChromeAsk: Equatable, Sendable {
   public let url: String
   public let title: String
   public let text: String
+  public let ownInput: ChromeOwnInput?
 
   init(_ container: KeyedDecodingContainer<ChromeInboundKeys.Ask>) throws {
     requestId = try container.id(.requestId)
@@ -68,6 +102,9 @@ public struct ChromeAsk: Equatable, Sendable {
     url = try container.text(.url, maxLength: ChromeChannelProtocol.maxTextLength)
     title = try container.text(.title, maxLength: ChromeChannelProtocol.maxTextLength)
     text = try container.text(.text, maxLength: ChromeChannelProtocol.maxTextLength)
+    ownInput =
+      container.contains(.ownInput)
+      ? try container.decode(ChromeOwnInput.self, forKey: .ownInput) : nil
   }
 }
 

@@ -127,6 +127,7 @@ final class ComputerCoordinator: ComputerRequestHandling {
   func start() {
     guard !started else { return }
     started = true
+    disturbance.startOwnUIMonitor()
     if !host.start() { retryLock() }
     observeGrants()
     onStateChange?()
@@ -137,6 +138,7 @@ final class ComputerCoordinator: ComputerRequestHandling {
   func shutdown() async {
     guard !stopping else { return }
     stopping = true
+    disturbance.stopOwnUIMonitor()
     await sharing.shutdown()
     await previews.stopAll()
     lockRetry?.cancel()

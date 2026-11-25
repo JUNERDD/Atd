@@ -67,12 +67,14 @@ export function handleContentIntent(
         runId: intent.runId,
         tabId,
         held: intent.held,
+        ...(!intent.held && intent.ownInput !== undefined ? { ownInput: intent.ownInput } : {}),
       });
       return;
     case 'request.answer': {
       const run = shows(deps, tabId, intent.taskId, undefined);
       if (run === undefined) return;
-      if (!run.requests.some((request) => request.requestId === intent.requestId)) {
+      const shown = run.requests.find((request) => request.requestId === intent.requestId);
+      if (shown === undefined) {
         console.warn(`[atd] ignored an answer to a request tab ${tabId} does not show`);
         return;
       }
@@ -82,6 +84,9 @@ export function handleContentIntent(
         requestId: intent.requestId,
         revision: intent.revision,
         answer: intent.answer,
+        ...(shown.revision === intent.revision && intent.ownInput !== undefined
+          ? { ownInput: intent.ownInput }
+          : {}),
       });
       return;
     }
@@ -135,6 +140,10 @@ async function sendAsk(deps: ContentIntentDeps, tabId: number, intent: AskIntent
     return;
   }
   const tab = await chrome.tabs.get(tabId).catch(() => undefined);
+  const win =
+    intent.ownInput !== undefined && tab?.active === true && tab.windowId !== undefined
+      ? await chrome.windows.get(tab.windowId).catch(() => undefined)
+      : undefined;
   // The channel may have closed or the pairing ended while the tab was read.
   const late = refusal(deps.store);
   if (late !== undefined) {
@@ -151,6 +160,9 @@ async function sendAsk(deps: ContentIntentDeps, tabId: number, intent: AskIntent
       ? { url: clipText(tab?.url), title: clipText(tab?.title) }
       : { url: '', title: '' }),
     text: intent.text,
+    ...(win?.focused === true && intent.ownInput !== undefined
+      ? { ownInput: intent.ownInput }
+      : {}),
   });
   if (!sent) deps.requests.fail(intent.requestId, 'notConnected');
 }

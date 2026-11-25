@@ -106,3 +106,17 @@ export const SizeSchema = Type.Object({
   width: Type.Number({ minimum: 0 }),
   height: Type.Number({ minimum: 0 }),
 });
+
+/**
+ * Source-stamped hardware input timestamps (ms since 1970) recorded on Atd's own in-page HUD layer
+ * within the active-use window, keyed by macOS `CGEventType` equivalent so the host verifies and
+ * attributes only those exact HUD events without masking page input.
+ */
+export const OwnInputSchema = Type.Object({
+  keyDown: Type.Optional(Type.Number({ minimum: 0 })),
+  leftMouseDown: Type.Optional(Type.Number({ minimum: 0 })),
+  rightMouseDown: Type.Optional(Type.Number({ minimum: 0 })),
+  otherMouseDown: Type.Optional(Type.Number({ minimum: 0 })),
+  scrollWheel: Type.Optional(Type.Number({ minimum: 0 })),
+});
+export type OwnInput = Static<typeof OwnInputSchema>;

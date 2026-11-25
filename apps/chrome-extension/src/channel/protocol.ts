@@ -5,6 +5,7 @@ import {
   IdSchema as Id,
   InstallationIdSchema,
   OriginSchema as Origin,
+  OwnInputSchema,
   PointerPhaseSchema,
   RectSchema,
   RunViewSchema,
@@ -77,6 +78,7 @@ export const ExtensionFrameSchema = Type.Union([
     url: Text,
     title: Text,
     text: Text,
+    ownInput: Type.Optional(OwnInputSchema),
   }),
   Type.Object({ v: V, t: Type.Literal('run.stop'), taskId: Id, runId: Id }),
   Type.Object({
@@ -86,6 +88,7 @@ export const ExtensionFrameSchema = Type.Union([
     runId: Id,
     tabId: TabId,
     held: Type.Boolean(),
+    ownInput: Type.Optional(OwnInputSchema),
   }),
   Type.Object({
     v: V,
@@ -94,6 +97,7 @@ export const ExtensionFrameSchema = Type.Union([
     requestId: Id,
     revision: Type.Integer({ minimum: 0 }),
     answer: PermissionAnswerSchema,
+    ownInput: Type.Optional(OwnInputSchema),
   }),
   Type.Object({
     v: V,

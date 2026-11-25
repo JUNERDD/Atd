@@ -3,6 +3,20 @@ import AICore
 import AIRelay
 import Foundation
 
+/// Bounded FIFO deduplicator for HUD input attribution keys so repeated frames cannot replay.
+struct ChromeAttributionDedup {
+  static let capacity = 128
+  private var seen: Set<String> = []
+  private var order: [String] = []
+
+  mutating func insert(_ key: String) -> Bool {
+    guard seen.insert(key).inserted else { return false }
+    order.append(key)
+    if order.count > Self.capacity { seen.remove(order.removeFirst()) }
+    return true
+  }
+}
+
 /// A paired extension's requests (D10, D12), each turned into the service call the panel would
 /// make. Answers, stops and follow-ups name runs; only runs this profile is shown (its
 /// ``ChromeProjection`` runs) may be acted on from it.
@@ -15,14 +29,25 @@ extension ChromeChannel {
     {
       environment.stopRun(taskId, runId)
     }
+    if case .runHold(_, let runId, let tabId, false, let ownInput) = frame,
+      let tab = link.tabs[tabId], tab.runId == runId, tab.held, tab.active
+    {
+      environment.onChromeOwnInput(ownInput, link.browserPid)
+    }
     if link.apply(frame) { return }
     switch frame {
-    case .ask(let ask): Task { await self.ask(ask, on: link) }
+    case .ask(let ask):
+      if environment.hostState() == .ready,
+        attributedInputs.insert("\(link.installationId):ask:\(ask.requestId)")
+      {
+        environment.onChromeOwnInput(ask.ownInput, link.browserPid)
+      }
+      Task { await self.ask(ask, on: link) }
     case .runStop(let taskId, let runId):
       guard projection.shows(runId: runId, taskId: taskId, on: link) else { return }
       environment.stopRun(taskId, runId)
-    case .requestAnswer(let taskId, let requestId, let revision, let answer):
-      Task { await self.answer(taskId, requestId, revision, answer, on: link) }
+    case .requestAnswer(let taskId, let requestId, let revision, let answer, let ownInput):
+      handleAnswer(taskId, requestId, revision, answer, ownInput: ownInput, on: link)
     case .runFollowUp(let taskId, .saveAutomation):
       Task { await self.saveAsAutomation(taskId, on: link) }
     case .runDismiss(let taskId, let runId):
@@ -73,16 +98,18 @@ extension ChromeChannel {
 
   /// `request.answer`, for a request this profile was shown (``ChromeProjection`` lists only
   /// those the HUD may answer): a confirmation takes Allow once or Don't allow, never a grant for
-  /// the session; a question takes one of the answers it listed.
-  private func answer(
+  /// the session; a question takes one of the answers it listed. Verifies `revision`, deduplicates,
+  /// and attributes non-declined HUD events synchronously before any network hop.
+  private func handleAnswer(
     _ taskId: String, _ requestId: String, _ revision: Int, _ answer: ChromePermissionAnswer,
-    on link: ChromeLink
-  ) async {
+    ownInput: ChromeOwnInput?, on link: ChromeLink
+  ) {
+    let shown = projection.hudRequest(requestId, of: taskId, on: link)
     let reply: ConfirmReply.Answer? =
-      switch (projection.hudRequest(requestId, of: taskId, on: link), answer) {
-      case (.confirmation?, .once): .once
-      case (.confirmation?, .declined): .declined
-      case (.input(_, _, _, let options)?, .text(let text)) where options.contains(text):
+      switch (shown, shown?.revision == revision, answer) {
+      case (.confirmation?, true, .once): .once
+      case (.confirmation?, true, .declined): .declined
+      case (.input(_, _, _, let options)?, true, .text(let text)) where options.contains(text):
         .text(text)
       default: nil
       }
@@ -90,6 +117,17 @@ extension ChromeChannel {
       link.send(.error(ref: requestId, code: "answerRefused", message: "Answer it in Atd."))
       return projection.resend(link)
     }
+    if reply != .declined,
+      attributedInputs.insert("\(link.installationId):answer:\(taskId):\(requestId):\(revision)")
+    {
+      environment.onChromeOwnInput(ownInput, link.browserPid)
+    }
+    Task { await self.sendAnswer(requestId, revision, reply, on: link) }
+  }
+
+  private func sendAnswer(
+    _ requestId: String, _ revision: Int, _ reply: ConfirmReply.Answer, on link: ChromeLink
+  ) async {
     do {
       try await environment.client().replyToConfirm(
         ConfirmReply(requestId: requestId, revision: revision, answer: reply))

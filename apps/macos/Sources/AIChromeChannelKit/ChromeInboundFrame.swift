@@ -12,9 +12,11 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
   case ask(ChromeAsk)
   case runStop(taskId: String, runId: String)
   /// Take over (`held`) or hand back: the run must not act in `tabId` while it is held.
-  case runHold(taskId: String, runId: String, tabId: Int, held: Bool)
+  case runHold(
+    taskId: String, runId: String, tabId: Int, held: Bool, ownInput: ChromeOwnInput? = nil)
   case requestAnswer(
-    taskId: String, requestId: String, revision: Int, answer: ChromePermissionAnswer)
+    taskId: String, requestId: String, revision: Int, answer: ChromePermissionAnswer,
+    ownInput: ChromeOwnInput? = nil)
   case runFollowUp(taskId: String, kind: ChromeFollowUpKind)
   case siteSet(origin: String, allowed: Bool)
   case appOpen(taskId: String?)
@@ -82,13 +84,17 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
       let c = try body(K.Hold.self)
       self = .runHold(
         taskId: try c.id(.taskId), runId: try c.id(.runId), tabId: try c.whole(.tabId, minimum: 0),
-        held: try c.decode(Bool.self, forKey: .held))
+        held: try c.decode(Bool.self, forKey: .held),
+        ownInput: c.contains(.ownInput) ? try c.decode(ChromeOwnInput.self, forKey: .ownInput) : nil
+      )
     case "request.answer":
       let c = try body(K.Answer.self)
       self = .requestAnswer(
         taskId: try c.id(.taskId), requestId: try c.id(.requestId),
         revision: try c.whole(.revision, minimum: 0),
-        answer: try c.decode(ChromePermissionAnswer.self, forKey: .answer))
+        answer: try c.decode(ChromePermissionAnswer.self, forKey: .answer),
+        ownInput: c.contains(.ownInput) ? try c.decode(ChromeOwnInput.self, forKey: .ownInput) : nil
+      )
     case "run.followUp":
       let c = try body(K.FollowUp.self)
       self = .runFollowUp(
@@ -150,11 +156,11 @@ public enum ChromeInboundKeys {
     case v, t, installationId, extensionVersion, flavor, chromeVersion, fileAccess, secret, profile
   }
   public enum Pair: String, CodingKey { case v, t, code }
-  public enum Ask: String, CodingKey { case v, t, requestId, tabId, url, title, text }
+  public enum Ask: String, CodingKey { case v, t, requestId, tabId, url, title, text, ownInput }
   public enum Run: String, CodingKey { case v, t, taskId, runId }
-  public enum Hold: String, CodingKey { case v, t, taskId, runId, tabId, held }
+  public enum Hold: String, CodingKey { case v, t, taskId, runId, tabId, held, ownInput }
   public enum Answer: String, CodingKey {
-    case v, t, taskId, requestId, revision, answer
+    case v, t, taskId, requestId, revision, answer, ownInput
   }
   public enum FollowUp: String, CodingKey { case v, t, taskId, kind }
   public enum Site: String, CodingKey { case v, t, origin, allowed }
