@@ -33,7 +33,7 @@ export function startContent(): void {
   });
   const send = port.send.bind(port);
 
-  const light = new EdgeLight(() => hud.view.center());
+  const light = new EdgeLight(() => hud.view.bounds());
   const pointerLayer = new PointerLayer();
   const hud = new Hud({
     send,

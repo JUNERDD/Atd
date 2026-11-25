@@ -28,12 +28,12 @@ export class EdgeLight {
   private scrollTimer = 0;
   private mode: GlowMode = 'off';
 
-  constructor(private readonly origin: () => [number, number]) {
+  constructor(private readonly hud: () => DOMRectReadOnly) {
     this.glow = new TabGlow(new GlowStage(), () => ({
       enabled: this.enabled,
       reduce: reducedMotion(),
       darkness: this.darkness,
-      origin: this.origin,
+      hud: this.hud,
     }));
     addEventListener(
       'scroll',
@@ -82,7 +82,7 @@ export class EdgeLight {
     }
   }
 
-  /** The HUD moved: the bloom follows while it is still under way. */
+  /** The HUD moved or changed size: the arrival and the attention mist follow it. */
   kick(): void {
     this.glow.kick();
   }

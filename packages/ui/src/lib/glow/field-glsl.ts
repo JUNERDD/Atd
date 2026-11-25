@@ -1,22 +1,10 @@
 /**
- * GLSL shared by every drawing of the command HUD's light field (`IslandGlowField.swift` in the
- * macOS shell): the panel's waiting light (`apps/desktop` `waiting-glow/glow-field.ts`) and the tab
- * light of Atd for Chrome. Insert it after a fragment shader's precision statement and uniforms;
- * it declares `u_colors` (the 24 mesh colors from `glowColors`, calculated once per draw), the
- * helpers below and `glowFieldColor`.
- *
- * The shell draws a 6×4 `MeshGradient` with smoothed colors, 2.2 times the size of its box, and
- * shows a drifting crop of it so the field's edges never become the box's edges. `glowFieldColor`
- * finds a pixel's place on that mesh (undoing the points' small displacement to first order) and
- * blends the 4×4 nearest colors with a Catmull-Rom spline, which stands in for `smoothsColors`.
- * Every value is a function of the time alone. The values mirror the shell's `IslandGlowField`
- * and `IslandGlowStyle`; change both together.
+ * The helpers every glow shader shares: the panel's waiting light, through `GLOW_FIELD_GLSL`, and
+ * the tab light of Atd for Chrome, which draws its own mist rather than the field. Insert it after a
+ * fragment shader's precision statement and uniforms.
  */
-export const GLOW_FIELD_GLSL = `
-uniform vec3 u_colors[24];
-
+export const GLOW_NOISE_GLSL = `
 const float PI = 3.14159265;
-const float FIELD_SCALE = 2.2;
 
 // Smootherstep: 0 to 1 between the edges with zero slope and zero curvature at both ends, so a
 // falloff built on it has no kink where it starts or ends for the eye to read as a line.
@@ -36,6 +24,27 @@ float hash(vec2 p) {
 float tpdf(vec2 p) {
   return hash(p) + hash(p + vec2(57.0, 113.0)) - 1.0;
 }
+`;
+
+/**
+ * GLSL for the command HUD's light field (`IslandGlowField.swift` in the macOS shell), drawn by the
+ * panel's waiting light (`apps/desktop` `waiting-glow/glow-field.ts`). Insert it after a fragment
+ * shader's precision statement and uniforms; it declares `u_colors` (the 24 mesh colors from
+ * `glowColors`, calculated once per draw), the shared helpers (`GLOW_NOISE_GLSL`) and
+ * `glowFieldColor`.
+ *
+ * The shell draws a 6×4 `MeshGradient` with smoothed colors, 2.2 times the size of its box, and
+ * shows a drifting crop of it so the field's edges never become the box's edges. `glowFieldColor`
+ * finds a pixel's place on that mesh (undoing the points' small displacement to first order) and
+ * blends the 4×4 nearest colors with a Catmull-Rom spline, which stands in for `smoothsColors`.
+ * Every value is a function of the time alone. The values mirror the shell's `IslandGlowField`
+ * and `IslandGlowStyle`; change both together.
+ */
+export const GLOW_FIELD_GLSL = `
+uniform vec3 u_colors[24];
+${GLOW_NOISE_GLSL}
+const float FIELD_SCALE = 2.2;
+
 vec3 catmullRom(vec3 a, vec3 b, vec3 c, vec3 d, float t) {
   float t2 = t * t;
   float t3 = t2 * t;

@@ -43,7 +43,7 @@ export class HudView {
   private current: HudContent | null = null;
   private shown = false;
 
-  /** `moved` follows every change of the capsule's place or size (the light's bloom follows it). */
+  /** `moved` follows every change of the capsule's place or size (the light follows it). */
   constructor(moved: () => void) {
     this.layer = new Layer('atd-hud', [sheet(hudCss), sheet(askCss)]);
     this.capsule = h('div', { class: 'hud', attrs: { hidden: true } });
@@ -160,16 +160,15 @@ export class HudView {
     };
   }
 
-  /** The capsule's centre in viewport px while shown; else where it would appear. */
-  center(): [number, number] {
-    if (this.shown) {
-      const rect = this.capsule.getBoundingClientRect();
-      return [rect.left + rect.width / 2, rect.top + rect.height / 2];
-    }
+  /** The capsule's box in viewport px while shown; else roughly where it would appear. */
+  bounds(): DOMRectReadOnly {
+    if (this.shown) return this.capsule.getBoundingClientRect();
     const { v, h: horizontal } = this.mover.anchor;
     const x =
       horizontal === 'left' ? 136 : horizontal === 'right' ? innerWidth - 136 : innerWidth / 2;
-    return [x, v === 'top' ? 44 : innerHeight - 44];
+    const y = v === 'top' ? 44 : innerHeight - 44;
+    // A 272 × 44 capsule centred there.
+    return new DOMRect(x - 136, y - 22, 272, 44);
   }
 
   /** Glow effects off also stills the step text's shimmer. */
