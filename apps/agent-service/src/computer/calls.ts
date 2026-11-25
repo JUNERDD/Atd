@@ -162,7 +162,7 @@ const ComputerToolParametersBase = Type.Object(
     region: Type.Optional({
       ...ComputerObserveRegionSchema,
       description:
-        'observe: recapture only this rectangle, in pixels of an earlier capture of the same target. The rectangle must fit that capture’s width and height. Coordinates of a cropped capture start at 0,0 inside the crop.',
+        'observe: recapture only this rectangle, in pixels of an earlier capture of the same target (native apps only, not browser targets). The rectangle must fit that capture’s width and height. Coordinates of a cropped capture start at 0,0 inside the crop.',
     }),
     afterMs: Type.Optional(
       Type.Integer({
@@ -201,7 +201,7 @@ const ComputerToolParametersBase = Type.Object(
     postcondition: Type.Optional({
       ...ComputerConditionSchema,
       description:
-        'Required for invoke/submit. Prove this action’s immediate change: menuItemAvailable for exact resulting app state, valueEquals/urlMatches where applicable, textAppears only for reliable destination text absent from the baseline. Never guess future titles or variants. When navigation wording is unknown, use newText.region without a pattern over the destination content area; never add a literal pattern already present in the baseline. The host already polls native text changes for about 3 seconds and menu state for about 8 seconds; an extra same-condition wait is only for a known longer transition. Inspect nextObservation before later input. Region changes cannot finish the task. Native textAppears ignores case/spacing; already visible text or an already enabled menu item is refused. Playback: when baseline Play becomes Pause, verify the exact Pause menu path, not a title or OCR icon. newText uses this act’s full capture region, an element locator or pattern; bare native newText is refused. OCR refs are not condition locators. A failed newText cannot be rebased. Expected result text/menu labels may be absent; input targets must be observed.',
+        'Required for invoke/submit. Prove this action’s immediate change: menuItemAvailable for exact resulting app state, valueEquals/urlMatches where applicable, textAppears only for reliable destination text absent from the baseline. Never guess future titles or variants. When navigation wording is unknown on an attended native app, use newText.region without a pattern over the destination content area (region conditions are attended native-app only, not browser targets; on browser pages use newText without region or urlMatches); never add a literal pattern already present in the baseline. The host already polls native text changes for about 3 seconds and menu state for about 8 seconds; an extra same-condition wait is only for a known longer transition. Inspect nextObservation before later input. Region changes cannot finish the task. Native textAppears ignores case/spacing; already visible text or an already enabled menu item is refused. Playback: when baseline Play becomes Pause, verify the exact Pause menu path, not a title or OCR icon. newText uses this act’s full capture region (attended native apps only), an element locator or pattern; bare native newText is refused. OCR refs are not condition locators. A failed newText cannot be rebased. Expected result text/menu labels may be absent; input targets must be observed.',
     }),
     resolves: Type.Optional({
       ...ResolvesSchema,

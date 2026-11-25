@@ -40,6 +40,7 @@ function containsText(observation: Observation | undefined, expected: string): b
   const wanted = normalize(expected);
   if (!wanted) return false;
   return [
+    observation.title ?? '',
     ...(observation.text ?? []).map((box) => box.text),
     ...observation.elements.flatMap((element) => [element.name ?? '', element.value ?? '']),
   ].some((text) => normalize(text).includes(wanted));
@@ -185,9 +186,10 @@ export async function accessObservation(ctx: CallContext, bindingId: string, wai
   }
   const observation = current.preview.snapshot?.observation;
   const remaining = Math.max(0, Math.floor(deadline - performance.now()));
+  let waitedMet = false;
   if (current.ref && observation && !containsText(observation, waitFor.text) && remaining > 0) {
     try {
-      await runAct(ctx, {
+      const waited = await runAct(ctx, {
         targetRefId: current.ref.id,
         observationRefId: observation.ref.id,
         steps: [
@@ -198,13 +200,18 @@ export async function accessObservation(ctx: CallContext, bindingId: string, wai
           },
         ],
       });
+      const result = waited.details.result;
+      // Browser observations omit full body text (`observation.text`), so a converged host wait
+      // (`textAppears` over `document.body.innerText`) is authoritative readiness evidence.
+      waitedMet = result !== undefined && result.error === undefined && result.completedSteps === 1;
     } catch {
       ctx.signal?.throwIfAborted();
       // An unsupported condition or stale target still returns the actual latest state.
     }
     current = { ...current, preview: await readNextObservation(ctx, current.ref) };
   }
-  const met = containsText(current.preview.snapshot?.observation, waitFor.text);
+  const latest = current.preview.snapshot?.observation;
+  const met = latest !== undefined && (waitedMet || containsText(latest, waitFor.text));
   const readiness = { met, elapsedMs: Math.round(performance.now() - started) };
   auditComputer(ctx, 'access-readiness', readiness);
   return { ...current, readiness };
