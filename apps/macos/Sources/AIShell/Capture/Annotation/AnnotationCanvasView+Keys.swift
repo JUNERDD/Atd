@@ -6,6 +6,8 @@ import AppKit
 /// menu.
 extension AnnotationCanvasView {
   override func keyDown(with event: NSEvent) {
+    if CaptureKeyEventFilter.isOwnSynthesizedKey(event) { return }
+    interaction.disarmConfirmDoubleClick()
     if textEditor.isEditing, !textEditor.isHosted(in: self) {
       textEditor.type(event)
       return
@@ -15,12 +17,16 @@ extension AnnotationCanvasView {
   }
 
   override func performKeyEquivalent(with event: NSEvent) -> Bool {
-    keyEquivalent(event) ?? super.performKeyEquivalent(with: event)
+    if CaptureKeyEventFilter.isOwnSynthesizedKey(event) { return true }
+    let handled = keyEquivalent(event)
+    if handled == true { interaction.disarmConfirmDoubleClick() }
+    return handled ?? super.performKeyEquivalent(with: event)
   }
 
   /// ⌥ shows the originals of translated text while it is held; the host still hears it, for a
   /// drag reshaped with Shift.
   override func flagsChanged(with event: NSEvent) {
+    if CaptureKeyEventFilter.isOwnSynthesizedKey(event) { return }
     pointerOwner?.optionChanged(event.modifierFlags.contains(.option))
     super.flagsChanged(with: event)
   }
@@ -76,6 +82,7 @@ extension AnnotationCanvasView {
   /// ⌘D duplicates, ⌘V pastes, ⌘]/⌘[ reorder z-order, ⌘P pins, ⌘A picks Live Text paragraphs
   /// or all annotations, ⌘↩ is the result card's primary action, and ⌥⌘I toggles the card.
   func keyEquivalent(_ event: NSEvent) -> Bool? {
+    if CaptureKeyEventFilter.isOwnSynthesizedKey(event) { return true }
     if let editor = window?.firstResponder as? NSTextView, editor.hasMarkedText() {
       return nil
     }
@@ -85,15 +92,20 @@ extension AnnotationCanvasView {
     {
       return true
     }
-    // A field outside the canvas (the command row's ask field, the result card's adjust field)
-    // keeps its editing keys: its bar or card takes them.
-    if let editor = window?.firstResponder as? NSTextView, editor.isFieldEditor {
+    // A field or selectable text view outside the canvas (the command row's ask field, the result
+    // card's adjust field, or selected answer text in `ResultTextView`) keeps its editing/copy keys.
+    if let editor = window?.firstResponder as? NSTextView,
+      editor.isFieldEditor
+        || (!editor.isDescendant(of: self) && editor.selectedRange().length > 0)
+    {
       return nil
     }
     guard event.type == .keyDown, window?.isKeyWindow == true else { return nil }
     let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
     let key = event.charactersIgnoringModifiers?.lowercased()
-    if !textEditor.isEditing, let handled = handleCommandShortcut(modifiers: modifiers, key: key) {
+    if !textEditor.isEditing,
+      let handled = handleCommandShortcut(event: event, modifiers: modifiers, key: key)
+    {
       return handled
     }
     if modifiers == .command, key == "s", let onSave {
@@ -119,7 +131,9 @@ extension AnnotationCanvasView {
     return true
   }
 
-  private func handleCommandShortcut(modifiers: NSEvent.ModifierFlags, key: String?) -> Bool? {
+  private func handleCommandShortcut(
+    event: NSEvent, modifiers: NSEvent.ModifierFlags, key: String?
+  ) -> Bool? {
     if modifiers == [.command, .shift], key == "c", !store.selectedIDs.isEmpty,
       interaction.copySelectedAnnotations()
     {
@@ -139,6 +153,7 @@ extension AnnotationCanvasView {
     case "[":
       return interaction.sendSelectionToBack() ? true : nil
     case "c":
+      if onCopy != nil, CaptureKeyEventFilter.isExternalSyntheticCopy(event) { return true }
       if onCopySelectionText?() == true { return true }
       if let onCopy {
         onCopy()

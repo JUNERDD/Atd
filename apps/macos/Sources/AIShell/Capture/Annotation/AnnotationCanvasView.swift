@@ -179,23 +179,27 @@ final class AnnotationCanvasView: NSView {
     onPress?()
     let point = point(of: event)
     if textEditor.isEditing, openTextWidthGripHit(at: point) {
+      interaction.disarmConfirmDoubleClick()
       draggingOpenTextWidth = true
       SelectionHandle.right.cursor.set()
       return
     }
     // A click away from open text only ends the edit.
     if textEditor.isEditing {
+      interaction.disarmConfirmDoubleClick()
       textEditor.end()
       updatePointer(at: event.locationInWindow)
       return
     }
     if window?.firstResponder !== self { window?.makeFirstResponder(self) }
     if interaction.eyedropperActive {
+      interaction.disarmConfirmDoubleClick()
       sampleEyedropper(at: point, commit: true)
       interaction.directManipulationCursor(at: point)?.set()
       return
     }
     if let owner = pointerOwner, owner.takesPress(at: point) {
+      interaction.disarmConfirmDoubleClick()
       ownerPress = true
       owner.pressDown(at: point, flags: event.modifierFlags, clicks: event.clickCount)
       owner.cursor(at: point)?.set()
@@ -205,7 +209,8 @@ final class AnnotationCanvasView: NSView {
       at: point,
       clickCount: event.clickCount,
       shift: event.modifierFlags.contains(.shift),
-      option: event.modifierFlags.contains(.option))
+      option: event.modifierFlags.contains(.option),
+      timestamp: event.timestamp)
     interaction.directManipulationCursor(at: point)?.set()
   }
 
@@ -251,7 +256,7 @@ final class AnnotationCanvasView: NSView {
       ownerPress = false
       pointerOwner?.pressUp(at: point(of: event))
     } else {
-      interaction.mouseUp()
+      interaction.mouseUp(at: point(of: event), timestamp: event.timestamp)
       onGestureEnd?()
     }
     updatePointer(at: event.locationInWindow)

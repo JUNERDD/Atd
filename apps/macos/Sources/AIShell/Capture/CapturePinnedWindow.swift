@@ -64,9 +64,13 @@ final class CapturePinnedWindow: ActiveGlassPanel {
   override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
     frameRect
   }
-  override func keyDown(with e: NSEvent) { if !handleKey(e) { super.keyDown(with: e) } }
+  override func keyDown(with e: NSEvent) {
+    if CaptureKeyEventFilter.shouldSwallowPinnedKey(e) { return }
+    if !handleKey(e) { super.keyDown(with: e) }
+  }
   override func performKeyEquivalent(with e: NSEvent) -> Bool {
-    handleKey(e) ? true : super.performKeyEquivalent(with: e)
+    if CaptureKeyEventFilter.shouldSwallowPinnedKey(e) { return true }
+    return handleKey(e) ? true : super.performKeyEquivalent(with: e)
   }
 
   private func handleKey(_ event: NSEvent) -> Bool {

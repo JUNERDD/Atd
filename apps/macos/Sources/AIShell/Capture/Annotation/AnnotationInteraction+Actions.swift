@@ -43,26 +43,38 @@ extension AnnotationInteraction {
     }
   }
 
-  func beginCanvasDraw(at point: CGPoint, clickCount: Int, shift: Bool) {
-    guard let tool else { return }
+  func beginCanvasDraw(
+    at point: CGPoint, clickCount: Int, shift: Bool,
+    timestamp: TimeInterval = ProcessInfo.processInfo.systemUptime
+  ) {
+    guard let tool else {
+      confirmDoubleClick.disarm()
+      return
+    }
     switch tool {
     case .select:
-      if clickCount >= 2 {
+      if !shift,
+        confirmDoubleClick.beginPress(at: point, clickCount: clickCount, timestamp: timestamp)
+      {
         onConfirm?()
         return
       }
+      if shift { confirmDoubleClick.disarm() }
       marqueeRect = CGRect(origin: point, size: .zero)
       setGesture(.marquee(start: point, current: point, additive: shift))
       store.onChange?()
     case .text:
+      confirmDoubleClick.disarm()
       textBoxPreview = CGRect(origin: point, size: .zero)
       setGesture(.creatingTextBox(start: point, current: point))
       store.onChange?()
     case .mosaic where styles[.shared].mosaicMode == .brush:
+      confirmDoubleClick.disarm()
       let annotation = Annotation(shape: .mosaicBrush([point]), style: styles[.shared])
       setGesture(.drawing(annotation, start: point, dragged: false))
       store.preview = Self.document(store.document, adding: annotation)
     default:
+      confirmDoubleClick.disarm()
       guard let shape = tool.initialShape(at: point) else { return }
       let annotation = Annotation(shape: shape, style: styles[tool.styleSlot])
       setGesture(.drawing(annotation, start: point, dragged: false))
@@ -145,6 +157,36 @@ extension AnnotationInteraction {
   func selectAllAnnotations() -> Bool {
     guard !store.document.isEmpty else { return false }
     store.selectAll()
+    return true
+  }
+
+  /// Deletes all selected annotations; false when nothing is selected.
+  func deleteSelection() -> Bool {
+    guard !store.selectedIDs.isEmpty else { return false }
+    var document = store.document
+    document.remove(store.selectedIDs)
+    guard document != store.document else { return false }
+    store.commit(document)
+    return true
+  }
+
+  /// Removes every annotation as one undo step; false when there is none.
+  func clearAll() -> Bool {
+    guard !store.document.isEmpty else { return false }
+    cancelGesture()
+    var next = store.document
+    next.replaceAll([])
+    store.commit(next)
+    return true
+  }
+
+  /// Moves all selected annotations by `offset`; false when nothing is selected.
+  func nudgeSelection(by offset: CGVector) -> Bool {
+    guard !store.selectedIDs.isEmpty else { return false }
+    var document = store.document
+    document.move(store.selectedIDs, by: offset)
+    guard document != store.document else { return false }
+    store.commit(document)
     return true
   }
 

@@ -117,6 +117,13 @@ protocol AnnotationEditing: AnyObject {
   var onSave: (() -> Void)? { get set }
   /// The user asked to pin the selection onto the desktop (toolbar or ⌘P).
   var onPin: (() -> Void)? { get set }
+  /// Returns and clears the trigger source for the editor finish callback currently executing.
+  func consumeFinishTrigger() -> CaptureSession.FinishTrigger
+  /// Fired when the user interacts with a non-finishing editor surface (toolbar, badge, canvas)
+  /// so the session disarms any pending double-click confirmation.
+  var onAuxiliaryInteraction: (() -> Void)? { get set }
+  /// Disarms any pending double-click confirmation inside the editor.
+  func disarmConfirmDoubleClick()
   /// False while a popover, menu, inline text edit, or canvas gesture prevents badge clicks.
   var allowsBadgeInteraction: Bool { get }
   /// Queries the session whether `desktopPoint` hits an interactive size/aspect badge.
@@ -274,4 +281,67 @@ struct CaptureText: Equatable {
 
   /// Recognition failed or found nothing.
   static let empty = CaptureText(boxes: [], sensitive: [])
+}
+
+/// Enforces the in-phase double-click confirmation invariant shared by ``CaptureSession``
+/// (`.selected` move interior) and ``AnnotationInteraction`` (`.select` tool empty canvas).
+///
+/// Double-click confirmation fires only when click #1 started and released without dragging
+/// (`< SelectionModel.clickTolerance`) on the same confirmable surface within
+/// `NSEvent.doubleClickInterval` and `SelectionModel.clickTolerance` of click #2. An un-armed
+/// press with `clickCount >= 2` (such as after an `.idle` pick or closing open text) does not
+/// confirm, but begins a fresh press cycle so a follow-up `2 -> 3` double-click confirms cleanly.
+struct CaptureConfirmDoubleClick: Equatable {
+  enum State: Equatable {
+    case idle
+    case pressing(start: CGPoint, pressedAt: TimeInterval)
+    case armed(at: CGPoint, releasedAt: TimeInterval)
+  }
+
+  private(set) var state = State.idle
+
+  mutating func disarm() {
+    state = .idle
+  }
+
+  mutating func beginPress(
+    at point: CGPoint,
+    clickCount: Int,
+    timestamp: TimeInterval,
+    doubleClickInterval: TimeInterval = NSEvent.doubleClickInterval
+  ) -> Bool {
+    if clickCount >= 2, case .armed(let armedPoint, let releasedAt) = state {
+      let elapsed = timestamp - releasedAt
+      if elapsed >= 0, elapsed <= doubleClickInterval,
+        SelectionModel.isClick(from: armedPoint, to: point)
+      {
+        state = .idle
+        return true
+      }
+    }
+    state = clickCount >= 1 ? .pressing(start: point, pressedAt: timestamp) : .idle
+    return false
+  }
+
+  mutating func trackDrag(to point: CGPoint) {
+    if case .pressing(let start, _) = state, !SelectionModel.isClick(from: start, to: point) {
+      state = .idle
+    }
+  }
+
+  mutating func endPress(
+    at point: CGPoint,
+    timestamp: TimeInterval,
+    doubleClickInterval: TimeInterval = NSEvent.doubleClickInterval
+  ) {
+    if case .pressing(let start, let pressedAt) = state,
+      SelectionModel.isClick(from: start, to: point),
+      timestamp >= pressedAt,
+      timestamp - pressedAt <= doubleClickInterval
+    {
+      state = .armed(at: point, releasedAt: timestamp)
+    } else {
+      state = .idle
+    }
+  }
 }

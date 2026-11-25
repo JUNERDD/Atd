@@ -3,7 +3,7 @@ import AppKit
 
 /// Aspect-ratio preset menu, Space-pan selection drags, loupe color copy, and desktop Pin action.
 extension CaptureSession {
-  func pin() { end(as: Outcome.pinned) }
+  func pin(trigger: FinishTrigger = .unknown) { end(trigger: trigger, as: Outcome.pinned) }
 
   func canClickBadge(on overlay: CaptureOverlayView) -> Bool {
     guard isActive, accessory?.isModal != true, !choosingSaveDestination,
@@ -76,11 +76,13 @@ extension CaptureSession {
       spacePanAnchor = nil
       return
     }
+    if active { confirmDoubleClick.disarm() }
     spacePanAnchor = active ? point : nil
   }
 
   func handleDragMoved(to point: CGPoint, constrained: Bool, centered: Bool) {
     if let anchor = spacePanAnchor {
+      confirmDoubleClick.disarm()
       let delta = CGVector(dx: point.x - anchor.x, dy: point.y - anchor.y)
       spacePanAnchor = point
       panActiveDrag(by: delta, to: point, constrained: constrained, centered: centered)
@@ -95,6 +97,11 @@ extension CaptureSession {
     case .creating(let drag):
       showCreating(drag, at: point, constrained: constrained, centered: centered)
     case .adjusting(let drag):
+      if case .move = drag {
+        confirmDoubleClick.trackDrag(to: point)
+      } else {
+        confirmDoubleClick.disarm()
+      }
       let rect = model.rect(
         for: drag, to: point, constrained: constrained, centered: centered,
         aspect: aspectPreset.ratio
@@ -107,7 +114,10 @@ extension CaptureSession {
     }
   }
 
-  func handleDragEnded(at point: CGPoint, constrained: Bool, centered: Bool) {
+  func handleDragEnded(
+    at point: CGPoint, constrained: Bool, centered: Bool,
+    timestamp: TimeInterval = ProcessInfo.processInfo.systemUptime
+  ) {
     spacePanAnchor = nil
     switch phase {
     case .pressing(let owner, let start):
@@ -121,10 +131,17 @@ extension CaptureSession {
           for: drag, to: point, constrained: constrained, centered: centered,
           aspect: aspectPreset.ratio))
     case .adjusting(let drag):
+      var nextDoubleClick = confirmDoubleClick
+      if case .move = drag {
+        nextDoubleClick.endPress(at: point, timestamp: timestamp)
+      } else {
+        nextDoubleClick.disarm()
+      }
       move(
         to: model.rect(
           for: drag, to: point, constrained: constrained, centered: centered,
           aspect: aspectPreset.ratio))
+      confirmDoubleClick = nextDoubleClick
     case .idle, .selected, .longScreenshot:
       break
     }
@@ -186,9 +203,9 @@ extension CaptureSession {
   }
 
   /// Ends the session like ``confirm()``, with the result saved locally to a folder or chosen file.
-  func save() {
+  func save(trigger: FinishTrigger = .unknown) {
     if options.saveFolder != nil {
-      end { .saved($0, destination: nil) }
+      end(trigger: trigger) { .saved($0, destination: nil) }
       return
     }
     editor?.endText()
@@ -207,7 +224,7 @@ extension CaptureSession {
       choosingSaveDestination = false
       guard !isFinished else { return }
       if let destination {
-        end { .saved($0, destination: destination) }
+        end(trigger: trigger) { .saved($0, destination: destination) }
       } else if hasKeyboard, case .selected(let currentRect) = phase {
         primaryOverlay(for: currentRect)?.window?.makeKey()
       }

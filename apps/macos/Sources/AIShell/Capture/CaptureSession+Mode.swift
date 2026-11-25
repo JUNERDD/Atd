@@ -55,6 +55,7 @@ extension CaptureSession {
       renderIdle()
       requestHover()
     case .selected(let rect):
+      confirmDoubleClick.disarm()
       if mode == .screenshot { keepAnnotations(of: rect) }
       unhost()
       mode = next
@@ -91,6 +92,7 @@ extension CaptureSession {
   /// Takes the editor or the record bar off the selection; the session owns the overlays' input
   /// again, the keyboard included: the canvases that had it are gone.
   func unhost() {
+    confirmDoubleClick.disarm()
     editor?.hide()
     editor = nil
     accessory?.hide()
@@ -108,18 +110,31 @@ extension CaptureSession {
   private func hostEditor(_ rect: CGRect) {
     let editor = makeEditor()
     self.editor = editor
-    editor.onConfirm = { [weak self] in self?.confirm() }
+    editor.onConfirm = { [weak self] in
+      self?.confirm(trigger: self?.consumeEditorTrigger() ?? .unknown)
+    }
     editor.onCancel = { [weak self] in self?.cancel() }
-    editor.onCopy = { [weak self] in self?.copy() }
-    editor.onPin = { [weak self] in self?.pin() }
-    editor.onSave = options.reopening ? nil : { [weak self] in self?.save() }
+    editor.onCopy = { [weak self] in
+      self?.copy(trigger: self?.consumeEditorTrigger() ?? .unknown)
+    }
+    editor.onPin = { [weak self] in
+      self?.pin(trigger: self?.consumeEditorTrigger() ?? .unknown)
+    }
+    editor.onSave =
+      options.reopening
+      ? nil
+      : { [weak self] in self?.save(trigger: self?.consumeEditorTrigger() ?? .unknown) }
     editor.saveFolder = options.saveFolder
-    editor.onLaunch = { [weak self] in self?.launch($0) }
+    editor.onLaunch = { [weak self] in
+      self?.launch($0, trigger: self?.consumeEditorTrigger() ?? .commandSlot)
+    }
     editor.isInteractiveBadgeAt = { [weak self] point in
       self?.isInteractiveBadge(at: point) ?? false
     }
+    editor.onAuxiliaryInteraction = { [weak self] in self?.confirmDoubleClick.disarm() }
     editor.onInteriorClaimChange = { [weak self] claimed in
       guard let self else { return }
+      confirmDoubleClick.disarm()
       interiorClaimed = claimed
       for overlay in overlays { overlay.refreshCursor() }
     }
@@ -146,10 +161,14 @@ extension CaptureSession {
     probeScrollArea(in: rect)
   }
 
+  private func consumeEditorTrigger() -> FinishTrigger {
+    editor?.consumeFinishTrigger() ?? .unknown
+  }
+
   private func hostAccessory(_ rect: CGRect) {
     guard let make = options.makeRecordAccessory else { return }
     let accessory = make()
-    accessory.onStart = { [weak self] in self?.startRecording() }
+    accessory.onStart = { [weak self] in self?.startRecording(trigger: .toolbarButton) }
     accessory.onCancel = { [weak self] in self?.cancel() }
     self.accessory = accessory
     placeAccessory(beside: rect)
@@ -175,13 +194,14 @@ extension CaptureSession {
 
   /// Start: the session ends with the part of the selection on the display holding most of it,
   /// in that display's points. The caller adds the window and the app it shows from its snapshot.
-  func startRecording() {
+  func startRecording(trigger: FinishTrigger = .unknown) {
     guard mode == .record, case .selected(let rect) = phase,
       let primary = desktop.geometry.primary(for: rect)
     else { return }
     let display = desktop.geometry.frame(of: primary)
     let part = rect.intersection(display)
     guard !part.isNull, part.width >= 1, part.height >= 1 else { return }
+    finishTrigger = trigger
     finish(
       .record(
         CaptureRecordRequest(

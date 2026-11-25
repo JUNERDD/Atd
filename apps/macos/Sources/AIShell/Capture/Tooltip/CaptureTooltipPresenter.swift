@@ -185,7 +185,9 @@ final class CaptureTooltipPresenter {
       eventMonitor = NSEvent.addLocalMonitorForEvents(
         matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown, .scrollWheel, .keyDown]
       ) { [weak self] event in
-        MainActor.assumeIsolated { self?.dismiss() }
+        if !CaptureKeyEventFilter.shouldSwallowPinnedKey(event) {
+          MainActor.assumeIsolated { self?.dismiss() }
+        }
         return event
       }
     }

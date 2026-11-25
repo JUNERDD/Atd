@@ -34,6 +34,7 @@ final class CaptureOverlayCornerControl {
     }
     overlay.chrome.onCornerBadgeClick = { [weak self, weak overlay] _ in
       guard let overlay else { return }
+      overlay.delegate?.overlayDidClickCornerBadge(overlay)
       self?.togglePopover(on: overlay)
     }
   }

@@ -10,19 +10,40 @@ extension AnnotationEditor {
   /// Wires the slot's text parts, the result card, and the runs' versions following undo and
   /// redo; once, from `init`.
   func wireText() {
-    slot.onSelectText = { [weak self] in self?.enterTextMode() }
-    slot.onRedact = { [weak self] in self?.redactSensitive() }
+    slot.onSelectText = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.enterTextMode()
+    }
+    slot.onRedact = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.redactSensitive()
+    }
     slot.onRedactionFeedbackEnd = { [weak self] in self?.refresh() }
     slot.isTextMode = { [weak self] in self?.text.mode.isOn ?? false }
     slot.canModifySelection = { [weak self] in
       guard let mode = self?.text.mode else { return false }
       return mode.isOn && !mode.available.isEmpty
     }
-    slot.onTextRun = { [weak self] in self?.runText($0) }
-    slot.onTextAsk = { [weak self] question, output in self?.runTextAsk(question, output: output) }
-    slot.onTextCopy = { [weak self] in self?.copySelectedText(fromKey: false) }
-    slot.onScopeClear = { [weak self] in self?.clearScope() }
-    slot.onToggleResults = { [weak self] in self?.toggleResultCard() }
+    slot.onTextRun = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.runText($0)
+    }
+    slot.onTextAsk = { [weak self] question, output in
+      self?.disarmConfirmDoubleClick()
+      self?.runTextAsk(question, output: output)
+    }
+    slot.onTextCopy = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.copySelectedText(fromKey: false)
+    }
+    slot.onScopeClear = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.clearScope()
+    }
+    slot.onToggleResults = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.toggleResultCard()
+    }
     text.card.onAction = { [weak self] in self?.cardAction($0) }
     store.onRestored = { [weak self] in self?.followUndo() }
   }
@@ -114,7 +135,7 @@ extension AnnotationEditor {
     if text.mode.selection != nil {
       copySelectedText(fromKey: true)
     } else if !text.card.copyKey() {
-      onCopy?()
+      triggerFinish(.commandShortcut, onCopy)
     }
   }
 

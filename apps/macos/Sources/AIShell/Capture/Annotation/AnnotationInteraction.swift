@@ -25,7 +25,12 @@ final class AnnotationInteraction {
   /// Nil until a tool is chosen, and again after Esc drops it. Another tool deselects so the
   /// style bar targets the upcoming annotation instead of the previous tool's shape.
   var tool: AnnotationTool? {
-    didSet { if tool != oldValue { store.selectedID = nil } }
+    didSet {
+      if tool != oldValue {
+        store.selectedID = nil
+        confirmDoubleClick.disarm()
+      }
+    }
   }
   /// The styles new annotations take, per slot (E8); the editor remembers them.
   var styles = AnnotationStyles.defaults {
@@ -47,13 +52,16 @@ final class AnnotationInteraction {
 
   var eyedropperActive = false
   var hoveredRGBA: AnnotationRGBA?
-  var selectionBounds: CGRect?
+  var selectionBounds: CGRect? {
+    didSet { if selectionBounds != oldValue { confirmDoubleClick.disarm() } }
+  }
   var marqueeRect: CGRect?
   var textBoxPreview: CGRect?
   var activeSnapGuides: [AnnotationSnapGuide] = []
   var groupResize: GroupResizeState?
   var smartShapeTimer: Timer?
   var pendingSmartShapeID: UUID?
+  var confirmDoubleClick = CaptureConfirmDoubleClick()
 
   private(set) var gesture = Gesture.idle
 
@@ -67,6 +75,7 @@ final class AnnotationInteraction {
   }
 
   func setGesture(_ next: Gesture) { gesture = next }
+  func disarmConfirmDoubleClick() { confirmDoubleClick.disarm() }
 
   /// What a press at `point` would reach with the current tool; nil before a tool is chosen.
   func target(at point: CGPoint) -> AnnotationPressTarget? {
@@ -89,14 +98,17 @@ final class AnnotationInteraction {
     at point: CGPoint,
     clickCount: Int,
     shift: Bool = false,
-    option: Bool = false
+    option: Bool = false,
+    timestamp: TimeInterval = ProcessInfo.processInfo.systemUptime
   ) {
     if let handle = groupHandle(at: point), beginGroupResize(handle: handle) {
+      confirmDoubleClick.disarm()
       return
     }
     if let handle = cornerRadiusHandle(at: point) ?? extendedHandle(at: point),
       let selected = store.selected
     {
+      confirmDoubleClick.disarm()
       if handle == .cornerRadius, clickCount >= 2 {
         toggleCornerRadiusDefault(selected)
         return
@@ -111,6 +123,7 @@ final class AnnotationInteraction {
       return
     }
     if clickCount >= 2, let textHit = editableTextAnnotation(at: point) {
+      confirmDoubleClick.disarm()
       onEditText?(point, textHit)
       return
     }
@@ -121,15 +134,18 @@ final class AnnotationInteraction {
       at: point, tool: effectiveTool, selectedID: store.selectedID)
     switch pressTarget {
     case .grip(let handle):
+      confirmDoubleClick.disarm()
       guard let selected = store.selected else { return }
       gesture = .resizing(selected, handle)
     case .text(let id):
+      confirmDoubleClick.disarm()
       if shift, effectiveTool == .select {
         toggleMultiSelection(id)
         return
       }
       onEditText?(point, document[id])
     case .annotation(let id):
+      confirmDoubleClick.disarm()
       guard let hit = document[id] else { return }
       if clickCount >= 2, hit.isText {
         onEditText?(point, hit)
@@ -139,7 +155,7 @@ final class AnnotationInteraction {
         hit: hit, at: point, effectiveTool: effectiveTool, shift: shift, option: option)
     case .canvas:
       if !shift { store.selectedIDs = [] }
-      beginCanvasDraw(at: point, clickCount: clickCount, shift: shift)
+      beginCanvasDraw(at: point, clickCount: clickCount, shift: shift, timestamp: timestamp)
     }
   }
 
@@ -148,6 +164,11 @@ final class AnnotationInteraction {
     case .idle:
       return
     case .marquee(let start, _, let additive):
+      if additive {
+        confirmDoubleClick.disarm()
+      } else {
+        confirmDoubleClick.trackDrag(to: point)
+      }
       let rect = AnnotationMath.rect(corners: start, point)
       marqueeRect = rect
       let hitIDs = store.document.ids(intersecting: rect)
@@ -192,17 +213,26 @@ final class AnnotationInteraction {
     }
   }
 
-  func mouseUp() {
+  func mouseUp(
+    at point: CGPoint? = nil, timestamp: TimeInterval = ProcessInfo.processInfo.systemUptime
+  ) {
     cancelSmartShapeTimer()
     activeSnapGuides = []
     defer { gesture = .idle }
     switch gesture {
     case .idle:
+      confirmDoubleClick.disarm()
       return
-    case .marquee:
+    case .marquee(_, let current, let additive):
+      if additive {
+        confirmDoubleClick.disarm()
+      } else {
+        confirmDoubleClick.endPress(at: point ?? current, timestamp: timestamp)
+      }
       marqueeRect = nil
       store.onChange?()
     case .creatingTextBox(let start, let current):
+      confirmDoubleClick.disarm()
       let rect = AnnotationMath.rect(corners: start, current)
       textBoxPreview = nil
       if rect.width >= 24 {
@@ -212,6 +242,7 @@ final class AnnotationInteraction {
       }
       store.onChange?()
     case .drawing(let annotation, let start, let dragged):
+      confirmDoubleClick.disarm()
       if !dragged, let tool, tool.boxesElements {
         boxElement(at: start, tool: tool, style: annotation.style)
         return
@@ -223,6 +254,7 @@ final class AnnotationInteraction {
       store.commit(preview)
       store.selectedID = annotation.id
     case .moving, .movingGroup, .resizing:
+      confirmDoubleClick.disarm()
       groupResize = nil
       store.commit(store.preview ?? store.document)
     }
@@ -253,39 +285,10 @@ final class AnnotationInteraction {
     store.commit(doc, burst: burst)
   }
 
-  /// Deletes all selected annotations; false when nothing is selected.
-  func deleteSelection() -> Bool {
-    guard !store.selectedIDs.isEmpty else { return false }
-    var document = store.document
-    document.remove(store.selectedIDs)
-    guard document != store.document else { return false }
-    store.commit(document)
-    return true
-  }
-
-  /// Removes every annotation as one undo step; false when there is none.
-  func clearAll() -> Bool {
-    guard !store.document.isEmpty else { return false }
-    cancelGesture()
-    var next = store.document
-    next.replaceAll([])
-    store.commit(next)
-    return true
-  }
-
-  /// Moves all selected annotations by `offset`; false when nothing is selected.
-  func nudgeSelection(by offset: CGVector) -> Bool {
-    guard !store.selectedIDs.isEmpty else { return false }
-    var document = store.document
-    document.move(store.selectedIDs, by: offset)
-    guard document != store.document else { return false }
-    store.commit(document)
-    return true
-  }
-
   /// Drops a gesture in progress (the editor hides or the tool changes mid-drag).
   func cancelGesture() {
     cancelSmartShapeTimer()
+    confirmDoubleClick.disarm()
     activeSnapGuides = []
     groupResize = nil
     marqueeRect = nil

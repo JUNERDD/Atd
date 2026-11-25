@@ -36,8 +36,8 @@ final class CaptureOverlayView: NSView {
   private var scrollAccumulator: CGFloat = 0
   private static let scrollStep: CGFloat = 12
   /// The last mouse position while the button is down, so a modifier change re-applies the drag.
-  private var dragPoint: CGPoint?
-  private var isSpacePanning = false
+  var dragPoint: CGPoint?
+  var isSpacePanning = false
 
   /// `frame` is the display's area of the desktop (desktop points).
   init(display: FrozenDisplay, frame: CGRect) {
@@ -209,7 +209,8 @@ final class CaptureOverlayView: NSView {
     }
     let point = point(of: event)
     dragPoint = point
-    delegate?.overlay(self, mouseDownAt: point, clickCount: event.clickCount)
+    delegate?.overlay(
+      self, mouseDownAt: point, clickCount: event.clickCount, timestamp: event.timestamp)
     delegate?.overlay(self, cursorAt: point)?.set()
   }
 
@@ -228,22 +229,19 @@ final class CaptureOverlayView: NSView {
       isSpacePanning = false
       delegate?.overlay(self, spacePanChanged: false, at: point)
     }
-    sendDrag(to: point, flags: event.modifierFlags, ended: true)
+    sendDrag(to: point, flags: event.modifierFlags, ended: true, timestamp: event.timestamp)
     hoverCursor(at: point)
   }
 
-  /// Pressing or releasing Shift/Option mid-drag reshapes the selection without a mouse move.
-  override func flagsChanged(with event: NSEvent) {
-    if let dragPoint { sendDrag(to: dragPoint, flags: event.modifierFlags, ended: false) }
-    super.flagsChanged(with: event)
-  }
-
-  private func sendDrag(to point: CGPoint, flags: NSEvent.ModifierFlags, ended: Bool) {
+  func sendDrag(
+    to point: CGPoint, flags: NSEvent.ModifierFlags, ended: Bool, timestamp: TimeInterval = 0
+  ) {
     let clean = flags.intersection(.deviceIndependentFlagsMask)
     let constrained = clean.contains(.shift)
     let centered = clean.contains(.option)
     if ended {
-      delegate?.overlay(self, mouseUpAt: point, constrained: constrained, centered: centered)
+      delegate?.overlay(
+        self, mouseUpAt: point, constrained: constrained, centered: centered, timestamp: timestamp)
     } else {
       delegate?.overlay(self, mouseDraggedTo: point, constrained: constrained, centered: centered)
     }
@@ -300,50 +298,4 @@ final class CaptureOverlayView: NSView {
   private func point(of event: NSEvent) -> CGPoint {
     convert(event.locationInWindow, from: nil)
   }
-
-  // MARK: Keyboard
-
-  override func performKeyEquivalent(with event: NSEvent) -> Bool {
-    if super.performKeyEquivalent(with: event) { return true }
-    if let editor = window?.firstResponder as? NSTextView,
-      editor.hasMarkedText() || editor.isFieldEditor
-    {
-      return false
-    }
-    guard event.type == .keyDown, window?.isKeyWindow == true,
-      let command = CaptureCommand(event), command == .save || command == .pin
-    else { return false }
-    delegate?.overlay(self, perform: command)
-    return true
-  }
-
-  override func keyDown(with event: NSEvent) {
-    if event.keyCode == 49, let dragPoint {
-      if !isSpacePanning {
-        isSpacePanning = true
-        delegate?.overlay(self, spacePanChanged: true, at: dragPoint)
-      }
-      return
-    }
-    if [49, 13].contains(event.keyCode), event.isARepeat { return }
-    guard let command = CaptureCommand(event) else {
-      super.keyDown(with: event)
-      return
-    }
-    delegate?.overlay(self, perform: command)
-  }
-
-  override func keyUp(with event: NSEvent) {
-    if event.keyCode == 49, isSpacePanning {
-      isSpacePanning = false
-      delegate?.overlay(self, spacePanChanged: false, at: dragPoint ?? .zero)
-      return
-    }
-    super.keyUp(with: event)
-  }
-
-  /// Escape normally arrives in `keyDown`; this covers Command-period.
-  override func cancelOperation(_ sender: Any?) { delegate?.overlay(self, perform: .cancel) }
-  /// The Edit menu's Select All, when no text editor took it.
-  override func selectAll(_ sender: Any?) { delegate?.overlay(self, perform: .selectDisplay) }
 }

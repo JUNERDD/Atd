@@ -12,25 +12,78 @@ extension AnnotationEditor {
     return closedPickers || closedSlot
   }
 
+  func disarmConfirmDoubleClick() {
+    interaction.disarmConfirmDoubleClick()
+    onAuxiliaryInteraction?()
+  }
+
+  func consumeFinishTrigger() -> CaptureSession.FinishTrigger {
+    defer { pendingFinishTrigger = .unknown }
+    return pendingFinishTrigger
+  }
+
+  func triggerFinish(_ trigger: CaptureSession.FinishTrigger, _ action: (() -> Void)?) {
+    pendingFinishTrigger = trigger
+    defer { pendingFinishTrigger = .unknown }
+    action?()
+  }
+
+  func syncPinAction() {
+    toolbar.onPin =
+      onPin == nil ? nil : { [weak self] in self?.triggerFinish(.toolbarButton, self?.onPin) }
+    for canvas in canvases {
+      canvas.onPin =
+        onPin == nil ? nil : { [weak self] in self?.triggerFinish(.commandShortcut, self?.onPin) }
+    }
+  }
+
+  func syncSaveAction() {
+    toolbar.onSave =
+      onSave == nil ? nil : { [weak self] in self?.triggerFinish(.toolbarButton, self?.onSave) }
+    for canvas in canvases {
+      canvas.onSave =
+        onSave == nil ? nil : { [weak self] in self?.triggerFinish(.commandShortcut, self?.onSave) }
+    }
+  }
+
+  func wireCanvasFinishActions(_ canvas: AnnotationCanvasView) {
+    canvas.onPin =
+      onPin == nil ? nil : { [weak self] in self?.triggerFinish(.commandShortcut, self?.onPin) }
+    canvas.onSave =
+      onSave == nil ? nil : { [weak self] in self?.triggerFinish(.commandShortcut, self?.onSave) }
+  }
+
   /// Return while a tool is chosen, which the canvas takes then: an open menu closes first, as it
   /// does for Escape (``stepBack()``) and for Return without a tool (the session's `.confirm`), so
   /// the key means the same whichever tool is chosen.
   func confirmFromKey() {
     guard !dismissMenus() else { return }
-    onConfirm?()
+    triggerFinish(.returnKey, onConfirm)
   }
 
   /// Wires the slot, auto-redact and undo's withdrawal of feedback; once, from `init`.
   func wireCommands() {
-    slot.onLaunch = { [weak self] in self?.onLaunch?($0) }
-    slot.onAskOpen = { [weak self] in self?.askOpening() }
+    slot.onLaunch = { [weak self] launch in
+      self?.triggerFinish(.commandSlot) { self?.onLaunch?(launch) }
+    }
+    slot.onAskOpen = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.askOpening()
+    }
     slot.onAskClose = { [weak self] in
+      self?.disarmConfirmDoubleClick()
       self?.refresh()
       self?.focusCanvas()
     }
-    slot.onCopyText = { [weak self] in self?.copyText() }
+    slot.onCopyText = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.copyText()
+    }
     slot.onDrag = { [weak self] in self?.moveBars($0) }
-    styleBar.onRedact = { [weak self] in self?.redactSensitive() }
+    styleBar.onRedact = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.redactSensitive()
+    }
     store.onUndoRedo = { [weak self] in self?.endFeedback() }
   }
 

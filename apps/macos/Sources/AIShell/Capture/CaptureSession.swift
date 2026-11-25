@@ -146,6 +146,8 @@ final class CaptureSession {
   private var continuation: CheckedContinuation<Outcome, Never>?
   var observers: [any NSObjectProtocol] = []
   var cancelSource = CancelSource.user
+  var finishTrigger = FinishTrigger.unknown
+  var confirmDoubleClick = CaptureConfirmDoubleClick()
 
   init(
     targeting: any ElementTargeting, offersTrustRequest: Bool, regions: CaptureRegionMemory,
@@ -245,22 +247,24 @@ final class CaptureSession {
 
   /// Renders the selection with and without its annotations and ends the session with them; in
   /// record mode, starts the recording instead (Return, a double-click).
-  func confirm() {
-    guard mode == .screenshot else { return startRecording() }
-    end(as: Outcome.confirmed)
+  func confirm(trigger: FinishTrigger = .unknown) {
+    guard mode == .screenshot else { return startRecording(trigger: trigger) }
+    end(trigger: trigger, as: Outcome.confirmed)
   }
 
   /// Ends the session like ``confirm()``, with the result meant for the clipboard.
-  func copy() { end(as: Outcome.copied) }
+  func copy(trigger: FinishTrigger = .unknown) { end(trigger: trigger, as: Outcome.copied) }
 
   /// Ends the session like ``confirm()``, with `launch` to run on the result.
-  func launch(_ launch: CaptureLaunch) { end { .launched($0, launch) } }
+  func launch(_ launch: CaptureLaunch, trigger: FinishTrigger = .unknown) {
+    end(trigger: trigger) { .launched($0, launch) }
+  }
 
   /// The editor's document, open text committed, is read before ``finish(_:)`` hides it. The
   /// confirmation names the display holding most of the selection, with the selection in its
   /// view points. A selection moved wholly into a gap between displays holds no pixels and
   /// confirms nothing.
-  func end(as outcome: (CaptureConfirmation) -> Outcome) {
+  func end(trigger: FinishTrigger = .unknown, as outcome: (CaptureConfirmation) -> Outcome) {
     editor?.endText()
     guard case .selected(let rect) = phase,
       !desktop.geometry.displays(overlapping: rect).isEmpty
@@ -276,6 +280,7 @@ final class CaptureSession {
       displayFrame: primary.quartzFrame,
       selection: rect.offsetBy(dx: -origin.x, dy: -origin.y), desktopSelection: rect)
     confirmation.pickedText = editor?.pickedText
+    finishTrigger = trigger
     finish(outcome(confirmation))
   }
 
@@ -284,6 +289,7 @@ final class CaptureSession {
   func finish(_ outcome: Outcome) {
     guard self.outcome == nil else { return }
     self.outcome = outcome
+    confirmDoubleClick.disarm()
     recordSessionFinish(outcome)
     dismissOverlayPopovers()
     choosingSaveDestination = false

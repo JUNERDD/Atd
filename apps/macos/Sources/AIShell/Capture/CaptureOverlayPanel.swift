@@ -36,6 +36,22 @@ final class CaptureOverlayPanel: NSPanel, FloatingHoverHost {
   override var canBecomeKey: Bool { allowsKey && !PanelKeyboard.isReturningToFrontmostApp }
   override var canBecomeMain: Bool { false }
 
+  /// Swallows Atd's own synthesized keys and unsolicited external synthetic `⌘C` ahead of views
+  /// and `NSApp.mainMenu` (while preserving text-selection copy in `NSTextView` and remote keys).
+  override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    if CaptureKeyEventFilter.shouldSwallowCaptureKeyEquivalent(
+      event, firstResponder: firstResponder)
+    {
+      return true
+    }
+    return super.performKeyEquivalent(with: event)
+  }
+
+  override func sendEvent(_ event: NSEvent) {
+    if CaptureKeyEventFilter.isOwnSynthesizedKey(event) { return }
+    super.sendEvent(event)
+  }
+
   override func close() {
     allowsKey = false
     PanelKeyboard.suppressResidentKey {

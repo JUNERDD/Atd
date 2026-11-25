@@ -104,18 +104,22 @@ enum CaptureCommand: Equatable {
 /// Receives an overlay's input; points are desktop points (the overlay view's own).
 protocol CaptureOverlayDelegate: AnyObject {
   func overlay(_ overlay: CaptureOverlayView, pointerAt point: CGPoint)
-  func overlay(_ overlay: CaptureOverlayView, mouseDownAt point: CGPoint, clickCount: Int)
+  func overlay(
+    _ overlay: CaptureOverlayView, mouseDownAt point: CGPoint, clickCount: Int,
+    timestamp: TimeInterval)
   /// `constrained` is Shift's state (`1:1` or active aspect ratio); `centered` is Option's state.
   func overlay(
     _ overlay: CaptureOverlayView, mouseDraggedTo point: CGPoint, constrained: Bool, centered: Bool
   )
   func overlay(
-    _ overlay: CaptureOverlayView, mouseUpAt point: CGPoint, constrained: Bool, centered: Bool)
+    _ overlay: CaptureOverlayView, mouseUpAt point: CGPoint, constrained: Bool, centered: Bool,
+    timestamp: TimeInterval)
   func overlay(_ overlay: CaptureOverlayView, spacePanChanged active: Bool, at point: CGPoint)
   func overlayRightClicked(_ overlay: CaptureOverlayView)
   func overlay(_ overlay: CaptureOverlayView, perform command: CaptureCommand)
   func overlayCanClickBadge(_ overlay: CaptureOverlayView) -> Bool
   func overlay(_ overlay: CaptureOverlayView, didClickBadgeWith event: NSEvent)
+  func overlayDidClickCornerBadge(_ overlay: CaptureOverlayView)
   /// The cursor at `point`, or nil to leave it to whatever the annotation editor shows there.
   func overlay(_ overlay: CaptureOverlayView, cursorAt point: CGPoint) -> NSCursor?
 }

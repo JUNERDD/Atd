@@ -18,9 +18,9 @@ extension CaptureSession: CaptureOverlayDelegate {
     switch phase {
     case .selected:
       if dismissOverlayPopovers() || editor?.dismissMenus() == true { return }
-      copy()
+      copy(trigger: .repeatShortcut)
     case .longScreenshot:
-      finishLongScreenshot(action: .copy)
+      finishLongScreenshot(action: .copy, trigger: .repeatShortcut)
     case .idle, .pressing, .creating, .adjusting:
       return
     }
@@ -39,11 +39,18 @@ extension CaptureSession: CaptureOverlayDelegate {
     requestHover()
   }
 
-  func overlay(_ overlay: CaptureOverlayView, mouseDownAt point: CGPoint, clickCount: Int) {
+  func overlay(
+    _ overlay: CaptureOverlayView, mouseDownAt point: CGPoint, clickCount: Int,
+    timestamp: TimeInterval
+  ) {
     // An open menu of the record bar takes the presses outside it.
-    guard isActive, accessory?.isModal != true else { return }
+    guard isActive, accessory?.isModal != true else {
+      confirmDoubleClick.disarm()
+      return
+    }
     switch phase {
     case .idle:
+      confirmDoubleClick.disarm()
       phase = .pressing(overlay, start: point)
       refreshBars()
     case .selected(let rect):
@@ -52,21 +59,25 @@ extension CaptureSession: CaptureOverlayDelegate {
       let drag = model.drag(startingAt: point, selection: rect)
       switch drag {
       case .create:
+        confirmDoubleClick.disarm()
         return
       case .move:
         // The host routes a claimed interior to the editor; this only guards the contract.
-        guard !interiorClaimed else { return }
-        if clickCount >= 2 {
-          confirm()
+        guard !interiorClaimed else {
+          confirmDoubleClick.disarm()
+          return
+        }
+        if confirmDoubleClick.beginPress(at: point, clickCount: clickCount, timestamp: timestamp) {
+          confirm(trigger: .doubleClick)
           return
         }
       case .resize:
-        break
+        confirmDoubleClick.disarm()
       }
       phase = .adjusting(drag)
     // The long screenshot's selection is the app's; a press around it does nothing.
     case .pressing, .creating, .adjusting, .longScreenshot:
-      break
+      confirmDoubleClick.disarm()
     }
   }
 
@@ -77,9 +88,10 @@ extension CaptureSession: CaptureOverlayDelegate {
   }
 
   func overlay(
-    _ overlay: CaptureOverlayView, mouseUpAt point: CGPoint, constrained: Bool, centered: Bool
+    _ overlay: CaptureOverlayView, mouseUpAt point: CGPoint, constrained: Bool, centered: Bool,
+    timestamp: TimeInterval
   ) {
-    handleDragEnded(at: point, constrained: constrained, centered: centered)
+    handleDragEnded(at: point, constrained: constrained, centered: centered, timestamp: timestamp)
   }
 
   func overlay(_ overlay: CaptureOverlayView, spacePanChanged active: Bool, at point: CGPoint) {
@@ -91,7 +103,14 @@ extension CaptureSession: CaptureOverlayDelegate {
   }
 
   func overlay(_ overlay: CaptureOverlayView, didClickBadgeWith event: NSEvent) {
+    confirmDoubleClick.disarm()
+    editor?.disarmConfirmDoubleClick()
     showAspectMenu(on: overlay, with: event)
+  }
+
+  func overlayDidClickCornerBadge(_ overlay: CaptureOverlayView) {
+    confirmDoubleClick.disarm()
+    editor?.disarmConfirmDoubleClick()
   }
 
   /// Clears the selection back to idle, unless that would lose annotations (or open text),
@@ -100,6 +119,7 @@ extension CaptureSession: CaptureOverlayDelegate {
     guard isActive, case .selected = phase, editor?.hasAnnotations != true,
       shotDocument?.isEmpty ?? true, accessory?.isModal != true
     else { return }
+    confirmDoubleClick.disarm()
     unhost()
     longScreenshot.resetSelection()
     aspectPreset = .free
@@ -112,6 +132,8 @@ extension CaptureSession: CaptureOverlayDelegate {
   func overlay(_ overlay: CaptureOverlayView, perform command: CaptureCommand) {
     // The wheel walks the chain through here; keys cannot arrive before activation.
     guard isActive, !choosingSaveDestination else { return }
+    confirmDoubleClick.disarm()
+    editor?.disarmConfirmDoubleClick()
     // While the record bar's menu or folder panel is open the keyboard is its; Escape closes it.
     if accessory?.isModal == true {
       if command == .cancel { _ = accessory?.dismissMenus() }
@@ -131,7 +153,7 @@ extension CaptureSession: CaptureOverlayDelegate {
       cancel()
     case .confirm:
       if dismissOverlayPopovers() || editor?.dismissMenus() == true { return }
-      confirm()
+      confirm(trigger: .returnKey)
     case .walk(let step):
       walkChain(step)
     case .selectDisplay:
@@ -169,11 +191,11 @@ extension CaptureSession: CaptureOverlayDelegate {
     case .save:
       guard !options.reopening, mode == .screenshot, case .selected = phase else { return }
       if dismissOverlayPopovers() || editor?.dismissMenus() == true { return }
-      save()
+      save(trigger: .commandShortcut)
     case .pin:
       guard mode == .screenshot, case .selected = phase else { return }
       if dismissOverlayPopovers() || editor?.dismissMenus() == true { return }
-      pin()
+      pin(trigger: .commandShortcut)
     case .copyColor(let asRGB):
       _ = overlays.first(where: { $0.isLoupeVisible })?.copyLoupeColor(asRGB: asRGB)
     }
@@ -223,6 +245,7 @@ extension CaptureSession: CaptureOverlayDelegate {
   /// whose canvas covers every display it reaches, or the record bar. A click on a detected
   /// element sets ``CaptureSession/pick`` once this returns.
   func commit(_ rect: CGRect) {
+    confirmDoubleClick.disarm()
     phase = .selected(rect)
     pick = nil
     interiorClaimed = false
@@ -246,6 +269,7 @@ extension CaptureSession: CaptureOverlayDelegate {
   /// beside the selection keep clear of where it now is; the text is read again, and the scroll
   /// area under it looked for, once no other move came for `delay`.
   func move(to rect: CGRect, readAfter delay: Duration = .zero) {
+    confirmDoubleClick.disarm()
     phase = .selected(rect)
     showLoupe(at: nil)
     show(rect, handles: true)

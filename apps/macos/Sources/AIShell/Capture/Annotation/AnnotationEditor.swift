@@ -22,22 +22,13 @@ final class AnnotationEditor: AnnotationEditing {
   var onConfirm: (() -> Void)?
   var onCancel: (() -> Void)?
   var onCopy: (() -> Void)?
-  var onPin: (() -> Void)? {
-    didSet {
-      toolbar.onPin = onPin
-      for canvas in canvases { canvas.onPin = onPin }
-    }
-  }
-  var onSave: (() -> Void)? {
-    didSet {
-      toolbar.onSave = onSave
-      for canvas in canvases { canvas.onSave = onSave }
-    }
-  }
+  var onPin: (() -> Void)? { didSet { syncPinAction() } }
+  var onSave: (() -> Void)? { didSet { syncSaveAction() } }
   var saveFolder: String? {
     didSet { toolbar.saveFolder = saveFolder }
   }
   var onInteriorClaimChange: ((Bool) -> Void)?
+  var onAuxiliaryInteraction: (() -> Void)?
   var isInteractiveBadgeAt: ((CGPoint) -> Bool)?
   var onLaunch: ((CaptureLaunch) -> Void)?
   var commandRow: CaptureCommandRowSetup? {
@@ -102,6 +93,7 @@ final class AnnotationEditor: AnnotationEditing {
   var recognizedTextRevision: UInt64 = 0
   var lastHasSelectText: Bool?
   var unmaskedSensitiveCache: (mosaics: [CGRect], revision: UInt64, uncovered: [SensitiveText.Box])?
+  var pendingFinishTrigger = CaptureSession.FinishTrigger.unknown
 
   /// `defaults` keeps the remembered styles.
   init(defaults: UserDefaults = .standard) {
@@ -123,7 +115,7 @@ final class AnnotationEditor: AnnotationEditing {
       self?.beginTextBox(at: point, width: width)
     }
     interaction.onSmartShapeSnapped = { [weak self] label in self?.showCanvasHUD(label) }
-    interaction.onConfirm = { [weak self] in self?.onConfirm?() }
+    interaction.onConfirm = { [weak self] in self?.triggerFinish(.doubleClick, self?.onConfirm) }
     styleCoordinator.onRedraw = { [weak self] in self?.redraw() }
     styleCoordinator.onRefresh = { [weak self] in self?.refresh() }
     styleCoordinator.onRefreshPointer = { [weak self] in self?.refreshPointer() }
@@ -137,12 +129,21 @@ final class AnnotationEditor: AnnotationEditing {
       self?.landWaiting()
     }
     toolbar.onTool = { [weak self] in self?.choose($0) }
-    styleBar.onChange = { [weak self] in self?.restyle($0, burst: $1) }
-    toolbar.onUndo = { [weak self] in self?.store.undo() }
-    toolbar.onRedo = { [weak self] in self?.store.redo() }
+    styleBar.onChange = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.restyle($0, burst: $1)
+    }
+    toolbar.onUndo = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.store.undo()
+    }
+    toolbar.onRedo = { [weak self] in
+      self?.disarmConfirmDoubleClick()
+      self?.store.redo()
+    }
     toolbar.onCancel = { [weak self] in self?.onCancel?() }
-    toolbar.onConfirm = { [weak self] in self?.onConfirm?() }
-    toolbar.onCopy = { [weak self] in self?.onCopy?() }
+    toolbar.onConfirm = { [weak self] in self?.triggerFinish(.toolbarButton, self?.onConfirm) }
+    toolbar.onCopy = { [weak self] in self?.triggerFinish(.toolbarButton, self?.onCopy) }
     toolbar.onDrag = { [weak self] in self?.moveBars($0) }
     styleBar.onDrag = { [weak self] in self?.moveBars($0) }
     wireCommands()
@@ -158,8 +159,8 @@ final class AnnotationEditor: AnnotationEditing {
     interaction.styles = AnnotationStyleMemory.load(from: defaults)
     toolbar.applyStrings()
     styleBar.applyStrings()
-    toolbar.onPin = onPin
-    toolbar.onSave = onSave
+    syncPinAction()
+    syncSaveAction()
     toolbar.saveFolder = saveFolder
     styleCoordinator.activateFontObserver()
     slot.prepare(commandRow, maxWidth: toolbar.fittingSize.width)
@@ -178,12 +179,14 @@ final class AnnotationEditor: AnnotationEditing {
     let canvas = AnnotationCanvasView(
       store: store, interaction: interaction, textEditor: textEditor, renderer: renderer,
       picker: picker)
-    canvas.onPress = { [weak self, weak canvas] in self?.pressedCanvas = canvas }
+    canvas.onPress = { [weak self, weak canvas] in
+      self?.pressedCanvas = canvas
+      self?.onAuxiliaryInteraction?()
+    }
     canvas.onConfirm = { [weak self] in self?.confirmFromKey() }
     canvas.onCopy = { [weak self] in self?.copyFromKey() }
     canvas.onCopySelectionText = { [weak self] in self?.copySelectedLiveTextIfPresent() ?? false }
-    canvas.onPin = onPin
-    canvas.onSave = onSave
+    wireCanvasFinishActions(canvas)
     canvas.onSelectAll = { [weak self] in self?.selectAllFromKey() ?? false }
     canvas.onPrimary = { [weak self] in self?.text.card.primaryKey() ?? false }
     canvas.onGestureEnd = { [weak self] in self?.landWaiting() }
@@ -287,6 +290,7 @@ final class AnnotationEditor: AnnotationEditing {
   /// session (D14), which still owns the handles and the edge band; dropping it hands the
   /// interior back. A tool ends text mode, whose picks and selection go.
   func choose(_ tool: AnnotationTool?) {
+    disarmConfirmDoubleClick()
     textEditor.end()
     toolChanged()
     interaction.cancelGesture()

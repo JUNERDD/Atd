@@ -48,6 +48,16 @@ final class CapturePopoverPanel: ActiveGlassPanel {
 
   override var acceptsKeyFocus: Bool { allowsKey }
 
+  override func performKeyEquivalent(with event: NSEvent) -> Bool {
+    CaptureKeyEventFilter.isOwnSynthesizedKey(event)
+      ? true : super.performKeyEquivalent(with: event)
+  }
+
+  override func sendEvent(_ event: NSEvent) {
+    if CaptureKeyEventFilter.isOwnSynthesizedKey(event) { return }
+    super.sendEvent(event)
+  }
+
   /// Prevents AppKit from pushing borderless capture popovers below the menu bar.
   override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
     frameRect
@@ -191,6 +201,7 @@ final class CapturePopoverPanel: ActiveGlassPanel {
       }
     }
     localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+      guard !CaptureKeyEventFilter.isOwnSynthesizedKey(event) else { return event }
       let passes = MainActor.assumeIsolated {
         guard let self, self.isVisible, event.keyCode == 53, !self.allowsKey else { return true }
         self.dismissPopover()

@@ -6,6 +6,7 @@ import AppKit
 extension AnnotationEditor {
   /// Either bar dragged: both move as one block, led by the toolbar; open menus and pickers close.
   func moveBars(_ drag: AnnotationGlassBar.Drag) {
+    disarmConfirmDoubleClick()
     styleCoordinator.dismissPickers()
     slot.closeMenus()
     switch drag {

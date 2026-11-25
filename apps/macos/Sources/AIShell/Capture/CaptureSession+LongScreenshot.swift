@@ -47,6 +47,7 @@ extension CaptureSession {
       backdrops: backdrops)
     longScreenshot.begin(live)
     // The phase first, so the cursors the editor's removal refreshes are the phase's.
+    confirmDoubleClick.disarm()
     phase = .longScreenshot(rect)
     unhost()
     // The selection's open hand goes; the app under it sets its own once the pointer moves.
@@ -106,8 +107,8 @@ extension CaptureSession {
   func performInLongScreenshot(_ command: CaptureCommand) {
     switch command {
     case .cancel: leaveLongScreenshot()
-    case .confirm: finishLongScreenshot()
-    case .save: finishLongScreenshot(action: .save)
+    case .confirm: finishLongScreenshot(trigger: .returnKey)
+    case .save: finishLongScreenshot(action: .save, trigger: .commandShortcut)
     case .toggleAutoScroll: toggleAutoScroll()
     case .walk, .nudge, .resize, .resizeLeading, .selectDisplay, .recall, .toggleWindowsOnly,
       .mode, .requestAccessibility, .longScreenshot, .pin, .copyColor:
@@ -120,6 +121,7 @@ extension CaptureSession {
   /// another app active, and the editor's canvas takes the keyboard.
   func leaveLongScreenshot() {
     guard case .longScreenshot(let rect) = phase else { return }
+    confirmDoubleClick.disarm()
     longScreenshot.endLive()
     for overlay in overlays {
       overlay.annotationHost.scroll = nil
@@ -138,7 +140,10 @@ extension CaptureSession {
   /// put it together, for the island's result card, for the clipboard, or saved locally according to
   /// `action` (or the long-screenshot confirm preference when nil); back to the screenshot when
   /// nothing could be stitched.
-  func finishLongScreenshot(action: CaptureSessionOptions.LongScreenshotConfirm? = nil) {
+  func finishLongScreenshot(
+    action: CaptureSessionOptions.LongScreenshotConfirm? = nil,
+    trigger: FinishTrigger = .unknown
+  ) {
     let resolved = action ?? options.longScreenshotConfirm
     guard let live = longScreenshot.live, !live.finishing else { return }
     live.finishing = true
@@ -150,6 +155,7 @@ extension CaptureSession {
         return leaveLongScreenshot()
       }
       live.finished = true
+      finishTrigger = trigger
       switch resolved {
       case .card: finish(.longScreenshot(shot))
       case .copy: finish(.copiedLongScreenshot(shot))
@@ -199,7 +205,7 @@ extension CaptureSession {
   ) {
     live.chrome.onAutoScroll = { [weak self] in self?.toggleAutoScroll() }
     live.chrome.onBack = { [weak self] in self?.leaveLongScreenshot() }
-    live.chrome.onDone = { [weak self] in self?.finishLongScreenshot() }
+    live.chrome.onDone = { [weak self] in self?.finishLongScreenshot(trigger: .toolbarButton) }
     live.chrome.onTail = { [weak self] in self?.toggleTail() }
     let backdrop = live.backdrops.first { $0.displayID == primaryID }?.content
     live.chrome.show(
@@ -274,7 +280,7 @@ extension CaptureSession {
   /// Done would; with nothing beyond the first frame, back to the screenshot with a beep.
   private func longScreenshotStopped(_ live: CaptureLongScreenshot.Live) {
     guard longScreenshot.live === live, !live.finishing else { return }
-    if live.capture.progress.scrolled { return finishLongScreenshot() }
+    if live.capture.progress.scrolled { return finishLongScreenshot(trigger: .system) }
     NSSound.beep()
     leaveLongScreenshot()
   }
