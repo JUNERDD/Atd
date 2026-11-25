@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
-import { GLOW_STRENGTH } from './glow-field';
+import { GLOW_STRENGTH } from '@atd/ui/lib/glow/timing';
 
 const INCREASED_CONTRAST = '(prefers-contrast: more)';
 const REDUCED_TRANSPARENCY = '(prefers-reduced-transparency: reduce)';

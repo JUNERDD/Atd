@@ -1,6 +1,6 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
-import { GLOW_TIMING } from './glow-field';
+import { GLOW_TIMING } from '@atd/ui/lib/glow/timing';
 import { GlowField } from './glow-field-loader';
 import type { WaitPhase } from './wait-phase';
 import './waiting-glow.css';

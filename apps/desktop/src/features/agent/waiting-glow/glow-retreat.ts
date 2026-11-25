@@ -1,5 +1,5 @@
 import { useCallback, useLayoutEffect, useRef } from 'react';
-import { GLOW_TIMING } from './glow-field';
+import { GLOW_TIMING } from '@atd/ui/lib/glow/timing';
 
 interface Retreat {
   from: number;

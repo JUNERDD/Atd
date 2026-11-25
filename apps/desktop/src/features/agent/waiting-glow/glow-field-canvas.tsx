@@ -3,8 +3,10 @@ import { ShaderMount, type PaperShaderElement } from '@paper-design/shaders-reac
 import { useShaderClock } from '../../../components/use-shader-clock';
 import { useColorScheme } from '../../../theme/color-scheme';
 import { onWindowVisible } from '../../../window-state';
-import { GLOW_SHADER, GLOW_TIMING } from './glow-field';
-import { glowColors } from './glow-colors';
+import { glowColors } from '@atd/ui/lib/glow/colors';
+import { GLOW_PALETTES } from '@atd/ui/lib/glow/palettes';
+import { GLOW_TIMING } from '@atd/ui/lib/glow/timing';
+import { GLOW_SHADER } from './glow-field';
 import { useGlowLevel } from './glow-level';
 import { useGlowViewport } from './glow-viewport';
 import { useGlowRetreat } from './glow-retreat';
@@ -54,7 +56,11 @@ function composerCentre(light: HTMLElement): [number, number] {
 function glowFrame(milliseconds: number, entry: boolean, scheme: 'light' | 'dark') {
   const elapsed = milliseconds / 1000;
   const phase = entry ? elapsed + 1.6 * (1 - Math.exp(-2.5 * elapsed)) : elapsed;
-  return { u_elapsed: elapsed, u_phase: phase, u_colors: glowColors(phase, scheme) };
+  return {
+    u_elapsed: elapsed,
+    u_phase: phase,
+    u_colors: glowColors(phase, GLOW_PALETTES.working[scheme]),
+  };
 }
 
 /**

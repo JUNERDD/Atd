@@ -1,20 +1,6 @@
-import type { ColorScheme } from '../../../theme/color-scheme';
+import type { GlowTones } from './palettes';
 
 type Rgb = readonly [number, number, number];
-
-/** Deep, steel and mist for each appearance, as the shell blends them. */
-export const GLOW_PALETTES: Record<ColorScheme, readonly [Rgb, Rgb, Rgb]> = {
-  light: [
-    [0.06, 0.86, 0.7],
-    [0.08, 0.64, 1.0],
-    [0.96, 1.0, 1.0],
-  ],
-  dark: [
-    [0.035, 0.11, 0.17],
-    [0.28, 0.51, 0.68],
-    [0.68, 0.79, 0.88],
-  ],
-};
 
 /**
  * Three unrelated smooth fields sampled on the mesh's rest grid, centered and normalized per
@@ -40,8 +26,12 @@ function colorBases(): Rgb[] {
 
 const BASES = colorBases();
 
-/** The mesh colors depend on time alone; calculate the 24 colors once per draw, not per pixel. */
-export function glowColors(phase: number, scheme: ColorScheme): number[][] {
+/**
+ * The 24 mesh colors at `phase`, blended from `tones` (one palette's tones, or a mix of several:
+ * the caller blends palettes, so a change of palette never restarts the field). The colors depend
+ * on time alone; calculate them once per draw, not per pixel (the shader's `u_colors`).
+ */
+export function glowColors(phase: number, tones: GlowTones): number[][] {
   const theta = 0.35 + 2.4 * Math.sin(0.66 * phase) + 0.6 * Math.sin(0.37 * phase + 0.8);
   const phi = 0.25 + 0.55 * Math.sin(0.61 * phase + 1.6);
   const weights = [Math.cos(theta) * Math.cos(phi), Math.sin(theta) * Math.cos(phi), Math.sin(phi)];
@@ -67,7 +57,7 @@ export function glowColors(phase: number, scheme: ColorScheme): number[][] {
     return value + (sum / count - value) * ((0.5 / 1.5) * 0.32);
   });
   const mean = softened.reduce((sum, value) => sum + value, 0) / 24;
-  const [deep, steel, mist] = GLOW_PALETTES[scheme];
+  const [deep, steel, mist] = tones;
   return softened.map((value) => {
     const tone = 0.5 + 0.47 * Math.tanh(1.7 * (value - mean));
     return deep.map(
