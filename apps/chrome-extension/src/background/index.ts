@@ -1,13 +1,12 @@
 import { CdpError } from './cdp/messages.ts';
 import { Debuggee } from './cdp/debuggee.ts';
 import { CdpTranslator } from './cdp/translator.ts';
-import { ASK_COMMAND, askShortcut, CommandList } from './commands.ts';
+import { ASK_COMMAND, askShortcut } from './commands.ts';
 import {
   handleContentIntent,
   handleInvalidContent,
   type ContentIntentDeps,
 } from './content-intents.ts';
-import { FocusState } from './focus.ts';
 import { FollowUps } from './follow-ups.ts';
 import { HiddenRuns } from './hidden-runs.ts';
 import { setLanguage } from './i18n.ts';
@@ -63,7 +62,6 @@ const surfaces = new Surfaces(
   {
     content: (tabId, intent) => handleContentIntent(contentDeps, tabId, intent),
     invalidContent: (tabId, message) => handleInvalidContent(contentDeps, tabId, message),
-    contentChanged: (tabId, alive) => (alive ? focus.schedule() : focus.contentGone(tabId)),
     popup: (intent) => handlePopupIntent(popupDeps, intent),
     popupOpened: () => void refreshShortcut(),
   },
@@ -72,11 +70,6 @@ const injector = new ContentInjector(surfaces);
 const pointers = new Pointers(owned, surfaces);
 const ownership = new Ownership(owned, groups, injector, pointers, send);
 const requests = new PendingRequests(surfaces);
-const commands = new CommandList(
-  send,
-  () => store.state.connection === 'ready' && store.state.pairing.state === 'paired',
-);
-const focus = new FocusState(store, surfaces, toShell);
 const followUps = new FollowUps((taskId) => {
   for (const tabId of surfaces.contentTabs())
     if (shownRun(store.state, tabId, tabRuns(tabId))?.taskId === taskId)
@@ -108,8 +101,6 @@ const contentDeps: ContentIntentDeps = {
   surfaces,
   requests,
   ownership,
-  commands,
-  focus,
   followUps,
   hidden,
   shownRun: (tabId) => shownRun(store.state, tabId, tabRuns(tabId)),
@@ -133,19 +124,16 @@ const frameDeps: ShellFrameDeps = {
   ownership,
   pointers,
   translator,
-  commands,
   requests,
   links,
   hidden,
   followUps,
-  focus,
 };
 
 store.subscribe(() => {
   setLanguage(effectivePrefs(store.state.prefs).language);
   surfaces.schedulePush();
   indicators.schedule();
-  focus.stateChanged();
 });
 owned.onChange(() => {
   translator.visibilityChanged();
@@ -170,7 +158,7 @@ chrome.debugger.onDetach.addListener((source, reason) => {
     ownership.debuggerDetached(tabId, reason, () => translator.visibilityChanged()),
   );
 });
-listenToTabs({ ownership, owned, groups, surfaces, translator, links, hidden, focus, booted });
+listenToTabs({ ownership, owned, groups, surfaces, translator, links, hidden, booted });
 
 /**
  * What this worker knows of a tab's runs: the run owning it, those asked from it without its page,
@@ -213,7 +201,6 @@ function channelClosed(reason: CloseReason): void {
   translator.closeAll();
   requests.failAll('notConnected');
   followUps.clear();
-  focus.reset();
   pointers.clearAll();
 }
 

@@ -1,4 +1,4 @@
-import type { ChromePrefs, CommandItem, PointerPhase, RunView } from '../channel/payloads.ts';
+import type { ChromePrefs, PointerPhase, RunView } from '../channel/payloads.ts';
 
 /**
  * The state the service worker projects for the extension's own surfaces. The background owns the
@@ -90,8 +90,6 @@ export interface TabView {
   prefs: ChromePrefs;
   run: RunView | null;
   busy: boolean;
-  /** The person's Atd commands offered on selected text. */
-  commands: CommandItem[];
   site: SiteView | null;
 }
 

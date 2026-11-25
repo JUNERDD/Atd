@@ -55,9 +55,6 @@ final class ChromeLink {
   /// The paired profile as Settings names it.
   let label: String
   private(set) var tabs: [Int: ChromeOwnedTab] = [:]
-  /// The active tab of Chrome's focused window as the extension last reported it (`focus.state`),
-  /// and whether the extension's own selection toolbar serves it.
-  private(set) var focus: (tabId: Int, eligible: Bool)?
   /// The `tab.hand` requests not answered yet: a `tab.handed` counts only for one of them.
   private var hands: Set<HandRequest> = []
   private let sendFrame: (ChromeOutboundFrame) -> Void
@@ -178,9 +175,6 @@ final class ChromeLink {
     case .tabReleased(let tabId, _):
       tabs[tabId] = nil
       hands = hands.filter { $0.tabId != tabId }
-    case .focusState(let tabId, let eligible):
-      focus = (tabId, eligible)
-      return true
     case .runHold(_, let runId, let tabId, let held):
       guard tabs[tabId]?.runId == runId else { return true }
       tabs[tabId]?.held = held
@@ -202,7 +196,6 @@ final class ChromeLink {
     }
     tabs = [:]
     hands = []
-    focus = nil
     onTabsChange?(self)
   }
 

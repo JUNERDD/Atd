@@ -7,8 +7,6 @@ import {
 import type { BackgroundToContent } from '../messages/content.ts';
 import type { AskFailure } from '../messages/views.ts';
 import type { CdpTranslator } from './cdp/translator.ts';
-import type { CommandList } from './commands.ts';
-import type { FocusState } from './focus.ts';
 import type { FollowUps } from './follow-ups.ts';
 import type { HiddenRuns } from './hidden-runs.ts';
 import type { NativeChannel } from './native.ts';
@@ -26,12 +24,10 @@ export interface ShellFrameDeps {
   ownership: Ownership;
   pointers: Pointers;
   translator: CdpTranslator;
-  commands: CommandList;
   requests: PendingRequests;
   links: RunLinks;
   hidden: HiddenRuns;
   followUps: FollowUps;
-  focus: FocusState;
 }
 
 /** Routes one validated shell frame (K2) to the module that owns its concern. */
@@ -42,8 +38,6 @@ export function handleShellFrame(deps: ShellFrameDeps, frame: ShellFrame): void 
       return;
     case 'pair.state':
       deps.pairing.onState(frame);
-      // Once paired, the person's commands (requested only while paired).
-      deps.commands.request();
       return;
     case 'unpaired':
       deps.pairing.onUnpaired();
@@ -86,22 +80,6 @@ export function handleShellFrame(deps: ShellFrameDeps, frame: ShellFrame): void 
     case 'cdp':
       deps.translator.message(frame.conn, frame.msg);
       return;
-    case 'commands':
-      deps.store.update({ commands: frame.items });
-      deps.commands.received();
-      return;
-    case 'command.result': {
-      const { requestId, state } = frame;
-      const status: BackgroundToContent = {
-        type: 'command.status',
-        requestId,
-        state,
-        ...(frame.text === undefined ? {} : { text: frame.text }),
-        ...(frame.taskId === undefined ? {} : { taskId: frame.taskId }),
-      };
-      deps.requests.deliver(requestId, 'command', status, state !== 'working');
-      return;
-    }
     case 'ask.accepted': {
       const status: BackgroundToContent = {
         type: 'ask.status',
@@ -110,7 +88,7 @@ export function handleShellFrame(deps: ShellFrameDeps, frame: ShellFrame): void 
         taskId: frame.taskId,
         runId: frame.runId,
       };
-      const ask = deps.requests.deliver(frame.requestId, 'ask', status, true);
+      const ask = deps.requests.deliver(frame.requestId, status);
       if (ask !== undefined) deps.links.accepted(frame.runId, ask.tabId, ask.withPage);
       return;
     }
@@ -121,7 +99,7 @@ export function handleShellFrame(deps: ShellFrameDeps, frame: ShellFrame): void 
         state: 'failed',
         reason: askFailure(frame.reason),
       };
-      deps.requests.deliver(frame.requestId, 'ask', status, true);
+      deps.requests.deliver(frame.requestId, status);
       return;
     }
     case 'error': {
@@ -142,11 +120,7 @@ export function handleShellFrame(deps: ShellFrameDeps, frame: ShellFrame): void 
   }
 }
 
-/**
- * `welcome`: the shell's answer to `hello`. The channel is usable once `hostState` is `ready`;
- * the backoff starts over, the person's commands are fetched (when paired) and the focused tab is
- * reported to the new connection.
- */
+/** `welcome`: the shell's answer to `hello`. The channel is usable once `hostState` is `ready`. */
 function welcome(deps: ShellFrameDeps, frame: ShellFrameOf<'welcome'>): void {
   deps.channel.resetBackoff();
   persistPrefs(frame.prefs);
@@ -158,8 +132,6 @@ function welcome(deps: ShellFrameDeps, frame: ShellFrameOf<'welcome'>): void {
     sites: frame.sites,
   });
   deps.pairing.onWelcome(frame.paired, frame.label);
-  deps.commands.request();
-  deps.focus.schedule();
 }
 
 /**

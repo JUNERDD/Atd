@@ -35,7 +35,7 @@ Prefer file tools, commands or APIs when they can do the work directly. `write` 
 
 ## The person's own Chrome
 
-With Atd for Chrome connected, a website can open in the person's own daily Chrome instead of the managed browser. `requestAccess` takes `target.browser`: `chrome` or `managed`. Without it the run's default applies: `chrome` when the task was started from Atd for Chrome (asking on a page, its toolbar or a selected-text command), otherwise `managed`. Name `chrome` when the person asks for their own Chrome or the work needs their signed-in session there, and `managed` when they ask for Atd's browser. A site the person allowed with its switch in the Atd for Chrome popup is already approved; any other site goes through the usual access approval.
+With Atd for Chrome connected, a website can open in the person's own daily Chrome instead of the managed browser. `requestAccess` takes `target.browser`: `chrome` or `managed`. Without it the run's default applies: `chrome` when the task was started by asking on a page in Atd for Chrome, otherwise `managed`. Name `chrome` when the person asks for their own Chrome or the work needs their signed-in session there, and `managed` when they ask for Atd's browser. A site the person allowed with its switch in the Atd for Chrome popup is already approved; any other site goes through the usual access approval.
 
 Work there is attended and visible: the tabs a run uses sit in an Atd tab group, Chrome shows its bar saying it is being debugged while Atd works, and the person can take over, hand back or stop from the page. Atd reads and drives only the tabs handed to the run, never other tabs, bookmarks, history or cookies. It works inside the person's existing signed-in sessions, so:
 

@@ -41,7 +41,7 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
 | `src/channel/protocol.ts`, `payloads.ts` | K2, the extension ↔ shell channel (TypeBox, `Value.Check` only: MV3 forbids `eval`). The source of truth that the shell's `AIChromeChannelKit` mirrors.                                                                                       |
 | `src/messages/`                          | The extension's own contracts: views the service worker projects (`views.ts`) and the intents the content script and popup send (`content.ts`, `popup.ts`).                                                                                   |
 | `src/background/`                        | Service worker: native channel (chunk reassembly, backoff), pairing, state and projections, owned tabs, the "Atd" tab group and badge, content-script injection, and the CDP translator with its allowlist (`cdp/`, adapted from Playwright). |
-| `src/content/`                           | Content script (one IIFE, closed Shadow DOM): HUD, in-page ask, edge light (`glow/`, on `@atd/ui/lib/glow`), pointer, selection commands.                                                                                                     |
+| `src/content/`                           | Content script (one IIFE, closed Shadow DOM): HUD, in-page ask, edge light (`glow/`, on `@atd/ui/lib/glow`), pointer.                                                                                                                         |
 | `src/popup/`                             | Toolbar popup (React) on the apple-design web kit.                                                                                                                                                                                            |
 | `src/i18n/`                              | One i18next namespace per surface (`background`, `hud`, `popup`) in `en` and `zh-CN`; `public/_locales` holds only the manifest strings.                                                                                                      |
 | `icons/`                                 | Toolbar and manifest icons per flavor, exported by `node scripts/export-brand.mjs apps/chrome-extension` (never edited by hand).                                                                                                              |
@@ -50,9 +50,12 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
 
 `debugger` (only tabs handed to a run, only while it runs; Chrome shows its debugging infobar, and
 Cancel there stops the run), `tabs` and `tabGroups` (the "Atd" group), `scripting` (tabs open before
-the extension loaded), `nativeMessaging`, `storage`, and `<all_urls>` hosts for the HUD and the
-selection commands. No cookies, history, bookmarks, downloads or webRequest. The content script reads
-nothing from a page and sends nothing until the person acts.
+the extension loaded), `nativeMessaging`, `storage`, and `<all_urls>` hosts for the HUD. No
+cookies, history, bookmarks, downloads or webRequest. The content script reads nothing from a page
+and sends nothing until the person acts.
+
+Commands on selected text are not the extension's: Atd's own selection toolbar serves selections in
+Chrome as it does in any other app.
 
 ## Generated files
 

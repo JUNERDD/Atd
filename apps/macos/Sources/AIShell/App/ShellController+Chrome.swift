@@ -50,14 +50,6 @@ extension ShellController {
     computer.progress.observe = { [weak self] frame, ref in
       self?.chrome.projection.progress(frame, ref: ref)
     }
-    // D12: a selection on a page the connected extension serves (its `focus.state` says so)
-    // gets the extension's toolbar; everywhere else in Chrome the native one stays.
-    toolbar.probeRunner.yieldsToExtension = { [weak self] pid in
-      self?.chrome.links.links.values.contains {
-        $0.browserPid == pid && $0.focus?.eligible == true
-      }
-        == true
-    }
     chrome.start()
   }
 

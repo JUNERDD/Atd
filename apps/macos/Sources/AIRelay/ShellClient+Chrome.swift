@@ -7,55 +7,30 @@ import Foundation
 public nonisolated struct ChromeTaskSubmit: Sendable {
   public let operationId: String
   public let text: String
-  public let selection: String
   /// The site binding when the person allowed the site; empty starts the run with no site yet.
   public let bindingIds: [String]
-  /// Whether the run may use the person's Chrome at all (asks and commands that act on the page).
+  /// Whether the run may use the person's Chrome at all (an ask does; a follow-up from the HUD
+  /// does not).
   public let usesChrome: Bool
   /// The task a follow-up message continues; nil starts a new task.
   public let taskId: String?
 
   public init(
-    operationId: String, text: String, selection: String, bindingIds: [String], usesChrome: Bool,
+    operationId: String, text: String, bindingIds: [String], usesChrome: Bool,
     taskId: String? = nil
   ) {
     self.operationId = operationId
     self.text = text
-    self.selection = selection
     self.bindingIds = bindingIds
     self.usesChrome = usesChrome
     self.taskId = taskId
   }
 }
 
-/// A started run (`SubmitTaskResponseSchema`, also what a command run answers).
+/// A started run (`SubmitTaskResponseSchema`).
 public nonisolated struct StartedRun: Decodable, Equatable, Sendable {
   public let taskId: String
   public let runId: String
-}
-
-/// The members of `ServiceCommandSchema` the extension's selection toolbar needs.
-public nonisolated struct SelectionCommand: Decodable, Equatable, Sendable {
-  public struct Input: Decodable, Equatable, Sendable {
-    public let source: String
-    public let selection: Bool
-  }
-
-  public struct Placement: Decodable, Equatable, Sendable {
-    public let selectionToolbar: Bool
-  }
-
-  public let id: String
-  public let name: String
-  public let enabled: Bool
-  public let input: Input
-  public let placement: Placement
-  public let lastArguments: [String: JSONValue]?
-
-  /// `offeredAt(command, 'selectionToolbar')` of `@atd/agent-contracts` (command-placement.ts).
-  public var offeredAtSelectionToolbar: Bool {
-    enabled && placement.selectionToolbar && (input.source == "selection" || input.selection)
-  }
 }
 
 extension ShellClient {
@@ -72,33 +47,6 @@ extension ShellClient {
     }
     return try JSONDecoder().decode(
       StartedRun.self, from: try await post("/v1/tasks", .object(body)).data)
-  }
-
-  /// `POST /v1/commands/:id/run`: runs the person's command on the selection, its answer kept in
-  /// the conversation (`panel`), where the extension's result reads it.
-  public func runSelectionCommand(
-    _ command: SelectionCommand, selection: String, operationId: String
-  ) async throws -> StartedRun {
-    let submit = ChromeTaskSubmit(
-      operationId: operationId, text: "", selection: selection, bindingIds: [], usesChrome: false)
-    var input = Self.input(submit)
-    if case .object(var members) = input {
-      members["arguments"] = .object(command.lastArguments ?? [:])
-      input = .object(members)
-    }
-    let body: JSONValue = .object([
-      "operationId": .string(operationId), "input": input,
-      "output": .object(["action": .string("panel"), "review": .bool(false)]),
-    ])
-    let path = "/v1/commands/\(RelayPath.encodeSegment(command.id))/run"
-    return try JSONDecoder().decode(StartedRun.self, from: try await post(path, body).data)
-  }
-
-  /// `GET /v1/commands`: the person's commands and the plugins'.
-  public func selectionCommands() async throws -> [SelectionCommand] {
-    struct List: Decodable { let commands: [SelectionCommand] }
-    return try JSONDecoder().decode(List.self, from: try await send("GET", "/v1/commands").data)
-      .commands
   }
 
   /// `POST /v1/tasks/:taskId/queue`: a follow-up message for the task's active run.
@@ -156,13 +104,12 @@ extension ShellClient {
       timeout: 15)
   }
 
-  /// `TaskInputSchema` for text typed in Chrome, with the page's selection.
+  /// `TaskInputSchema` for text typed in Chrome.
   private static func input(_ submit: ChromeTaskSubmit) -> JSONValue {
     .object([
-      "text": .string(submit.text),
-      "source": .string(submit.selection.isEmpty ? "manual" : "selection"),
+      "text": .string(submit.text), "source": .string("manual"),
       "capturedAt": .string(ComputerWireCoding.timestamp(Date())),
-      "selection": .string(submit.selection), "clipboard": .string(""), "files": .array([]),
+      "selection": .string(""), "clipboard": .string(""), "files": .array([]),
       "arguments": .object([:]), "chips": .array([]), "folders": .array([]),
     ])
   }

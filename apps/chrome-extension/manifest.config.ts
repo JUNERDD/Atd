@@ -7,8 +7,8 @@ import { FLAVORS, type Flavor } from './flavors.ts';
  * tabs handed to a task (never others), `tabs` and `tabGroups` for the "Atd" group, `scripting` to
  * reach tabs that were open before the extension loaded, `nativeMessaging` for the Atd shell and
  * `storage` for the pairing and HUD positions. No cookies, history, bookmarks, downloads or
- * webRequest. `<all_urls>` lets the in-page HUD and the selection commands run on any site; the
- * content script reads nothing from a page until the person sends a request.
+ * webRequest. `<all_urls>` lets the in-page HUD run on any site; the content script reads nothing
+ * from a page until the person sends a request.
  */
 export function manifestFor(flavor: Flavor) {
   const identity = FLAVORS[flavor];

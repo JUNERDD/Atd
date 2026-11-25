@@ -1,5 +1,5 @@
 /*
- * Tokens and controls shared by the in-page surfaces (HUD, composer, selection bar). The values are
+ * Tokens and controls shared by the in-page surfaces (HUD and composer). The values are
  * the prototype's (`tmp/browser-extension-prototype/prototype.css`, its tokens and "In-tab HUD"
  * section), which mirror `packages/ui/src/styles.css` (Rhea b27GcrRo) in plain CSS: page styles
  * never reach a closed shadow root and Tailwind's @property rules do not apply inside one. Tokens sit
@@ -150,19 +150,6 @@
 
 .gbtn.outline {
   box-shadow: inset 0 0 0 1px var(--border);
-}
-
-.kbd {
-  height: 20px;
-  min-width: 20px;
-  padding: 0 5px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--fg-2);
-  background: var(--wash);
-  display: inline-grid;
-  place-items: center;
 }
 
 .attn {

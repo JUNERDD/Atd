@@ -24,8 +24,6 @@ export interface SurfaceHandlers {
   content(tabId: number, intent: ContentIntent): void;
   /** A content message that failed validation (it may name a request to fail). */
   invalidContent(tabId: number, message: unknown): void;
-  /** The tab's content script said `ready` (`alive`) or its port closed. */
-  contentChanged(tabId: number, alive: boolean): void;
   popup(intent: PopupMessage): void;
   /** A popup opened: refresh what Chrome sends no event for (the ask shortcut). */
   popupOpened(): void;
@@ -130,9 +128,7 @@ export class Surfaces {
     this.tabs.set(tabId, { port, ready: false, url: tab.url ?? '', sent: '' });
     port.onMessage.addListener((message: unknown) => this.contentMessage(tabId, port, message));
     port.onDisconnect.addListener(() => {
-      if (this.tabs.get(tabId)?.port !== port) return;
-      this.tabs.delete(tabId);
-      this.handlers.contentChanged(tabId, false);
+      if (this.tabs.get(tabId)?.port === port) this.tabs.delete(tabId);
     });
   }
 
@@ -150,7 +146,6 @@ export class Surfaces {
     entry.ready = true;
     entry.sent = '';
     for (const onReady of this.waiters.get(tabId) ?? []) onReady();
-    this.handlers.contentChanged(tabId, true);
     this.schedulePush();
   }
 
@@ -186,12 +181,8 @@ export class Surfaces {
       const view = this.views.tab(tabId, entry.url);
       const text = JSON.stringify(view);
       if (entry.sent === text) continue;
-      if (post(entry.port, { type: 'state', view })) {
-        entry.sent = text;
-      } else {
-        this.tabs.delete(tabId);
-        this.handlers.contentChanged(tabId, false);
-      }
+      if (post(entry.port, { type: 'state', view })) entry.sent = text;
+      else this.tabs.delete(tabId);
     }
   }
 }

@@ -58,7 +58,7 @@ export interface ButtonOptions {
   onClick: () => void;
 }
 
-/** One glass button (`.gbtn`), the HUD's and the selection bar's only button. */
+/** One glass button (`.gbtn`), the HUD's only button. */
 export function gbtn(options: ButtonOptions): HTMLButtonElement {
   const label = options.ariaLabel ?? (options.variant === 'icon' ? options.label : undefined);
   return h(

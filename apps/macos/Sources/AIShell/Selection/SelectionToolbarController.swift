@@ -155,8 +155,7 @@ final class SelectionToolbarController {
     SelectionToolbarContext(
       enabled: settings.enabled, trusted: trust.isTrusted,
       frontmostBundleId: app.bundleIdentifier, ownBundleId: Bundle.main.bundleIdentifier,
-      excludedBundleIds: settings.excludedBundleIds, secureInput: IsSecureEventInputEnabled(),
-      yieldsToExtension: probeRunner.yieldsToExtension(app.processIdentifier))
+      excludedBundleIds: settings.excludedBundleIds, secureInput: IsSecureEventInputEnabled())
   }
 
   private func uninstall() {

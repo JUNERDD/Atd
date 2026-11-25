@@ -1,5 +1,4 @@
 import type { CdpTranslator } from './cdp/translator.ts';
-import type { FocusState } from './focus.ts';
 import type { HiddenRuns } from './hidden-runs.ts';
 import type { Ownership } from './ownership.ts';
 import type { OwnedTabs } from './owned-tabs.ts';
@@ -15,7 +14,6 @@ export interface TabEventDeps {
   translator: CdpTranslator;
   links: RunLinks;
   hidden: HiddenRuns;
-  focus: FocusState;
   /** Resolves once the restored state is loaded; events wait for it. */
   booted: Promise<void>;
 }
@@ -23,11 +21,10 @@ export interface TabEventDeps {
 /**
  * Chrome's tab and window events, registered in the worker's first turn (MV3 delivers the event
  * that woke a stopped worker only to listeners added then). They keep ownership, the asks' run
- * links, the runs hidden per tab, the shell's `tab.state` and `focus.state`, and the surfaces'
- * sites current.
+ * links, the runs hidden per tab, the shell's `tab.state`, and the surfaces' sites current.
  */
 export function listenToTabs(deps: TabEventDeps): void {
-  const { ownership, links, hidden, focus } = deps;
+  const { ownership, links, hidden } = deps;
   const after = (task: () => unknown): void => {
     deps.booted
       .then(task)
@@ -39,7 +36,6 @@ export function listenToTabs(deps: TabEventDeps): void {
       ownership.release(tabId, 'closed');
       links.tabClosed(tabId);
       hidden.tabClosed(tabId);
-      focus.contentGone(tabId);
     }),
   );
   chrome.tabs.onUpdated.addListener((tabId, change) =>
@@ -49,18 +45,12 @@ export function listenToTabs(deps: TabEventDeps): void {
     after(() => {
       links.tabReplaced(removed, added);
       hidden.tabReplaced(removed, added);
-      focus.schedule();
       return ownership.replaced(added, removed);
     }),
   );
   chrome.tabs.onAttached.addListener((tabId) => after(() => ownership.reportState(tabId)));
-  // Activation and focus change which owned tabs are active and focused, several at once, and
-  // which tab is the focused one.
-  const focusMoved = (): void =>
-    after(() => {
-      ownership.reportAll();
-      focus.schedule();
-    });
+  // Activation and focus change which owned tabs are active and focused, several at once.
+  const focusMoved = (): void => after(() => ownership.reportAll());
   chrome.tabs.onActivated.addListener(focusMoved);
   chrome.windows.onFocusChanged.addListener(focusMoved);
   chrome.tabGroups.onRemoved.addListener((group) => after(() => deps.groups.forget(group.id)));
@@ -72,7 +62,6 @@ async function tabUpdated(
   change: chrome.tabs.OnUpdatedInfo,
 ): Promise<void> {
   if (change.url !== undefined) deps.surfaces.noteUrl(tabId, change.url);
-  if (change.url !== undefined || change.status !== undefined) deps.focus.schedule();
   if (deps.owned.get(tabId) === undefined) return;
   if (change.groupId !== undefined) await deps.ownership.groupChanged(tabId);
   if (change.url !== undefined || change.title !== undefined)

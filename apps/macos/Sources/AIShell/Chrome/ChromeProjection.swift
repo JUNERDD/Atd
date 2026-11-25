@@ -2,11 +2,10 @@ import AIChromeChannelKit
 import AICore
 import Foundation
 
-/// A run Atd for Chrome started (an `ask`, or a `command.run` whose request it answers).
+/// A run Atd for Chrome started (an `ask`).
 struct ChromeExtensionRun: Equatable {
   let installationId: String
   let taskId: String
-  let commandRequest: String?
 }
 
 /// Projects the service's task activity and the chrome engine's progress onto every connected
@@ -44,7 +43,7 @@ final class ChromeProjection {
   private var dismissed: Set<String> = []
   /// The answers of finished extension runs, once read from their task (nil: it gave none).
   var answers: [String: ChromeRunView.Result?] = [:]
-  /// Finished extension runs already settled (answer read, `command.result` sent).
+  /// Finished extension runs already settled (answer read).
   private var settled: Set<String> = []
   /// The page each run last acted on, which the HUD focuses.
   var lastPage: [String: String] = [:]
@@ -65,7 +64,7 @@ final class ChromeProjection {
     current = true
     for run in next.runs where run.status.isTerminal {
       for link in channel.links.links.values { keepIfEnded(run, on: link) }
-      if let origin = channel.extensionRuns[run.runId] { settle(run, origin) }
+      if channel.extensionRuns[run.runId] != nil { settle(run) }
     }
     forgetGone(listed: Set(next.runs.map(\.runId)))
     refreshAll()
@@ -227,9 +226,8 @@ final class ChromeProjection {
     lastPage = lastPage.filter { !gone($0.key) }
   }
 
-  /// Reads a finished extension run's answer for the HUD and, for a command, answers the
-  /// selection's `command.result` with it.
-  private func settle(_ run: TaskActivityRunWire, _ origin: ChromeExtensionRun) {
+  /// Reads a finished extension run's answer for the HUD.
+  private func settle(_ run: TaskActivityRunWire) {
     guard settled.insert(run.runId).inserted else { return }
     let completed = run.status == .completed
     Task { [weak self] in
@@ -241,13 +239,6 @@ final class ChromeProjection {
       answers[run.runId] = text.map {
         ChromeRunView.Result(
           text: $0.clipped(toUTF16: Self.resultLimit), clipped: $0.utf16.count > Self.resultLimit)
-      }
-      if let requestId = origin.commandRequest, let link = channel.links.link(origin.installationId)
-      {
-        link.send(
-          .commandResult(
-            requestId: requestId, state: completed && text != nil ? .done : .failed, text: text,
-            taskId: run.taskId))
       }
       refreshAll()
     }

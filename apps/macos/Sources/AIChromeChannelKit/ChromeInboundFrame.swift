@@ -10,8 +10,6 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
   case pairRequest(code: String)
   case pairCancel
   case ask(ChromeAsk)
-  case commandList
-  case commandRun(ChromeCommandRun)
   case runStop(taskId: String, runId: String)
   /// Take over (`held`) or hand back: the run must not act in `tabId` while it is held.
   case runHold(taskId: String, runId: String, tabId: Int, held: Bool)
@@ -27,10 +25,6 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
   /// `tab.open` could not open or own the tab; `reason` is a log line, never shown.
   case tabOpenFailed(requestId: String, reason: String)
   case tabHanded(runId: String, tabId: Int, targetId: String)
-  /// The active tab of Chrome's focused window (v4), and whether the extension's own selection
-  /// toolbar serves it: paired and ready, a top-level http(s) page whose content script is alive,
-  /// not incognito, focus not inside an iframe.
-  case focusState(tabId: Int, eligible: Bool)
   /// The HUD's Dismiss on an ended run (v4): the shell may forget its `RunView`.
   case runDismiss(taskId: String, runId: String)
   /// CDP text for the worker connection `conn`: a response or an event of the emulated browser.
@@ -45,8 +39,6 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
     case .pairRequest: "pair.request"
     case .pairCancel: "pair.cancel"
     case .ask: "ask"
-    case .commandList: "command.list"
-    case .commandRun: "command.run"
     case .runStop: "run.stop"
     case .runHold: "run.hold"
     case .requestAnswer: "request.answer"
@@ -59,7 +51,6 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
     case .tabOpened: "tab.opened"
     case .tabOpenFailed: "tab.openFailed"
     case .tabHanded: "tab.handed"
-    case .focusState: "focus.state"
     case .runDismiss: "run.dismiss"
     case .cdp: "cdp"
     case .unknown(let type): type
@@ -84,10 +75,6 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
       _ = try body(K.Empty.self)
       self = .pairCancel
     case "ask": self = .ask(try ChromeAsk(body(K.Ask.self)))
-    case "command.list":
-      _ = try body(K.Empty.self)
-      self = .commandList
-    case "command.run": self = .commandRun(try ChromeCommandRun(body(K.CommandRun.self)))
     case "run.stop":
       let c = try body(K.Run.self)
       self = .runStop(taskId: try c.id(.taskId), runId: try c.id(.runId))
@@ -137,11 +124,6 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
       self = .tabHanded(
         runId: try c.id(.runId), tabId: try c.whole(.tabId, minimum: 0),
         targetId: try c.targetId(.targetId))
-    case "focus.state":
-      let c = try body(K.Focus.self)
-      self = .focusState(
-        tabId: try c.whole(.tabId, minimum: 0), eligible: try c.decode(Bool.self, forKey: .eligible)
-      )
     case "run.dismiss":
       let c = try body(K.Run.self)
       self = .runDismiss(taskId: try c.id(.taskId), runId: try c.id(.runId))
@@ -168,12 +150,7 @@ public enum ChromeInboundKeys {
     case v, t, installationId, extensionVersion, flavor, chromeVersion, fileAccess, secret, profile
   }
   public enum Pair: String, CodingKey { case v, t, code }
-  public enum Ask: String, CodingKey {
-    case v, t, requestId, tabId, url, title, text, selection
-  }
-  public enum CommandRun: String, CodingKey {
-    case v, t, requestId, tabId, url, title, selection, command
-  }
+  public enum Ask: String, CodingKey { case v, t, requestId, tabId, url, title, text }
   public enum Run: String, CodingKey { case v, t, taskId, runId }
   public enum Hold: String, CodingKey { case v, t, taskId, runId, tabId, held }
   public enum Answer: String, CodingKey {
@@ -189,6 +166,5 @@ public enum ChromeInboundKeys {
   public enum Opened: String, CodingKey { case v, t, requestId, tabId, targetId }
   public enum OpenFailed: String, CodingKey { case v, t, requestId, reason }
   public enum Handed: String, CodingKey { case v, t, runId, tabId, targetId }
-  public enum Focus: String, CodingKey { case v, t, tabId, eligible }
   public enum Cdp: String, CodingKey { case v, t, conn, msg }
 }

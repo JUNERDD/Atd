@@ -90,7 +90,6 @@ export function tabView(
     prefs: effectivePrefs(state.prefs),
     run: runForTab(runs, tabId, tabRuns),
     busy: runs.some((run) => isActiveStatus(run.status)),
-    commands: [...state.commands],
     site: siteView(url, state.sites),
   };
 }

@@ -106,19 +106,3 @@ export const SizeSchema = Type.Object({
   width: Type.Number({ minimum: 0 }),
   height: Type.Number({ minimum: 0 }),
 });
-
-export const CommandItemSchema = Type.Object({
-  id: Id,
-  name: Type.String({ minLength: 1, maxLength: 200 }),
-  shortcut: Type.Optional(Type.String({ maxLength: 100 })),
-});
-export type CommandItem = Static<typeof CommandItemSchema>;
-
-export const CommandRefSchema = Type.Union([
-  Type.Object({
-    kind: Type.Literal('builtin'),
-    id: Type.Union([Type.Literal('summarize'), Type.Literal('translate')]),
-  }),
-  Type.Object({ kind: Type.Literal('user'), commandId: Id }),
-]);
-export type CommandRef = Static<typeof CommandRefSchema>;

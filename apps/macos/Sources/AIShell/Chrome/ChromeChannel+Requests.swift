@@ -18,8 +18,6 @@ extension ChromeChannel {
     if link.apply(frame) { return }
     switch frame {
     case .ask(let ask): Task { await self.ask(ask, on: link) }
-    case .commandList: Task { await self.listCommands(for: link) }
-    case .commandRun(let run): Task { await self.runCommand(run, on: link) }
     case .runStop(let taskId, let runId):
       guard projection.shows(runId: runId, taskId: taskId, on: link) else { return }
       environment.stopRun(taskId, runId)
@@ -38,7 +36,7 @@ extension ChromeChannel {
       // Already paired: the welcome says so again (a secret goes out only when pairing).
       sendWelcome(session)
     case .hello, .pairCancel, .tabState, .tabReleased, .tabOpened, .tabOpenFailed, .tabHanded,
-      .focusState, .runHold, .cdp, .unknown:
+      .runHold, .cdp, .unknown:
       break
     }
   }
@@ -57,89 +55,17 @@ extension ChromeChannel {
     let submit = ChromeTaskSubmit(
       operationId: Self.operationId(),
       text: Self.pagePrompt(ask.text, title: ask.title, url: ask.url),
-      selection: (ask.selection ?? "").clipped(toUTF16: Self.taskTextLimit),
       bindingIds: site.map { [$0.bindingId] } ?? [],
       usesChrome: true)
     do {
       let run = try await environment.client().submitChromeTask(submit)
-      extensionRuns[run.runId] = .init(
-        installationId: link.installationId, taskId: run.taskId, commandRequest: nil)
+      extensionRuns[run.runId] = .init(installationId: link.installationId, taskId: run.taskId)
       link.send(.askAccepted(requestId: ask.requestId, taskId: run.taskId, runId: run.runId))
       if !ask.url.isEmpty { link.hand(tabId: ask.tabId, runId: run.runId) }
       projection.refresh(link)
     } catch {
       Self.log.error("An ask from Chrome could not start a task.")
       link.send(.askFailed(requestId: ask.requestId, reason: "failed"))
-    }
-  }
-
-  // MARK: Commands
-
-  /// `command.list`: the person's commands offered at the selection toolbar. The starters the
-  /// extension's own Summarize and Translate run are left out, so they are not offered twice.
-  private func listCommands(for link: ChromeLink) async {
-    guard let commands = try? await environment.client().selectionCommands() else {
-      return link.send(.commands([]))
-    }
-    let builtins = Set(ChromeCommandRun.Builtin.allCases.map(\.rawValue))
-    let items = commands.filter { $0.offeredAtSelectionToolbar && !builtins.contains($0.id) }
-      .prefix(100).map { ChromeCommandItem(id: $0.id, name: $0.name, shortcut: nil) }
-    link.send(.commands(Array(items)))
-  }
-
-  /// `command.run`: a built-in runs the person's starter command of the same name when it is
-  /// still offered at the selection toolbar, else a task with a fixed prompt; a user command runs
-  /// as itself. Neither acts on the page: the answer comes back to the selection
-  /// (`command.result`) and stays in the conversation.
-  private func runCommand(_ run: ChromeCommandRun, on link: ChromeLink) async {
-    let state = environment.hostState()
-    guard state != .serviceUnavailable, let client = try? await environment.client() else {
-      return link.send(
-        .commandResult(requestId: run.requestId, state: .failed, text: nil, taskId: nil))
-    }
-    let commands = (try? await client.selectionCommands()) ?? []
-    let wanted: String =
-      switch run.command {
-      case .builtin(let builtin): builtin.rawValue
-      case .user(let commandId): commandId
-      }
-    let command = commands.first { $0.id == wanted && $0.offeredAtSelectionToolbar }
-    let selection = run.selection.clipped(toUTF16: Self.taskTextLimit)
-    do {
-      let started: StartedRun
-      if let command {
-        started = try await client.runSelectionCommand(
-          command, selection: selection, operationId: Self.operationId())
-      } else if case .builtin(let builtin) = run.command {
-        started = try await client.submitChromeTask(
-          ChromeTaskSubmit(
-            operationId: Self.operationId(), text: fixedPrompt(builtin), selection: selection,
-            bindingIds: [], usesChrome: false))
-      } else {
-        throw ShellClientError.invalidArgument("The command is no longer offered.")
-      }
-      extensionRuns[started.runId] = .init(
-        installationId: link.installationId, taskId: started.taskId, commandRequest: run.requestId)
-      link.send(
-        .commandResult(
-          requestId: run.requestId, state: .working, text: nil, taskId: started.taskId))
-    } catch {
-      link.send(.commandResult(requestId: run.requestId, state: .failed, text: nil, taskId: nil))
-    }
-  }
-
-  /// The prompt of a built-in command without its starter: the model reads it, in English, and
-  /// answers the selection in the person's language.
-  private func fixedPrompt(_ builtin: ChromeCommandRun.Builtin) -> String {
-    switch builtin {
-    case .summarize:
-      "Summarize the selected text in a few sentences, in the language I use with you."
-    case .translate:
-      environment.prefs().language == .simplifiedChinese
-        ? "Translate the selected text into Simplified Chinese (into English if it already is "
-          + "Chinese). Return only the translation."
-        : "Translate the selected text into English (into Simplified Chinese if it already is "
-          + "English). Return only the translation."
     }
   }
 
@@ -191,8 +117,8 @@ extension ChromeChannel {
       } else {
         _ = try await client.submitChromeTask(
           ChromeTaskSubmit(
-            operationId: Self.operationId(), text: instruction, selection: "", bindingIds: [],
-            usesChrome: false, taskId: taskId))
+            operationId: Self.operationId(), text: instruction, bindingIds: [], usesChrome: false,
+            taskId: taskId))
       }
     } catch {
       link.send(.error(ref: taskId, code: "followUpFailed", message: "Atd could not send it."))

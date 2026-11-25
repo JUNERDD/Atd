@@ -3,8 +3,6 @@ import { Value } from 'typebox/value';
 import type { RunView } from '../channel/payloads.ts';
 import { MAX_REQUEST_TEXT, type ContentMessage } from '../messages/content.ts';
 import { ENDED_RUN_STATUSES, type AskFailure } from '../messages/views.ts';
-import type { CommandList } from './commands.ts';
-import type { FocusState } from './focus.ts';
 import type { FollowUps } from './follow-ups.ts';
 import type { HiddenRuns } from './hidden-runs.ts';
 import { clipText, type SendFrame } from './native.ts';
@@ -22,24 +20,19 @@ export interface ContentIntentDeps {
   surfaces: Surfaces;
   requests: PendingRequests;
   ownership: Ownership;
-  commands: CommandList;
-  focus: FocusState;
   followUps: FollowUps;
   hidden: HiddenRuns;
   /** The run the tab's HUD shows (`shownRun` in projection.ts), the only run it may act on. */
   shownRun(tabId: number): RunView | null;
 }
 
-/** An `ask` or `command.run` that failed validation but still names its request. */
-const NamedRequestSchema = Type.Object({
-  type: Type.Union([Type.Literal('ask'), Type.Literal('command.run')]),
-  requestId: Type.String(),
-});
+/** An `ask` that failed validation but still names its request. */
+const NamedAskSchema = Type.Object({ type: Type.Literal('ask'), requestId: Type.String() });
 
 /**
- * What a tab's HUD and selection bar ask for. The tab comes from the port's sender, never from
- * the message: the background adds the tab's id, URL and title to what it forwards. A run is
- * acted on only from a tab that shows it (a compromised renderer cannot reach another task).
+ * What a tab's HUD asks for. The tab comes from the port's sender, never from the message: the
+ * background adds the tab's id, URL and title to what it forwards. A run is acted on only from a
+ * tab that shows it (a compromised renderer cannot reach another task).
  * Intents that need Atd are dropped while the channel is not ready; requests that expect an
  * answer are failed in the tab instead, so its UI does not wait for nothing.
  */
@@ -50,8 +43,7 @@ export function handleContentIntent(
 ): void {
   switch (intent.type) {
     case 'ask':
-    case 'command.run':
-      void sendRequest(deps, tabId, intent);
+      void sendAsk(deps, tabId, intent);
       return;
     case 'run.stop':
       if (shows(deps, tabId, intent.taskId, intent.runId) !== undefined)
@@ -108,47 +100,34 @@ export function handleContentIntent(
     case 'input':
       deps.ownership.noteInput(tabId);
       return;
-    case 'commands.refresh':
-      deps.commands.refreshIfStale();
-      return;
-    case 'focus':
-      deps.focus.noteFrame(tabId, intent.inFrame);
-      return;
   }
 }
 
 /**
- * A content message that failed validation. When it is an `ask` or `command.run` that names its
- * request, the request fails in the tab (`tooLong` when its text is over the cap), so its UI does
- * not wait for an answer; anything else is dropped.
+ * A content message that failed validation. When it is an `ask` that names its request, the
+ * request fails in the tab (`tooLong` when its text is over the cap), so its UI does not wait for
+ * an answer; anything else is dropped.
  */
 export function handleInvalidContent(
   deps: ContentIntentDeps,
   tabId: number,
   message: unknown,
 ): void {
-  if (!Value.Check(NamedRequestSchema, message)) {
+  if (!Value.Check(NamedAskSchema, message)) {
     console.warn('[atd] dropped an invalid content message');
     return;
   }
-  const kind = message.type === 'ask' ? 'ask' : 'command';
-  const texts = kind === 'ask' ? ['text', 'selection'] : ['selection'];
-  const tooLong = texts.some((key) => overCap(Reflect.get(message, key)));
-  console.warn(`[atd] refused an invalid ${message.type} request`);
-  deps.surfaces.postToTab(tabId, failure(message.requestId, kind, tooLong ? 'tooLong' : 'failed'));
+  const tooLong = overCap(Reflect.get(message, 'text'));
+  console.warn('[atd] refused an invalid ask');
+  deps.surfaces.postToTab(tabId, failure(message.requestId, tooLong ? 'tooLong' : 'failed'));
 }
 
-type RequestIntent = Extract<ContentMessage, { type: 'ask' | 'command.run' }>;
+type AskIntent = Extract<ContentMessage, { type: 'ask' }>;
 
-/** `ask` or `command.run`, with the tab's page; the answer is routed back by request id. */
-async function sendRequest(
-  deps: ContentIntentDeps,
-  tabId: number,
-  intent: RequestIntent,
-): Promise<void> {
-  const kind = intent.type === 'ask' ? 'ask' : 'command';
+/** `ask`, with the tab's page unless the person removed it; answered by request id. */
+async function sendAsk(deps: ContentIntentDeps, tabId: number, intent: AskIntent): Promise<void> {
   const refuse = (reason: AskFailure): void => {
-    deps.surfaces.postToTab(tabId, failure(intent.requestId, kind, reason));
+    deps.surfaces.postToTab(tabId, failure(intent.requestId, reason));
   };
   const early = refusal(deps.store);
   if (early !== undefined) {
@@ -162,28 +141,17 @@ async function sendRequest(
     refuse(late);
     return;
   }
-  const withPage = intent.type === 'command.run' || intent.includePage;
-  deps.requests.remember(intent.requestId, tabId, kind, withPage);
-  const page = { url: clipText(tab?.url), title: clipText(tab?.title) };
-  const sent =
-    intent.type === 'ask'
-      ? deps.forward({
-          t: 'ask',
-          requestId: intent.requestId,
-          tabId,
-          // The person removed the page from the request: Atd gets neither its URL nor its title.
-          ...(intent.includePage ? page : { url: '', title: '' }),
-          text: intent.text,
-          ...(intent.selection === undefined ? {} : { selection: intent.selection }),
-        })
-      : deps.forward({
-          t: 'command.run',
-          requestId: intent.requestId,
-          tabId,
-          ...page,
-          selection: intent.selection,
-          command: intent.command,
-        });
+  deps.requests.remember(intent.requestId, tabId, intent.includePage);
+  const sent = deps.forward({
+    t: 'ask',
+    requestId: intent.requestId,
+    tabId,
+    // The person removed the page from the request: Atd gets neither its URL nor its title.
+    ...(intent.includePage
+      ? { url: clipText(tab?.url), title: clipText(tab?.title) }
+      : { url: '', title: '' }),
+    text: intent.text,
+  });
   if (!sent) deps.requests.fail(intent.requestId, 'notConnected');
 }
 

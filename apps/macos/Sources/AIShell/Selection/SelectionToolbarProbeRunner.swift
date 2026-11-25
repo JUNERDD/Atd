@@ -25,8 +25,6 @@ final class SelectionToolbarProbeRunner {
   private let secureInputEnabled: () -> Bool
   private let frontmostAppProvider: () -> FrontmostAppInfo?
   var onLiveProbeStep: ((LiveStep) -> Void)?
-  /// Whether the app `pid` is a browser whose connected Atd extension shows its own toolbar.
-  var yieldsToExtension: (pid_t) -> Bool = { _ in false }
   private var activeAttempt: ActiveAttempt?
   var hasActiveAttempt: Bool { activeAttempt != nil }
 
@@ -207,7 +205,7 @@ final class SelectionToolbarProbeRunner {
     let context = SelectionToolbarContext(
       enabled: settings.enabled, trusted: trusted, frontmostBundleId: app.bundleIdentifier,
       ownBundleId: Bundle.main.bundleIdentifier, excludedBundleIds: settings.excludedBundleIds,
-      secureInput: secureInputEnabled(), yieldsToExtension: yieldsToExtension(app.pid))
+      secureInput: secureInputEnabled())
     guard SelectionToolbarRules.shouldProbe(context) else {
       ring.update(slot: slot, expectedSeq: seq) { entry in
         if attemptIndex == 1 { entry.debounceState = 3 }

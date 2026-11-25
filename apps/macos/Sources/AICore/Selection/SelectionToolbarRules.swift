@@ -103,13 +103,10 @@ public struct SelectionToolbarContext: Equatable, Sendable {
   public var excludedBundleIds: Set<String>
   /// Secure event input is on (a password field anywhere has the keyboard).
   public var secureInput: Bool
-  /// The frontmost app is a browser whose pages' selections a connected Atd extension handles
-  /// with a toolbar of its own (Atd for Chrome, D12), so the native one stays away.
-  public var yieldsToExtension: Bool
 
   public init(
     enabled: Bool, trusted: Bool, frontmostBundleId: String?, ownBundleId: String?,
-    excludedBundleIds: Set<String>, secureInput: Bool, yieldsToExtension: Bool = false
+    excludedBundleIds: Set<String>, secureInput: Bool
   ) {
     self.enabled = enabled
     self.trusted = trusted
@@ -117,7 +114,6 @@ public struct SelectionToolbarContext: Equatable, Sendable {
     self.ownBundleId = ownBundleId
     self.excludedBundleIds = excludedBundleIds
     self.secureInput = secureInput
-    self.yieldsToExtension = yieldsToExtension
   }
 }
 
@@ -139,14 +135,12 @@ public enum SelectionProbe: Equatable, Sendable {
 }
 
 /// When the selection toolbar appears (grill decision Q4): only over a non-empty selection in
-/// another app the user did not exclude, with Accessibility trusted, never while a password
-/// field or secure input has the keyboard, and never in a browser whose connected Atd extension
-/// shows its own toolbar.
+/// another app the user did not exclude, with Accessibility trusted, and never while a
+/// password field or secure input has the keyboard.
 public enum SelectionToolbarRules {
   /// Whether a gesture's mouse-up is worth an Accessibility check at all.
   public static func shouldProbe(_ context: SelectionToolbarContext) -> Bool {
-    guard context.enabled, context.trusted, !context.secureInput, !context.yieldsToExtension
-    else { return false }
+    guard context.enabled, context.trusted, !context.secureInput else { return false }
     guard let app = context.frontmostBundleId else { return true }
     return app != context.ownBundleId && !context.excludedBundleIds.contains(app)
   }

@@ -4,16 +4,11 @@ import { signal } from './lifetime.ts';
 
 export interface PortHandlers {
   message(message: BackgroundToContent): void;
-  /** A connection was made and `ready` sent: state the background keeps per port goes again. */
-  connected(): void;
   /** The extension was reloaded or removed: this instance is orphaned and must go quietly. */
   invalidated(): void;
 }
 
-/**
- * Intents that wait for a reconnect when the port is down. Activity pings are dropped, and so is
- * focus state, which `connected` sends afresh after every `ready`.
- */
+/** Intents that wait for a reconnect when the port is down. Activity pings are dropped. */
 const OUTBOX_LIMIT = 20;
 const RETRY_FIRST_MS = 250;
 const RETRY_MAX_MS = 5000;
@@ -61,7 +56,7 @@ export class ContentPort {
   send(message: ContentMessage): void {
     if (this.dead) return;
     if (this.port && this.post(this.port, message)) return;
-    if (message.type === 'input' || message.type === 'focus') return;
+    if (message.type === 'input') return;
     this.outbox.push(message);
     if (this.outbox.length > OUTBOX_LIMIT) this.outbox.shift();
     this.connect();
@@ -85,7 +80,6 @@ export class ContentPort {
     });
     port.onDisconnect.addListener(() => this.disconnected(port));
     if (!this.post(port, { type: 'ready' })) return;
-    this.handlers.connected();
     const pending = this.outbox;
     this.outbox = [];
     for (const message of pending) this.post(port, message);

@@ -232,23 +232,3 @@ public struct ChromePointer: Encodable, Equatable, Sendable {
     self.viewport = viewport
   }
 }
-
-/// One of the person's commands offered at the selection toolbar (`commands`).
-public struct ChromeCommandItem: Encodable, Equatable, Sendable {
-  public let id: String
-  public let name: String
-  public let shortcut: String?
-
-  public init(id: String, name: String, shortcut: String?) {
-    self.id = id
-    self.name = name.clipped(toUTF16: 200)
-    self.shortcut = shortcut?.clipped(toUTF16: 100)
-  }
-}
-
-/// `command.result`'s `state`.
-public enum ChromeCommandState: String, Encodable, Sendable {
-  case working
-  case done
-  case failed
-}

@@ -62,8 +62,8 @@ export class Hud {
   }
 
   /** `ask.open` from the background. */
-  openAsk(quote: string | null): void {
-    this.ask.open(quote);
+  openAsk(): void {
+    this.ask.open();
   }
 
   /** `followUp.failed`: Save as automation did not reach Atd; the HUD says so and allows a retry. */

@@ -20,8 +20,6 @@ public enum ChromeOutboundFrame: Encodable, Equatable, Sendable {
   case cdpClose(conn: String)
   /// CDP text the worker sent on connection `conn`.
   case cdp(conn: String, msg: String)
-  case commands([ChromeCommandItem])
-  case commandResult(requestId: String, state: ChromeCommandState, text: String?, taskId: String?)
   case askAccepted(requestId: String, taskId: String, runId: String)
   case askFailed(requestId: String, reason: String)
   case error(ref: String?, code: String, message: String)
@@ -40,8 +38,6 @@ public enum ChromeOutboundFrame: Encodable, Equatable, Sendable {
     case .cdpOpen: "cdp.open"
     case .cdpClose: "cdp.close"
     case .cdp: "cdp"
-    case .commands: "commands"
-    case .commandResult: "command.result"
     case .askAccepted: "ask.accepted"
     case .askFailed: "ask.failed"
     case .error: "error"
@@ -74,13 +70,6 @@ public enum ChromeOutboundFrame: Encodable, Equatable, Sendable {
     case .cdp(let conn, let msg):
       try c.encode(conn, forKey: .conn)
       try c.encode(msg, forKey: .msg)
-    case .commands(let items): try c.encode(Array(items.prefix(100)), forKey: .items)
-    case .commandResult(let requestId, let state, let text, let taskId):
-      try c.encode(requestId, forKey: .requestId)
-      try c.encode(state, forKey: .state)
-      try c.encodeIfPresent(
-        text?.clipped(toUTF16: ChromeChannelProtocol.maxTextLength), forKey: .text)
-      try c.encodeIfPresent(taskId, forKey: .taskId)
     case .askAccepted(let requestId, let taskId, let runId):
       try c.encode(requestId, forKey: .requestId)
       try c.encode(taskId, forKey: .taskId)
@@ -96,8 +85,8 @@ public enum ChromeOutboundFrame: Encodable, Equatable, Sendable {
   }
 
   private enum Keys: String, CodingKey {
-    case v, t, origins, runs, runId, tabId, requestId, url, conn, msg, items, state, text, taskId
-    case reason, ref, code, message
+    case v, t, origins, runs, runId, tabId, requestId, url, conn, msg, taskId, reason, ref, code
+    case message
   }
 }
 

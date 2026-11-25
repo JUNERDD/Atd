@@ -17,9 +17,9 @@ import baseCss from './base.css?inline';
  * backdrop root of its glass and hide the page and the light behind it from the blur.
  */
 
-export type LayerTag = 'atd-glow' | 'atd-pointer' | 'atd-hud' | 'atd-selection';
+export type LayerTag = 'atd-glow' | 'atd-pointer' | 'atd-hud';
 
-const TAGS: readonly LayerTag[] = ['atd-glow', 'atd-pointer', 'atd-hud', 'atd-selection'];
+const TAGS: readonly LayerTag[] = ['atd-glow', 'atd-pointer', 'atd-hud'];
 
 /**
  * Stacking among the layers, all above the page's own content. The HUD is on top: its approval
@@ -29,7 +29,6 @@ const TAGS: readonly LayerTag[] = ['atd-glow', 'atd-pointer', 'atd-hud', 'atd-se
 const Z_INDEX: Record<LayerTag, number> = {
   'atd-glow': 2147483644,
   'atd-pointer': 2147483645,
-  'atd-selection': 2147483646,
   'atd-hud': 2147483647,
 };
 

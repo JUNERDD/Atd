@@ -1,6 +1,5 @@
 import { PermissionAnswerSchema } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
-import { CommandRefSchema } from '../channel/payloads.ts';
 import type { AskFailure, PointerView, TabView } from './views.ts';
 
 /**
@@ -17,32 +16,23 @@ import type { AskFailure, PointerView, TabView } from './views.ts';
 
 const Id = Type.String({ minLength: 1, maxLength: 256 });
 /**
- * The longest request text or selection a tab may send, in code points (TypeBox's `maxLength`):
- * the service's task input limit. The background refuses a longer one with `tooLong`.
+ * The longest request text a tab may send, in code points (TypeBox's `maxLength`): the service's
+ * task input limit. The background refuses a longer one with `tooLong`.
  */
 export const MAX_REQUEST_TEXT = 100_000;
-const Text = Type.String({ maxLength: MAX_REQUEST_TEXT });
 
 export const ContentMessageSchema = Type.Union([
   /** Sent on every (re)connect; answered by `state`. */
   Type.Object({ type: Type.Literal('ready') }),
   /**
    * The in-page ask was sent. `includePage: false` (the person removed the page chip) sends the
-   * request without the page's URL and title. `selection` is the quote it was opened with.
+   * request without the page's URL and title.
    */
   Type.Object({
     type: Type.Literal('ask'),
     requestId: Id,
     text: Type.String({ minLength: 1, maxLength: MAX_REQUEST_TEXT }),
     includePage: Type.Boolean(),
-    selection: Type.Optional(Text),
-  }),
-  /** A selection command (built-in or the person's own) on the selected text. */
-  Type.Object({
-    type: Type.Literal('command.run'),
-    requestId: Id,
-    selection: Type.String({ minLength: 1, maxLength: MAX_REQUEST_TEXT }),
-    command: CommandRefSchema,
   }),
   Type.Object({ type: Type.Literal('run.stop'), taskId: Id, runId: Id }),
   /**
@@ -77,15 +67,6 @@ export const ContentMessageSchema = Type.Union([
    * reports it as `lastInputAt` for tabs a run owns and ignores it otherwise.
    */
   Type.Object({ type: Type.Literal('input') }),
-  /** The selection bar opened; the background refreshes the person's commands if they are stale. */
-  Type.Object({ type: Type.Literal('commands.refresh') }),
-  /**
-   * Whether keyboard focus is inside a frame of the page (the top frame's `activeElement` is an
-   * IFRAME, FRAME, EMBED or OBJECT, such as the PDF viewer), sent on every change and after
-   * `ready`. The background folds it into `focus.state`: the extension's selection bar cannot see
-   * selections inside frames.
-   */
-  Type.Object({ type: Type.Literal('focus'), inFrame: Type.Boolean() }),
 ]);
 export type ContentMessage = Static<typeof ContentMessageSchema>;
 
@@ -94,11 +75,8 @@ export type BackgroundToContent =
   | { type: 'state'; view: TabView }
   /** `null` hides the pointer (`cleared`, run end, tab released). */
   | { type: 'pointer'; pointer: PointerView | null }
-  /**
-   * The ask shortcut (⇧⌘K by default) or the popup's "Ask Atd on This Page…": open the in-page
-   * ask, with a quote if given.
-   */
-  | { type: 'ask.open'; quote?: string }
+  /** The ask shortcut (⇧⌘K by default) or the popup's "Ask Atd on This Page…" opens the ask. */
+  | { type: 'ask.open' }
   /**
    * Atd took the ask (`taskId`/`runId` name the run it started, which then shows in
    * `state.view.run`) or refused it (`reason`).
@@ -115,12 +93,4 @@ export type BackgroundToContent =
    * Save as automation did not reach Atd (the shell answered `error {ref: taskId}`, or the
    * channel was not ready): the HUD shows the failure instead of "Sent to Atd".
    */
-  | { type: 'followUp.failed'; taskId: string }
-  /** Progress and result of a selection command; `taskId` lets Continue in Atd open it. */
-  | {
-      type: 'command.status';
-      requestId: string;
-      state: 'working' | 'done' | 'failed';
-      text?: string;
-      taskId?: string;
-    };
+  | { type: 'followUp.failed'; taskId: string };

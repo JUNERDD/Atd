@@ -37,8 +37,6 @@
     "send": "发送",
     "removePage": "不附上此页面",
     "addPage": "附上此页面",
-    "quote": "“{{text}}”",
-    "removeQuote": "不附上选中内容",
     "lost": "与 Atd 的连接已断开，你的请求已保留。",
     "count": "{{used}} / {{limit}}",
     "failure": {
@@ -64,17 +62,5 @@
     "waiting": "等待中",
     "verifying": "核对中",
     "done": "已完成"
-  },
-  "selection": {
-    "toolbar": "Atd 命令",
-    "askAtd": "问 Atd",
-    "summarize": "总结",
-    "translate": "翻译",
-    "more": "更多命令",
-    "yourCommands": "你的 Atd 命令",
-    "noCommands": "没有可用于选中文字的命令",
-    "fromSelection": "{{title}} · 来自你的选中内容",
-    "continueInAtd": "在 Atd 中继续",
-    "failed": "未能运行此命令。"
   }
 }

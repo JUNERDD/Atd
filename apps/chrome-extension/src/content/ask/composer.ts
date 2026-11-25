@@ -5,11 +5,9 @@ import { atdMark } from '../mark.ts';
 
 /** The field grows with its text up to this height, then scrolls. */
 const MAX_FIELD_HEIGHT = 110;
-/** A quote chip shows this much of the selection; the whole quote is sent. */
-const QUOTE_PREVIEW = 60;
 /**
  * The longest request the field takes (typing and pasting stop there), below the 100 000
- * characters Atd accepts so the page's URL, title and quote still fit beside it.
+ * characters Atd accepts so the page's URL and title still fit beside it.
  */
 const MAX_TEXT = 90_000;
 /** From this length the field shows how much of the limit is used. */
@@ -25,9 +23,8 @@ export interface ComposerEvents {
 }
 
 /**
- * The in-page ask's field: the request on top; below it the Atd mark, the selection quote and the
- * page chip (removable: the request then goes without the page's URL and title) and the send
- * button. It stays one element for the life of the tab, so a re-render never loses the caret or an
+ * The in-page ask's field: the request on top; below it the Atd mark, the page chip (removable:
+ * the request then goes without the page's URL and title) and the send button. It stays one element for the life of the tab, so a re-render never loses the caret or an
  * IME composition; the HUD swaps it in and out. Key events stop here: a page's shortcuts must not
  * fire while the person types into Atd's field.
  */
@@ -39,7 +36,6 @@ export class Composer {
   private readonly note: HTMLDivElement;
   private readonly count: HTMLSpanElement;
   private host = '';
-  private quote: string | null = null;
   includePage = true;
   private busy = false;
   private allowed = true;
@@ -97,14 +93,9 @@ export class Composer {
     return this.field.value.trim();
   }
 
-  get selection(): string | null {
-    return this.quote;
-  }
-
-  /** Opens with `quote` (the selection the ask came from), for `host` (the tab's site). */
-  prepare(host: string, quote: string | null): void {
+  /** Opens for `host` (the tab's site). */
+  prepare(host: string): void {
     this.host = host;
-    if (quote !== null) this.quote = quote;
     this.note.hidden = true;
     this.renderMeta();
   }
@@ -112,7 +103,6 @@ export class Composer {
   /** After Atd took the request: a fresh draft next time. */
   reset(): void {
     this.field.value = '';
-    this.quote = null;
     this.includePage = true;
     this.renderMeta();
     this.sync();
@@ -176,15 +166,6 @@ export class Composer {
     const chips: HTMLElement[] = [
       h('span', { class: 'ask-mark', attrs: { 'aria-hidden': 'true' } }, atdMark(16)),
     ];
-    if (this.quote !== null) {
-      const preview =
-        this.quote.length > QUOTE_PREVIEW ? `${this.quote.slice(0, QUOTE_PREVIEW)}…` : this.quote;
-      chips.push(
-        this.chip(t('ask.quote', { text: preview }), null, t('ask.removeQuote'), 'quote', () => {
-          this.quote = null;
-        }),
-      );
-    }
     if (this.includePage && this.host) {
       chips.push(
         this.chip(
@@ -221,7 +202,7 @@ export class Composer {
 
   private chip(
     label: string,
-    icon: Element | null,
+    icon: Element,
     removeLabel: string,
     act: string,
     remove: () => void,

@@ -76,19 +76,14 @@ export class AskFlow {
     return this.phase === 'compose' || this.phase === 'sending';
   }
 
-  /** `ask.open`: opens the field (with a quote when given); a second press without one closes it. */
-  open(quote: string | null): void {
-    if (this.composing) {
-      if (quote === null) return this.close(true);
-      this.composer.prepare(this.host(), quote);
-      this.composer.focus();
-      return this.deps.changed();
-    }
+  /** `ask.open`: opens the field; a second press closes it. */
+  open(): void {
+    if (this.composing) return this.close(true);
     if (!canAsk(this.view) || this.phase === 'starting') return;
     const active = document.activeElement;
     this.returnFocus = active instanceof HTMLElement && active !== document.body ? active : null;
     this.phase = 'compose';
-    this.composer.prepare(this.host(), quote);
+    this.composer.prepare(this.host());
     this.composer.setState(false, true);
     this.deps.changed();
     this.composer.focus();
@@ -143,7 +138,6 @@ export class AskFlow {
   private submit(): void {
     if (this.phase !== 'compose' || !this.composer.canSend || !canAsk(this.view)) return;
     const text = this.composer.text;
-    const selection = this.composer.selection;
     this.requestId = requestId();
     this.runAtSend = this.view?.run?.runId ?? null;
     this.startedRun = null;
@@ -156,7 +150,6 @@ export class AskFlow {
       requestId: this.requestId,
       text,
       includePage: this.composer.includePage,
-      ...(selection !== null ? { selection } : {}),
     });
     this.deps.changed();
   }

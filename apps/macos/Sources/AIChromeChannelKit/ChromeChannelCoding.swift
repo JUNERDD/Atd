@@ -98,7 +98,7 @@ public enum ChromeChannelProtocol {
   public static let maxTargetIdLength = 128
   /// `OriginSchema`.
   public static let maxOriginLength = 2048
-  /// `TextSchema`: URLs, titles, typed questions, selections, result text and messages.
+  /// `TextSchema`: URLs, titles, typed questions, result text and messages.
   public static let maxTextLength = 100_000
 }
 

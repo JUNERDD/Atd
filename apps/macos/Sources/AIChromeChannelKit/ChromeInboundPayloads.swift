@@ -61,7 +61,6 @@ public struct ChromeAsk: Equatable, Sendable {
   public let url: String
   public let title: String
   public let text: String
-  public let selection: String?
 
   init(_ container: KeyedDecodingContainer<ChromeInboundKeys.Ask>) throws {
     requestId = try container.id(.requestId)
@@ -69,56 +68,6 @@ public struct ChromeAsk: Equatable, Sendable {
     url = try container.text(.url, maxLength: ChromeChannelProtocol.maxTextLength)
     title = try container.text(.title, maxLength: ChromeChannelProtocol.maxTextLength)
     text = try container.text(.text, maxLength: ChromeChannelProtocol.maxTextLength)
-    selection = try container.optionalText(
-      .selection, maxLength: ChromeChannelProtocol.maxTextLength)
-  }
-}
-
-/// `command.run`: a selected-text command, built in or the person's own.
-public struct ChromeCommandRun: Equatable, Sendable {
-  public enum Builtin: String, CaseIterable, Codable, Sendable {
-    case summarize
-    case translate
-  }
-
-  public enum Command: Decodable, Equatable, Sendable {
-    case builtin(Builtin)
-    case user(commandId: String)
-
-    public init(from decoder: any Decoder) throws {
-      let kind = try decoder.container(keyedBy: KindKey.self).decode(String.self, forKey: .kind)
-      switch kind {
-      case "builtin":
-        let container = try ChromeChannelCoding.object(decoder, BuiltinKeys.self)
-        self = .builtin(try container.decode(Builtin.self, forKey: .id))
-      case "user":
-        let container = try ChromeChannelCoding.object(decoder, UserKeys.self)
-        self = .user(commandId: try container.id(.commandId))
-      default:
-        throw DecodingError.dataCorrupted(
-          .init(codingPath: decoder.codingPath, debugDescription: "Unknown command kind \(kind)."))
-      }
-    }
-
-    private enum KindKey: String, CodingKey { case kind }
-    private enum BuiltinKeys: String, CodingKey { case kind, id }
-    private enum UserKeys: String, CodingKey { case kind, commandId }
-  }
-
-  public let requestId: String
-  public let tabId: Int
-  public let url: String
-  public let title: String
-  public let selection: String
-  public let command: Command
-
-  init(_ container: KeyedDecodingContainer<ChromeInboundKeys.CommandRun>) throws {
-    requestId = try container.id(.requestId)
-    tabId = try container.whole(.tabId, minimum: 0)
-    url = try container.text(.url, maxLength: ChromeChannelProtocol.maxTextLength)
-    title = try container.text(.title, maxLength: ChromeChannelProtocol.maxTextLength)
-    selection = try container.text(.selection, maxLength: ChromeChannelProtocol.maxTextLength)
-    command = try container.decode(Command.self, forKey: .command)
   }
 }
 

@@ -37,8 +37,6 @@
     "send": "Send",
     "removePage": "Don’t include this page",
     "addPage": "Include this page",
-    "quote": "“{{text}}”",
-    "removeQuote": "Don’t include the selection",
     "lost": "Lost connection to Atd. Your request is kept.",
     "count": "{{used}} / {{limit}}",
     "failure": {
@@ -64,17 +62,5 @@
     "waiting": "Waiting",
     "verifying": "Checking",
     "done": "Done"
-  },
-  "selection": {
-    "toolbar": "Atd commands",
-    "askAtd": "Ask Atd",
-    "summarize": "Summarize",
-    "translate": "Translate",
-    "more": "More commands",
-    "yourCommands": "Your Atd commands",
-    "noCommands": "No commands for selected text",
-    "fromSelection": "{{title}} · from your selection",
-    "continueInAtd": "Continue in Atd",
-    "failed": "Couldn’t run this command."
   }
 }

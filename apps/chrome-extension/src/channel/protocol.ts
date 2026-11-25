@@ -2,8 +2,6 @@ import { PermissionAnswerSchema } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import {
   ChromePrefsSchema,
-  CommandItemSchema,
-  CommandRefSchema,
   IdSchema as Id,
   InstallationIdSchema,
   OriginSchema as Origin,
@@ -28,7 +26,7 @@ import {
  * order and drops an incomplete set on disconnect. Every frame is `{v: 1, t, …}`; an unknown `t`
  * is logged and ignored. Shell frames are checked with `Value.Check` (never the TypeBox compiler:
  * MV3's CSP forbids `eval`) and may carry fields this version does not know, which are ignored.
- * The payload shapes the frames carry (runs, requests, prefs, commands) are in `payloads.ts`.
+ * The payload shapes the frames carry (runs, requests, prefs) are in `payloads.ts`.
  */
 export const CHROME_CHANNEL_PROTOCOL = 1;
 /** The shell chunks any serialized frame longer than this (Chrome's limit is 1 MB). */
@@ -79,18 +77,6 @@ export const ExtensionFrameSchema = Type.Union([
     url: Text,
     title: Text,
     text: Text,
-    selection: Type.Optional(Text),
-  }),
-  Type.Object({ v: V, t: Type.Literal('command.list') }),
-  Type.Object({
-    v: V,
-    t: Type.Literal('command.run'),
-    requestId: Id,
-    tabId: TabId,
-    url: Text,
-    title: Text,
-    selection: Text,
-    command: CommandRefSchema,
   }),
   Type.Object({ v: V, t: Type.Literal('run.stop'), taskId: Id, runId: Id }),
   Type.Object({
@@ -162,14 +148,6 @@ export const ExtensionFrameSchema = Type.Union([
     reason: Type.String({ maxLength: 500 }),
   }),
   Type.Object({ v: V, t: Type.Literal('tab.handed'), runId: Id, tabId: TabId, targetId: TargetId }),
-  /**
-   * v4. The active tab of the focused Chrome window, sent whenever it or its eligibility changes
-   * (tab activation, window focus, navigation, focus moving into or out of an iframe). `eligible`:
-   * paired and ready, a top-level http(s) page whose content script is alive, not incognito, and
-   * focus not inside an iframe; the shell's native selection toolbar yields to the extension's
-   * only then (S9).
-   */
-  Type.Object({ v: V, t: Type.Literal('focus.state'), tabId: TabId, eligible: Type.Boolean() }),
   /** v4. The HUD's Dismiss on a terminal run: the shell may forget the run's `RunView` (S10). */
   Type.Object({ v: V, t: Type.Literal('run.dismiss'), taskId: Id, runId: Id }),
   /** `msg`: one CDP JSON message of the emulated browser (a response or an event). */
@@ -268,19 +246,6 @@ export const ShellFrameSchema = Type.Union([
   Type.Object({ v: V, t: Type.Literal('cdp.close'), conn: ConnIdSchema }),
   /** `msg`: one CDP JSON message from the worker. */
   Type.Object({ v: V, t: Type.Literal('cdp'), conn: ConnIdSchema, msg: Type.String() }),
-  Type.Object({
-    v: V,
-    t: Type.Literal('commands'),
-    items: Type.Array(CommandItemSchema, { maxItems: 100 }),
-  }),
-  Type.Object({
-    v: V,
-    t: Type.Literal('command.result'),
-    requestId: Id,
-    state: Type.Union([Type.Literal('working'), Type.Literal('done'), Type.Literal('failed')]),
-    text: Type.Optional(Text),
-    taskId: Type.Optional(Id),
-  }),
   Type.Object({ v: V, t: Type.Literal('ask.accepted'), requestId: Id, taskId: Id, runId: Id }),
   /** `reason` is a code: `otherHost`, `serviceUnavailable`, `failed`; others read as `failed`. */
   Type.Object({ v: V, t: Type.Literal('ask.failed'), requestId: Id, reason: Text }),

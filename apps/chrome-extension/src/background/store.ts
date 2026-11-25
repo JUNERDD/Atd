@@ -1,11 +1,6 @@
 import { resolveLanguage } from '@atd/agent-contracts';
 import { Value } from 'typebox/value';
-import {
-  ChromePrefsSchema,
-  type ChromePrefs,
-  type CommandItem,
-  type RunView,
-} from '../channel/payloads.ts';
+import { ChromePrefsSchema, type ChromePrefs, type RunView } from '../channel/payloads.ts';
 import { STORAGE_KEYS } from '../messages/ports.ts';
 import type { Connection, PairingView } from '../messages/views.ts';
 
@@ -25,8 +20,6 @@ export interface BackgroundState {
   sites: readonly string[];
   /** The shell's last `runs` snapshot as sent; `projectRuns` adds the disconnected view. */
   runs: readonly RunView[];
-  /** The person's Atd commands offered on selected text. */
-  commands: readonly CommandItem[];
   /** The ask command's shortcut as Chrome shows it, '' when unassigned. */
   askShortcut: string;
 }
@@ -41,7 +34,6 @@ export class Store {
     prefs: undefined,
     sites: [],
     runs: [],
-    commands: [],
     askShortcut: '',
   };
   private readonly listeners = new Set<Listener>();

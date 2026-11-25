@@ -7,10 +7,5 @@
     "working_other": "Atd is working on {{count}} tasks",
     "needsYou": "Atd needs you",
     "disconnected": "Atd for Chrome isn't connected to Atd"
-  },
-  "errors": {
-    "notConnected": "Atd isn't connected. Open Atd and try again.",
-    "notPaired": "Connect this browser to Atd first.",
-    "selectionTooLong": "The selection is too long for Atd."
   }
 }
