@@ -17372,6 +17372,23 @@
         }
       }
     },
+    "diagnostics.recovery.body.devRendererUnreachable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Vite renderer dev server is not reachable. Check the terminal running pnpm dev, then reload the page or export a redacted diagnostic archive."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法连接 Vite 前端开发服务器。请检查运行 pnpm dev 的终端，随后重新加载页面或导出脱敏诊断包。"
+          }
+        }
+      }
+    },
     "diagnostics.recovery.body.rendererStalled" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -17385,6 +17402,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你可以重新加载页面、重启后台服务，或导出脱敏诊断包以供排查。"
+          }
+        }
+      }
+    },
+    "diagnostics.recovery.body.rendererStalledDev" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can reload the page or export a redacted diagnostic archive."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你可以重新加载页面，或导出脱敏诊断包以供排查。"
           }
         }
       }

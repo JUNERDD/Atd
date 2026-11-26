@@ -3,11 +3,24 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-export async function waitForServices({ rendererOrigin, dataDir, signal }) {
+export async function waitForServices({ rendererOrigin, dataDir, signal, log }) {
   // A failed service build can be repaired at any time; keep the completed native build pending.
   const started = performance.now();
+  let reportedReason = null;
   while (!signal.aborted) {
-    if (await servicesReady({ rendererOrigin, dataDir, signal })) return true;
+    const probe = await probeServices({ rendererOrigin, dataDir, signal });
+    if (probe.ready) return true;
+    if (log && !signal.aborted && performance.now() - started >= 5_000) {
+      const reason = !probe.rendererReady
+        ? probe.serviceReady
+          ? `Vite renderer at ${rendererOrigin.origin} is not reachable.`
+          : `Vite renderer (${rendererOrigin.origin}) and development service are not ready.`
+        : 'development agent service is not ready.';
+      if (reason !== reportedReason) {
+        reportedReason = reason;
+        log(`Still waiting: ${reason}`);
+      }
+    }
     const interval = performance.now() - started < 3000 ? 50 : 200;
     await delay(interval, undefined, { signal }).catch(() => {});
   }
@@ -15,6 +28,27 @@ export async function waitForServices({ rendererOrigin, dataDir, signal }) {
 }
 
 export async function servicesReady({ rendererOrigin, dataDir, signal }) {
+  return (await probeServices({ rendererOrigin, dataDir, signal })).ready;
+}
+
+async function rendererReady({ rendererOrigin, signal }) {
+  try {
+    const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(2000)]);
+    const page = await fetch(rendererOrigin, {
+      headers: { Accept: 'text/html' },
+      signal: requestSignal,
+    });
+    if (!page.ok) return false;
+    const contentType = page.headers.get('content-type') ?? '';
+    if (!contentType.toLowerCase().includes('text/html')) return false;
+    const html = await page.text();
+    return html.includes('/@vite/client') && html.includes('/src/main.tsx');
+  } catch {
+    return false;
+  }
+}
+
+async function serviceEndpointReady({ dataDir, signal }) {
   try {
     const [endpointText, tokenText] = await Promise.all([
       readFile(path.join(dataDir, 'endpoint.json'), 'utf8'),
@@ -34,18 +68,13 @@ export async function servicesReady({ rendererOrigin, dataDir, signal }) {
       return false;
     process.kill(endpoint.pid, 0);
     const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(2000)]);
-    const [page, status] = await Promise.all([
-      fetch(rendererOrigin, { signal: requestSignal }),
-      fetch(new URL('/v1/status', url), {
-        headers: { Authorization: `Bearer ${token}` },
-        signal: requestSignal,
-      }),
-    ]);
-    if (!page.ok || !status.ok) return false;
-    const [html, body] = await Promise.all([page.text(), status.json()]);
+    const status = await fetch(new URL('/v1/status', url), {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: requestSignal,
+    });
+    if (!status.ok) return false;
+    const body = await status.json();
     return (
-      html.includes('/@vite/client') &&
-      html.includes('/src/main.tsx') &&
       body.service?.service === 'agent-service' &&
       body.service.serviceId === endpoint.serviceId &&
       body.service.epoch === endpoint.epoch &&
@@ -56,4 +85,16 @@ export async function servicesReady({ rendererOrigin, dataDir, signal }) {
   } catch {
     return false; // Startup, a mid-write, or a service restart; the next attempt re-reads identity.
   }
+}
+
+async function probeServices({ rendererOrigin, dataDir, signal }) {
+  const [isRendererReady, isServiceReady] = await Promise.all([
+    rendererReady({ rendererOrigin, signal }),
+    serviceEndpointReady({ dataDir, signal }),
+  ]);
+  return {
+    ready: isRendererReady && isServiceReady,
+    rendererReady: isRendererReady,
+    serviceReady: isServiceReady,
+  };
 }

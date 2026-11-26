@@ -15,9 +15,14 @@ public enum RendererSource: Equatable, Sendable {
 final class RendererAssets {
   private let source: RendererSource
   private let resolver: StaticFileResolver?
+  private let decisionRing: RelayAndSupervisorRing?
+  private var lastRecordedUpstreamErrorStatus: Int?
+  private(set) var devRendererUnreachable = false
+  var onDevRendererAvailabilityChange: (() -> Void)?
 
-  init(source: RendererSource) {
+  init(source: RendererSource, decisionRing: RelayAndSupervisorRing? = nil) {
     self.source = source
+    self.decisionRing = decisionRing
     if case .bundle(let root) = source {
       resolver = StaticFileResolver(root: root)
     } else {
@@ -78,9 +83,30 @@ final class RendererAssets {
       MainActor.assumeIsolated {
         guard responder.isLive else { return }
         guard let http = response as? HTTPURLResponse, let data, error == nil else {
+          let wasUnreachable = self.devRendererUnreachable
+          let isEntry = path.encoded == "/" || path.encoded == "/index.html"
+          self.devRendererUnreachable = true
+          if !wasUnreachable || isEntry {
+            self.recordDevRendererAnomaly(status: 502, detail: "dev_renderer_unreachable")
+          }
+          if !wasUnreachable { self.onDevRendererAvailabilityChange?() }
           let message =
             "The Vite dev server at \(origin.httpOrigin) is not reachable. Run pnpm dev."
           return responder.error(status: 502, message)
+        }
+        if self.devRendererUnreachable {
+          self.devRendererUnreachable = false
+          self.onDevRendererAvailabilityChange?()
+        }
+        if http.statusCode >= 500 {
+          let isEntry = path.encoded == "/" || path.encoded == "/index.html"
+          if isEntry || self.lastRecordedUpstreamErrorStatus != http.statusCode {
+            self.lastRecordedUpstreamErrorStatus = http.statusCode
+            self.recordDevRendererAnomaly(
+              status: http.statusCode, detail: "dev_renderer_http_\(http.statusCode)")
+          }
+        } else {
+          self.lastRecordedUpstreamErrorStatus = nil
         }
         let type =
           http.value(forHTTPHeaderField: "Content-Type")
@@ -105,5 +131,17 @@ final class RendererAssets {
     }
     responder.onStop = { task.cancel() }
     task.resume()
+  }
+
+  private func recordDevRendererAnomaly(status: Int, detail: String) {
+    guard let decisionRing else { return }
+    var entry = RelayAndSupervisorEntry()
+    entry.uptimeNs = MonotonicTimestampAnchor.nowUptimeNs()
+    entry.subsystem = 3
+    entry.eventKind = 1
+    entry.outcome = 2
+    entry.httpOrWsCode = UInt16(clamping: status)
+    entry.detail = InlineText64(truncatingUTF8: detail)
+    decisionRing.append(entry)
   }
 }

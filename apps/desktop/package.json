@@ -6,7 +6,7 @@
   "author": "JUNERDD",
   "type": "module",
   "scripts": {
-    "dev:renderer": "vite",
+    "dev:renderer": "node scripts/dev-renderer.mjs",
     "build": "vite build",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "oxlint src tests plugins scripts *.ts && node scripts/export-bridge-schema.mjs --check && node scripts/brand-loader-motion.mjs --check",

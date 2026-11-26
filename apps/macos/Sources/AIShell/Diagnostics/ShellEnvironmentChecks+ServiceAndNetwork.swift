@@ -42,7 +42,7 @@ nonisolated extension ShellEnvironmentChecks {
         ? nil
         : .init(
           remediationCode: "restart_agent_service",
-          action: .restartService,
+          action: snapshot.isDevelopment ? .none : .restartService,
           settingsSection: nil, probeKind: nil, docsUrl: nil))
   }
 
@@ -126,23 +126,78 @@ nonisolated extension ShellEnvironmentChecks {
 
   static func evaluateLoopbackCheck(
     endpoint: ServiceEndpoint?,
+    devServerOrigin: DevServerOrigin? = nil,
+    isDevelopment: Bool = false,
     since start: ContinuousClock.Instant
   ) async -> ShellDoctorCheck {
+    async let devProbe: Bool? =
+      if let devServerOrigin {
+        await Deadline.value(within: .milliseconds(350), fallback: false) {
+          await ShellClient.probeDevRenderer(devServerOrigin, timeout: 0.3)
+        }
+      } else {
+        nil
+      }
+
     guard let endpoint else {
+      let devReachable = await devProbe
+      var metrics = [ShellDoctorCheck.Metric(key: "reachable", value: "false")]
+      if let devReachable {
+        metrics.append(.init(key: "devRendererReachable", value: String(devReachable)))
+      }
+      if devReachable == false {
+        return ShellDoctorCheck(
+          id: "net.loopback_ipc",
+          layer: .networkProxyAndClock,
+          status: .fail,
+          reasonCode: "dev_renderer_unreachable",
+          durationMs: elapsedMs(since: start),
+          metrics: metrics,
+          remediation: .init(
+            remediationCode: "start_pnpm_dev_renderer",
+            action: .none,
+            settingsSection: nil, probeKind: nil, docsUrl: nil))
+      }
       return ShellDoctorCheck(
         id: "net.loopback_ipc",
         layer: .networkProxyAndClock,
         status: .skipped,
         reasonCode: "ok",
         durationMs: elapsedMs(since: start),
-        metrics: [.init(key: "reachable", value: "false")],
+        metrics: metrics,
         remediation: nil)
     }
+
     let rttStart = ContinuousClock.now
-    let reachable = await Deadline.value(within: .milliseconds(350), fallback: false) {
+    async let serviceProbe = Deadline.value(within: .milliseconds(350), fallback: false) {
       (try? await ShellClient(endpoint: endpoint).status()) != nil
     }
+    let reachable = await serviceProbe
     let rttMs = elapsedMs(since: rttStart)
+    let devReachable = await devProbe
+
+    var metrics: [ShellDoctorCheck.Metric] = [
+      .init(key: "reachable", value: String(reachable)),
+      .init(key: "rttMs", value: String(format: "%.1f", rttMs)),
+    ]
+    if let devReachable {
+      metrics.append(.init(key: "devRendererReachable", value: String(devReachable)))
+    }
+
+    if reachable, devReachable == false {
+      return ShellDoctorCheck(
+        id: "net.loopback_ipc",
+        layer: .networkProxyAndClock,
+        status: .fail,
+        reasonCode: "dev_renderer_unreachable",
+        durationMs: elapsedMs(since: start),
+        metrics: metrics,
+        remediation: .init(
+          remediationCode: "start_pnpm_dev_renderer",
+          action: .none,
+          settingsSection: nil, probeKind: nil, docsUrl: nil))
+    }
+
     let status: ShellDoctorCheck.Status =
       !reachable ? .fail : (rttMs > 200 ? .warn : .pass)
     let reason =
@@ -153,15 +208,12 @@ nonisolated extension ShellEnvironmentChecks {
       status: status,
       reasonCode: reason,
       durationMs: elapsedMs(since: start),
-      metrics: [
-        .init(key: "reachable", value: String(reachable)),
-        .init(key: "rttMs", value: String(format: "%.1f", rttMs)),
-      ],
+      metrics: metrics,
       remediation: status == .pass
         ? nil
         : .init(
           remediationCode: "check_loopback_firewall_vpn",
-          action: !reachable ? .restartService : .none,
+          action: !reachable && !isDevelopment && devServerOrigin == nil ? .restartService : .none,
           settingsSection: nil, probeKind: nil, docsUrl: nil))
   }
 

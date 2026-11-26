@@ -40,6 +40,7 @@ nonisolated enum ShellEnvironmentChecks {
     let hostLockHeldByOther: Bool
     let unsettledSessionPending: Bool
     let heldArbiterClaims: [String]
+    var devServerOrigin: DevServerOrigin? = nil
   }
 
   struct Evaluation: Sendable {
@@ -126,7 +127,10 @@ nonisolated enum ShellEnvironmentChecks {
 
     let tLoopback = ContinuousClock.now
     let loopbackCheck = await evaluateLoopbackCheck(
-      endpoint: snapshot.runningServiceEndpoint, since: tLoopback)
+      endpoint: snapshot.runningServiceEndpoint,
+      devServerOrigin: snapshot.devServerOrigin,
+      isDevelopment: snapshot.isDevelopment,
+      since: tLoopback)
     checks.append(loopbackCheck)
 
     let envRecord = DiagnosticsEnvironmentRecord(

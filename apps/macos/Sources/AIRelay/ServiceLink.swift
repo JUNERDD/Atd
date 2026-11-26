@@ -69,6 +69,8 @@ public final class ServiceLink {
   /// Scrubbed startup or crash summary retained from ``source`` (including `.stoppedTooOften`).
   public var lastFailureSummary: String? { source.lastFailureSummary }
   private var observers: [UUID: @MainActor (ServiceEndpoint?) -> Void] = [:]
+  private var resolutionObservers:
+    [UUID: @MainActor (Result<ServiceEndpoint, ServiceUnavailable>) -> Void] = [:]
 
   public init(source: any ServiceEndpointSource) {
     self.source = source
@@ -81,7 +83,8 @@ public final class ServiceLink {
   /// The endpoint current now (Debug re-reads it from disk).
   public func endpoint() async -> Result<ServiceEndpoint, ServiceUnavailable> {
     let resolved = await source.resolveEndpoint()
-    let previous = try? latest?.get()
+    let previousResult = latest
+    let previous = try? previousResult?.get()
     latest = resolved
     let current = try? resolved.get()
     let changed =
@@ -91,6 +94,9 @@ public final class ServiceLink {
       case (let previous?, let current?): !previous.isSameInstance(as: current)
       }
     if changed { for observer in observers.values { observer(current) } }
+    if previousResult != resolved {
+      for observer in resolutionObservers.values { observer(resolved) }
+    }
     return resolved
   }
 
@@ -102,6 +108,16 @@ public final class ServiceLink {
     let id = UUID()
     observers[id] = observer
     return ServiceLinkObservation { [weak self] in self?.observers[id] = nil }
+  }
+
+  /// Runs `observer` whenever the resolved endpoint or unavailability reason changes, including
+  /// initial resolution and failure-state transitions while a recovery surface is visible.
+  public func observeResolutionChanges(
+    _ observer: @escaping @MainActor (Result<ServiceEndpoint, ServiceUnavailable>) -> Void
+  ) -> ServiceLinkObservation {
+    let id = UUID()
+    resolutionObservers[id] = observer
+    return ServiceLinkObservation { [weak self] in self?.resolutionObservers[id] = nil }
   }
 }
 

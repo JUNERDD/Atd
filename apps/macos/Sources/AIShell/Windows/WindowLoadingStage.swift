@@ -21,6 +21,8 @@ final class WindowLoadingStage {
   private var revealing = false
   private var revealGeneration = 0
   private var revealTask: Task<Void, Never>?
+  private weak var devAvailabilityServices: ShellServices?
+  private var devAvailabilityObserverId: UUID?
 
   var serviceContextOverride: (() -> WindowRecoveryView.ServiceContext)?
   var onRestartServiceOverride: (() async throws -> Void)?
@@ -48,7 +50,10 @@ final class WindowLoadingStage {
     bindHostCallbacks()
   }
 
-  isolated deinit { revealTask?.cancel() }
+  isolated deinit {
+    revealTask?.cancel()
+    unregisterDevAvailabilityObserver()
+  }
 
   func setWindowVisible(_ visible: Bool) {
     guard windowVisible != visible else { return }
@@ -122,9 +127,17 @@ final class WindowLoadingStage {
   }
 
   private func removeRecoveryView() {
+    unregisterDevAvailabilityObserver()
     recoveryView?.stop()
     recoveryView?.removeFromSuperview()
     recoveryView = nil
+  }
+
+  private func unregisterDevAvailabilityObserver() {
+    guard let id = devAvailabilityObserverId else { return }
+    (devAvailabilityServices ?? host?.services)?.removeDevRendererAvailabilityObserver(id)
+    devAvailabilityObserverId = nil
+    devAvailabilityServices = nil
   }
 
   func handleDragRegionsReady() {
@@ -170,9 +183,28 @@ final class WindowLoadingStage {
       if self.dragRegionsReady {
         self.revealPage()
       } else {
+        self.recordTimeoutTelemetry()
         self.presentRecovery(reason: .timeout)
       }
     }
+  }
+
+  private func recordTimeoutTelemetry() {
+    guard let host else { return }
+    let devUnreachable = host.services.isDevRendererUnreachable
+    var entry = RelayAndSupervisorEntry()
+    entry.uptimeNs = MonotonicTimestampAnchor.nowUptimeNs()
+    entry.subsystem = 2
+    entry.eventKind = 3
+    entry.outcome = 2
+    if devUnreachable { entry.httpOrWsCode = 502 }
+    let tag = "window_load_timeout:\(host.role.rawValue)"
+    entry.detail = InlineText64(truncatingUTF8: tag)
+    host.services.decisionRings.relaySupervisor.append(entry)
+    host.services.shellLog.enqueue(
+      level: .error,
+      category: "web",
+      message: "\(tag) devRendererUnreachable=\(devUnreachable)")
   }
 
   private func presentRecovery(reason: WindowRecoveryView.Reason) {
@@ -220,6 +252,13 @@ final class WindowLoadingStage {
     view.addSubview(recovery)
     CATransaction.commit()
     recoveryView = recovery
+    unregisterDevAvailabilityObserver()
+    if let services = host?.services {
+      devAvailabilityServices = services
+      devAvailabilityObserverId = services.observeDevRendererAvailability { [weak self] in
+        self?.recoveryView?.refreshContentAndLayout()
+      }
+    }
   }
 
   private func reloadFromRecoveryCard() {

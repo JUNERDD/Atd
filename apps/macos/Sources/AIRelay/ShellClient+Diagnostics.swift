@@ -51,4 +51,27 @@ nonisolated extension ShellClient {
     }
     return response.data
   }
+
+  /// Probes whether the Vite development server at `origin` is serving the renderer entry page
+  /// within `timeout`, bypassing system proxies via ``RelaySession/probe``.
+  @concurrent
+  public static func probeDevRenderer(
+    _ origin: DevServerOrigin,
+    timeout: TimeInterval = 0.35
+  ) async -> Bool {
+    guard let url = URL(string: origin.httpOrigin + "/") else { return false }
+    var request = URLRequest(url: url)
+    request.httpMethod = "GET"
+    request.timeoutInterval = max(0.05, timeout)
+    request.setValue("text/html", forHTTPHeaderField: "Accept")
+    guard let (data, response) = try? await RelaySession.probe.data(for: request),
+      let http = response as? HTTPURLResponse,
+      (200..<300).contains(http.statusCode),
+      data.count <= maxDoctorRunResponseBytes
+    else {
+      return false
+    }
+    let html = String(decoding: data, as: UTF8.self)
+    return html.contains("/@vite/client") && html.contains("/src/main.tsx")
+  }
 }

@@ -17,10 +17,17 @@ struct RelayedRequest {
 final class APIRelay {
   private let link: ServiceLink
   private let manifests: RouteManifestCache
+  private let decisionRing: RelayAndSupervisorRing?
+  private var lastRecordedUnavailableCode: String?
 
-  init(link: ServiceLink, manifests: RouteManifestCache) {
+  init(
+    link: ServiceLink,
+    manifests: RouteManifestCache,
+    decisionRing: RelayAndSupervisorRing? = nil
+  ) {
     self.link = link
     self.manifests = manifests
+    self.decisionRing = decisionRing
   }
 
   func forward(_ request: RelayedRequest, to responder: SchemeResponder) {
@@ -34,10 +41,15 @@ final class APIRelay {
     let endpoint: ServiceEndpoint
     switch await link.endpoint() {
     case .success(let resolved):
+      lastRecordedUnavailableCode = nil
       endpoint = resolved
     case .failure(let reason):
       let descriptor = ServiceUnavailableDescriptor.describe(
         reason, lastFailure: link.lastFailureSummary)
+      if lastRecordedUnavailableCode != descriptor.errorCode {
+        lastRecordedUnavailableCode = descriptor.errorCode
+        recordUnavailable(errorCode: descriptor.errorCode)
+      }
       return responder.error(
         status: RelayPolicy.unavailableStatus,
         code: descriptor.errorCode,
@@ -95,5 +107,17 @@ final class APIRelay {
     manifests.invalidate()
     responder.onStop = nil
     Task { await attempt(request, responder: responder, replayed: true) }
+  }
+
+  private func recordUnavailable(errorCode: String) {
+    guard let decisionRing else { return }
+    var entry = RelayAndSupervisorEntry()
+    entry.uptimeNs = MonotonicTimestampAnchor.nowUptimeNs()
+    entry.subsystem = 3
+    entry.eventKind = 2
+    entry.outcome = 2
+    entry.httpOrWsCode = UInt16(RelayPolicy.unavailableStatus)
+    entry.detail = InlineText64(truncatingUTF8: "api_unavailable:\(errorCode)")
+    decisionRing.append(entry)
   }
 }

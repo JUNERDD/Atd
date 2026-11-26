@@ -38,6 +38,7 @@ let closeWatch;
 let unlock;
 let cache;
 let launcherReady;
+let serviceWait;
 let timer;
 let busy = false;
 let pending = true;
@@ -93,6 +94,7 @@ function schedule(reason) {
     if (writingBridge || cache.codegen.outputFingerprint() === observedOutputs) return;
   }
   pending = true;
+  serviceWait?.abort();
   codegenDirty ||= reason === 'generated';
   if (reason === 'codegen' || reason === 'both') {
     codegenDirty = true;
@@ -217,34 +219,52 @@ async function rebuild() {
     };
 
     log('Waiting for the renderer and authenticated development service…');
+    serviceWait = new AbortController();
     // When no app is open yet, install the refreshed Debug copy while services finish starting.
-    const installEarly = uninstalledBuild && !app;
-    const earlyInstall = installEarly ? installDevCopy(installOptions) : null;
-    const [servicesUp, earlyResult] = await Promise.all([
-      waitForServices({ rendererOrigin, dataDir, signal: lifetime.signal }),
+    const installEarly = uninstalledBuild && !app?.running;
+    const earlyInstall = installEarly
+      ? installDevCopy(installOptions).then((result) => {
+          if (!recordInstallResult(result)) {
+            serviceWait?.abort();
+            return false;
+          }
+          if (quitting) return false;
+          if (!pending && cache.reverify(builtInputs).inputsCurrent) {
+            cache.recordInstall(builtInputs);
+            uninstalledBuild = false;
+          }
+          return true;
+        })
+      : null;
+    const waitSignal = AbortSignal.any([lifetime.signal, serviceWait.signal]);
+    const [servicesUp, earlyInstalled] = await Promise.all([
+      waitForServices({ rendererOrigin, dataDir, signal: waitSignal, log }),
       earlyInstall ?? Promise.resolve(null),
-    ]);
-    if (!servicesUp || quitting || pending) return;
-    if (earlyResult) {
-      if (!recordInstallResult(earlyResult)) return;
-      const check = cache.reverify(builtInputs);
-      if (!check.inputsCurrent) return schedule('native');
-      cache.recordInstall(builtInputs);
-      uninstalledBuild = false;
+    ]).finally(() => {
+      serviceWait = undefined;
+    });
+    if (earlyInstalled === false || !servicesUp || quitting || pending) return;
+    const check = cache.reverify(builtInputs);
+    if (!check.inputsCurrent || !check.built) return schedule('native');
+    if (earlyInstalled) {
+      if (uninstalledBuild) {
+        cache.recordInstall(builtInputs);
+        uninstalledBuild = false;
+      } else if (!check.installed) {
+        uninstalledBuild = true;
+      }
     } else {
-      const check = cache.reverify(builtInputs);
-      if (!check.inputsCurrent || !check.built) return schedule('native');
       if (!uninstalledBuild) uninstalledBuild = !check.installed;
-      await app?.stop();
+      if (app?.running) await app.stop();
       app = undefined;
       if (quitting || pending || foreignAppRunning()) return;
-      if (uninstalledBuild) {
-        const result = await installDevCopy(installOptions);
-        if (!recordInstallResult(result)) return;
-        if (quitting || pending) return;
-        if (!cache.reverify(builtInputs).inputsCurrent) return schedule('native');
-        cache.recordInstall(builtInputs);
-      }
+    }
+    if (uninstalledBuild) {
+      const result = await installDevCopy(installOptions);
+      if (!recordInstallResult(result)) return;
+      if (quitting || pending) return;
+      if (!cache.reverify(builtInputs).inputsCurrent) return schedule('native');
+      cache.recordInstall(builtInputs);
     }
     if (quitting || foreignAppRunning()) return;
     const launcher = await launcherReady;

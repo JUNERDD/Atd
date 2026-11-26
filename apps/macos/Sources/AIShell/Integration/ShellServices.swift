@@ -34,12 +34,46 @@ public final class ShellServices {
   let liveProbes = LiveProbeCoordinator()
   var diagnosticsTemporaryDirectoryURL = FileManager.default.temporaryDirectory
   var nativeDiagnosticsConsentOverrideForTesting: (() async -> Bool?)?
+  private var cachedSchemeHandler: RendererSchemeHandler?
+  private var linkResolutionObservation: ServiceLinkObservation?
+  private var devAvailabilityObservers: [UUID: () -> Void] = [:]
   /// One handler serves every window's web view and every rebuild of them.
-  private(set) lazy var schemeHandler = RendererSchemeHandler(renderer: renderer, link: link)
+  var schemeHandler: RendererSchemeHandler {
+    if let existing = cachedSchemeHandler { return existing }
+    let created = RendererSchemeHandler(
+      renderer: renderer, link: link, decisionRing: decisionRings.relaySupervisor)
+    created.onDevRendererAvailabilityChange = { [weak self, weak created] in
+      guard let self else { return }
+      if let unreachable = created?.isDevRendererUnreachable {
+        self.shellLog.enqueue(
+          level: unreachable ? .error : .info,
+          category: "relay",
+          message: unreachable ? "dev_renderer_unreachable" : "dev_renderer_recovered")
+      }
+      for observer in self.devAvailabilityObservers.values { observer() }
+    }
+    cachedSchemeHandler = created
+    return created
+  }
   /// Generative views' documents, for the same web views.
   private(set) lazy var viewSchemeHandler = ViewSchemeHandler(link: link)
 
   var isDevelopment: Bool { supervisor == nil }
+  var isDevRendererUnreachable: Bool { cachedSchemeHandler?.isDevRendererUnreachable ?? false }
+  var devServerOrigin: DevServerOrigin? {
+    if case .devServer(let origin) = renderer { return origin }
+    return nil
+  }
+
+  func observeDevRendererAvailability(_ observer: @escaping () -> Void) -> UUID {
+    let id = UUID()
+    devAvailabilityObservers[id] = observer
+    return id
+  }
+
+  func removeDevRendererAvailabilityObserver(_ id: UUID) {
+    devAvailabilityObservers.removeValue(forKey: id)
+  }
 
   private init(
     source: any ServiceEndpointSource,
@@ -57,6 +91,10 @@ public final class ShellServices {
     self.logDirectory = logDirectory
     self.decisionRings = decisionRings
     self.shellLog = shellLog
+    linkResolutionObservation = link.observeResolutionChanges { [weak self] _ in
+      guard let self else { return }
+      for observer in self.devAvailabilityObservers.values { observer() }
+    }
   }
 
   /// The services of this build configuration.
@@ -171,21 +209,18 @@ public final class ShellServices {
         unavailable: unavailable,
         lastFailureSummary: supervisor.lastFailureSummary)
     }
-    let unavailable: ServiceUnavailable?
-    if case .failure(let reason) = link.latest {
-      unavailable = reason
-    } else {
+    let unavailable: ServiceUnavailable? =
       switch ServiceDiscovery.read(dataDirectory: dataDirectory) {
       case .success:
-        unavailable = nil
+        nil
       case .failure(.notRunning), .failure(.stale):
-        unavailable = .developmentServiceNotRunning
+        .developmentServiceNotRunning
       case .failure(let err):
-        unavailable = .invalidEndpoint(err)
+        .invalidEndpoint(err)
       }
-    }
     return WindowRecoveryView.ServiceContext(
       isDevelopment: true,
+      devRendererUnreachable: isDevRendererUnreachable,
       unavailable: unavailable,
       lastFailureSummary: link.lastFailureSummary)
   }

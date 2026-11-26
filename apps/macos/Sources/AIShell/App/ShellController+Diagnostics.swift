@@ -241,7 +241,8 @@ extension ShellController {
       controlReconnecting: control.state == .reconnecting,
       hostLockHeldByOther: hostBusy,
       unsettledSessionPending: unsettled,
-      heldArbiterClaims: deviceArbiter.heldResourceSummaries())
+      heldArbiterClaims: deviceArbiter.heldResourceSummaries(),
+      devServerOrigin: services.devServerOrigin)
   }
 
   private func resolveServiceStateSnapshot() -> (

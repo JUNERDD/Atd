@@ -19,6 +19,7 @@ final class WindowRecoveryView: NSView {
 
   struct ServiceContext: Equatable, Sendable {
     var isDevelopment = false
+    var devRendererUnreachable = false
     var unavailable: ServiceUnavailable?
     var lastFailureSummary: String?
   }
@@ -138,12 +139,18 @@ final class WindowRecoveryView: NSView {
       ? NSColor(srgbRed: 0.72, green: 0.72, blue: 0.75, alpha: 1)
       : NSColor(srgbRed: 0.36, green: 0.36, blue: 0.40, alpha: 1)
 
+    let ctx = serviceContextProvider()
+    if restartButton.isHidden != ctx.isDevelopment {
+      restartButton.isHidden = ctx.isDevelopment
+      needsLayout = true
+    }
+
     let strings = ShellStrings.shared
     let titleText = strings.text(
       reason == .crashed
         ? DiagnosticsStringKey.recoveryTitleCrashed
         : DiagnosticsStringKey.recoveryTitleTimeout)
-    let bodyText = resolveScrubbedBodyText(strings: strings)
+    let bodyText = resolveScrubbedBodyText(ctx: ctx, strings: strings)
 
     titleLabel.attributedStringValue = Self.styledText(
       titleText, font: .systemFont(ofSize: 17, weight: .semibold), color: fg, lineHeight: 24)
@@ -163,10 +170,14 @@ final class WindowRecoveryView: NSView {
     }
   }
 
-  private func resolveScrubbedBodyText(strings: ShellStrings) -> String {
-    let ctx = serviceContextProvider()
+  private func resolveScrubbedBodyText(
+    ctx: ServiceContext, strings: ShellStrings
+  ) -> String {
+    if ctx.isDevelopment, ctx.devRendererUnreachable {
+      return strings.text(DiagnosticsStringKey.recoveryBodyDevRendererUnreachable)
+    }
     if ctx.isDevelopment, ctx.unavailable == .developmentServiceNotRunning {
-      return strings.text(DiagnosticsStringKey.recoveryBodyRendererStalled) + "\n"
+      return strings.text(DiagnosticsStringKey.recoveryBodyRendererStalledDev) + "\n"
         + strings.text(DiagnosticsStringKey.recoveryBodyDevHint)
     }
     if let unavailable = ctx.unavailable {
@@ -178,6 +189,9 @@ final class WindowRecoveryView: NSView {
       case .starting, .developmentServiceNotRunning, .stopped:
         break
       }
+    }
+    if ctx.isDevelopment {
+      return strings.text(DiagnosticsStringKey.recoveryBodyRendererStalledDev)
     }
     return strings.text(DiagnosticsStringKey.recoveryBodyRendererStalled)
   }
@@ -198,16 +212,18 @@ final class WindowRecoveryView: NSView {
     let feedbackH =
       feedbackLabel.isHidden ? 0 : Self.measuredHeight(of: feedbackLabel, width: availableWidth)
 
-    let widths = actionButtons.map(\.naturalLabelWidth)
+    let visibleButtons = actionButtons.filter { !$0.isHidden }
+    for button in actionButtons where button.isHidden { button.frame = .zero }
+    let widths = visibleButtons.map(\.naturalLabelWidth)
     let horizontalRowWidth =
-      widths.reduce(0, +) + CGFloat(max(0, actionButtons.count - 1)) * buttonGap
+      widths.reduce(0, +) + CGFloat(max(0, visibleButtons.count - 1)) * buttonGap
     let stackVertically = maxRowWidth < horizontalRowWidth
     isStackedVertically = stackVertically
 
     let footerH =
       stackVertically
-      ? CGFloat(actionButtons.count) * buttonHeight
-        + CGFloat(max(0, actionButtons.count - 1)) * buttonGap
+      ? CGFloat(visibleButtons.count) * buttonHeight
+        + CGFloat(max(0, visibleButtons.count - 1)) * buttonGap
       : buttonHeight
 
     var totalH = titleH + 8 + bodyH + 20 + footerH
@@ -229,13 +245,13 @@ final class WindowRecoveryView: NSView {
     cursorY += 20
 
     if stackVertically {
-      for button in actionButtons {
+      for button in visibleButtons {
         button.frame = NSRect(x: x, y: cursorY, width: availableWidth, height: buttonHeight)
         cursorY += buttonHeight + buttonGap
       }
     } else {
       var buttonX = ((bounds.width - horizontalRowWidth) / 2).rounded()
-      for (index, button) in actionButtons.enumerated() {
+      for (index, button) in visibleButtons.enumerated() {
         let w = widths[index]
         button.frame = NSRect(x: buttonX, y: cursorY, width: w, height: buttonHeight)
         buttonX += w + buttonGap

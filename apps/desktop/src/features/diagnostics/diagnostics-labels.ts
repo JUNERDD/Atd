@@ -5,6 +5,7 @@ import type {
   DoctorStatus,
   LiveProbeKind,
 } from '@atd/agent-contracts';
+import type enDiagnostics from '../../i18n/locales/en/diagnostics.json';
 
 export const LAYER_KEYS = {
   install_and_bundle: 'layers.install_and_bundle',
@@ -127,6 +128,7 @@ const REASON_KEYS = {
   extra_ca_certs_missing_or_unreadable: 'reasons.extra_ca_certs_missing_or_unreadable',
   loopback_rtt_high_gt_200ms: 'reasons.loopback_rtt_high_gt_200ms',
   loopback_unreachable: 'reasons.loopback_unreachable',
+  dev_renderer_unreachable: 'reasons.dev_renderer_unreachable',
   napi_addon_load_failed: 'reasons.napi_addon_load_failed',
   external_home_unsupported: 'reasons.external_home_unsupported',
   fsevents_watch_failed: 'reasons.fsevents_watch_failed',
@@ -147,7 +149,9 @@ const REASON_KEYS = {
   provider_tls_or_proxy_failed: 'reasons.provider_tls_or_proxy_failed',
   local_network_permission_denied: 'reasons.local_network_permission_denied',
   doctor_budget_exceeded: 'reasons.doctor_budget_exceeded',
-} as const;
+} as const satisfies {
+  [K in Exclude<keyof typeof enDiagnostics.reasons, 'unknownReason'>]: `reasons.${K}`;
+};
 
 const REMEDIATION_KEYS = {
   move_bundle_to_applications: 'remediation.move_bundle_to_applications',
@@ -170,13 +174,16 @@ const REMEDIATION_KEYS = {
   configure_supported_http_proxy: 'remediation.configure_supported_http_proxy',
   configure_proxy_and_ca_trust: 'remediation.configure_proxy_and_ca_trust',
   check_loopback_firewall_vpn: 'remediation.check_loopback_firewall_vpn',
+  start_pnpm_dev_renderer: 'remediation.start_pnpm_dev_renderer',
   reinstall_or_check_home_volume: 'remediation.reinstall_or_check_home_volume',
   inspect_memory_index_fallback: 'remediation.inspect_memory_index_fallback',
   manage_browser_addon: 'remediation.manage_browser_addon',
   open_mcp_extensions_settings: 'remediation.open_mcp_extensions_settings',
   sync_clock_or_trust_ca: 'remediation.sync_clock_or_trust_ca',
   check_provider_or_local_network: 'remediation.check_provider_or_local_network',
-} as const;
+} as const satisfies {
+  [K in keyof typeof enDiagnostics.remediation]: `remediation.${K}`;
+};
 
 const REMEDIATION_ACTION_KEYS = {
   open_system_settings_accessibility: 'remediationActions.open_system_settings_accessibility',

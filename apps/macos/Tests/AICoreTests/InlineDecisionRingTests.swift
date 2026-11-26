@@ -191,9 +191,9 @@ struct InlineDecisionRingTests {
   }
 
   @Test(
-    "DiagnosticsStringKey covers all 18 catalog keys and no debug ingest port remains in Sources")
+    "DiagnosticsStringKey covers all 20 catalog keys and no debug ingest port remains in Sources")
   func stringKeysAndNoDebugCollector() throws {
-    #expect(DiagnosticsStringKey.allCases.count == 18)
+    #expect(DiagnosticsStringKey.allCases.count == 20)
     #expect(DiagnosticsStringKey.exportPanelAlreadyOpen == .exportPanelBusy)
 
     let sourcesRoot = URL(filePath: #filePath)

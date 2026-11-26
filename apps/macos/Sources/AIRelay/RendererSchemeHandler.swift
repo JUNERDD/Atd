@@ -27,18 +27,33 @@ public final class RendererSchemeHandler: NSObject, WKURLSchemeHandler {
   private let assets: RendererAssets
   private let api: APIRelay
 
-  public init(renderer: RendererSource, link: ServiceLink) {
-    assets = RendererAssets(source: renderer)
-    api = APIRelay(link: link, manifests: RouteManifestCache())
+  public init(
+    renderer: RendererSource,
+    link: ServiceLink,
+    decisionRing: RelayAndSupervisorRing? = nil
+  ) {
+    assets = RendererAssets(source: renderer, decisionRing: decisionRing)
+    api = APIRelay(link: link, manifests: RouteManifestCache(), decisionRing: decisionRing)
   }
 
-  init(renderer: RendererSource, link: ServiceLink, manifests: RouteManifestCache) {
-    assets = RendererAssets(source: renderer)
-    api = APIRelay(link: link, manifests: manifests)
+  init(
+    renderer: RendererSource,
+    link: ServiceLink,
+    manifests: RouteManifestCache,
+    decisionRing: RelayAndSupervisorRing? = nil
+  ) {
+    assets = RendererAssets(source: renderer, decisionRing: decisionRing)
+    api = APIRelay(link: link, manifests: manifests, decisionRing: decisionRing)
   }
 
   /// Scheme tasks still being answered.
   public var liveTaskCount: Int { tasks.count }
+  /// True after a development asset proxy call failed to reach the Vite dev server (`502`).
+  public var isDevRendererUnreachable: Bool { assets.devRendererUnreachable }
+  public var onDevRendererAvailabilityChange: (() -> Void)? {
+    get { assets.onDevRendererAvailabilityChange }
+    set { assets.onDevRendererAvailabilityChange = newValue }
+  }
 
   public func webView(_ webView: WKWebView, start urlSchemeTask: any WKURLSchemeTask) {
     let responder = tasks.open(urlSchemeTask)

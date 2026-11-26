@@ -45,6 +45,22 @@ nonisolated enum RelaySession {
     configuration.timeoutIntervalForRequest = 24 * 60 * 60
     return URLSession(configuration: configuration, delegate: nil, delegateQueue: .main)
   }()
+
+  /// Off-main loopback session for Doctor diagnostics probes (`ShellClient.probeDevRenderer`),
+  /// avoiding `.main` delegate queue dependency during `@concurrent` shell checks.
+  static let probe: URLSession = {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.httpCookieStorage = nil
+    configuration.httpShouldSetCookies = false
+    configuration.urlCache = nil
+    configuration.urlCredentialStorage = nil
+    configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+    configuration.connectionProxyDictionary = [:]
+    configuration.waitsForConnectivity = false
+    configuration.httpMaximumConnectionsPerHost = 4
+    configuration.timeoutIntervalForRequest = 2
+    return URLSession(configuration: configuration, delegate: nil, delegateQueue: nil)
+  }()
 }
 
 nonisolated enum RelayLog {

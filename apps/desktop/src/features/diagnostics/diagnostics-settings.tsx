@@ -74,9 +74,9 @@ export function DiagnosticsSettings() {
     runChecks,
   } = useDiagnosticsDoctor(includeConnectivity);
 
+  const canRestartService = shellReport !== null && !shellReport.isDevelopment;
   const showRestart =
-    !shellReport?.isDevelopment &&
-    (shellReport?.serviceState === 'unavailable' || Boolean(serviceError));
+    canRestartService && (shellReport?.serviceState === 'unavailable' || Boolean(serviceError));
 
   const handleRestartService = useCallback(async () => {
     const bridge = window.desktop?.diagnostics;
@@ -213,6 +213,7 @@ export function DiagnosticsSettings() {
                   <DoctorCheckRow
                     key={check.id}
                     check={check}
+                    canRestartService={canRestartService}
                     onRestartService={() => void handleRestartService()}
                     onOpenSettingsSection={handleOpenSettingsSection}
                     onRunLiveProbe={setRequestedProbe}

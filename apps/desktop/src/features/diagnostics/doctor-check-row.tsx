@@ -47,12 +47,13 @@ function StatusIcon({ status }: { status: DoctorStatus }) {
   }
 }
 
-function canInvokeRemediation(remediation: DoctorRemediation): boolean {
+function canInvokeRemediation(remediation: DoctorRemediation, canRestartService: boolean): boolean {
   switch (remediation.action) {
     case 'open_system_settings_accessibility':
     case 'open_system_settings_screen_recording':
-    case 'restart_service':
       return true;
+    case 'restart_service':
+      return canRestartService;
     case 'open_settings_section':
       return Boolean(remediation.settingsSection);
     case 'run_live_probe':
@@ -70,12 +71,14 @@ function canInvokeRemediation(remediation: DoctorRemediation): boolean {
 
 export function DoctorCheckRow({
   check,
+  canRestartService = true,
   onRestartService,
   onOpenSettingsSection,
   onRunLiveProbe,
   onOpenExternalDocs,
 }: {
   check: UnifiedDoctorCheck;
+  canRestartService?: boolean;
   onRestartService: () => void;
   onOpenSettingsSection: (section: string) => void;
   onRunLiveProbe: (kind: LiveProbeKind) => void;
@@ -89,7 +92,9 @@ export function DoctorCheckRow({
   const remediation = check.remediation;
   const remediationText = remediation ? translateRemediation(t, remediation.remediationCode) : null;
   const actionLabel = remediation ? translateRemediationAction(t, remediation.action) : null;
-  const showAction = Boolean(remediation && actionLabel && canInvokeRemediation(remediation));
+  const showAction = Boolean(
+    remediation && actionLabel && canInvokeRemediation(remediation, canRestartService),
+  );
 
   function handleAction() {
     if (!remediation) return;
