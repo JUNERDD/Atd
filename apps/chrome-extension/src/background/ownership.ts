@@ -50,7 +50,8 @@ export class Ownership {
     const targetId = await this.resolveTarget(tabId);
     if (targetId !== undefined) this.send({ t: 'tab.handed', runId, tabId, targetId });
     await this.reportState(tabId);
-    await this.groups.add(tabId, tab.windowId);
+    await this.groups.take(tabId, tab.windowId);
+    await this.letGoIfReleased(tabId);
     await this.injector.ensure(tabId);
   }
 
@@ -82,6 +83,7 @@ export class Ownership {
     if (tab.id === undefined) throw new Error('Chrome opened no tab.');
     this.owned.own(tab.id, runId, undefined);
     await this.groups.add(tab.id, tab.windowId);
+    await this.letGoIfReleased(tab.id);
     await this.resolveTarget(tab.id);
     await this.reportState(tab.id);
     return tab.id;
@@ -94,31 +96,34 @@ export class Ownership {
     if (opener === undefined || !this.owned.isActiveRun(opener.runId)) return;
     this.owned.own(tab.id, opener.runId, undefined);
     await this.groups.add(tab.id, tab.windowId);
+    await this.letGoIfReleased(tab.id);
     await this.resolveTarget(tab.id);
     await this.reportState(tab.id);
   }
 
   /**
    * A `runs` snapshot: tabs of runs that ended or left it are let go (the shell needs no frame
-   * for them) and return to the person's group they came from.
+   * for them), together, so Atd's grouping of them is undone at once (`TabGroups.letGo`): back
+   * to the person's group and place they came from, or out of the Atd group. Tabs of runs still
+   * active stay in it.
    */
   async applyRuns(runs: readonly RunView[]): Promise<void> {
     const dropped = this.owned.applyRuns(runs);
     for (const tabId of dropped) this.pointers.clear(tabId);
-    await Promise.all(dropped.map((tabId) => this.groups.restoreTab(tabId)));
+    await this.groups.letGo(dropped);
   }
 
   /**
    * The tab left its run (`reason`): the shell hears why, and the run stops using it. A tab the
-   * person closed or ungrouped stays where it is; one still in the Atd group returns to the
-   * person's group it came from.
+   * person closed or ungrouped stays where it is; one still in the Atd group leaves it, back to
+   * the person's group and place it came from (`TabGroups.letGo`).
    */
   release(tabId: number, reason: ReleaseReason): void {
     if (this.owned.release(tabId) === undefined) return;
     this.pointers.clear(tabId);
     this.send({ t: 'tab.released', tabId, reason });
     if (reason === 'closed' || reason === 'ungrouped') this.groups.forgetTab(tabId);
-    else void this.groups.restoreTab(tabId);
+    else void this.groups.letGo([tabId]);
   }
 
   /**
@@ -200,9 +205,18 @@ export class Ownership {
       return;
     }
     await this.groups.add(tabId, tab.windowId);
+    await this.letGoIfReleased(tabId);
     await this.resolveTarget(tabId);
     await this.injector.ensure(tabId);
     await this.reportState(tabId);
+  }
+
+  /**
+   * Ownership can end while a group change waits its turn (a snapshot ends the run, Cancel on
+   * Chrome's bar): its let-go then ran before the tab was grouped, so it runs again.
+   */
+  private async letGoIfReleased(tabId: number): Promise<void> {
+    if (this.owned.get(tabId) === undefined) await this.groups.letGo([tabId]);
   }
 
   /** The tab's CDP target id, recorded on its ownership. */
