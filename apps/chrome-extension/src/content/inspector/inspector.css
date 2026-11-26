@@ -1,0 +1,86 @@
+/*
+ * The inspector's highlight (`highlight.ts`): a box over the element under the pointer, or the one
+ * a chip names, and a label above it with what it is and its size. Nothing here takes the pointer;
+ * the layer's host already passes it through. The box glides from one element to the next on a
+ * short ease, and stands still under Reduce Motion. The mark colour is the tab's glyph cyan (the
+ * HUD's working shimmer), lighter on dark pages.
+ */
+.root {
+  --pick: #0f7c99;
+  --pick-fill: rgb(15 124 153 / 12%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .root {
+    --pick: #7fdcf0;
+    --pick-fill: rgb(127 220 240 / 14%);
+  }
+}
+
+.pick-box,
+.pick-tag {
+  position: fixed;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+
+.pick-box {
+  border: 1.5px solid var(--pick);
+  border-radius: 3px;
+  background: var(--pick-fill);
+}
+
+/* Over an embedded document while picking, the box takes the pointer for the picker. */
+.pick-box[data-shield] {
+  pointer-events: auto;
+}
+
+/* Left-aligned with the box, kept 4 px inside the viewport whatever its own width. */
+.pick-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  max-width: min(360px, calc(100vw - 8px));
+  padding: 0 7px;
+  border-radius: 10px;
+  translate: clamp(4px, var(--x), calc(100vw - 4px - 100%)) var(--y);
+  background: var(--primary);
+  color: var(--primary-fg);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pick-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pick-size {
+  flex: none;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+.root:not([data-instant]) .pick-box {
+  transition:
+    translate 90ms ease-out,
+    width 90ms ease-out,
+    height 90ms ease-out;
+}
+
+.root:not([data-instant]) .pick-tag {
+  transition: translate 90ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pick-box,
+  .pick-tag {
+    transition: none !important;
+  }
+}

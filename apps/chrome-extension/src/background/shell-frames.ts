@@ -4,7 +4,6 @@ import {
   type ShellFrame,
   type ShellFrameOf,
 } from '../channel/protocol.ts';
-import type { BackgroundToContent } from '../messages/content.ts';
 import type { AskFailure } from '../messages/views.ts';
 import type { CdpTranslator } from './cdp/translator.ts';
 import type { FollowUps } from './follow-ups.ts';
@@ -81,30 +80,23 @@ export function handleShellFrame(deps: ShellFrameDeps, frame: ShellFrame): void 
       deps.translator.message(frame.conn, frame.msg);
       return;
     case 'ask.accepted': {
-      const status: BackgroundToContent = {
+      const { requestId, taskId, runId } = frame;
+      const ask = deps.requests.deliver({
         type: 'ask.status',
-        requestId: frame.requestId,
+        requestId,
         state: 'accepted',
-        taskId: frame.taskId,
-        runId: frame.runId,
-      };
-      const ask = deps.requests.deliver(frame.requestId, status);
-      if (ask !== undefined) deps.links.accepted(frame.runId, ask.tabId, ask.withPage);
+        taskId,
+        runId,
+      });
+      if (ask !== undefined) deps.links.accepted(runId, ask.tabId, ask.withPage);
       return;
     }
-    case 'ask.failed': {
-      const status: BackgroundToContent = {
-        type: 'ask.status',
-        requestId: frame.requestId,
-        state: 'failed',
-        reason: askFailure(frame.reason),
-      };
-      deps.requests.deliver(frame.requestId, status);
+    case 'ask.failed':
+      deps.requests.fail(frame.requestId, askFailure(frame.reason));
       return;
-    }
     case 'error': {
       // An error about a request or a follow-up fails it in its tab; an unreferenced channel
-      // rejection halts reconnects so the popup can explain why; any other is only logged.
+      // rejection halts reconnects so the panel can explain why; any other is only logged.
       const { ref } = frame;
       if (ref !== undefined && (deps.requests.fail(ref, 'failed') || deps.followUps.refused(ref)))
         return;
@@ -145,7 +137,7 @@ function handAllowed(deps: ShellFrameDeps, runId: string, tabId: number): boolea
   return true;
 }
 
-/** The shell's `ask.failed` code as the HUD knows it; any other code reads as `failed`. */
+/** The shell's `ask.failed` code as the asking surface knows it; any other reads as `failed`. */
 function askFailure(reason: string): AskFailure {
   return reason === 'otherHost' || reason === 'serviceUnavailable' ? reason : 'failed';
 }

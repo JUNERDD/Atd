@@ -1,0 +1,92 @@
+/* Atd for Chrome · panel: the kit's empty state as the empty panel, first connection (ConnectView) and
+   the explanatory states (NoticeView). Loaded after panel.css, which holds the shell and the runs;
+   like it, unlayered on top of the generated kit. */
+/* Centered in the content's free space. The mark stands in for the kit's symbol; the description is
+   read at body size, as a Mac content-unavailable view's is. */
+.pp-empty {
+  padding-inline: 16px;
+}
+.pp-empty .empty-state__symbol {
+  width: 36px;
+  height: 36px;
+}
+.pp-empty .empty-state__description {
+  font: 400 var(--fs-body) / var(--lh-body) var(--ff-sans);
+}
+/* The popup sizes to its content: no share of a viewport that follows it. */
+html[data-surface='popup'] .pp-empty {
+  min-block-size: 0;
+  padding-block: 28px 20px;
+}
+/* Where the in-page ask is, under the empty panel's explanation. */
+.pp-tip {
+  margin: 6px 0 0;
+  color: var(--secondary-label);
+  font: 400 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
+}
+
+/* The one action, content-wide as Mac buttons are, and what follows it in a column. */
+.pp-primary {
+  padding-inline: 16px;
+}
+.pp-primary .activity-indicator {
+  width: 14px;
+  height: 14px;
+}
+.pp-setup-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-3);
+}
+.pp-center {
+  justify-content: center;
+  text-align: center;
+}
+.pp-setup-actions .field-message {
+  margin: 2px 0 0;
+}
+/* The kit fills message symbols (SF style); Lucide symbols are strokes, which a fill would cover. */
+.field-message > svg.lucide {
+  fill: none;
+}
+.pp-cancel {
+  --_btn-h: 24px;
+  padding: 0 12px;
+  font-weight: 400;
+}
+
+/* What is being connected: this browser and, while Atd confirms, the code. */
+.pp-facts {
+  align-self: stretch;
+  width: 100%;
+  max-width: 20rem;
+  margin: var(--space-3) auto 0;
+  text-align: start;
+  --list-sep-inset: 10px;
+}
+.pp-facts .list__row {
+  min-height: 34px;
+  padding: 5px 10px;
+}
+.pp-facts .list__label,
+.pp-facts .list__value {
+  font-size: var(--fs-body);
+}
+
+/* The pairing code, compared character by character with Atd's confirmation. */
+.pp-code-chars {
+  display: inline-flex;
+  gap: 4px;
+}
+.pp-code-char {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--fill-tertiary);
+  font: 600 var(--fs-title3) / 1 var(--ff-mono);
+  color: var(--label);
+}

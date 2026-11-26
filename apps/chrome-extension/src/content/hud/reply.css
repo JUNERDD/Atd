@@ -1,0 +1,183 @@
+/* A run's reply card (`reply.ts`), in the HUD's layer after hud.css. */
+
+/* The reply scrolls within the card when it is long (`scroll-area.css`), and its text selects. */
+.hud-card-body.reply {
+  max-height: min(260px, 45vh);
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.5;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: auto;
+}
+
+/*
+ * The reply's Markdown on glass: the HUD's 13 px text and its tokens. Blocks sit 8 px apart;
+ * code wraps and tables share the card's width, so nothing scrolls sideways.
+ */
+.rt :is(p, h1, h2, h3, h4, h5, h6, ul, ol, pre, blockquote, table) {
+  margin: 0;
+}
+
+:is(.rt, .rt li, .rt blockquote, .rt-task-body) > * + * {
+  margin-top: 8px;
+}
+
+.rt > * + :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: 14px;
+}
+
+.rt :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.rt h1 {
+  font-size: 16px;
+}
+
+.rt h2 {
+  font-size: 15px;
+}
+
+.rt h3 {
+  font-size: 14px;
+}
+
+.rt :is(h4, h5, h6) {
+  font-size: 13px;
+}
+
+.rt strong {
+  font-weight: 600;
+}
+
+.rt a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.rt a:hover {
+  text-decoration-color: currentColor;
+}
+
+.rt code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--wash);
+}
+
+.rt pre {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--wash);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+}
+
+.rt pre code {
+  padding: 0;
+  background: none;
+  line-height: 1.45;
+}
+
+.rt :is(ul, ol) {
+  padding-left: 20px;
+}
+
+.rt li + li {
+  margin-top: 4px;
+}
+
+.rt li::marker {
+  color: var(--fg-2);
+}
+
+.rt li.rt-task {
+  list-style: none;
+  display: flex;
+  gap: 7px;
+  margin-left: -20px;
+}
+
+/* Beside its box, not below it: the item's first block starts on the box's line. */
+.rt li.rt-task > .rt-task-body {
+  min-width: 0;
+  flex: 1;
+  margin-top: 0;
+}
+
+/* A task's read-only box, as tall as the first line's caps and centred on it. */
+.rt-check {
+  appearance: none;
+  flex: none;
+  margin: 3px 0 0;
+  position: relative;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--fg-2);
+  border-radius: 4px;
+}
+
+.rt-check:checked {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.rt-check:checked::after {
+  content: '';
+  position: absolute;
+  left: 3.5px;
+  top: 1px;
+  width: 3px;
+  height: 7px;
+  border: solid var(--primary-fg);
+  border-width: 0 1.5px 1.5px 0;
+  rotate: 45deg;
+}
+
+.rt blockquote {
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+  color: var(--fg-2);
+}
+
+.rt hr {
+  margin-block: 14px;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Columns share the width evenly, so a long word or URL wraps in its cell instead of widening it. */
+.rt table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.rt :is(th, td) {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.rt th {
+  font-weight: 600;
+}
+
+.rt [data-align='center'] {
+  text-align: center;
+}
+
+.rt [data-align='right'] {
+  text-align: end;
+}

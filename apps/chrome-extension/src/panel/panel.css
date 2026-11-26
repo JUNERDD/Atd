@@ -1,0 +1,376 @@
+/* Atd for Chrome · panel: Chrome's side panel, or the toolbar popup where a browser has none. Laid out
+   as a Mac sidebar: a slim toolbar (the connection, the More menu), content that scrolls under the
+   kit's scroll edges instead of dividers, and the composer kept in view at the bottom (composer.css).
+   The panel is its own document, so it carries the apple-design web kit by itself (apple-kit.css,
+   generated), at macOS density: 13-pt body, 28-pt targets, one filled action, title-case labels. The
+   kit is built unlayered (--no-layer), so these rules win by coming after it at equal specificity;
+   where a kit rule is more specific, the override below matches or exceeds it and says so. */
+:root {
+  --hit: 28px;
+  --corner-list: 10px;
+  --list-inset: 0px;
+  --margin-page: 10px;
+}
+/* A Mac sidebar is never pure black: in dark mode the base is window gray and raised surfaces (the
+   composer, the connect facts) sit one step lighter. */
+:root {
+  --pp-base: light-dark(#f2f2f7, #1e1e20);
+  --pp-box: light-dark(#fff, #2c2c2e);
+  --secondary-system-grouped-background: var(--pp-box);
+}
+html,
+body {
+  margin: 0;
+  background: var(--pp-base);
+}
+/* The side panel fills its column, as wide as the person drags it. */
+html,
+body,
+#root {
+  height: 100%;
+}
+#root {
+  display: flex;
+  flex-direction: column;
+}
+/* The popup keeps the prototype's popup width and sizes to its content, up to the height Chrome
+   allows a popup, past which its content scrolls in the same place. */
+html[data-surface='popup'],
+html[data-surface='popup'] body,
+html[data-surface='popup'] #root {
+  height: auto;
+}
+html[data-surface='popup'] body {
+  width: 340px;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+}
+html[data-surface='popup'] #root {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* The Atd mark: the brand master as a currentColor alpha mask (never redrawn). */
+.pp-mark {
+  display: block;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  mask: url('@atd/ui/assets/brands/atd/symbol.svg') center / contain no-repeat;
+}
+@media (forced-colors: active) {
+  .pp-mark {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
+
+/* Toolbar: the connection leads, aligned with the rows' tiles; More trails. No bar background and no
+   divider: content meets it under the top scroll edge. */
+.pp-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 8px 2px 18px;
+}
+.pp-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--secondary-label);
+  font: 500 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
+}
+.pp-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--system-gray);
+}
+.pp-status[data-state='connected'] .pp-dot {
+  background: var(--system-green);
+}
+.pp-status[data-state='connecting'] .pp-dot {
+  background: var(--system-orange);
+}
+/* More: a borderless symbol, monochrome as Mac toolbar symbols are, held pressed while its menu is
+   open (the kit's menu script keeps aria-expanded). */
+.pp-more {
+  --_btn-fg: var(--secondary-label);
+}
+.pp-more svg {
+  width: 16px;
+  height: 16px;
+}
+.pp-more[aria-expanded='true'] {
+  background-image: linear-gradient(var(--press-fill) 0 0);
+  color: var(--label);
+}
+
+/* The More menu, at Mac width and density. A row is one target tall (--hit), the height the kit's
+   capsule highlight and the menu's concentric corners are drawn for; the kit's iOS row padding
+   would make it taller at the 13-pt body. --pp-menu-text is where text starts inside a row: one
+   inset, the same as the trailing one, so the label uses the menu's width before it wraps. */
+.pp-menu {
+  --pp-menu-row-pad: calc((var(--menu-item-h) - var(--lh-body)) / 2);
+  --pp-menu-text: var(--space-3);
+  min-inline-size: min(15rem, 100vw - 2 * var(--margin-page));
+}
+/* With a checkable item, every row leads with the checkmark column, as Mac menus align every item:
+   the glyph sits between two narrow gaps in place of the leading inset, so the section title, the
+   separator and each label share one edge without a wide gutter. */
+.pp-menu:has([role='menuitemcheckbox']) {
+  --pp-menu-text: calc(2 * var(--space-1) + 1.25 * var(--fs-body));
+}
+.pp-menu-item {
+  padding: var(--pp-menu-row-pad) var(--space-3);
+}
+.pp-menu:has([role='menuitemcheckbox']) .pp-menu-item {
+  gap: var(--space-1);
+  padding-inline-start: var(--space-1);
+}
+.pp-menu:has([role='menuitemcheckbox']) .menu__item[role='menuitem']::before {
+  content: '';
+  flex: none;
+  inline-size: 1.25em;
+}
+/* The title sits as far from the menu's top edge as the last label from its bottom one, and close
+   to its item. */
+.pp-menu .menu__header {
+  padding: var(--pp-menu-row-pad) var(--space-3) var(--space-1) var(--pp-menu-text);
+}
+.pp-menu .menu__separator {
+  margin-inline: var(--pp-menu-text) var(--space-3);
+}
+/* The page's section: a native group, drawn as nothing of its own. */
+.pp-menu-group {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+/* An item with a second line (macOS menu item subtitles) keeps the kit's corner, concentric with
+   the menu, so it is rounded rather than a capsule once it is taller than one row; its checkmark
+   stays beside the label's first line, as a Mac checkbox's box beside a wrapped title. */
+.pp-menu-item[role='menuitemcheckbox'] {
+  align-items: flex-start;
+}
+/* A label or note too long for the menu wraps into even lines (no lone last word), and a host with
+   nowhere to break breaks inside rather than overflowing the menu. */
+.pp-menu-lines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.pp-menu-note {
+  color: var(--_menu-secondary);
+  font: 400 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
+}
+.pp-menu-item:focus-visible .pp-menu-note {
+  color: inherit;
+}
+
+/* Content: scrolls between the toolbar and the composer. Spacing sits on the inner wrapper, so the
+   sticky scroll edges pin to the scroller's own edges (web.md §5); they match the panel's base and
+   stay short, as there is no floating bar to clear. */
+.pp-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.pp-body > :is(.scroll-edge-top, .scroll-edge-bottom) {
+  --scroll-edge-bg: var(--pp-base);
+}
+.pp-body > .scroll-edge-top {
+  --_se-h: 16px;
+}
+.pp-body > .scroll-edge-bottom {
+  --_se-h: 24px;
+}
+.pp-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 0 var(--margin-page) 8px;
+}
+
+/* Until the first state: the spinner appears only if the wait is noticeable. */
+.pp-loading {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  min-height: 96px;
+}
+.pp-loading .activity-indicator {
+  --motion-delay: 400ms;
+}
+
+/* Runs: a sidebar section. Its title is a Mac sidebar's (small, semibold, secondary); its rows are
+   plain on the base and highlight as one, trailing button included, when the row is pointed at or
+   pressed. */
+.pp-section {
+  padding-top: 2px;
+}
+.pp-section-title {
+  margin: 0;
+  padding: 6px 8px 4px;
+  color: var(--secondary-label);
+  font: 600 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
+}
+.pp-runs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* A run that arrives while the panel is open (the request just sent) fades and settles in place;
+   the runs it opened with are simply there. Opacity and transform only; Reduce Motion keeps the
+   fade. */
+.pp-run {
+  transition:
+    opacity var(--dur-base) var(--curve-out),
+    translate var(--dur-spring-snappy) var(--spring-snappy);
+}
+@starting-style {
+  .pp-body[data-settled] .pp-run {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pp-run {
+    translate: none;
+  }
+}
+.pp-run-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background-color var(--dur-fast) var(--curve-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .pp-run-row:has(> .pp-run-open:not(:disabled):hover) {
+    background-color: var(--hover-fill);
+  }
+}
+.pp-run-row:has(> .pp-run-open:not(:disabled):active) {
+  background-color: var(--press-fill);
+  transition-duration: var(--dur-press);
+}
+/* Keyboard focus rings the whole row, the shape that highlights. */
+.pp-run-row:has(> .pp-run-open:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.pp-run-open {
+  appearance: none;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: default;
+}
+.pp-run-open:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.pp-run-tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--system-indigo);
+  color: var(--on-indigo);
+  font: 700 10px / 1 var(--ff-sans);
+}
+.pp-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.pp-lines > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pp-run-title {
+  color: var(--label);
+  font: 500 var(--fs-body) / var(--lh-body) var(--ff-sans);
+}
+.pp-run-phase {
+  color: var(--secondary-label);
+  font: 400 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
+}
+.pp-attn {
+  margin-inline-end: 3px;
+  color: var(--system-orange);
+}
+/* Row buttons read as Mac push buttons: a gray fill with a label-colored title, not accent ink. */
+.pp-row-btn {
+  --_btn-h: 22px;
+  --_btn-ink: var(--label);
+  flex: none;
+  gap: 4px;
+  padding: 0 10px;
+  font-size: var(--fs-subheadline);
+  font-weight: 500;
+}
+.pp-row-btn svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* A finished request's reply, under its run and aligned with its title (8 + 20 + 8 px): the text as
+   Atd wrote it, selectable, then Copy. */
+.pp-reply {
+  padding: 0 8px 8px 36px;
+}
+.pp-reply-text {
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--pp-box);
+  box-shadow: inset 0 0 0 0.5px var(--separator);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.pp-reply-note {
+  margin: 6px 0 0;
+  color: var(--secondary-label);
+  font: 400 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
+}
+.pp-reply-copy {
+  --_btn-h: 22px;
+  gap: 4px;
+  margin: 4px 0 0 -6px;
+  padding: 0 6px;
+  font-size: var(--fs-subheadline);
+  font-weight: 500;
+}
+.pp-reply-copy svg {
+  width: 12px;
+  height: 12px;
+}

@@ -4,8 +4,11 @@
  * section), which mirror `packages/ui/src/styles.css` (Rhea b27GcrRo) in plain CSS: page styles
  * never reach a closed shadow root and Tailwind's @property rules do not apply inside one. Tokens sit
  * on `.root`, not `:host`, so custom properties a page sets on the host element cannot override them.
- * Glass is a translucent fill over a 20 px blur with no tint of its own: the page and the tab's light
- * show through in their own colours.
+ * Glass is a dense fill over a blur with no tint of its own: the page and the tab's light show
+ * through in their own colours, faintly enough that text on it stays readable over any page. With
+ * the page pure white or pure black behind it, `--fg` keeps at least 7:1 on the glass, `--fg-2` and
+ * `--attn` at least 4.5:1 (measured in Chrome: light 14.3–19.8, 5.2–7.2 and 4.6–6.3; dark 9.6–17.6,
+ * 4.8–8.9 and 6.0–11.0). Change the fill, the text tokens and these numbers together.
  */
 :host {
   all: initial;
@@ -20,19 +23,20 @@
 
 .root {
   --fg: #0a0a0a;
-  --fg-2: #636363;
+  --fg-2: #575757;
   --border: rgb(0 0 0 / 10%);
   --primary: #171717;
   --primary-fg: #fafafa;
   --wash: rgb(0 0 0 / 6%);
   --wash-strong: rgb(0 0 0 / 10%);
+  --wash-press: rgb(0 0 0 / 15%);
   --ring: rgb(0 0 0 / 30%);
-  --attn: #c2570c;
+  --attn: #a3410c;
   --ok: #15803d;
-  --glass-fill: rgb(255 255 255 / 50%);
+  --glass-fill: rgb(255 255 255 / 86%);
   --glass-edge: rgb(0 0 0 / 10%);
   --glass-shadow: 0 10px 30px rgb(0 0 0 / 14%), 0 1px 2px rgb(0 0 0 / 8%);
-  --glass-backdrop: blur(20px);
+  --glass-backdrop: blur(24px) saturate(150%);
   /* System fonts only: a page's fonts never load into the shadow root and no web font ships. */
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
   font-size: 13px;
@@ -51,11 +55,12 @@
     --primary-fg: #171717;
     --wash: rgb(255 255 255 / 8%);
     --wash-strong: rgb(255 255 255 / 14%);
+    --wash-press: rgb(255 255 255 / 20%);
     --ring: rgb(255 255 255 / 40%);
     --attn: #fbbf24;
     --ok: #4ade80;
-    --glass-fill: rgb(36 36 40 / 50%);
-    --glass-edge: rgb(255 255 255 / 11%);
+    --glass-fill: rgb(24 24 27 / 82%);
+    --glass-edge: rgb(255 255 255 / 12%);
     --glass-shadow: 0 10px 30px rgb(0 0 0 / 40%), 0 1px 2px rgb(0 0 0 / 30%);
     color-scheme: dark;
   }
@@ -138,18 +143,35 @@
   justify-content: center;
 }
 
+/* The primary action: hover and press move its fill toward its label, so both show in either theme. */
 .gbtn.solid {
   background: var(--primary);
   color: var(--primary-fg);
 }
 
 .gbtn.solid:hover:not(:disabled) {
-  background: var(--primary);
-  filter: brightness(1.12);
+  background: color-mix(in srgb, var(--primary), var(--primary-fg) 12%);
+}
+
+.gbtn.solid:active:not(:disabled) {
+  background: color-mix(in srgb, var(--primary), var(--primary-fg) 22%);
 }
 
 .gbtn.outline {
   box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* An answer that is not the primary one: a neutral fill on the glass, deeper on hover and press. */
+.gbtn.fill {
+  background: var(--wash);
+}
+
+.gbtn.fill:hover:not(:disabled) {
+  background: var(--wash-strong);
+}
+
+.gbtn.fill:active:not(:disabled) {
+  background: var(--wash-press);
 }
 
 .attn {

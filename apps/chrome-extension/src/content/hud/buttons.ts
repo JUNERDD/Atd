@@ -1,18 +1,40 @@
-import { Check, Copy, RotateCcw, Square, X, Zap, createElement } from 'lucide';
+import {
+  Check,
+  CircleStop,
+  Copy,
+  type IconNode,
+  RotateCcw,
+  Square,
+  X,
+  Zap,
+  createElement,
+} from 'lucide';
 import { gbtn, iconAttrs } from '../dom.ts';
 import { t } from '../i18n.ts';
 import type { RunRender } from './intents.ts';
 
-/** Atd's stop glyph: Lucide Square at 12 px, filled (the product's `<Square className="size-3 fill-current" />`). */
-export function stopButton(ctx: RunRender, extra?: 'lead'): HTMLButtonElement {
-  const button = gbtn({
+/** Lucide's circle-stop with its square filled: the product's round stop button, drawn small. */
+const STOP_IN_CIRCLE: IconNode = CircleStop.map(([tag, attrs]): IconNode[number] => [
+  tag,
+  tag === 'rect' ? { ...attrs, fill: 'currentColor' } : attrs,
+]);
+
+/**
+ * Stop. A row shows Atd's stop glyph: Lucide Square at 12 px, filled (the product's
+ * `<Square className="size-3 fill-current" />`). A card shows Stop under answers, where a bare
+ * filled square beside a label would read as a checked checkbox, so there the square sits in its
+ * circle, as the product's round stop button draws it.
+ */
+export function stopButton(ctx: RunRender, place: 'row' | 'card' = 'row'): HTMLButtonElement {
+  return gbtn({
     act: 'stop',
     label: t('hud.stop'),
-    icon: createElement(Square, { ...iconAttrs(12), fill: 'currentColor' }),
+    icon:
+      place === 'row'
+        ? createElement(Square, { ...iconAttrs(12), fill: 'currentColor' })
+        : createElement(STOP_IN_CIRCLE, iconAttrs(14)),
     onClick: () => ctx.intent({ kind: 'stop' }),
   });
-  if (extra) button.classList.add(extra);
-  return button;
 }
 
 export function openButton(ctx: RunRender, label = t('hud.openInAtd')): HTMLButtonElement {

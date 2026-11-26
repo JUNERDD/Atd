@@ -5,22 +5,42 @@
     "notConnected": "Not Connected",
     "connecting": "Connecting…"
   },
+  "blocked": {
+    "notPaired": "Connect to Atd first",
+    "connecting": "Available once Atd connects",
+    "notConnected": "Reconnect to Atd first",
+    "otherHost": "Another Atd build is connected",
+    "serviceUnavailable": "Atd isn’t responding",
+    "page": "Not available in this window",
+    "busy": "Available when the current task ends"
+  },
   "page": {
     "heading": "This Page",
-    "ask": "Ask Atd on This Page…",
-    "blocked": {
-      "notPaired": "Connect to Atd first",
-      "connecting": "Available once Atd connects",
-      "notConnected": "Reconnect to Atd first",
-      "otherHost": "Another Atd build is connected",
-      "serviceUnavailable": "Atd isn’t responding",
-      "page": "Not available on this page",
-      "busy": "Available when the current task ends"
-    },
     "siteLabel": "Allow Atd on {{host}}",
     "siteOn": "Atd can act here only in tasks you start, and always asks before submitting.",
-    "siteOff": "Atd asks before it does anything on this site.",
-    "unavailableNote": "Atd works on websites. Built-in browser pages, such as Settings and new tabs, stay off limits."
+    "siteOff": "Atd asks before it does anything on this site."
+  },
+  "compose": {
+    "label": "Ask Atd",
+    "placeholder": "Ask about this page, or tell Atd what to do",
+    "placeholderNoPage": "Tell Atd what to do in this browser",
+    "send": "Send",
+    "removePage": "Don’t include this page",
+    "addPage": "Include this page",
+    "otherPage": "Atd can’t act on built-in pages like this one. Your request goes without it; Atd opens the sites it needs.",
+    "failure": {
+      "notConnected": "Lost the connection to Atd. Your request is kept; send it again once Atd reconnects.",
+      "notPaired": "Connect this browser to Atd first.",
+      "tooLong": "This request is too long for Atd. Shorten it, then send again.",
+      "otherHost": "Another Atd build is connected to this browser. Quit it, then send again.",
+      "serviceUnavailable": "Atd isn’t responding. Send again in a moment.",
+      "failed": "Atd couldn’t take this request. Send it again."
+    }
+  },
+  "empty": {
+    "title": "What Should Atd Do?",
+    "body": "Ask about this page or describe a task. Atd works in tabs of this browser and asks before it submits anything.",
+    "shortcut": "Press {{shortcut}} on a page to ask right there."
   },
   "runs": {
     "running": "Running in This Browser",
@@ -39,9 +59,13 @@
     "stopLabel": "Stop {{title}}",
     "reconnect": "Reconnect",
     "showTab": "Show Tab: {{title}}",
-    "openInAtd": "Open in Atd: {{title}}"
+    "openInAtd": "Open in Atd: {{title}}",
+    "copy": "Copy",
+    "copied": "Copied",
+    "clipped": "Shortened here. Open in Atd for the full reply."
   },
   "actions": {
+    "more": "More",
     "openApp": "Open Atd",
     "settings": "Computer Use Settings…"
   },

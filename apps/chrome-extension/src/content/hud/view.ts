@@ -1,12 +1,14 @@
 import askCss from '../ask/ask.css?inline';
 import { drawnBox, focusedAct, h, refocus } from '../dom.ts';
-import { Layer, sheet } from '../hosts.ts';
+import { Layer } from '../hosts.ts';
 import { wireDrag } from './drag.ts';
 import { ClickGuard } from './guard.ts';
 import hudCss from './hud.css?inline';
+import replyCss from './reply.css?inline';
+import scrollAreaCss from './scroll-area.css?inline';
 import type { AnchorPoint } from './morph.ts';
 import { HudMover } from './mover.ts';
-import { isArrow } from './position.ts';
+import { type Anchor, isArrow } from './position.ts';
 import { IslandStage, type StageContent } from './stage.ts';
 import { signal } from '../lifetime.ts';
 
@@ -24,6 +26,15 @@ export interface HudContent extends StageContent {
 const MOVE_SHORTCUTS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']
   .map((key) => `Control+Alt+Meta+${key}`)
   .join(' ');
+
+/** Roughly where the capsule appears at `anchor`, in viewport px: a 272 × 44 capsule there. */
+export function restingBounds(anchor: Anchor): DOMRectReadOnly {
+  const { v, h: horizontal } = anchor;
+  const x =
+    horizontal === 'left' ? 136 : horizontal === 'right' ? innerWidth - 136 : innerWidth / 2;
+  const y = v === 'top' ? 44 : innerHeight - 44;
+  return new DOMRect(x - 136, y - 22, 272, 44);
+}
 
 /**
  * The HUD's layer and capsule. Its glass and content move as the command island's do
@@ -45,7 +56,7 @@ export class HudView {
 
   /** `moved` follows every change of the capsule's place or size (the light follows it). */
   constructor(moved: () => void) {
-    this.layer = new Layer('atd-hud', [sheet(hudCss), sheet(askCss)]);
+    this.layer = new Layer('atd-hud', [hudCss, scrollAreaCss, replyCss, askCss]);
     this.capsule = h('div', { class: 'hud', attrs: { hidden: true } });
     const wrap = h('div', { class: 'wrap' }, this.capsule);
     const sentinel = h('div', {
@@ -184,13 +195,7 @@ export class HudView {
 
   /** The capsule's box in viewport px while shown; else roughly where it would appear. */
   bounds(): DOMRectReadOnly {
-    if (this.shown) return this.capsule.getBoundingClientRect();
-    const { v, h: horizontal } = this.mover.anchor;
-    const x =
-      horizontal === 'left' ? 136 : horizontal === 'right' ? innerWidth - 136 : innerWidth / 2;
-    const y = v === 'top' ? 44 : innerHeight - 44;
-    // A 272 × 44 capsule centred there.
-    return new DOMRect(x - 136, y - 22, 272, 44);
+    return this.shown ? this.capsule.getBoundingClientRect() : restingBounds(this.mover.anchor);
   }
 
   /** Glow effects off also stills the step text's shimmer. */

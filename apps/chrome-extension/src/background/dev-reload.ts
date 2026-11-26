@@ -18,7 +18,7 @@ export interface DevReloadDeps {
  * Dev flavor only: the extension reloads itself once `pnpm dev:extension` has rebuilt it
  * (`dev-build.ts`), so a change shows without a trip to chrome://extensions. A reload cuts every
  * content script off (each leaves its page as it found it), so the new worker injects the content
- * script again into the tabs that had one; their pages keep their state. An open popup closes.
+ * script again into the tabs that had one; their pages keep their state. An open panel closes.
  *
  * The stamp is read only while the worker runs. A worker that stopped and wakes on an older build
  * than the one on disk reloads at once, because the build it loaded is kept in storage.

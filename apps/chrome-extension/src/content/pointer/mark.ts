@@ -1,6 +1,6 @@
 import type { PointerView } from '../../messages/views.ts';
 import { drawnBox, h } from '../dom.ts';
-import { Layer, sheet } from '../hosts.ts';
+import { Layer } from '../hosts.ts';
 import { t } from '../i18n.ts';
 import { atdMark } from '../mark.ts';
 import { reducedMotion, springEasing } from '../motion.ts';
@@ -91,7 +91,7 @@ export class PointerLayer {
    *   ripple plays (the tab's light answers it).
    */
   constructor(private readonly clicked: (at: Point) => void) {
-    this.layer = new Layer('atd-pointer', [sheet(pointerCss)]);
+    this.layer = new Layer('atd-pointer', [pointerCss]);
     this.layer.root.setAttribute('aria-hidden', 'true');
     this.ring = h('div', { class: 'pm-ring' });
     this.bar = h('div', { class: 'pm-bar', attrs: { hidden: true } });

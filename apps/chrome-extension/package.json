@@ -23,6 +23,7 @@
     "i18next": "27.2.3",
     "lucide": "catalog:",
     "lucide-react": "catalog:",
+    "marked": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-i18next": "18.0.3",

@@ -1,18 +1,22 @@
 import { Square } from 'lucide-react';
 import type { TFunction } from 'i18next';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RunView } from '../channel/payloads.ts';
-import type { PopupMessage } from '../messages/popup.ts';
+import type { PanelMessage } from '../messages/panel.ts';
+import type { SurfaceRun } from '../messages/views.ts';
 import {
   isActiveRun,
   runControl,
   runNeedsPerson,
+  runReply,
   runTarget,
   type Reach,
   type RunTarget,
 } from './model.ts';
+import { RunReply } from './run-reply.tsx';
 
-type Send = (message: PopupMessage, options?: { close: boolean }) => void;
+type Send = (message: PanelMessage, options?: { close: boolean }) => void;
 
 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
@@ -23,7 +27,7 @@ function initialOf(title: string): string {
 }
 
 /** What a run is doing right now, in one line under its title. */
-function phaseOf(run: RunView, t: TFunction<'popup'>): string {
+function phaseOf(run: RunView, t: TFunction<'panel'>): string {
   switch (run.status) {
     case 'working':
       return run.step || t('runs.working');
@@ -44,25 +48,26 @@ function phaseOf(run: RunView, t: TFunction<'popup'>): string {
   }
 }
 
-function targetMessage(run: RunView, target: RunTarget): PopupMessage | null {
+function targetMessage(run: RunView, target: RunTarget): PanelMessage | null {
   if (!target) return null;
   return target.kind === 'tab'
     ? { type: 'tab.show', tabId: target.tabId }
     : { type: 'app.open', taskId: run.taskId };
 }
 
-function RunRow({ run, reach, send }: { run: RunView; reach: Reach; send: Send }) {
-  const { t } = useTranslation('popup');
+function RunRow({ run, reach, send }: { run: SurfaceRun; reach: Reach; send: Send }) {
+  const { t } = useTranslation('panel');
   const title = run.title.trim() || t('runs.untitled');
   const target = runTarget(run, reach);
   const open = targetMessage(run, target);
   const control = runControl(run, reach);
+  const reply = runReply(run);
   return (
-    <li>
-      <div className="list__row pp-run">
+    <li className="pp-run">
+      <div className="pp-run-row">
         <button
           type="button"
-          className="pp-task"
+          className="pp-run-open"
           disabled={!open}
           aria-label={
             target?.kind === 'app' ? t('runs.openInAtd', { title }) : t('runs.showTab', { title })
@@ -71,12 +76,12 @@ function RunRow({ run, reach, send }: { run: RunView; reach: Reach; send: Send }
             if (open) send(open, { close: true });
           }}
         >
-          <span className="list__icon pp-icon-task" aria-hidden="true">
+          <span className="pp-run-tile" aria-hidden="true">
             {initialOf(title)}
           </span>
           <span className="pp-lines">
-            <span className="list__label">{title}</span>
-            <span className="list__subtitle">
+            <span className="pp-run-title">{title}</span>
+            <span className="pp-run-phase">
               {runNeedsPerson(run) ? (
                 <span className="pp-attn" aria-hidden="true">
                   ●
@@ -114,27 +119,31 @@ function RunRow({ run, reach, send }: { run: RunView; reach: Reach; send: Send }
           </button>
         ) : null}
       </div>
+      {reply ? <RunReply reply={reply} /> : null}
     </li>
   );
 }
 
 /**
- * Runs tied to this Chrome, recently finished ones included. The group exists only while there
- * is a run to show: an empty "Running" group would read as something being wrong.
+ * Runs tied to this Chrome, recently finished ones included, as a Mac sidebar's list: a section
+ * title, then plain rows on the panel's background that highlight as one when pointed at or
+ * pressed. The group exists only while there is a run to show: an empty "Running" group would
+ * read as something being wrong.
  */
-export function RunsGroup({ runs, reach, send }: { runs: RunView[]; reach: Reach; send: Send }) {
-  const { t } = useTranslation('popup');
+export function RunsGroup({ runs, reach, send }: { runs: SurfaceRun[]; reach: Reach; send: Send }) {
+  const { t } = useTranslation('panel');
+  const titleId = useId();
   if (runs.length === 0) return null;
   return (
-    <>
-      <h2 className="list-header">
+    <section className="pp-section" aria-labelledby={titleId}>
+      <h2 className="pp-section-title" id={titleId}>
         {runs.some(isActiveRun) ? t('runs.running') : t('runs.recent')}
       </h2>
-      <ul className="list">
+      <ul className="pp-runs">
         {runs.map((run) => (
           <RunRow key={`${run.taskId}:${run.runId}`} run={run} reach={reach} send={send} />
         ))}
       </ul>
-    </>
+    </section>
   );
 }

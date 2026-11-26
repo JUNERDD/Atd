@@ -49,8 +49,11 @@ export function iconAttrs(size: number, extra = ''): Record<string, string | num
 export interface ButtonOptions {
   label?: string;
   icon?: Element | null;
-  /** `solid` is the primary action, `outline` a secondary one, `icon` a square icon button. */
-  variant?: 'solid' | 'outline' | 'icon';
+  /**
+   * `solid` is the primary action, `outline` a secondary one, `fill` an answer beside or below the
+   * primary one (a neutral fill, as controls on glass take), `icon` a square icon button.
+   */
+  variant?: 'solid' | 'outline' | 'fill' | 'icon';
   /** Names the action for focus restoration after a re-render. */
   act: string;
   ariaLabel?: string;

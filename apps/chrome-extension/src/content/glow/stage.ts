@@ -1,5 +1,5 @@
 import { h } from '../dom.ts';
-import { Layer, sheet } from '../hosts.ts';
+import { Layer } from '../hosts.ts';
 import glowCss from './glow.css?inline';
 import { GlowSurface } from './runner.ts';
 
@@ -17,7 +17,7 @@ export interface GlowCanvas {
  * ever being added.
  */
 export class GlowStage {
-  private readonly layer = new Layer('atd-glow', [sheet(glowCss)]);
+  private readonly layer = new Layer('atd-glow', [glowCss]);
   private current: GlowCanvas | null = null;
   private unavailable = false;
 

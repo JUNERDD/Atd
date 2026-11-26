@@ -5,7 +5,8 @@ import baseCss from './base.css?inline';
  * closed shadow root, so page scripts cannot reach inside and page styles cannot style it. The
  * host's own box is pinned with `!important` inline styles (which no page rule outranks) over
  * `all: initial`. Styles come from constructable stylesheets (`adoptedStyleSheets`), which a
- * page's CSP does not restrict the way it restricts injected `<style>` elements.
+ * page's CSP does not restrict the way it restricts injected `<style>` elements; each is parsed
+ * the first time a layer that uses it mounts, so a page where Atd shows nothing parses none.
  *
  * A layer is in the page only while its surface shows: `mount` builds a fresh host around the
  * layer's root and `unmount` takes it out again, so an unpaired or idle tab carries nothing of
@@ -17,20 +18,29 @@ import baseCss from './base.css?inline';
  * backdrop root of its glass and hide the page and the light behind it from the blur.
  */
 
-export type LayerTag = 'atd-transition' | 'atd-glow' | 'atd-pointer' | 'atd-hud';
+export type LayerTag = 'atd-transition' | 'atd-glow' | 'atd-pointer' | 'atd-inspector' | 'atd-hud';
 
-const TAGS: readonly LayerTag[] = ['atd-transition', 'atd-glow', 'atd-pointer', 'atd-hud'];
+const TAGS: readonly LayerTag[] = [
+  'atd-transition',
+  'atd-glow',
+  'atd-pointer',
+  'atd-inspector',
+  'atd-hud',
+];
 
 /**
  * Stacking among the layers, all above the page's own content. The HUD is on top: its approval
  * buttons act only while nothing covers its card (`hud/guard.ts`), and a full-viewport layer
- * above it would count as covering it, even one of Atd's own. A page transition's frozen frame
- * (`transition/`) is lowest: it stands in for the page itself, under the live light and HUD.
+ * above it would count as covering it, even one of Atd's own. The inspector's highlight
+ * (`inspector/`) marks the page's elements, under the HUD it is picked from. A page transition's
+ * frozen frame (`transition/`) is lowest: it stands in for the page itself, under the live light
+ * and HUD.
  */
 const Z_INDEX: Record<LayerTag, number> = {
   'atd-transition': 2147483643,
   'atd-glow': 2147483644,
   'atd-pointer': 2147483645,
+  'atd-inspector': 2147483646,
   'atd-hud': 2147483647,
 };
 
@@ -44,16 +54,17 @@ const HOST_STYLE: readonly (readonly [string, string])[] = [
   ['visibility', 'visible'],
 ];
 
-const BASE_SHEET = sheet(baseCss);
+/** The sheet every layer shares, parsed when the first one mounts. */
+let baseSheet: CSSStyleSheet | null = null;
 
-/** A constructable stylesheet from CSS text imported with `?inline`. */
-export function sheet(css: string): CSSStyleSheet {
+function sheet(css: string): CSSStyleSheet {
   const result = new CSSStyleSheet();
   result.replaceSync(css);
   return result;
 }
 
-const layers = new Set<Layer>();
+/** The layers in the page now. */
+const mounted = new Set<Layer>();
 let language = '';
 let ended = false;
 let keeper: MutationObserver | null = null;
@@ -69,15 +80,16 @@ export class Layer {
   private written = '';
   /** Declarations beyond the host's box, such as the light's blend on dark pages. */
   private readonly extra = new Map<string, string>();
+  /** The base sheet and the layer's own, from the first `mount` on. */
+  private sheets: CSSStyleSheet[] | null = null;
 
-  /** `sheets` are added after the shared base sheet. */
+  /** `css` (text imported with `?inline`) is added after the shared base sheet. */
   constructor(
     readonly tag: LayerTag,
-    private readonly sheets: readonly CSSStyleSheet[],
+    private readonly css: readonly string[],
   ) {
     this.root = document.createElement('div');
     this.root.className = 'root';
-    layers.add(this);
   }
 
   /** The host while the layer is in the page. */
@@ -93,12 +105,15 @@ export class Layer {
   /** Puts the layer in the page (a no-op while it is, or once the instance has ended). */
   mount(): void {
     if (this.host || ended) return;
+    baseSheet ??= sheet(baseCss);
+    this.sheets ??= [baseSheet, ...this.css.map(sheet)];
     const host = document.createElement(this.tag);
     const shadow = host.attachShadow({ mode: 'closed' });
-    shadow.adoptedStyleSheets = [BASE_SHEET, ...this.sheets];
+    shadow.adoptedStyleSheets = this.sheets;
     shadow.append(this.root);
     this.host = host;
     this.shadow = shadow;
+    mounted.add(this);
     this.restore();
     this.watcher = new MutationObserver(() => this.restore());
     this.watcher.observe(host, { attributes: true });
@@ -114,8 +129,9 @@ export class Layer {
     this.watcher = null;
     this.host = null;
     this.shadow = null;
+    mounted.delete(this);
     host.remove();
-    if (![...layers].some((layer) => layer.element)) releaseKeeper();
+    if (mounted.size === 0) releaseKeeper();
   }
 
   /** Sets (or with `null` removes) an important declaration on the host, kept across mounts. */
@@ -126,7 +142,10 @@ export class Layer {
     this.restore();
   }
 
-  /** Puts the host back as Atd set it: only its own inline style and `lang`, nothing else. */
+  /**
+   * Puts the host back as Atd set it: only its own inline style and `lang`, nothing else. The root
+   * takes the layers' language here too, so a layer mounted after a change has it.
+   */
   restore(): void {
     const host = this.host;
     if (!host) return;
@@ -152,18 +171,18 @@ export class Layer {
   }
 }
 
-/** The document language of every layer (fonts and line breaking follow it). */
+/** The document language of every layer (fonts and line breaking follow it), from its mount on. */
 export function setLayersLanguage(lang: string): void {
   language = lang;
-  for (const layer of layers) {
-    layer.root.setAttribute('lang', lang);
-    layer.restore();
-  }
+  for (const layer of mounted) layer.restore();
 }
 
-/** Whether an event's path crosses one of the extension's layers. */
+/**
+ * Whether an event's path crosses one of the extension's layers. With none in the page, no path
+ * can, and the path is not built: this runs for the person's every click, key and wheel turn.
+ */
 export function fromOwnLayer(event: Event): boolean {
-  return event.composedPath().some(isLayerHost);
+  return mounted.size > 0 && event.composedPath().some(isLayerHost);
 }
 
 /** Whether `node` is (or is inside, as far as the page's tree shows) one of the layer hosts. */
@@ -175,7 +194,7 @@ export function insideOwnLayer(node: Node | null): boolean {
 }
 
 function isLayerHost(node: unknown): boolean {
-  for (const layer of layers) if (layer.hosts(node)) return true;
+  for (const layer of mounted) if (layer.hosts(node)) return true;
   return false;
 }
 
@@ -190,7 +209,7 @@ export function removeStaleHosts(): void {
 /** Takes every layer out for good (the extension was reloaded or removed). */
 export function removeLayers(): void {
   ended = true;
-  for (const layer of layers) layer.unmount();
+  for (const layer of mounted) layer.unmount();
   releaseKeeper();
 }
 
@@ -216,7 +235,7 @@ function observeRoot(): void {
 function reattach(): void {
   observeRoot();
   const root = document.documentElement;
-  for (const layer of layers) {
+  for (const layer of mounted) {
     const host = layer.element;
     if (host && host.parentNode !== root) root.append(host);
   }

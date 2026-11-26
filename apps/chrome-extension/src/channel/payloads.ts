@@ -107,6 +107,17 @@ export const SizeSchema = Type.Object({
   height: Type.Number({ minimum: 0 }),
 });
 
+/** An element the person picked on the page with the in-page ask's inspector. */
+export const PickedElementSchema = Type.Object({
+  /** A CSS selector that matched only this element in the top document when it was picked. */
+  selector: Type.String({ minLength: 1, maxLength: 1_000 }),
+  /** What it is, for a person: its role or tag and its accessible name, e.g. `button "Sign up"`. */
+  label: Type.String({ minLength: 1, maxLength: 300 }),
+  /** Its visible text, whitespace collapsed to single spaces, no newlines, clipped; empty when none. */
+  text: Type.String({ maxLength: 1_000 }),
+});
+export type PickedElement = Static<typeof PickedElementSchema>;
+
 /**
  * Source-stamped hardware input timestamps (ms since 1970) recorded on Atd's own in-page HUD layer
  * within the active-use window, keyed by macOS `CGEventType` equivalent so the host verifies and

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import type { PopupMessage } from '../messages/popup.ts';
-import { Hero } from './header.tsx';
+import type { PanelMessage } from '../messages/panel.ts';
+import { EmptyState } from './empty-state.tsx';
 import type { NoticeKind } from './model.ts';
 
 const NOTICE_KEYS = {
@@ -23,7 +23,7 @@ const NOTICE_KEYS = {
 } as const satisfies Record<NoticeKind, { title: string; body: string }>;
 
 /**
- * Why the popup cannot work with Atd right now, and the one step that may help: Reconnect dials
+ * Why the panel cannot work with Atd right now, and the one step that may help: Reconnect dials
  * the native host again now instead of at the next backoff attempt. Once Atd has been opened,
  * a missing host is found by trying again. While a connection attempt runs, the same button is
  * busy in place.
@@ -33,32 +33,33 @@ export function NoticeView({
   send,
 }: {
   notice: NoticeKind;
-  send: (message: PopupMessage) => void;
+  send: (message: PanelMessage) => void;
 }) {
-  const { t } = useTranslation('popup');
+  const { t } = useTranslation('panel');
   const busy = notice === 'connecting';
   const keys = NOTICE_KEYS[notice];
   return (
-    <>
-      <Hero title={t(keys.title)} body={t(keys.body)} />
-      <button
-        type="button"
-        className="btn-filled btn-block pp-primary"
-        aria-busy={busy}
-        aria-disabled={busy}
-        onClick={() => {
-          if (!busy) send({ type: 'reconnect' });
-        }}
-      >
-        {busy ? <span className="activity-indicator" aria-hidden="true" /> : null}
-        {busy
-          ? t('notice.connectingButton')
-          : notice === 'hostMissing' ||
-              notice === 'browserNotVerified' ||
-              notice === 'browserMismatch'
-            ? t('notice.tryAgain')
-            : t('notice.reconnect')}
-      </button>
-    </>
+    <EmptyState title={t(keys.title)} body={t(keys.body)}>
+      <div className="empty-state__actions">
+        <button
+          type="button"
+          className="btn-filled pp-primary"
+          aria-busy={busy}
+          aria-disabled={busy}
+          onClick={() => {
+            if (!busy) send({ type: 'reconnect' });
+          }}
+        >
+          {busy ? <span className="activity-indicator" aria-hidden="true" /> : null}
+          {busy
+            ? t('notice.connectingButton')
+            : notice === 'hostMissing' ||
+                notice === 'browserNotVerified' ||
+                notice === 'browserMismatch'
+              ? t('notice.tryAgain')
+              : t('notice.reconnect')}
+        </button>
+      </div>
+    </EmptyState>
   );
 }

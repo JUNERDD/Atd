@@ -1,4 +1,4 @@
-/*! apple-design web kit | scripts/build_kit.py | blocks: base, type, type-macos, states, list, switch, field-message, field, glass, button, motion */
+/*! apple-design web kit | scripts/build_kit.py | blocks: base, type, type-macos, states, list, switch, field-message, field, glass, button, motion, menu, empty-state, scroll-edge */
 
 /* ==========================================================================
    tokens.css — apple-design web kit, core tokens (reference: web.md §2–§3)
@@ -1982,5 +1982,349 @@ textarea.field {
   .activity-indicator {
     animation-duration: 1s, var(--dur-fast) !important;
     animation-iteration-count: infinite, 1 !important;
+  }
+}
+
+/* @block menu | requires: glass, motion, states | layer: components | native: SwiftUI Menu / .popover; UIKit UIMenu / UIPopoverPresentationController | pull-down menu and generic popover card ([popover]) that pop from their source: 44 px items, leading symbols, checkmarks, separators, destructive and disabled items */
+/* Menu (a user-requested list of commands; actions tied to the button that opens it):
+     <button class="toolbar-btn" type="button" popovertarget="sort" aria-haspopup="menu" aria-label="Sort">…</button>
+     <div class="menu motion-pop" id="sort" popover role="menu" aria-label="Sort">
+       <div role="group" aria-labelledby="sort-h">
+         <p class="menu__header" id="sort-h">Sort By</p>
+         <button class="menu__item" type="button" role="menuitemradio" aria-checked="true">Date</button>
+         <button class="menu__item" type="button" role="menuitemradio" aria-checked="false">Name</button>
+       </div>
+       <hr class="menu__separator">
+       <button class="menu__item" type="button" role="menuitem"><svg class="menu__icon" aria-hidden="true">…</svg>Share</button>
+       <button class="menu__item menu__item--destructive" type="button" role="menuitem"><svg class="menu__icon" aria-hidden="true">…</svg>Delete</button>
+     </div>
+   Symbols for all items of a group or none; destructive last; dim unavailable items (aria-disabled="true"), don't hide them.
+   AppleBlocks.menu.init() anchors it to the button (CSS anchor positioning, JS placement elsewhere), sets --motion-origin,
+   adds arrow keys / Home / End / type-ahead, toggles aria-checked, closes on choose or Tab (focus returns to the button).
+   Without JS it opens centred and keeps Esc / light dismiss; anchor it with style="anchor-name: --sort" on the button and
+   style="position-anchor: --sort" on the menu, and close it from items with popovertarget="sort" popovertargetaction="hide".
+   Popover (a few related controls, iPad/Mac; a bottom card on narrow screens):
+     <div class="popover motion-pop" id="fmt" popover role="dialog" aria-label="Format">…</div> */
+
+.menu,
+.popover {
+  --glass-density: 88%; /* text on glass: legible without a transparency fallback (WEB-2) */
+  --_menu-secondary: color-mix(
+    in srgb,
+    var(--secondary-label) 70%,
+    var(--label)
+  ); /* secondary text on glass: ≥ 6:1 (CON-1) */
+  position: fixed; /* unanchored: centred, like the UA popover */
+  inset: 0;
+  margin: auto;
+  max-block-size: calc(100dvh - 2 * var(--space-4));
+  border: 1px solid transparent; /* the edge in forced colors */
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.menu {
+  --menu-pad: 6px; /* ≈ */
+  --menu-item-h: var(--hit); /* HIT-1 */
+  --glass-radius: calc(
+    var(--menu-item-h) / 2 + var(--menu-pad)
+  ); /* concentric with the item highlight (GL-6) */
+  min-inline-size: min(15.625rem, 100vw - 2 * var(--margin-page));
+  max-inline-size: min(20rem, 100vw - 2 * var(--margin-page));
+  padding: var(--menu-pad);
+}
+.popover {
+  --glass-radius: var(--corner-xl);
+  inline-size: min(20rem, 100vw - 2 * var(--margin-page));
+  padding: var(--space-4);
+}
+@supports (position-anchor: --a) {
+  :is(.menu, .popover)[style*='position-anchor'] {
+    /* anchored to its source; flips to stay on screen */
+    --motion-origin: top right;
+    inset: auto;
+    margin: var(--space-2) 0;
+    position-area: block-end span-inline-start;
+    position-try-fallbacks:
+      flip-block,
+      flip-inline,
+      flip-block flip-inline;
+  }
+  :is(.menu, .popover)[style*='position-anchor']:dir(rtl) {
+    --motion-origin: top left;
+  }
+}
+@media (max-width: 30rem) {
+  /* compact width: a popover becomes a bottom card (components §3.2) */
+  .popover,
+  .popover[style*='position-anchor'] {
+    --glass-radius: var(--corner-sheet);
+    --motion-origin: bottom center;
+    inset: auto var(--space-2) calc(var(--safe-bottom) + var(--space-2));
+    margin: 0;
+    inline-size: auto;
+    position-area: none;
+  }
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  inline-size: 100%;
+  min-block-size: var(--menu-item-h);
+  margin: 0;
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: calc(var(--menu-item-h) / 2);
+  background: transparent;
+  color: inherit;
+  font: 400 var(--fs-body)/var(--lh-body) var(--ff-sans);
+  letter-spacing: calc(var(--tr-body) * var(--tracking-scale));
+  text-align: start;
+  text-decoration: none;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--dur-fast) var(--curve-out);
+}
+.menu__icon {
+  flex: none;
+  inline-size: 1.25em;
+  block-size: 1.25em;
+  color: inherit;
+}
+:is(.menu__item[role='menuitemcheckbox'], .menu__item[role='menuitemradio'])::before {
+  /* leading checkmark column */
+  content: '';
+  flex: none;
+  inline-size: 1.25em;
+  block-size: 1.25em;
+  background: currentColor;
+  -webkit-mask: var(--_menu-check) center / contain no-repeat;
+  mask: var(--_menu-check) center / contain no-repeat;
+  visibility: hidden;
+  --_menu-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m4.5 10.5 3.8 3.8 7.2-8.6' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.menu__item[aria-checked='true']::before {
+  visibility: visible;
+}
+.menu__trailing {
+  margin-inline-start: auto;
+  padding-inline-start: var(--space-3);
+  color: var(--_menu-secondary);
+}
+.menu__item--destructive {
+  /* ≥ 4.5:1 on this glass over any backdrop; system red is 3.6:1 */
+  color: var(--destructive-text);
+}
+.menu__header {
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  color: var(--_menu-secondary);
+  font: 600 var(--fs-footnote)/var(--lh-footnote) var(--ff-sans);
+  letter-spacing: calc(var(--tr-footnote) * var(--tracking-scale));
+}
+.menu__separator {
+  block-size: 0;
+  margin: var(--menu-pad) var(--space-3);
+  border: 0;
+  border-block-start: 1px solid var(--separator); /* a border, so forced colors keeps it */
+}
+
+/* States (FB-1…FB-3, FB-6): gray hover, then press (later wins); keyboard focus is the accent row highlight (macOS/iPadOS) */
+@media (hover: hover) and (pointer: fine) {
+  .menu__item:not(:disabled, [aria-disabled='true']):hover {
+    background-color: var(--hover-fill);
+  }
+}
+:where(html:not([data-press-tracking])) .menu__item:not(:disabled, [aria-disabled='true']):active,
+.menu__item:not(:disabled, [aria-disabled='true'])[data-pressed] {
+  background-color: var(--press-fill);
+} /* slop cancel drops it (FB-1) */
+.menu__item:focus-visible {
+  outline: none;
+  box-shadow: none;
+  background-color: var(--state-selected-focus-fill);
+  color: var(--accent-on);
+}
+.menu__item:focus-visible .menu__trailing {
+  color: inherit;
+}
+.menu__item:is(:disabled, [aria-disabled='true']) {
+  opacity: var(--state-disabled-opacity);
+}
+
+/* Reduced motion: .motion-pop fades without the scale; item fills fade (MOT-5). */
+@media (forced-colors: active) {
+  .menu__item:focus-visible {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+  .menu__item:is(:disabled, [aria-disabled='true']) {
+    color: GrayText;
+    opacity: 1;
+  }
+  :is(.menu__item[role='menuitemcheckbox'], .menu__item[role='menuitemradio'])::before {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
+  .menu__item:focus-visible::before {
+    background: HighlightText;
+  }
+}
+
+/* @block empty-state | requires: — | layer: components | native: SwiftUI ContentUnavailableView; UIKit UIContentUnavailableConfiguration | empty, no-results or offline placeholder: symbol, title, one-line explanation, optional action */
+/* Markup. Say why it's empty and what to do next; never a blank screen or a disabled tab (FB-5):
+     <div class="empty-state">
+       <svg class="empty-state__symbol" aria-hidden="true" viewBox="0 0 24 24">…</svg>
+       <h2 class="empty-state__title">No Results for “kiwi”</h2>
+       <p class="empty-state__description">Check the spelling or try a new search.</p>
+       <div class="empty-state__actions"><button class="btn-bordered" type="button">Clear Filters</button></div>
+     </div>
+   Loading instead of empty? Show placeholders or an .activity-indicator with a specific label (FB-7). */
+
+.empty-state {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: min(50dvh, 22rem);
+  padding: var(--space-10) var(--margin-page);
+  color: var(--label);
+  text-align: center;
+}
+.empty-state__symbol {
+  flex: none;
+  inline-size: 3.25rem;
+  block-size: 3.25rem;
+  margin-block-end: var(--space-2);
+  color: var(--secondary-label);
+}
+.empty-state__title {
+  max-inline-size: 22rem;
+  margin: 0;
+  font: 700 var(--fs-title2)/var(--lh-title2) var(--ff-sans);
+  letter-spacing: calc(var(--tr-title2) * var(--tracking-scale));
+  text-wrap: balance;
+}
+.empty-state__description {
+  max-inline-size: 22rem;
+  margin: 0;
+  color: var(--secondary-label);
+  font: 400 var(--fs-subheadline)/var(--lh-subheadline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+  text-wrap: pretty;
+}
+.empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}
+
+/* @block scroll-edge | requires: — | layer: components | native: SwiftUI scrollEdgeEffectStyle / UIKit UIScrollEdgeEffect | Soft fade and blur where content scrolls under floating bars, instead of a bar background or divider (GL-7) */
+
+/* Markup: first (top) or last (bottom) child of the scrolling element; it takes no layout space.
+   <div class="scroll-edge-top" aria-hidden="true"></div> … content … <div class="scroll-edge-bottom" aria-hidden="true"></div>
+   Match the page: --scroll-edge-bg (default: grouped background).
+   Hidden until scrolling reveals it: the top edge once content has scrolled under the top bar, the bottom edge while
+   more content lies below. A scroller with nothing to scroll shows neither, so nothing at rest is blurred.
+   No scroll-driven animations (Firefox): toggle .is-scrolled on an ancestor from JS, as navbar.js and motion.md §14.4
+   do; it shows both edges.
+   Put bar clearance (padding under a floating bar) on an inner wrapper, not on the scroller: the scroller's padding
+   moves where sticky edges pin (web.md §5). */
+:where(.scroll-edge-top, .scroll-edge-bottom) {
+  --scroll-edge-bg: var(--system-grouped-background);
+}
+.scroll-edge-top,
+.scroll-edge-bottom {
+  position: sticky;
+  z-index: 10;
+  display: block;
+  height: var(--_se-h);
+  pointer-events: none;
+  opacity: 0; /* hidden until scrolling reveals it (below) */
+  -webkit-backdrop-filter: blur(10px); /* static blur; never animated (MOT-6) */
+  backdrop-filter: blur(10px);
+}
+.scroll-edge-top {
+  --_se-h: calc(var(--safe-top) + 72px);
+  top: 0;
+  margin-bottom: calc(-1 * var(--_se-h));
+  background: linear-gradient(
+    color-mix(in srgb, var(--scroll-edge-bg) 85%, transparent),
+    transparent
+  );
+  mask-image: linear-gradient(#000 40%, transparent);
+}
+.scroll-edge-bottom {
+  --_se-h: calc(var(--safe-bottom) + 96px); /* covers the floating tab bar */
+  bottom: 0;
+  margin-top: calc(-1 * var(--_se-h));
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--scroll-edge-bg) 85%, transparent),
+    transparent
+  );
+  mask-image: linear-gradient(to top, #000 40%, transparent);
+}
+
+/* Reveal by scroll position (the nearest scroller; no duration). A timeline with nothing to scroll is inactive and
+   applies no keyframes, so the edge keeps its hidden base state. Top: fades in over the first 24 px scrolled.
+   Bottom: shown while content lies below, fades out over the last 24 px. */
+@keyframes scroll-edge-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  .scroll-edge-top,
+  .scroll-edge-bottom {
+    /* shorthand first: it resets timeline and range */
+    animation: scroll-edge-in 1ms linear both;
+    animation-timeline: scroll(nearest block);
+  }
+  .scroll-edge-top {
+    animation-range: 0px 24px;
+  }
+  .scroll-edge-bottom {
+    animation-direction: reverse;
+    animation-range: calc(100% - 24px) 100%;
+  }
+}
+@supports not (animation-timeline: scroll()) {
+  .scroll-edge-top,
+  .scroll-edge-bottom {
+    transition: opacity var(--dur-base) var(--curve-standard);
+  }
+  .is-scrolled :is(.scroll-edge-top, .scroll-edge-bottom) {
+    opacity: 1;
+  }
+}
+
+/* Fallbacks: no blur where transparency is unwanted; the masked solid fade keeps bars legible.
+   Without backdrop-filter support the gradient alone remains. Safari only takes the contrast branch. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .scroll-edge-top,
+  .scroll-edge-bottom {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--scroll-edge-bg);
+  }
+}
+/* Reduced motion: the reveal is a scroll-linked fade, which MOT-5 keeps. */
+@media (forced-colors: active) {
+  .scroll-edge-top,
+  .scroll-edge-bottom {
+    display: none;
   }
 }

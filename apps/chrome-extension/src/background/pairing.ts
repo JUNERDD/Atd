@@ -10,7 +10,7 @@ import type { Store } from './store.ts';
  * Pairing with Atd (D4, K2). Connect… sends a 4-character code that Atd's confirmation shows
  * too; once the person allows it there, the shell answers `pair.state paired` with a secret,
  * which lives only in `chrome.storage.local` and in each `hello`. `unpaired`, or a `welcome` that
- * no longer knows the secret, forgets it. Failure reasons reach the popup as codes
+ * no longer knows the secret, forgets it. Failure reasons reach the panel as codes
  * (`PairFailure`), never as the shell's text.
  */
 
@@ -135,7 +135,7 @@ export class Pairing {
   }
 }
 
-/** The shell's reason code as the popup knows it; a code this version does not know is `unknown`. */
+/** The shell's reason code as the panel knows it; a code this version does not know is `unknown`. */
 function pairFailure(reason: string): PairFailure {
   return PAIR_FAILURES.find((known) => known === reason) ?? 'unknown';
 }

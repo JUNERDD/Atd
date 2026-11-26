@@ -1,9 +1,11 @@
 /*
  * The in-page composer: the HUD's glass with the product composer's expanded anatomy (the request
- * on top, context and send on a 28 px row below; 14 px text) and the HUD's 22 px corner. Its first
- * line, its mark and its send button stand on that corner's centre, 22 px from the edges, so its
- * bottom row centres on the same line, and its mark on the same point, as the working HUD it turns
- * into. Values are the prototype's (`prototype.css`, "In-page composer").
+ * on top, context, tools and send on a 28 px row below; 14 px text) and the HUD's 22 px corner.
+ * Its first line, its mark and its send button stand on that corner's centre, 22 px from the
+ * edges, so its bottom row centres on the same line, and its mark on the same point, as the
+ * working HUD it turns into. The tools (inspector, panel) are 28 px round controls beside the
+ * send button, concentric with it. Values are the prototype's (`prototype.css`, "In-page
+ * composer"); the status row and the element chips follow its note and page chip.
  */
 .hud.compose {
   width: min(560px, 100%);
@@ -12,8 +14,12 @@
 /* The rows space themselves: a grid gap would stand below the note's row while it is hidden. */
 .ask-box {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px;
-  grid-template-areas: 'prompt prompt' 'meta send' 'note note';
+  grid-template-columns: minmax(0, 1fr) auto 28px;
+  grid-template-areas:
+    'prompt prompt prompt'
+    'meta tools send'
+    'status status status'
+    'note note note';
   column-gap: 8px;
   padding: 11px 8px 8px 14px;
 }
@@ -50,13 +56,16 @@
   outline: none;
 }
 
+/* Chips wrap onto more lines (a request carries up to five elements); the row stays 28 px tall. */
 .ask-meta {
   grid-area: meta;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 4px 8px;
   min-width: 0;
-  height: 28px;
+  min-height: 28px;
+  padding: 2px 0;
 }
 
 .ask-mark {
@@ -106,6 +115,11 @@
   color: var(--fg);
 }
 
+/* A picked element: its label is the page's own words, so it truncates sooner. */
+.ask-chip.element {
+  max-width: 180px;
+}
+
 .ask-chip.add {
   padding: 0 8px 0 7px;
   background: none;
@@ -134,6 +148,40 @@
   color: var(--attn);
 }
 
+.ask-tools {
+  grid-area: tools;
+  align-self: end;
+  display: flex;
+  gap: 2px;
+}
+
+.ask-tool {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  color: var(--fg-2);
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.ask-tool:hover:not(:disabled) {
+  background: var(--wash);
+  color: var(--fg);
+}
+
+/* Picking: the inspector stays pressed until a pick, Esc, or a second press. */
+.ask-tool[aria-pressed='true'] {
+  background: var(--wash-strong);
+  color: var(--fg);
+}
+
+.ask-tool:disabled {
+  opacity: 0.4;
+}
+
 .ask-send {
   grid-area: send;
   align-self: end;
@@ -155,6 +203,34 @@
 
 .ask-send:disabled {
   opacity: 0.5;
+}
+
+/* Why Atd cannot take a request now, or how picking works; the panel's way out at its end. */
+.ask-status {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding-right: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--fg-2);
+}
+
+.ask-status .text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ask-status .gbtn {
+  flex: none;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--fg);
 }
 
 .ask-note {

@@ -1,15 +1,15 @@
 import type { OwnInput, RunView } from '../../channel/payloads.ts';
 import type { ContentMessage } from '../../messages/content.ts';
-import type { TabView } from '../../messages/views.ts';
+import type { SurfaceRun, TabView } from '../../messages/views.ts';
 import { AskFlow } from '../ask/flow.ts';
 import { copyText } from '../clipboard.ts';
 import { t } from '../i18n.ts';
 import { answerableRequest, cardIdentity } from './card.ts';
 import type { HudIntent, RunRender } from './intents.ts';
 import { RunOverlays, STOP_SPINNER_MS, isTerminal, overlayDeadlines } from './local.ts';
-import { loadAnchor } from './position.ts';
+import { HOME, loadAnchor } from './position.ts';
 import { runNode, startingRow } from './states.ts';
-import { type HudContent, HudView } from './view.ts';
+import { type HudContent, HudView, restingBounds } from './view.ts';
 import { signal } from '../lifetime.ts';
 
 /** What the tab's light does for the HUD's state (`edge-light.ts`). */
@@ -30,43 +30,60 @@ export interface HudDeps {
  * The in-tab HUD for the run that owns this tab, and the in-page ask (spec 8, 9; D10). The shell's
  * `RunView` is the truth; this adds only what the tab does locally (`RunOverlays`) and the ask in
  * progress. A stale answer simply re-renders from the next state: the first answer given anywhere
- * wins.
+ * wins. Its view, and the place the person left it on this site, wait for the first content to
+ * show: a page where the HUD never shows builds and reads neither.
  */
 export class Hud {
-  readonly view: HudView;
   readonly ask: AskFlow;
   private readonly overlays = new RunOverlays();
   private tab: TabView | null = null;
   private renderTimers: number[] = [];
   private autoHide: { runId: string; timer: number } | null = null;
   private last: HudContent | null = null;
+  private built: HudView | null = null;
+  private anchor: 'unread' | 'reading' | 'read' = 'unread';
 
   constructor(private readonly deps: HudDeps) {
-    this.view = new HudView(() => deps.changed());
     this.ask = new AskFlow({
       send: (message) => deps.send(message),
       takeOwnInput: () => deps.takeOwnInput(),
       changed: () => this.render(),
     });
-    void loadAnchor().then((anchor) => this.view.mover.place(anchor));
-    // A click elsewhere closes the composer and keeps its draft.
+    // A click elsewhere closes the composer and keeps its draft; one that picks an element of the
+    // page (the inspector) is the composer's own.
     addEventListener(
       'pointerdown',
       (event) => {
-        if (this.ask.phase === 'compose' && !this.view.contains(event)) this.ask.close(false);
+        if (this.ask.phase !== 'compose' || this.ask.capturing || this.view.contains(event)) return;
+        this.ask.close(false);
       },
       { capture: true, signal },
     );
   }
 
+  /** The capsule's box (where it would show while it does not), for the light and transitions. */
+  bounds(): DOMRectReadOnly {
+    return this.built?.bounds() ?? restingBounds(HOME);
+  }
+
+  /** Everything the HUD draws right now (`HudView.drawnBounds`); null while nothing shows. */
+  drawnBounds(): DOMRectReadOnly | null {
+    return this.built?.drawnBounds() ?? null;
+  }
+
+  /** Whether `event` is the HUD's ⌃⌥⌘ + arrow move shortcut while it shows. */
+  isMoveShortcut(event: Event): boolean {
+    return this.built?.isMoveShortcut(event) ?? false;
+  }
+
   update(tab: TabView): void {
     this.tab = tab;
-    this.view.setEffects(tab.prefs.glowEffects);
+    this.built?.setEffects(tab.prefs.glowEffects);
     this.ask.update(tab);
     this.render();
   }
 
-  /** `ask.open` from the background. */
+  /** `ask.open` from the background (the toolbar button, the ask shortcut). */
   openAsk(): void {
     this.ask.open();
   }
@@ -78,7 +95,7 @@ export class Hud {
 
   /** The language changed: everything built from copy is built again. */
   relabel(): void {
-    this.ask.composer.relabel();
+    this.ask.relabel();
     this.render(true);
   }
 
@@ -105,19 +122,48 @@ export class Hud {
     }
   }
 
+  /** The layer and capsule, built the first time the HUD has something to show. */
+  private get view(): HudView {
+    if (!this.built) {
+      this.built = new HudView(() => this.deps.changed());
+      if (this.tab) this.built.setEffects(this.tab.prefs.glowEffects);
+    }
+    return this.built;
+  }
+
   /** `relabel` forces a rebuild; otherwise unchanged content is left alone (with its focus). */
   private render(rebuild = false): void {
     for (const timer of this.renderTimers) clearTimeout(timer);
     this.renderTimers = [];
     if (rebuild) this.last = null;
     this.last = this.content();
-    this.view.show(this.last, rebuild);
+    if (this.last || this.built) {
+      // The first content waits for the HUD's remembered place: it shows there from the start,
+      // and the light that follows it starts with it.
+      if (!this.placed()) return;
+      this.view.show(this.last, rebuild);
+    }
     this.deps.changed();
   }
 
+  /** Whether the HUD's place on this site is known; the first call reads it, then renders again. */
+  private placed(): boolean {
+    if (this.anchor === 'read') return true;
+    if (this.anchor === 'unread') {
+      this.anchor = 'reading';
+      void loadAnchor().then((anchor) => {
+        this.anchor = 'read';
+        this.view.mover.place(anchor);
+        this.render();
+        // `AskFlow.open` focused the field before it was in the page.
+        if (this.ask.phase === 'compose') this.ask.composer.focus();
+      });
+    }
+    return false;
+  }
+
   private content(): HudContent | null {
-    const tab = this.tab;
-    if (!tab) return null;
+    // The composer shows from the first press, before the tab's first view arrives.
     if (this.ask.composing) {
       return this.reuse('compose', () => ({
         node: this.ask.composer.node,
@@ -128,6 +174,8 @@ export class Hud {
         guarded: null,
       }));
     }
+    const tab = this.tab;
+    if (!tab) return null;
     if (this.ask.phase === 'starting') {
       const text = this.ask.startingText;
       return this.reuse(`starting:${text}:${tab.prefs.glowEffects}`, () => ({
@@ -179,7 +227,7 @@ export class Hud {
     return { ...build(), key };
   }
 
-  private renderContext(run: RunView, tab: TabView, guarded: string | null): RunRender {
+  private renderContext(run: SurfaceRun, tab: TabView, guarded: string | null): RunRender {
     const now = Date.now();
     const status = this.overlays.status(run, now);
     return {

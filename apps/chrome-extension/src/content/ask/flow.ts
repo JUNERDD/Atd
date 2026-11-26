@@ -1,9 +1,11 @@
 import type { OwnInput } from '../../channel/payloads.ts';
 import type { BackgroundToContent, ContentMessage } from '../../messages/content.ts';
-import { ACTIVE_RUN_STATUSES, type AskFailure, type TabView } from '../../messages/views.ts';
+import { ACTIVE_RUN_STATUSES, type TabView } from '../../messages/views.ts';
 import { t } from '../i18n.ts';
-import { Composer } from './composer.ts';
 import { requestId } from '../ids.ts';
+import { Inspector } from '../inspector/inspector.ts';
+import { Composer } from './composer.ts';
+import { blockedCopy, canAsk, failureCopy } from './status.ts';
 
 /**
  * `compose`: the field is open. `sending`: the request is on its way. `starting`: Atd took it and
@@ -21,41 +23,17 @@ export interface AskDeps {
   changed(): void;
 }
 
-/** Why Atd did not take the request, in the person's words: never the code itself. */
-function failureCopy(reason: AskFailure | undefined): string {
-  switch (reason) {
-    case 'notConnected':
-      return t('ask.failure.notConnected');
-    case 'notPaired':
-      return t('ask.failure.notPaired');
-    case 'tooLong':
-      return t('ask.failure.tooLong');
-    case 'otherHost':
-      return t('ask.failure.otherHost');
-    case 'serviceUnavailable':
-      return t('ask.failure.serviceUnavailable');
-    case 'failed':
-    case undefined:
-    default:
-      // A code this version does not know reads as the generic failure too.
-      return t('ask.failure.failed');
-  }
-}
-
-/** Atd takes one request per browser at a time, and only while connected and paired. */
-export function canAsk(view: TabView | null): boolean {
-  return view !== null && view.paired && view.connection === 'ready' && !view.busy;
-}
-
 /**
- * The in-page ask (the ask shortcut, ⇧⌘K by default, or the popup's "Ask Atd on This Page…"): a
- * content-script surface that reads nothing and sends nothing until the person sends. Closing it
- * (Esc, or a click elsewhere) keeps the draft for this tab; Esc hands focus back to where the
- * person was. A failed request reopens the field with its reason and the draft intact.
+ * The in-page ask (the toolbar button, or the ask shortcut ⇧⌘K by default): a content-script
+ * surface that reads nothing and sends nothing until the person acts. It opens in every connection
+ * state; while Atd cannot take a request it says why, with send disabled, and offers Atd's panel.
+ * Its inspector picks elements of the page to send with the request, reading each only as it is
+ * picked. Closing it (Esc, or a click elsewhere) keeps the draft, picked elements included, for
+ * this tab; Esc hands focus back to where the person was. A failed request reopens the field with
+ * its reason and the draft intact.
  */
 export class AskFlow {
   phase: AskPhase = 'closed';
-  readonly composer: Composer;
   /** The request's text, shown in the starting row. */
   startingText = '';
   private requestId: string | null = null;
@@ -65,35 +43,62 @@ export class AskFlow {
   private returnFocus: HTMLElement | null = null;
   private startingTimer = 0;
   private view: TabView | null = null;
+  /** Built the first time the ask opens: a page where nobody asks never builds it. */
+  private built: Composer | null = null;
+  /** Created the first time the person picks or a chip marks its element. */
+  private inspector: Inspector | null = null;
 
-  constructor(private readonly deps: AskDeps) {
-    this.composer = new Composer({
+  constructor(private readonly deps: AskDeps) {}
+
+  get composer(): Composer {
+    this.built ??= new Composer({
       submit: () => this.submit(),
       escape: () => this.close(true),
-      changed: () => deps.changed(),
+      changed: () => this.deps.changed(),
+      inspect: () => this.inspect(),
+      openPanel: () => this.openPanel(),
+      highlight: (element) => this.highlight(element),
     });
+    return this.built;
   }
 
   get composing(): boolean {
     return this.phase === 'compose' || this.phase === 'sending';
   }
 
-  /** `ask.open`: opens the field; a second press closes it. */
+  /**
+   * Whether the page's pointer events are Atd's own right now: the inspector is picking, or has
+   * just picked. A click elsewhere then neither closes the ask nor counts as the page's input.
+   */
+  get capturing(): boolean {
+    return this.inspector?.capturing === true;
+  }
+
+  /**
+   * `ask.open`: opens the field, whatever the connection; a second press closes it. While Atd is
+   * starting the request just sent, the HUD's starting row stays.
+   */
   open(): void {
     if (this.composing) return this.close(true);
-    if (!canAsk(this.view) || this.phase === 'starting') return;
+    if (this.phase === 'starting') return;
     const active = document.activeElement;
     this.returnFocus = active instanceof HTMLElement && active !== document.body ? active : null;
     this.phase = 'compose';
     this.composer.prepare(this.host());
-    this.composer.setState(false, true);
+    this.sync();
     this.deps.changed();
     this.composer.focus();
+  }
+
+  /** The language changed: the composer's copy follows (once it exists). */
+  relabel(): void {
+    this.built?.relabel();
   }
 
   /** `restore` is false when a click elsewhere closed it: focus stays where the person clicked. */
   close(restore: boolean): void {
     if (this.phase !== 'compose') return;
+    this.stopPicking();
     this.phase = 'closed';
     this.composer.setError(null);
     this.deps.changed();
@@ -118,6 +123,13 @@ export class AskFlow {
     this.deps.changed();
   }
 
+  /** `panel.status`: Atd's panel opened, so the ask steps aside (keeping its draft); or it did not. */
+  panelStatus(opened: boolean): void {
+    if (this.phase !== 'compose') return;
+    if (opened) this.close(false);
+    else this.composer.setError(t('ask.panelFailed'));
+  }
+
   /** Follows the tab: a lost channel fails a request on its way; the new run ends `starting`. */
   update(view: TabView): void {
     this.view = view;
@@ -132,14 +144,22 @@ export class AskFlow {
         this.started();
       }
     } else if (this.phase === 'compose') {
-      if (!view.paired) return this.close(false);
-      this.composer.setState(false, canAsk(view));
+      this.sync();
     }
+  }
+
+  /** The send button and the status row follow what Atd can take now. */
+  private sync(): void {
+    this.composer.setState(false, canAsk(this.view));
+    this.composer.setBlocked(blockedCopy(this.view), this.view?.panel ?? null);
   }
 
   private submit(): void {
     if (this.phase !== 'compose' || !this.composer.canSend || !canAsk(this.view)) return;
+    this.stopPicking();
     const text = this.composer.text;
+    const { includePage } = this.composer.context;
+    const elements = this.composer.context.elements();
     this.requestId = requestId();
     this.runAtSend = this.view?.run?.runId ?? null;
     this.startedRun = null;
@@ -152,15 +172,54 @@ export class AskFlow {
       type: 'ask',
       requestId: this.requestId,
       text,
-      includePage: this.composer.includePage,
+      includePage,
+      ...(elements.length > 0 ? { elements } : {}),
       ...(ownInput === undefined ? {} : { ownInput }),
     });
     this.deps.changed();
   }
 
+  /** The inspector control: starts picking an element of the page, or stops. */
+  private inspect(): void {
+    if (this.phase !== 'compose') return;
+    const inspector = (this.inspector ??= new Inspector());
+    if (inspector.picking) return this.stopPicking();
+    if (this.composer.context.full) return;
+    this.composer.setError(null);
+    this.composer.setPicking(true);
+    inspector.pick({
+      picked: (element, picked) => {
+        if (picked === null) this.composer.setError(t('ask.pickFailed'));
+        else this.composer.context.add(element, picked);
+        this.composer.setPicking(false);
+        this.composer.focus();
+      },
+      canceled: () => {
+        this.composer.setPicking(false);
+        this.composer.focus();
+      },
+    });
+  }
+
+  private stopPicking(): void {
+    this.inspector?.stop();
+    this.composer.setPicking(false);
+  }
+
+  private highlight(element: Element | null): void {
+    if (element === null) this.inspector?.show(null);
+    else (this.inspector ??= new Inspector()).show(element);
+  }
+
+  /** Open side panel: the background opens it within this click and answers `panel.status`. */
+  private openPanel(): void {
+    this.stopPicking();
+    this.deps.send({ type: 'panel.open' });
+  }
+
   private fail(message: string): void {
     this.phase = 'compose';
-    this.composer.setState(false, canAsk(this.view));
+    this.sync();
     this.composer.setError(message);
     this.deps.changed();
     this.composer.focus();

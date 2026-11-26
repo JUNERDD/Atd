@@ -1,11 +1,13 @@
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 import type { RunView } from '../channel/payloads.ts';
-import { MAX_REQUEST_TEXT, type ContentMessage } from '../messages/content.ts';
-import { ENDED_RUN_STATUSES, type AskFailure } from '../messages/views.ts';
+import { MAX_REQUEST_TEXT } from '../messages/content.ts';
+import { ENDED_RUN_STATUSES } from '../messages/views.ts';
+import { openPanel } from './action-surface.ts';
+import { sendAsk } from './asks.ts';
 import type { FollowUps } from './follow-ups.ts';
 import type { HiddenRuns } from './hidden-runs.ts';
-import { clipText, type SendFrame } from './native.ts';
+import type { SendFrame } from './native.ts';
 import type { Ownership } from './ownership.ts';
 import { failure, type PendingRequests } from './requests.ts';
 import type { Store } from './store.ts';
@@ -45,8 +47,25 @@ export function handleContentIntent(
   reply: ContentReply,
 ): void {
   switch (intent.type) {
-    case 'ask':
-      void sendAsk(deps, tabId, intent);
+    case 'ask': {
+      const { requestId, text, includePage, elements, ownInput } = intent;
+      const ask = {
+        from: 'tab',
+        tabId,
+        requestId,
+        text,
+        includePage,
+        ...(elements === undefined ? {} : { elements }),
+        ...(ownInput === undefined ? {} : { ownInput }),
+      } as const;
+      // Answered in the tab's current document: one restored from the back/forward cache
+      // reconnects on a new port, and any other ignores a request id it did not send.
+      void sendAsk(deps, ask, (status) => deps.surfaces.postToTab(tabId, status));
+      return;
+    }
+    case 'panel.open':
+      // Synchronously, while this message's dispatch still carries the person's click.
+      void openPanel({ tabId }).then((opened) => reply({ type: 'panel.status', opened }));
       return;
     case 'run.stop':
       if (shows(deps, tabId, intent.taskId, intent.runId) !== undefined)
@@ -134,52 +153,6 @@ export function handleInvalidContent(
   const tooLong = overCap(Reflect.get(message, 'text'));
   console.warn('[atd] refused an invalid ask');
   deps.surfaces.postToTab(tabId, failure(message.requestId, tooLong ? 'tooLong' : 'failed'));
-}
-
-type AskIntent = Extract<ContentMessage, { type: 'ask' }>;
-
-/** `ask`, with the tab's page unless the person removed it; answered by request id. */
-async function sendAsk(deps: ContentIntentDeps, tabId: number, intent: AskIntent): Promise<void> {
-  const refuse = (reason: AskFailure): void => {
-    deps.surfaces.postToTab(tabId, failure(intent.requestId, reason));
-  };
-  const early = refusal(deps.store);
-  if (early !== undefined) {
-    refuse(early);
-    return;
-  }
-  const tab = await chrome.tabs.get(tabId).catch(() => undefined);
-  const win =
-    intent.ownInput !== undefined && tab?.active === true && tab.windowId !== undefined
-      ? await chrome.windows.get(tab.windowId).catch(() => undefined)
-      : undefined;
-  // The channel may have closed or the pairing ended while the tab was read.
-  const late = refusal(deps.store);
-  if (late !== undefined) {
-    refuse(late);
-    return;
-  }
-  deps.requests.remember(intent.requestId, tabId, intent.includePage);
-  const sent = deps.forward({
-    t: 'ask',
-    requestId: intent.requestId,
-    tabId,
-    // The person removed the page from the request: Atd gets neither its URL nor its title.
-    ...(intent.includePage
-      ? { url: clipText(tab?.url), title: clipText(tab?.title) }
-      : { url: '', title: '' }),
-    text: intent.text,
-    ...(win?.focused === true && intent.ownInput !== undefined
-      ? { ownInput: intent.ownInput }
-      : {}),
-  });
-  if (!sent) deps.requests.fail(intent.requestId, 'notConnected');
-}
-
-function refusal(store: Store): AskFailure | undefined {
-  if (store.state.connection !== 'ready') return 'notConnected';
-  if (store.state.pairing.state !== 'paired') return 'notPaired';
-  return undefined;
 }
 
 /** The run the tab shows when it is the one named (`runId` too when given), else undefined. */

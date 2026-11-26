@@ -1,13 +1,13 @@
 import type { AppLanguage } from '@atd/agent-contracts';
 import i18next, { type i18n } from 'i18next';
 
-export type Namespace = 'background' | 'hud' | 'popup';
+export type Namespace = 'background' | 'hud' | 'panel';
 
 /** One namespace's translations in every shipped language (English is the source). */
 export type NamespaceResources = Record<AppLanguage, Record<string, unknown>>;
 
 /**
- * An i18next instance for one surface. Each surface (service worker, content script, popup)
+ * An i18next instance for one surface. Each surface (service worker, content script, panel)
  * bundles only its own namespace, in both languages, so `init` is synchronous and `t` is ready on
  * return. Interpolated values are not escaped: the content script renders through `textContent`
  * and React escapes on its own. Switch with `instance.changeLanguage(language)`.

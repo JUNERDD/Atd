@@ -1,5 +1,6 @@
 import type { PermissionAnswer } from '@atd/agent-contracts';
-import type { HudRequest, RunStatus, RunView } from '../../channel/payloads.ts';
+import type { HudRequest, RunStatus } from '../../channel/payloads.ts';
+import type { SurfaceRun } from '../../messages/views.ts';
 import type { FollowUpState } from './local.ts';
 
 /** What a HUD control asks for; the HUD controller turns it into a message to the background. */
@@ -15,7 +16,7 @@ export type HudIntent =
 
 /** Everything one run state renders from: the shell's run plus this tab's local overlays. */
 export interface RunRender {
-  run: RunView;
+  run: SurfaceRun;
   /** The status shown: the shell's, or `stopping` right after the person pressed Stop. */
   status: RunStatus;
   /** Whether Atd can be reached to open it (the channel answers). */

@@ -1,8 +1,8 @@
 import { CircleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { PopupMessage } from '../messages/popup.ts';
+import type { PanelMessage } from '../messages/panel.ts';
 import type { PairFailure, PairingView } from '../messages/views.ts';
-import { Hero } from './header.tsx';
+import { EmptyState } from './empty-state.tsx';
 
 /**
  * Copy for each reason pairing did not complete (the background narrows Atd's codes to these). The
@@ -60,15 +60,14 @@ export function ConnectView({
 }: {
   pairing: PairingView;
   profileLabel: string;
-  send: (message: PopupMessage) => void;
+  send: (message: PanelMessage) => void;
 }) {
-  const { t } = useTranslation('popup');
+  const { t } = useTranslation('panel');
   const pending = pairing.state === 'pending';
   const failure = failureOf(pairing);
   return (
-    <>
-      <Hero title={t('connect.title')} body={t('connect.body')} />
-      <ul className="list">
+    <EmptyState title={t('connect.title')} body={t('connect.body')}>
+      <ul className="list pp-facts">
         <li>
           <div className="list__row">
             <span className="list__label">{t('connect.browser')}</span>
@@ -84,36 +83,38 @@ export function ConnectView({
           </li>
         ) : null}
       </ul>
-      <button
-        type="button"
-        className="btn-filled btn-block pp-primary"
-        aria-busy={pending}
-        aria-disabled={pending}
-        onClick={() => {
-          if (!pending) send({ type: 'pair.start' });
-        }}
-      >
-        {pending ? <span className="activity-indicator" aria-hidden="true" /> : null}
-        {pending ? t('connect.waiting') : t('connect.button')}
-      </button>
-      {pending ? (
-        <>
-          <p className="field-message pp-center">{t('connect.confirmNote')}</p>
-          <button
-            type="button"
-            className="btn-plain pp-cancel"
-            onClick={() => send({ type: 'pair.cancel' })}
-          >
-            {t('connect.cancel')}
-          </button>
-        </>
-      ) : null}
-      {failure ? (
-        <output className="field-message pp-center" data-tone="error">
-          <CircleAlert aria-hidden="true" />
-          {t(FAILURE_KEYS[failure])}
-        </output>
-      ) : null}
-    </>
+      <div className="pp-setup-actions">
+        <button
+          type="button"
+          className="btn-filled pp-primary"
+          aria-busy={pending}
+          aria-disabled={pending}
+          onClick={() => {
+            if (!pending) send({ type: 'pair.start' });
+          }}
+        >
+          {pending ? <span className="activity-indicator" aria-hidden="true" /> : null}
+          {pending ? t('connect.waiting') : t('connect.button')}
+        </button>
+        {pending ? (
+          <>
+            <p className="field-message pp-center">{t('connect.confirmNote')}</p>
+            <button
+              type="button"
+              className="btn-plain pp-cancel"
+              onClick={() => send({ type: 'pair.cancel' })}
+            >
+              {t('connect.cancel')}
+            </button>
+          </>
+        ) : null}
+        {failure ? (
+          <output className="field-message pp-center" data-tone="error">
+            <CircleAlert aria-hidden="true" />
+            {t(FAILURE_KEYS[failure])}
+          </output>
+        ) : null}
+      </div>
+    </EmptyState>
   );
 }

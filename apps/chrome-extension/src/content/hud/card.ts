@@ -1,24 +1,29 @@
-import { CircleCheck, MessageCircleQuestionMark, ShieldCheck, createElement } from 'lucide';
+import { MessageCircleQuestionMark, ShieldCheck, createElement } from 'lucide';
 import type { HudRequest, RunView } from '../../channel/payloads.ts';
 import { gbtn, h, iconAttrs, type ButtonOptions } from '../dom.ts';
 import { t } from '../i18n.ts';
-import { copyButton, dismissButton, openButton, saveButton, stopButton } from './buttons.ts';
+import { openButton, stopButton } from './buttons.ts';
 import type { RunRender } from './intents.ts';
+import { scrollArea } from './scroll-area.ts';
+
+type InputRequest = Extract<HudRequest, { kind: 'input' }>;
 
 /**
- * The card anatomy: a glyph beside title and body, actions right-aligned below. Its parts are named
- * (`data-part`; a body and a note name themselves), so a change in place moves each to its place.
+ * The card anatomy: a glyph beside title and body, then the card's own sections (an input's
+ * choices), then its footer. Its parts are named (`data-part`; a body and a note name themselves),
+ * so a change in place moves each to its place.
  */
-function card(
+function shell(
+  classes: string,
   glyph: Element,
   title: string,
   body: readonly (HTMLElement | null)[],
-  actions: readonly HTMLElement[],
-  wide = false,
+  sections: readonly HTMLElement[],
+  actions: HTMLElement,
 ): HTMLElement {
   return h(
     'div',
-    { class: wide ? 'hud-card wide' : 'hud-card' },
+    { class: classes },
     h(
       'div',
       { class: 'hud-card-head' },
@@ -30,15 +35,41 @@ function card(
         ...body,
       ),
     ),
-    h('div', { class: 'hud-card-actions' }, ...actions),
+    ...sections,
+    actions,
   );
+}
+
+/**
+ * A card's footer: Stop alone at the leading edge, away from everything a click there could be
+ * meant for, and the rest at the trailing edge. Each side wraps as one group, so a pair of answers
+ * stays together on a narrow card.
+ */
+function footer(lead: readonly HTMLElement[], trail: readonly HTMLElement[]): HTMLElement {
+  return h(
+    'div',
+    { class: 'hud-card-actions' },
+    lead.length > 0 ? h('div', { class: 'hud-card-lead' }, ...lead) : null,
+    trail.length > 0 ? h('div', { class: 'hud-card-trail' }, ...trail) : null,
+  );
+}
+
+/** A card with its `actions` at the footer's trailing edge (a run's reply). */
+export function card(
+  glyph: Element,
+  title: string,
+  body: readonly (HTMLElement | null)[],
+  actions: readonly HTMLElement[],
+  wide = false,
+): HTMLElement {
+  return shell(wide ? 'hud-card wide' : 'hud-card', glyph, title, body, [], footer([], actions));
 }
 
 function bodyText(text: string): HTMLElement {
   return h('div', { class: 'hud-card-body', attrs: { 'data-part': 'body' } }, text);
 }
 
-function note(text: string, alert = false): HTMLElement {
+export function note(text: string, alert = false): HTMLElement {
   return h(
     'div',
     {
@@ -72,26 +103,64 @@ export function cardIdentity(request: HudRequest): string {
 }
 
 /**
+ * An input's options, each a full-width answer under the question: several are a numbered list of
+ * equal choices, read top to bottom; a single one (a sign-in handoff's "I've signed in") is the
+ * card's one prominent action. When the viewport cannot hold them they scroll in the HUD's scroll
+ * area (`scroll-area.ts`), as a long reply does: overlay thumb, fades where more choices continue.
+ */
+function choices(ctx: RunRender, request: InputRequest): HTMLElement {
+  const single = request.options.length === 1;
+  const list = h(
+    'div',
+    { class: 'hud-card-choices' },
+    ...request.options.map((option, index) => {
+      const button = answerButton({
+        act: `option-${index}`,
+        variant: single ? 'solid' : 'fill',
+        label: option,
+        disabled: ctx.answering,
+        onClick: () => ctx.intent({ kind: 'answer', request, answer: { answer: option } }),
+      });
+      button.classList.add('hud-choice');
+      if (!single) {
+        const number = String(index + 1);
+        button.prepend(
+          h('span', { class: 'hud-choice-index', attrs: { 'aria-hidden': 'true' } }, number),
+        );
+      }
+      return button;
+    }),
+  );
+  const viewport = h('div', { class: 'scroll-viewport hud-card-choices-viewport' }, list);
+  const area = scrollArea(viewport, list);
+  area.classList.add('hud-card-choices-area');
+  return area;
+}
+
+/**
  * A request the person can answer here, the same one Atd's task panel shows (the first answer
  * given anywhere wins). A confirmation is Allow once or Don't allow; an input takes one of its
- * options (a sign-in handoff is such an input, offering "I've signed in"). Stop stays available at
- * the leading edge. When the page covered the card as the person answered (`guard.ts`), the card
- * says so and offers Atd instead.
+ * options (a sign-in handoff is such an input, offering "I've signed in"). The HUD sends only a
+ * listed option, so an input also offers Atd for any other answer. Stop stays available at the
+ * footer's leading edge. When the page covered the card as the person answered (`guard.ts`), the
+ * card says so and offers Atd instead.
  */
 export function attentionCard(ctx: RunRender, request: HudRequest): HTMLElement {
   const waiting = ctx.answering;
   const covered = ctx.covered ? note(t('hud.covered'), true) : null;
-  const lead = [stopButton(ctx, 'lead'), ...(ctx.covered ? [openButton(ctx)] : [])];
+  const lead = [stopButton(ctx, 'card')];
   if (request.kind === 'confirmation') {
-    return card(
+    return shell(
+      'hud-card',
       createElement(ShieldCheck, iconAttrs(16, 'attn')),
       request.title,
       [request.detail ? bodyText(request.detail) : null, covered],
-      [
-        ...lead,
+      [],
+      footer(lead, [
+        ...(ctx.covered ? [openButton(ctx, t('hud.answerInAtd'))] : []),
         answerButton({
           act: 'deny',
-          variant: 'outline',
+          variant: 'fill',
           label: t('hud.deny'),
           disabled: waiting,
           onClick: () => ctx.intent({ kind: 'answer', request, answer: { decision: 'declined' } }),
@@ -103,62 +172,39 @@ export function attentionCard(ctx: RunRender, request: HudRequest): HTMLElement 
           disabled: waiting,
           onClick: () => ctx.intent({ kind: 'answer', request, answer: { decision: 'once' } }),
         }),
-      ],
+      ]),
     );
   }
-  const single = request.options.length === 1;
-  return card(
+  // Several options are the agent's own words, often a line each: the wide card wraps fewer.
+  return shell(
+    request.options.length > 1 ? 'hud-card wide question' : 'hud-card question',
     createElement(MessageCircleQuestionMark, iconAttrs(16, 'attn')),
     request.title,
     [covered],
-    [
-      ...lead,
-      ...request.options.map((option, index) =>
-        answerButton({
-          act: `option-${index}`,
-          variant: single ? 'solid' : 'outline',
-          label: option,
-          disabled: waiting,
-          onClick: () => ctx.intent({ kind: 'answer', request, answer: { answer: option } }),
-        }),
-      ),
-    ],
+    [choices(ctx, request)],
+    footer(lead, [openButton(ctx, t('hud.answerInAtd'))]),
   );
 }
 
 /** A run waiting for something the HUD cannot answer: the person goes to Atd for it. */
 export function appNeededCard(ctx: RunRender): HTMLElement {
-  return card(
+  return shell(
+    'hud-card',
     createElement(MessageCircleQuestionMark, iconAttrs(16, 'attn')),
     t('hud.needsApp'),
     [bodyText(ctx.run.title)],
-    [
-      stopButton(ctx, 'lead'),
-      gbtn({
-        act: 'open',
-        variant: 'solid',
-        label: t('hud.openInAtd'),
-        disabled: !ctx.reachable,
-        onClick: () => ctx.intent({ kind: 'open' }),
-      }),
-    ],
-  );
-}
-
-/** A run started from this extension ends with its reply here, clipped when the shell clipped it. */
-export function replyCard(ctx: RunRender, result: { text: string; clipped: boolean }): HTMLElement {
-  return card(
-    createElement(CircleCheck, iconAttrs(16, 'ok')),
-    ctx.run.title,
-    [
-      h(
-        'div',
-        { class: 'hud-card-body reply', attrs: { tabindex: 0, 'data-part': 'body' } },
-        result.text,
-      ),
-      result.clipped ? note(t('hud.clipped')) : null,
-    ],
-    [copyButton(ctx, result.text), openButton(ctx), saveButton(ctx), dismissButton(ctx)],
-    true,
+    [],
+    footer(
+      [stopButton(ctx, 'card')],
+      [
+        gbtn({
+          act: 'open',
+          variant: 'solid',
+          label: t('hud.openInAtd'),
+          disabled: !ctx.reachable,
+          onClick: () => ctx.intent({ kind: 'open' }),
+        }),
+      ],
+    ),
   );
 }

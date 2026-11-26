@@ -2,10 +2,13 @@ import type { RunView } from '../channel/payloads.ts';
 import {
   ACTIVE_RUN_STATUSES,
   ENDED_RUN_STATUSES,
-  type PopupView,
+  type PanelSurface,
+  type PanelView,
   type SiteView,
+  type SurfaceRun,
   type TabView,
 } from '../messages/views.ts';
+import { parseReply } from '../rich-text/parse.ts';
 import { effectivePrefs, type BackgroundState } from './store.ts';
 import { webOrigin } from './urls.ts';
 
@@ -34,13 +37,20 @@ export function projectRuns(state: BackgroundState): RunView[] {
   );
 }
 
-export function popupView(state: BackgroundState, fallbackBrowser: string): PopupView {
+/** A run as the surfaces get it: its reply, if it has one, with the tree they render. */
+export function surfaceRun(run: RunView): SurfaceRun {
+  const { result, ...rest } = run;
+  if (!result) return rest;
+  return { ...rest, result: { ...result, blocks: parseReply(result.text) } };
+}
+
+export function panelView(state: BackgroundState, fallbackBrowser: string): PanelView {
   return {
     connection: state.connection,
     pairing: state.pairing,
     profileLabel: state.browser || fallbackBrowser,
     prefs: effectivePrefs(state.prefs),
-    runs: projectRuns(state),
+    runs: projectRuns(state).map(surfaceRun),
     sites: [...state.sites],
     askShortcut: state.askShortcut,
   };
@@ -75,22 +85,25 @@ export function shownRun(state: BackgroundState, tabId: number, tabRuns: TabRuns
   return runForTab(projectRuns(state), tabId, tabRuns);
 }
 
-/** One tab's view; `tabRuns` as for `runForTab`. */
+/** One tab's view; `tabRuns` as for `runForTab`, `panel` where Atd's panel opens from it. */
 export function tabView(
   state: BackgroundState,
   tabId: number,
   url: string,
   tabRuns: TabRuns,
+  panel: PanelSurface | null,
 ): TabView {
   const runs = projectRuns(state);
+  const run = runForTab(runs, tabId, tabRuns);
   return {
     tabId,
     connection: state.connection,
     paired: state.pairing.state === 'paired',
     prefs: effectivePrefs(state.prefs),
-    run: runForTab(runs, tabId, tabRuns),
+    run: run === null ? null : surfaceRun(run),
     busy: runs.some((run) => isActiveStatus(run.status)),
     site: siteView(url, state.sites),
+    panel,
   };
 }
 

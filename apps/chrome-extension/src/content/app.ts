@@ -15,11 +15,12 @@ import { PageTransitions } from './transition/transitions.ts';
 /**
  * One tab's in-page surfaces, driven by the service worker's `TabView` and `PointerView` over the
  * content port: the edge light with the page transitions at a run's start and end, the live
- * pointer, and the HUD with the in-page ask. Each surface adds its layer to the page only while it
- * shows. The content script reads nothing from the page and sends nothing until the person acts
- * (an ask, a HUD control), apart from activity pings while a run owns this tab and the capture
- * requests its page transitions make; the light's background sampling stays in the page. Commands
- * on selected text are Atd's own selection toolbar, not the extension's.
+ * pointer, and the HUD with the in-page ask and its inspector. Each surface adds its layer to the
+ * page only while it shows. The content script reads nothing from the page and sends nothing until
+ * the person acts (an ask, an element they pick, a HUD control), apart from activity pings while a
+ * run owns this tab and the capture requests its page transitions make; the light's background
+ * sampling stays in the page. Commands on selected text are Atd's own selection toolbar, not the
+ * extension's.
  */
 export function startContent(): void {
   removeStaleHosts();
@@ -37,15 +38,15 @@ export function startContent(): void {
   });
   const send = port.send.bind(port);
 
-  const light = new EdgeLight(() => hud.view.bounds());
+  const light = new EdgeLight(() => hud.bounds());
   const pointerLayer = new PointerLayer((at) => light.click(at.x, at.y));
   const transitions = new PageTransitions({ send });
   const edges = new RunEdges({
     light,
     transitions,
     effects: () => tab?.prefs.glowEffects ?? true,
-    hudBounds: () => hud.view.bounds(),
-    hudDrawn: () => hud.view.drawnBounds(),
+    hudBounds: () => hud.bounds(),
+    hudDrawn: () => hud.drawnBounds(),
     pointerBounds: () => pointerLayer.bounds(),
   });
   const runActive = () => !!tab?.run && ACTIVE_RUN_STATUSES.includes(tab.run.status);
@@ -54,7 +55,8 @@ export function startContent(): void {
   const activity = watchActivity({
     active: runActive,
     dispatchingUntil: () => pointerLayer.dispatchingUntil,
-    ownEvent: (event) => hud.view.isMoveShortcut(event),
+    // Picking an element of the page is input to Atd's own UI, though it lands on the page.
+    ownEvent: (event) => hud.isMoveShortcut(event) || (hud.ask.capturing && event.type !== 'wheel'),
     report: () => send({ type: 'input' }),
   });
   const hud = new Hud({
@@ -87,6 +89,8 @@ export function startContent(): void {
         return hud.openAsk();
       case 'ask.status':
         return hud.ask.status(message);
+      case 'panel.status':
+        return hud.ask.panelStatus(message.opened);
       case 'followUp.failed':
         return hud.followUpFailed(message.taskId);
       case 'transition.frame':

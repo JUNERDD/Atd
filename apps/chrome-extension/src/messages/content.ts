@@ -1,7 +1,7 @@
 import { PermissionAnswerSchema } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
-import { OwnInputSchema } from '../channel/payloads.ts';
-import type { AskFailure, PointerView, TabView } from './views.ts';
+import { OwnInputSchema, PickedElementSchema } from '../channel/payloads.ts';
+import type { AskStatus, PointerView, TabView } from './views.ts';
 
 /**
  * Content script ↔ service worker, over one `chrome.runtime.connect({name: CONTENT_PORT})` port
@@ -27,15 +27,24 @@ export const ContentMessageSchema = Type.Union([
   Type.Object({ type: Type.Literal('ready') }),
   /**
    * The in-page ask was sent. `includePage: false` (the person removed the page chip) sends the
-   * request without the page's URL and title.
+   * request without the page's URL and title. `elements`: the elements the person picked on the
+   * page (the inspector), built when each was picked; they go to Atd only with the page.
    */
   Type.Object({
     type: Type.Literal('ask'),
     requestId: Id,
     text: Type.String({ minLength: 1, maxLength: MAX_REQUEST_TEXT }),
     includePage: Type.Boolean(),
+    elements: Type.Optional(Type.Array(PickedElementSchema, { minItems: 1, maxItems: 5 })),
     ownInput: Type.Optional(OwnInputSchema),
   }),
+  /**
+   * Open side panel in the in-page ask: Atd's panel for this tab's window (the toolbar popup where
+   * a browser has no side panel), answered by `panel.status`. Sent within the person's click: the
+   * port message carries the frame's user activation to the worker, which holds it only while it
+   * dispatches the message, so the worker opens the panel before it awaits anything.
+   */
+  Type.Object({ type: Type.Literal('panel.open') }),
   Type.Object({ type: Type.Literal('run.stop'), taskId: Id, runId: Id }),
   /**
    * Dismiss on an ended run's HUD: the shell may forget the run (`run.dismiss`), and the tab no
@@ -93,20 +102,12 @@ export type BackgroundToContent =
   | { type: 'state'; view: TabView }
   /** `null` hides the pointer (`cleared`, run end, tab released). */
   | { type: 'pointer'; pointer: PointerView | null }
-  /** The ask shortcut (⇧⌘K by default) or the popup's "Ask Atd on This Page…" opens the ask. */
+  /** The toolbar button or the ask shortcut (⇧⌘K by default): open the in-page ask, or close it. */
   | { type: 'ask.open' }
-  /**
-   * Atd took the ask (`taskId`/`runId` name the run it started, which then shows in
-   * `state.view.run`) or refused it (`reason`).
-   */
-  | {
-      type: 'ask.status';
-      requestId: string;
-      state: 'accepted' | 'failed';
-      reason?: AskFailure;
-      taskId?: string;
-      runId?: string;
-    }
+  /** The answer to `panel.open`: whether Atd's panel opened (Chrome may refuse it). */
+  | { type: 'panel.status'; opened: boolean }
+  /** Atd's answer to the tab's ask; the run it started then shows in `state.view.run`. */
+  | AskStatus
   /**
    * Save as automation did not reach Atd (the shell answered `error {ref: taskId}`, or the
    * channel was not ready): the HUD shows the failure instead of "Sent to Atd".

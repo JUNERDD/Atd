@@ -1,6 +1,6 @@
 import type { ContentMessage } from '../../messages/content.ts';
 import { h } from '../dom.ts';
-import { Layer, sheet } from '../hosts.ts';
+import { Layer } from '../hosts.ts';
 import { requestId } from '../ids.ts';
 import { signal } from '../lifetime.ts';
 import { CaptureClient, type FrameReply } from './capture.ts';
@@ -91,7 +91,7 @@ interface Run {
  * background's `transition.frame` to `receive`.
  */
 export class PageTransitions {
-  private readonly layer = new Layer('atd-transition', [sheet(transitionCss)]);
+  private readonly layer = new Layer('atd-transition', [transitionCss]);
   private readonly capture: CaptureClient;
   private stage: Stage | null = null;
   private run: Run | null = null;

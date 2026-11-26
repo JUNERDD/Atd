@@ -1,9 +1,10 @@
 import type { ChromePrefs, PointerPhase, RunView } from '../channel/payloads.ts';
+import type { RichBlock } from '../rich-text/tree.ts';
 
 /**
  * The state the service worker projects for the extension's own surfaces. The background owns the
- * channel and every Chrome API side effect; the content script and the popup render these views
- * and send intents back (`content.ts`, `popup.ts`). This file has only type imports, so the
+ * channel and every Chrome API side effect; the content script and the panel render these views
+ * and send intents back (`content.ts`, `panel.ts`). This file has only type imports, so the
  * content script may import it without bundling TypeBox or the contracts.
  */
 
@@ -29,7 +30,7 @@ export type Connection =
 
 /**
  * Why pairing did not complete: the shell's `pair.state` reason codes, `notConnected` when the
- * channel dropped meanwhile, and `unknown` for any code this version does not know. The popup
+ * channel dropped meanwhile, and `unknown` for any code this version does not know. The panel
  * shows localized copy for each, never the code.
  */
 export const PAIR_FAILURES = [
@@ -58,9 +59,10 @@ export interface PairingView {
 }
 
 /**
- * Why an in-page ask failed, as a code the HUD shows localized copy for: the shell's `ask.failed`
- * codes (`otherHost`, `serviceUnavailable`, anything else → `failed`), or the background's own
- * refusals (`notConnected`, `notPaired`, `tooLong`: the text exceeds what Atd accepts).
+ * Why an ask failed, as a code the surface that asked (the in-page ask or the panel's composer)
+ * shows localized copy for: the shell's `ask.failed` codes (`otherHost`, `serviceUnavailable`,
+ * anything else → `failed`), or the background's own refusals (`notConnected`, `notPaired`,
+ * `tooLong`: the text exceeds what Atd accepts).
  */
 export type AskFailure =
   | 'notConnected'
@@ -70,7 +72,34 @@ export type AskFailure =
   | 'serviceUnavailable'
   | 'failed';
 
-/** This tab's site and whether the person allowed Atd to act there (popup switch, D6). */
+/**
+ * Atd's answer to an ask, posted to the surface that sent it: Atd took it (`taskId`/`runId` name
+ * the run it started) or refused it (`reason`).
+ */
+export interface AskStatus {
+  type: 'ask.status';
+  requestId: string;
+  state: 'accepted' | 'failed';
+  reason?: AskFailure;
+  taskId?: string;
+  runId?: string;
+}
+
+/**
+ * A run's reply as the surfaces show it: `text` is the Markdown as Atd sent it (what Copy copies),
+ * `clipped` whether the shell clipped it, and `blocks` the tree the HUD and the panel render, which
+ * the service worker parses (`rich-text/parse.ts`) so neither surface carries a parser.
+ */
+export interface ReplyView {
+  text: string;
+  clipped: boolean;
+  blocks: RichBlock[];
+}
+
+/** A run as the surfaces get it: the shell's `RunView`, its reply ready to render. */
+export type SurfaceRun = Omit<RunView, 'result'> & { result?: ReplyView };
+
+/** This tab's site and whether the person allowed Atd to act there (the panel's switch, D6). */
 export interface SiteView {
   origin: string;
   host: string;
@@ -78,19 +107,27 @@ export interface SiteView {
 }
 
 /**
+ * Where Atd's panel opens from a surface's own control (the in-page ask's Open side panel):
+ * Chrome's side panel, or the toolbar popup where a browser has no side panel API.
+ */
+export type PanelSurface = 'sidePanel' | 'popup';
+
+/**
  * Everything one tab's content script renders. `run` is the run owning this tab (the latest one),
  * kept with status `disconnected` while the channel is down so the HUD shows the last known state
  * without claiming progress. `busy` means a run is active somewhere in this browser, which keeps
- * the in-page ask closed (one request per browser at a time).
+ * the in-page ask from sending (one request per browser at a time). `panel` is where Atd's panel
+ * opens from the in-page ask, or null where the browser can open it from neither.
  */
 export interface TabView {
   tabId: number;
   connection: Connection;
   paired: boolean;
   prefs: ChromePrefs;
-  run: RunView | null;
+  run: SurfaceRun | null;
   busy: boolean;
   site: SiteView | null;
+  panel: PanelSurface | null;
 }
 
 /** The live pointer for this tab, in CSS px of its viewport (the `pointer` frame minus routing). */
@@ -102,22 +139,25 @@ export interface PointerView {
   viewport?: { width: number; height: number };
 }
 
-/** Everything the toolbar popup renders. The popup reads the active tab itself. */
-export interface PopupView {
+/**
+ * Everything the panel renders (Chrome's side panel, or the toolbar popup where a browser has no
+ * side panel). The panel follows its window's active tab itself.
+ */
+export interface PanelView {
   connection: Connection;
   pairing: PairingView;
   /** The browser name shown before pairing (shell-verified from `welcome`, else `browserLabel`). */
   profileLabel: string;
   prefs: ChromePrefs;
   /** Runs tied to this Chrome; active ones become `disconnected` while the channel is down. */
-  runs: RunView[];
-  /** Origins the person allowed (popup switches). */
+  runs: SurfaceRun[];
+  /** Origins the person allowed (the panel's site switch). */
   sites: string[];
   /** The ask command's shortcut as Chrome shows it (e.g. `⇧⌘K`), '' when unassigned. */
   askShortcut: string;
 }
 
-/** Runs the HUD and popup treat as in progress. */
+/** Runs the HUD and the panel treat as in progress. */
 export const ACTIVE_RUN_STATUSES: readonly RunView['status'][] = [
   'working',
   'attention',

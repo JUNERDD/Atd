@@ -16,7 +16,7 @@ export interface BackgroundState {
   browser: string | undefined;
   /** The prefs Atd last forwarded (kept across sessions), or undefined before Atd ever did. */
   prefs: ChromePrefs | undefined;
-  /** Origins the person allowed Atd to act on (the popup's site switch, D6). */
+  /** Origins the person allowed Atd to act on (the panel's site switch, D6). */
   sites: readonly string[];
   /** The shell's last `runs` snapshot as sent; `projectRuns` adds the disconnected view. */
   runs: readonly RunView[];

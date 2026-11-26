@@ -1,0 +1,157 @@
+/* Atd for Chrome · panel: the composer, kept in view under the panel's content, which meets it under
+   the bottom scroll edge rather than a divider. Loaded last; like the panel's other rules, unlayered
+   on top of the generated kit. */
+.pp-compose {
+  flex: none;
+  padding: 2px var(--margin-page) var(--margin-page);
+}
+
+/* One grouped surface for the request: the field on top, the page chip and Send under it. Focused,
+   its edge takes the accent as a Mac text field's does; a refused request marks it in red, and the
+   words under it say why. */
+.pp-compose-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 8px 8px 10px;
+  border-radius: 12px;
+  background: var(--pp-box);
+  box-shadow: inset 0 0 0 0.5px var(--separator);
+  transition: box-shadow var(--dur-fast) var(--curve-out);
+}
+.pp-compose-box:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--focus-ring),
+    0 0 0 3px color-mix(in srgb, var(--focus-ring) 22%, transparent);
+}
+.pp-compose-box:has(> [aria-invalid='true']) {
+  box-shadow: inset 0 0 0 1px var(--state-error);
+}
+@media (forced-colors: active) {
+  .pp-compose-box {
+    border: 1px solid CanvasText;
+  }
+  .pp-compose-box:focus-within {
+    outline: 2px solid Highlight;
+  }
+}
+
+/* The field draws nothing of its own (the box is its surface and ring) and grows with the request,
+   up to a share of the side panel's height or eight lines in the popup, then scrolls. The kit's
+   ring and invalid line (0-1-0, 0-1-1) are lifted at 0-2-0. */
+.pp-compose-field {
+  display: block;
+  width: 100%;
+  min-height: calc(2 * var(--lh-body));
+  max-height: min(40vh, calc(12 * var(--lh-body)));
+  margin: 0;
+  padding: 1px 0;
+  border: 0;
+  background: transparent;
+  color: var(--label);
+  caret-color: var(--accent);
+  resize: none;
+  field-sizing: content;
+}
+html[data-surface='popup'] .pp-compose-field {
+  max-height: calc(8 * var(--lh-body));
+}
+.pp-compose-field:focus-visible,
+.pp-compose-field[aria-invalid='true'] {
+  outline: none;
+  box-shadow: none;
+}
+.pp-compose-field::placeholder {
+  color: color-mix(in srgb, var(--secondary-label) 85%, var(--label));
+  opacity: 1;
+}
+.pp-compose-field:read-only {
+  color: var(--secondary-label);
+}
+
+.pp-compose-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+}
+.pp-send {
+  --_btn-h: 26px;
+  flex: none;
+  margin-inline-start: auto;
+}
+.pp-send svg {
+  width: 15px;
+  height: 15px;
+}
+.pp-send .activity-indicator {
+  width: 13px;
+  height: 13px;
+}
+
+/* The page chip: the website the request takes along, or the choice to take it again. */
+.pp-chip {
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 22px;
+  padding: 0 2px 0 7px;
+  border-radius: 11px;
+  background: var(--fill-tertiary);
+  color: var(--secondary-label);
+  font-size: var(--fs-subheadline);
+  line-height: 1;
+}
+.pp-chip > svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+.pp-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pp-chip-x,
+.pp-chip-add {
+  appearance: none;
+  margin: 0;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.pp-chip-x {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+}
+.pp-chip-x svg {
+  width: 11px;
+  height: 11px;
+}
+.pp-chip-add {
+  padding: 0 8px 0 6px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pp-chip-x:hover,
+  .pp-chip-add:hover {
+    background: var(--fill-secondary);
+    color: var(--label);
+  }
+}
+.pp-chip-x:focus-visible,
+.pp-chip-add:focus-visible {
+  outline-offset: 0;
+}
+
+.pp-compose-note {
+  margin-inline: 4px;
+}

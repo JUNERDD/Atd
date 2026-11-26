@@ -1,3 +1,9 @@
+import {
+  actionClicked,
+  configureActionSurface,
+  openPanel,
+  panelSurface,
+} from './action-surface.ts';
 import { CdpError } from './cdp/messages.ts';
 import { Debuggee } from './cdp/debuggee.ts';
 import { CdpTranslator } from './cdp/translator.ts';
@@ -19,8 +25,8 @@ import { OwnedTabs } from './owned-tabs.ts';
 import { Ownership } from './ownership.ts';
 import { Pairing } from './pairing.ts';
 import { Pointers } from './pointer.ts';
-import { handlePopupIntent, type PopupIntentDeps } from './popup-intents.ts';
-import { popupView, shownRun, tabView, type TabRuns } from './projection.ts';
+import { handlePanelIntent, type PanelIntentDeps } from './panel-intents.ts';
+import { panelView, shownRun, tabView, type TabRuns } from './projection.ts';
 import { PendingRequests } from './requests.ts';
 import { RunLinks } from './run-links.ts';
 import { handleShellFrame, type ShellFrameDeps } from './shell-frames.ts';
@@ -33,7 +39,7 @@ import { TransitionGate } from './transition-gate.ts';
 
 /**
  * The service worker of Atd for Chrome (an MV3 module). It owns the native channel to the Atd
- * shell and every Chrome API side effect; the content scripts and the popup render the views it
+ * shell and every Chrome API side effect; the content scripts and the panels render the views it
  * pushes and send intents back. Every listener is added in this first turn, because Chrome hands
  * the event that woke a stopped worker only to listeners registered then; work that needs the
  * restored state waits for `booted`. Startup always connects, so a worker stopped while it backed
@@ -41,6 +47,8 @@ import { TransitionGate } from './transition-gate.ts';
  */
 
 const store = new Store();
+/** Where the in-page ask's Open side panel leads; fixed for the browser. */
+const panel = panelSurface();
 const send: SendFrame = (frame) => channel.send(frame);
 /** Frames that need Atd: dropped while the channel is not ready. */
 const forward: SendFrame = (frame) => store.state.connection === 'ready' && channel.send(frame);
@@ -59,21 +67,21 @@ const links = new RunLinks(() => surfaces.schedulePush());
 const hidden = new HiddenRuns(() => surfaces.schedulePush());
 const surfaces = new Surfaces(
   {
-    popup: () => popupView(store.state, browserLabel()),
-    tab: (tabId, url) => tabView(store.state, tabId, url, tabRuns(tabId)),
+    panel: () => panelView(store.state, browserLabel()),
+    tab: (tabId, url) => tabView(store.state, tabId, url, tabRuns(tabId), panel),
   },
   {
     content: (tabId, intent, reply) => handleContentIntent(contentDeps, tabId, intent, reply),
     contentGone: (tabId) => gate.release(tabId),
     invalidContent: (tabId, message) => handleInvalidContent(contentDeps, tabId, message),
-    popup: (intent) => handlePopupIntent(popupDeps, intent),
-    popupOpened: () => void refreshShortcut(),
+    panel: (intent, reply) => handlePanelIntent(panelDeps, intent, reply),
+    panelOpened: () => void refreshShortcut(),
   },
 );
 const injector = new ContentInjector(surfaces);
 const pointers = new Pointers(owned, surfaces);
 const ownership = new Ownership(owned, groups, injector, pointers, send);
-const requests = new PendingRequests(surfaces);
+const requests = new PendingRequests();
 const followUps = new FollowUps((taskId) => {
   for (const tabId of surfaces.contentTabs())
     if (shownRun(store.state, tabId, tabRuns(tabId))?.taskId === taskId)
@@ -119,7 +127,7 @@ const contentDeps: ContentIntentDeps = {
   transitions,
   shownRun: (tabId) => shownRun(store.state, tabId, tabRuns(tabId)),
 };
-const popupDeps: PopupIntentDeps = {
+const panelDeps: PanelIntentDeps = {
   store,
   forward,
   toShell,
@@ -129,7 +137,7 @@ const popupDeps: PopupIntentDeps = {
   },
   pairing,
   owned,
-  openAsk: (tabId) => openAsk(tabId, store.state.pairing.state === 'paired', injector, surfaces),
+  requests,
 };
 const frameDeps: ShellFrameDeps = {
   store,
@@ -155,6 +163,7 @@ owned.onChange(() => {
   indicators.schedule();
 });
 
+configureActionSurface();
 const booted = boot();
 // A literal mode, so the release build leaves the dev reloader out entirely.
 if (import.meta.env.MODE === 'dev') {
@@ -165,8 +174,9 @@ if (import.meta.env.MODE === 'dev') {
 }
 
 chrome.runtime.onConnect.addListener((port) => surfaces.accept(port));
+chrome.action.onClicked.addListener((tab) => actionClicked(tab, askIn));
 chrome.commands.onCommand.addListener((command, tab) => {
-  if (command === ASK_COMMAND) void booted.then(() => askFromShortcut(tab));
+  if (command === ASK_COMMAND) void askFromShortcut(tab);
 });
 chrome.debugger.onEvent.addListener((source, method, params) =>
   debuggee.handleEvent(source, method, params),
@@ -232,11 +242,31 @@ async function openForWorker(url: string): Promise<number> {
   return ownership.openForRun(runId, url);
 }
 
+/**
+ * The person asked for Atd in `tab` (the toolbar button, the ask shortcut): the in-page ask where
+ * the tab's content script can run, in every connection state, else Atd's panel. Decided before
+ * anything is awaited, so the panel opens within the person's gesture; the in-page ask waits for
+ * the restored state (a click may have woken the worker).
+ */
+function askIn(tab: chrome.tabs.Tab): void {
+  const tabId = tab.id;
+  if (tabId === undefined || !injector.reaches(tab)) {
+    void openPanel({ windowId: tab.windowId });
+    return;
+  }
+  void booted.then(() => openAsk({ id: tabId, windowId: tab.windowId }, injector, surfaces));
+}
+
+/**
+ * The ask shortcut, as the toolbar button. Chrome names the tab for a shortcut pressed in a browser
+ * window; without one, the query costs the gesture and the panel may no longer open.
+ */
 async function askFromShortcut(tab: chrome.tabs.Tab | undefined): Promise<void> {
-  const tabId =
-    tab?.id ?? (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]?.id;
-  if (tabId === undefined) return;
-  await openAsk(tabId, store.state.pairing.state === 'paired', injector, surfaces);
+  const target =
+    tab?.id === undefined
+      ? (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]
+      : tab;
+  if (target !== undefined) askIn(target);
 }
 
 /** Chrome sends no event when the person changes a shortcut, so it is read when it may show. */

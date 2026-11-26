@@ -5,10 +5,16 @@ import { FLAVORS, type Flavor } from './flavors.ts';
 /**
  * The extension manifest per flavor. Permissions are the minimum the channel needs: `debugger` for
  * tabs handed to a task (never others), `tabs` and `tabGroups` for the "Atd" group, `scripting` to
- * reach tabs that were open before the extension loaded, `nativeMessaging` for the Atd shell and
- * `storage` for the pairing and HUD positions. No cookies, history, bookmarks, downloads or
- * webRequest. `<all_urls>` lets the in-page HUD run on any site; the content script reads nothing
- * from a page until the person sends a request.
+ * reach tabs that were open before the extension loaded, `nativeMessaging` for the Atd shell,
+ * `storage` for the pairing and HUD positions, and `sidePanel` for the panel. No cookies, history,
+ * bookmarks, downloads or webRequest. `<all_urls>` lets the in-page HUD run on any site; the
+ * content script reads nothing from a page until the person picks an element of it for a request
+ * or sends one.
+ *
+ * The toolbar button has no popup here: it opens the in-page ask in the active tab, as the ask
+ * command does, or the panel in Chrome's side panel on a tab no content script can run in; where a
+ * browser has no side panel, the service worker sets the panel page as its popup instead
+ * (`src/background/action-surface.ts`).
  */
 export function manifestFor(flavor: Flavor) {
   const identity = FLAVORS[flavor];
@@ -28,12 +34,12 @@ export function manifestFor(flavor: Flavor) {
     },
     action: {
       default_title: '__MSG_actionTitle__',
-      default_popup: 'src/popup/index.html',
       default_icon: {
         16: `icons/${flavor}/toolbar-16.png`,
         32: `icons/${flavor}/toolbar-32.png`,
       },
     },
+    side_panel: { default_path: 'src/panel/index.html' },
     background: { service_worker: 'src/background/index.ts', type: 'module' },
     content_scripts: [
       { matches: ['<all_urls>'], js: ['src/content/index.ts'], run_at: 'document_idle' },
@@ -46,7 +52,15 @@ export function manifestFor(flavor: Flavor) {
         description: '__MSG_commandAsk__',
       },
     },
-    permissions: ['debugger', 'tabs', 'tabGroups', 'storage', 'nativeMessaging', 'scripting'],
+    permissions: [
+      'debugger',
+      'tabs',
+      'tabGroups',
+      'storage',
+      'nativeMessaging',
+      'scripting',
+      'sidePanel',
+    ],
     host_permissions: ['<all_urls>'],
   });
 }

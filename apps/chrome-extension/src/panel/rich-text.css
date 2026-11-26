@@ -1,0 +1,139 @@
+/* A reply's Markdown (`rich-text.tsx`) in its run's reply box, on the kit's tokens at macOS
+   density: the 13-pt body with a reading leading, blocks a step apart, the link colour, code in the
+   kit's mono face. Code wraps and tables share the box's width, so nothing scrolls on its own: the
+   panel's content scrolls the reply with the runs around it. */
+.pp-rt {
+  white-space: normal;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.pp-rt :is(p, h1, h2, h3, h4, h5, h6, ul, ol, pre, blockquote, table) {
+  margin: 0;
+}
+:is(.pp-rt, .pp-rt li, .pp-rt blockquote, .pp-rt-task-body) > * + * {
+  margin-top: var(--space-2);
+}
+.pp-rt > * + :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: var(--space-3);
+}
+.pp-rt :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 600;
+  line-height: 1.3;
+}
+.pp-rt h1 {
+  font-size: var(--fs-title2);
+}
+.pp-rt h2 {
+  font-size: var(--fs-title3);
+}
+.pp-rt :is(h3, h4, h5, h6) {
+  font-size: var(--fs-headline);
+}
+.pp-rt strong {
+  font-weight: 600;
+}
+.pp-rt a {
+  color: var(--link);
+  text-decoration: none;
+}
+.pp-rt a:hover {
+  text-decoration: underline;
+}
+.pp-rt code {
+  font-family: var(--ff-mono);
+  font-size: 0.92em;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--fill-tertiary);
+}
+.pp-rt pre {
+  padding: 6px 8px;
+  border-radius: var(--corner-xs);
+  background: var(--fill-quaternary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+}
+.pp-rt pre code {
+  padding: 0;
+  background: none;
+}
+.pp-rt :is(ul, ol) {
+  padding-left: 20px;
+}
+.pp-rt li + li {
+  margin-top: var(--space-1);
+}
+.pp-rt li::marker {
+  color: var(--secondary-label);
+}
+.pp-rt li.pp-rt-task {
+  list-style: none;
+  display: flex;
+  gap: 7px;
+  margin-left: -20px;
+}
+/* Beside its box, not below it: the item's first block starts on the box's line. */
+.pp-rt li.pp-rt-task > .pp-rt-task-body {
+  min-width: 0;
+  flex: 1;
+  margin-top: 0;
+}
+/* A task's read-only box, centred on its first line. */
+.pp-rt-check {
+  appearance: none;
+  flex: none;
+  margin: 3px 0 0;
+  position: relative;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--secondary-label);
+  border-radius: 4px;
+}
+.pp-rt-check:checked {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.pp-rt-check:checked::after {
+  content: '';
+  position: absolute;
+  left: 3.5px;
+  top: 1px;
+  width: 3px;
+  height: 7px;
+  border: solid var(--accent-on);
+  border-width: 0 1.5px 1.5px 0;
+  rotate: 45deg;
+}
+.pp-rt blockquote {
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--separator);
+  color: var(--secondary-label);
+}
+.pp-rt hr {
+  margin-block: var(--space-3);
+  border: 0;
+  border-top: 1px solid var(--separator);
+}
+/* Columns share the width evenly, so a long word or URL wraps in its cell instead of widening it. */
+.pp-rt table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--fs-callout);
+}
+.pp-rt :is(th, td) {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--separator);
+  text-align: start;
+  vertical-align: top;
+}
+.pp-rt th {
+  font-weight: 600;
+}
+.pp-rt [data-align='center'] {
+  text-align: center;
+}
+.pp-rt [data-align='right'] {
+  text-align: end;
+}

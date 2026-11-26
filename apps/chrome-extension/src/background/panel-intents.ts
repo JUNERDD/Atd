@@ -1,25 +1,35 @@
-import type { PopupMessage } from '../messages/popup.ts';
+import type { PanelMessage } from '../messages/panel.ts';
+import { sendAsk } from './asks.ts';
 import type { SendFrame } from './native.ts';
 import type { OwnedTabs } from './owned-tabs.ts';
 import type { Pairing } from './pairing.ts';
+import type { PendingRequests } from './requests.ts';
 import type { Store } from './store.ts';
+import type { PanelReply } from './surfaces.ts';
 import { webOrigin } from './urls.ts';
 
-export interface PopupIntentDeps {
+export interface PanelIntentDeps {
   store: Store;
   /** Sends frames that need Atd: dropped while the channel is not ready. */
   forward: SendFrame;
   /** Sends frames the shell handles itself: also while its service is unavailable. */
   toShell: SendFrame;
-  /** Reconnect now: the popup's answer to a broken channel. */
+  /** Reconnect now: the panel's answer to a broken channel. */
   reconnect(): void;
   pairing: Pairing;
   owned: OwnedTabs;
-  openAsk(tabId: number): Promise<void>;
+  requests: PendingRequests;
 }
 
-/** What the toolbar popup asks for (status and control only, D10 / spec 10). */
-export function handlePopupIntent(deps: PopupIntentDeps, intent: PopupMessage): void {
+/**
+ * What the panel asks for: pairing and the connection, the composer's requests, the site switch,
+ * and control of the runs in this browser. Answers to an ask go back to the panel that sent it.
+ */
+export function handlePanelIntent(
+  deps: PanelIntentDeps,
+  intent: PanelMessage,
+  reply: PanelReply,
+): void {
   switch (intent.type) {
     case 'pair.start':
       deps.pairing.start();
@@ -30,9 +40,12 @@ export function handlePopupIntent(deps: PopupIntentDeps, intent: PopupMessage): 
     case 'reconnect':
       deps.reconnect();
       return;
-    case 'ask.open':
-      void deps.openAsk(intent.tabId);
+    case 'ask': {
+      const { requestId, tabId, text, includePage, ownInput } = intent;
+      const ask = { from: 'panel', tabId, requestId, text, includePage } as const;
+      void sendAsk(deps, ownInput === undefined ? ask : { ...ask, ownInput }, reply);
       return;
+    }
     case 'site.set':
       setSite(deps, intent.origin, intent.allowed);
       return;
@@ -58,7 +71,7 @@ export function handlePopupIntent(deps: PopupIntentDeps, intent: PopupMessage): 
  * The site switch (D6): sent to Atd and shown at once; Atd's `sites` frame that follows is the
  * truth. Only an http(s) origin, exactly as `URL.origin` writes it, is a site.
  */
-function setSite(deps: PopupIntentDeps, origin: string, allowed: boolean): void {
+function setSite(deps: PanelIntentDeps, origin: string, allowed: boolean): void {
   if (webOrigin(origin)?.origin !== origin || !deps.forward({ t: 'site.set', origin, allowed }))
     return;
   const others = deps.store.state.sites.filter((site) => site !== origin);
@@ -66,7 +79,7 @@ function setSite(deps: PopupIntentDeps, origin: string, allowed: boolean): void 
 }
 
 /** Show Tab: brings a run's tab and its window forward; only tabs runs work in. */
-async function showTab(deps: PopupIntentDeps, tabId: number): Promise<void> {
+async function showTab(deps: PanelIntentDeps, tabId: number): Promise<void> {
   const ofRun =
     deps.owned.get(tabId) !== undefined ||
     deps.store.state.runs.some((run) => run.tabs.includes(tabId));

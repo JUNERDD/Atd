@@ -226,20 +226,9 @@
   overflow-wrap: anywhere;
 }
 
-/* A run's reply: kept as written (line breaks), scrolled within the card when it is long. */
-.hud-card-body.reply {
-  max-height: 220px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  color: var(--fg);
-  font-size: 13px;
-  user-select: text;
-  -webkit-user-select: text;
-  cursor: auto;
-}
-
 .hud-card-note {
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.45;
   color: var(--fg-2);
   margin-top: 6px;
 }
@@ -248,51 +237,130 @@
   color: var(--attn);
 }
 
+/*
+ * A question's card never outgrows the viewport (the wrap keeps 22 px above and below it): its
+ * choices give up height and scroll, while the question and the footer stay.
+ */
+.hud-card.question {
+  max-height: calc(100vh - 44px);
+}
+
+.hud-card-head,
 .hud-card-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex: none;
 }
 
 /*
- * A card's button never outgrows its row. One whose label does not fit (an input's options are the
- * agent's own words) wraps inside the button, as the task panel's question options do, instead of
- * running past the card's leading edge, where the face clips it. One line keeps the 32 px control:
- * an 18 px line 7 px from each edge. The capsule's row stays one line and keeps `.gbtn` as it is.
+ * An input's options (`card.ts`): full-width answers, 4 px apart, each 6 px from the card's edges
+ * and concentric with its corner (22 − 6 = 16 px). A number stands on the glyph's column and the
+ * text on the title's, ending 14 px from the edge as the title does; long text wraps in place. One
+ * line keeps the 32 px control: an 18 px line 7 px from each edge.
  */
-.hud-card-actions .gbtn {
-  max-width: 100%;
+.hud-card-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* The choices' scroll area gives up height first; its thumb rides in the card's 6 px edge. */
+.hud-card-choices-area {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.hud-card-choices-viewport {
+  min-height: 0;
+}
+
+.hud-card-choices-area > .scroll-track {
+  right: -6px;
+}
+
+.gbtn.hud-choice {
+  flex: none;
+  width: 100%;
   height: auto;
   min-height: 32px;
-  padding-block: 7px;
+  padding: 7px 8px 7px 7px;
+  gap: 10px;
+  align-items: flex-start;
+  border-radius: 16px;
+  font-weight: 400;
   line-height: 18px;
   white-space: normal;
   overflow-wrap: anywhere;
   text-align: start;
 }
 
-.hud-card-actions .lead {
-  margin-right: auto;
+.hud-choice .gbtn-label {
+  min-width: 0;
+}
+
+/* A shade nearer `--fg` than `--fg-2`, so the number keeps 4.5:1 on the row's fill too. */
+.hud-choice-index {
+  flex: none;
+  width: 18px;
+  font-size: 12px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--fg) 30%, var(--fg-2));
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The only option is the card's one prominent action: its label centred, with no number. */
+.gbtn.hud-choice.solid {
+  justify-content: center;
+  padding-inline: 12px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/*
+ * The footer's two sides (`card.ts`): Stop at the leading edge, the rest at the trailing edge.
+ * When they do not fit on one line, the trailing side moves under the leading one, still trailing.
+ */
+.hud-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-card-lead,
+.hud-card-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hud-card-trail {
+  margin-inline-start: auto;
+  justify-content: flex-end;
 }
 
 /*
  * A card's answers count only once it has stayed put (`guard.ts`): until then they look inactive,
- * with the arrow cursor and no hover, and a click on them does nothing.
+ * with the arrow cursor and their resting fill (no hover or press), and a click on them does
+ * nothing.
  */
-.hud-card-actions .gbtn.guarded {
+.gbtn.guarded {
   transition: opacity 120ms ease-out;
 }
 
-.hud[data-settling] .hud-card-actions .gbtn.guarded {
+.hud[data-settling] .gbtn.guarded {
   opacity: 0.5;
   cursor: default;
-  filter: none;
   background: none;
 }
 
-.hud[data-settling] .hud-card-actions .gbtn.guarded.solid {
+.hud[data-settling] .gbtn.guarded.fill {
+  background: var(--wash);
+}
+
+.hud[data-settling] .gbtn.guarded.solid {
   background: var(--primary);
 }
 

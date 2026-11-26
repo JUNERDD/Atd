@@ -1,0 +1,151 @@
+/*
+ * The HUD's scroll area (`scroll-area.ts`), in its layer after hud.css. The viewport scrolls with
+ * its own scrollbar hidden; its scroll timeline drives the scroll shadows and the overlay thumb. A
+ * timeline is inactive while nothing overflows, so a short content shows neither.
+ *
+ * The scroll shadow is the product's (`scrollShadow` of `@atd/ui`'s ScrollArea, `.scroll-shadowed`
+ * in packages/ui/src/styles.css): the content itself dissolves over `--scroll-shadow-size` at an
+ * edge where more of it continues. It comes in over the first `--scroll-shadow-ramp` px of scroll
+ * (and leaves over the last), so it is all but immediate, as the product's, without popping.
+ */
+
+.scroll-area {
+  --scroll-shadow-size: 2.5rem;
+  --scroll-shadow-ramp: 8px;
+  position: relative;
+  timeline-scope: --scroll-area;
+  border-radius: 6px;
+}
+
+/* Focus shows around the area: a ring inside the viewport would fade with its edges. */
+.scroll-area:has(> .scroll-viewport:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+.scroll-viewport:focus-visible {
+  outline: none;
+}
+
+/*
+ * Two mask layers, intersected, each one edge's shadow, each a shadow longer than the viewport.
+ * At rest both shadows lie past the viewport's edges: the top layer is shifted up by a shadow (its
+ * position 100%), the bottom one is a shadow taller than the viewport. The first ramp of scroll
+ * brings the top shadow in; the last ramp takes the bottom one out. A mask, not an overlay: the
+ * HUD's glass shows the page through, so there is no colour to fade to.
+ */
+.scroll-viewport {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  touch-action: pan-y;
+  scroll-timeline: --scroll-area y;
+  mask-image:
+    linear-gradient(to bottom, transparent, #000 var(--scroll-shadow-size)),
+    linear-gradient(to top, transparent, #000 var(--scroll-shadow-size));
+  mask-repeat: no-repeat;
+  mask-composite: intersect;
+  mask-position:
+    0 100%,
+    0 0;
+  mask-size:
+    100% calc(100% + var(--scroll-shadow-size)),
+    100% calc(100% + var(--scroll-shadow-size));
+  animation:
+    scroll-fade-top linear both,
+    scroll-fade-bottom linear both;
+  animation-timeline: --scroll-area, --scroll-area;
+  animation-range:
+    0 var(--scroll-shadow-ramp),
+    calc(100% - var(--scroll-shadow-ramp)) 100%;
+}
+
+.scroll-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes scroll-fade-top {
+  from {
+    mask-position:
+      0 100%,
+      0 0;
+  }
+  to {
+    mask-position:
+      0 0,
+      0 0;
+  }
+}
+
+@keyframes scroll-fade-bottom {
+  from {
+    mask-size:
+      100% calc(100% + var(--scroll-shadow-size)),
+      100% 100%;
+  }
+  to {
+    mask-size:
+      100% calc(100% + var(--scroll-shadow-size)),
+      100% calc(100% + var(--scroll-shadow-size));
+  }
+}
+
+/*
+ * The overlay thumb, in the gutter beside the content (the card's inset, 2 px from the glass's
+ * edge). It shows while the content overflows and the area is pointed at, scrolling or dragged,
+ * and widens while the pointer is on it.
+ */
+.scroll-track {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  right: -12px;
+  width: 10px;
+  opacity: 0;
+  pointer-events: none;
+  cursor: default;
+  transition: opacity 240ms ease-out;
+}
+
+.scroll-area[data-overflow]:is(:hover, [data-scrolling], [data-dragging]) > .scroll-track {
+  opacity: 1;
+  pointer-events: auto;
+  transition-duration: 80ms;
+}
+
+.scroll-thumb {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  right: 2px;
+  height: var(--thumb, 24px);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 38%, transparent);
+  transition:
+    left 120ms ease-out,
+    right 120ms ease-out,
+    background-color 120ms ease-out;
+  animation: scroll-thumb linear both;
+  animation-timeline: --scroll-area;
+}
+
+.scroll-track:hover > .scroll-thumb,
+.scroll-area[data-dragging] .scroll-thumb {
+  left: 1px;
+  right: 1px;
+  background: color-mix(in srgb, var(--fg) 55%, transparent);
+}
+
+@keyframes scroll-thumb {
+  to {
+    top: calc(100% - var(--thumb, 24px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-track,
+  .scroll-thumb {
+    transition: none;
+  }
+}

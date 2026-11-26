@@ -6,6 +6,7 @@ import {
   InstallationIdSchema,
   OriginSchema as Origin,
   OwnInputSchema,
+  PickedElementSchema,
   PointerPhaseSchema,
   RectSchema,
   RunViewSchema,
@@ -69,7 +70,11 @@ export const ExtensionFrameSchema = Type.Union([
     code: Type.String({ minLength: 4, maxLength: 4 }),
   }),
   Type.Object({ v: V, t: Type.Literal('pair.cancel') }),
-  /** `url` and `title` are empty when the person removed the page from the request. */
+  /**
+   * `url` and `title` are empty when the person removed the page from the request. `elements`: the
+   * elements the person picked on that page with the in-page ask's inspector, in the order picked;
+   * only together with the page (never with an empty `url`), and absent rather than empty.
+   */
   Type.Object({
     v: V,
     t: Type.Literal('ask'),
@@ -78,6 +83,7 @@ export const ExtensionFrameSchema = Type.Union([
     url: Text,
     title: Text,
     text: Text,
+    elements: Type.Optional(Type.Array(PickedElementSchema, { minItems: 1, maxItems: 5 })),
     ownInput: Type.Optional(OwnInputSchema),
   }),
   Type.Object({ v: V, t: Type.Literal('run.stop'), taskId: Id, runId: Id }),

@@ -3,13 +3,8 @@ import { gbtn, h, iconAttrs } from '../dom.ts';
 import { t } from '../i18n.ts';
 import { atdMark } from '../mark.ts';
 import { dismissButton, openButton, saveButton, stopButton } from './buttons.ts';
-import {
-  answerableRequest,
-  appNeededCard,
-  attentionCard,
-  cardIdentity,
-  replyCard,
-} from './card.ts';
+import { answerableRequest, appNeededCard, attentionCard, cardIdentity } from './card.ts';
+import { replyCard } from './reply.ts';
 import type { RunRender } from './intents.ts';
 
 export interface RunNode {
