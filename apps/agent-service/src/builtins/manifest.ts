@@ -287,8 +287,9 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // attended and visible (an Atd tab group, Chrome's debugging bar), every submit asks, passwords
   // are never typed (a sign-in page asks the person through `ask_user` with an "I've signed in"
   // option), downloads stay in Chrome, `chromeDisconnected` asks the person to reconnect it,
-  // automations re-create its sites as managed browser targets, and elements the person picked on
-  // the page with the ask's inspector are found in a current observation by label and text.
+  // automations re-create its sites as managed browser targets, the page a task was asked on and
+  // the elements the person picked there arrive in its run material, and those elements are found
+  // in a current observation by label and text.
   skill('computer-use', 37, [
     '95e7f156fded86138d9a94d342e6b7ffc76fd145636c79df9174965b957eba67', // v0.10.0
   ]),

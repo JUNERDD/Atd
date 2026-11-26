@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { AskedPageSchema } from './asked-page.js';
 import { ScreenshotTextFollowUpSchema } from './capture-answer.js';
 import { ComputerRunRequestSchema } from './computer-grants.js';
 import { Identifier, OperationId, SessionEntryId } from './identifiers.js';
@@ -75,6 +76,12 @@ export const SubmitTaskRequestSchema = Type.Object(
      * every other run.
      */
     screenshotText: Type.Optional(ScreenshotTextFollowUpSchema),
+    /**
+     * The web page an ask from Atd for Chrome came from (`AskedPageSchema`), which the service tells
+     * this run in hidden run material while `input.text` stays the person's words. Never with
+     * `screenshotText`, which tells the run something else.
+     */
+    page: Type.Optional(AskedPageSchema),
   },
   { additionalProperties: false },
 );

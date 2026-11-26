@@ -11,6 +11,8 @@ import {
   type TaskOrigin,
 } from '@atd/agent-contracts';
 import { screenshotTaskInstruction } from '../commands/output-instruction.js';
+import { pageInstruction } from './page-instruction.js';
+import { CONTEXT_BUDGET, taskInputSize } from './run-budget.js';
 import { needsSummaryTitle } from './title-policy.js';
 
 /**
@@ -66,20 +68,28 @@ export function checkSideChatOf(
 }
 
 /**
- * `internal` with what the request asks service code to tell the run: a run or follow-up carrying
+ * `internal` with what the request asks service code to tell the run: a run carrying
+ * `SubmitTaskRequest.page` is told the page an ask from Atd for Chrome came from, in the room the
+ * context budget leaves after its input (`pageInstruction`). A run or follow-up carrying
  * `SubmitTaskRequest.screenshotText` receives its answer-format instruction in hidden run material
  * (`screenshotTaskInstruction`), with the selected `[<id>]` blocks appended on new Ask tasks,
  * `run` repeats, and `reread` follow-ups. Free-form inline screenshot-text asks (`!fromCommand`,
  * `output !== 'panel'`) also take `lite` while the conversation has used only `lite` runs and the
  * request stages no tools, computer bindings, folders or chips; saved commands leave `lite` solely
- * to `launchCommand`. Service code that sets its own instructions sends no `screenshotText`.
+ * to `launchCommand`. Service code that sets its own instructions sends neither field.
  */
 export function requestedOptions(
   request: SubmitTaskRequest,
   previous: AgentTask | null,
   internal: InternalSubmitOptions,
 ): InternalSubmitOptions {
-  const screenshotText = request.screenshotText;
+  const { screenshotText, page } = request;
+  if (page !== undefined) {
+    if (screenshotText !== undefined)
+      throw new TypeError('Invalid data: page and screenshotText cannot be sent together.');
+    const room = CONTEXT_BUDGET - taskInputSize(request.input);
+    return { ...internal, instructions: pageInstruction(page, room) };
+  }
   if (screenshotText === undefined) return internal;
   if (!previous && screenshotText.turn === 'followUp')
     throw new TypeError('Invalid data: screenshotText followUp only applies to an existing task.');

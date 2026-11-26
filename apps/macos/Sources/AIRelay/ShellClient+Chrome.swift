@@ -1,12 +1,42 @@
 import AICore
 import Foundation
 
-/// A run the shell starts for Atd for Chrome: the person's text with the page it came from, run
+/// A run the shell starts for Atd for Chrome: the person's text and the page it came from, run
 /// in their own Chrome (`computer.browser: 'chrome'`) with the site's binding when they allowed
 /// the site (D12).
 public nonisolated struct ChromeTaskSubmit: Sendable {
+  /// `AskedPageSchema`: the page an ask came from and the elements the person picked on it, which
+  /// the service tells the run apart from `text`, so the task's title and the person's message in
+  /// the conversation stay what they typed.
+  public struct Page: Equatable, Sendable {
+    public struct Element: Equatable, Sendable {
+      public let label: String
+      public let selector: String
+      public let text: String
+
+      public init(label: String, selector: String, text: String) {
+        self.label = label
+        self.selector = selector
+        self.text = text
+      }
+    }
+
+    public let title: String
+    public let url: String
+    public let elements: [Element]
+
+    public init(title: String, url: String, elements: [Element]) {
+      self.title = title
+      self.url = url
+      self.elements = elements
+    }
+  }
+
   public let operationId: String
+  /// What the person typed.
   public let text: String
+  /// The page an ask came from; nil for an ask whose page the person removed, and for follow-ups.
+  public let page: Page?
   /// The site binding when the person allowed the site; empty starts the run with no site yet.
   public let bindingIds: [String]
   /// Whether the run may use the person's Chrome at all (an ask does; a follow-up from the HUD
@@ -16,11 +46,12 @@ public nonisolated struct ChromeTaskSubmit: Sendable {
   public let taskId: String?
 
   public init(
-    operationId: String, text: String, bindingIds: [String], usesChrome: Bool,
-    taskId: String? = nil
+    operationId: String, text: String, page: Page? = nil, bindingIds: [String],
+    usesChrome: Bool, taskId: String? = nil
   ) {
     self.operationId = operationId
     self.text = text
+    self.page = page
     self.bindingIds = bindingIds
     self.usesChrome = usesChrome
     self.taskId = taskId
@@ -40,6 +71,7 @@ extension ShellClient {
       "operationId": .string(submit.operationId), "input": Self.input(submit),
     ]
     if let taskId = submit.taskId { body["taskId"] = .string(taskId) }
+    if let page = submit.page { body["page"] = Self.page(page) }
     if submit.usesChrome {
       body["computer"] = .object([
         "bindingIds": .array(submit.bindingIds.map(JSONValue.string)), "browser": .string("chrome"),
@@ -102,6 +134,18 @@ extension ShellClient {
     try await send(
       "POST", path, body: try JSONEncoder().encode(body), contentType: "application/json",
       timeout: 15)
+  }
+
+  private static func page(_ page: ChromeTaskSubmit.Page) -> JSONValue {
+    .object([
+      "title": .string(page.title), "url": .string(page.url),
+      "elements": .array(
+        page.elements.map {
+          .object([
+            "label": .string($0.label), "selector": .string($0.selector), "text": .string($0.text),
+          ])
+        }),
+    ])
   }
 
   /// `TaskInputSchema` for text typed in Chrome.

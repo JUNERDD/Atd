@@ -1,4 +1,4 @@
-import type { RunSnapshot } from '@atd/agent-contracts';
+import type { RunSnapshot, TaskInput } from '@atd/agent-contracts';
 import { isRestrictedComputerRun } from '../computer/tool-set.js';
 import { quoteMaterial } from '../references/quotes.js';
 
@@ -18,11 +18,13 @@ export const CONTEXT_BUDGET = 120000;
  * message quotes as the run material renders them (references/quotes.ts).
  */
 export function runInputSize(snapshot: RunSnapshot): number {
+  return taskInputSize(snapshot.input) + snapshot.instructions.length;
+}
+
+/** What `runInputSize` counts of the input alone, before the run's hidden instructions. */
+export function taskInputSize(input: TaskInput): number {
   return (
-    snapshot.input.text.length +
-    snapshot.instructions.length +
-    JSON.stringify(snapshot.input.arguments).length +
-    quoteMaterial(snapshot.input).text.length
+    input.text.length + JSON.stringify(input.arguments).length + quoteMaterial(input).text.length
   );
 }
 
