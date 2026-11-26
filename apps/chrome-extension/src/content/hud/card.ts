@@ -9,18 +9,20 @@ import { scrollArea } from './scroll-area.ts';
 type InputRequest = Extract<HudRequest, { kind: 'input' }>;
 
 /**
- * The card anatomy: a glyph beside title and body, then the card's own sections (an input's
- * choices), then its footer. Its parts are named (`data-part`; a body and a note name themselves),
- * so a change in place moves each to its place.
+ * The card anatomy: a glyph beside title and body, with a card's close button in its top trailing
+ * corner, then the card's own sections (an input's choices), then its footer. Its parts are named
+ * (`data-part`; a body and a note name themselves), so a change in place moves each to its place.
  */
 function shell(
   classes: string,
   glyph: Element,
-  title: string,
+  title: HTMLElement,
   body: readonly (HTMLElement | null)[],
   sections: readonly HTMLElement[],
   actions: HTMLElement,
+  close: HTMLElement | null = null,
 ): HTMLElement {
+  close?.classList.add('hud-card-close');
   return h(
     'div',
     { class: classes },
@@ -28,15 +30,27 @@ function shell(
       'div',
       { class: 'hud-card-head' },
       h('span', { class: 'hud-glyph', attrs: { 'data-part': 'glyph' } }, glyph),
-      h(
-        'div',
-        { class: 'hud-card-text' },
-        h('div', { class: 'hud-card-title', attrs: { 'data-part': 'title' } }, title),
-        ...body,
-      ),
+      h('div', { class: 'hud-card-text' }, title, ...body),
+      close,
     ),
     ...sections,
     actions,
+  );
+}
+
+/**
+ * A card's title. A request's title is what the person answers, so it shows in full; a run's title
+ * (`clamped`) is the person's own request, which can run long, so it keeps to one line and ends in
+ * an ellipsis, with the whole of it on hover.
+ */
+function titleNode(text: string, clamped = false): HTMLElement {
+  return h(
+    'div',
+    {
+      class: clamped ? 'hud-card-title clamped' : 'hud-card-title',
+      attrs: { 'data-part': 'title', title: clamped ? text : undefined },
+    },
+    text,
   );
 }
 
@@ -54,15 +68,29 @@ function footer(lead: readonly HTMLElement[], trail: readonly HTMLElement[]): HT
   );
 }
 
-/** A card with its `actions` at the footer's trailing edge (a run's reply). */
+/**
+ * A run's card (its reply): the run's `title` on one line, its `body` its own section under
+ * the head, as wide as the head (long text reads across the card, not in the title's column beside
+ * the glyph), `close` in its top trailing corner and its `actions` at the footer's trailing edge.
+ */
 export function card(
   glyph: Element,
   title: string,
   body: readonly (HTMLElement | null)[],
   actions: readonly HTMLElement[],
+  close: HTMLElement,
   wide = false,
 ): HTMLElement {
-  return shell(wide ? 'hud-card wide' : 'hud-card', glyph, title, body, [], footer([], actions));
+  const section = h('div', { class: 'hud-card-section' }, ...body);
+  return shell(
+    wide ? 'hud-card wide' : 'hud-card',
+    glyph,
+    titleNode(title, true),
+    [],
+    [section],
+    footer([], actions),
+    close,
+  );
 }
 
 function bodyText(text: string): HTMLElement {
@@ -153,7 +181,7 @@ export function attentionCard(ctx: RunRender, request: HudRequest): HTMLElement 
     return shell(
       'hud-card',
       createElement(ShieldCheck, iconAttrs(16, 'attn')),
-      request.title,
+      titleNode(request.title),
       [request.detail ? bodyText(request.detail) : null, covered],
       [],
       footer(lead, [
@@ -179,7 +207,7 @@ export function attentionCard(ctx: RunRender, request: HudRequest): HTMLElement 
   return shell(
     request.options.length > 1 ? 'hud-card wide question' : 'hud-card question',
     createElement(MessageCircleQuestionMark, iconAttrs(16, 'attn')),
-    request.title,
+    titleNode(request.title),
     [covered],
     [choices(ctx, request)],
     footer(lead, [openButton(ctx, t('hud.answerInAtd'))]),
@@ -191,7 +219,7 @@ export function appNeededCard(ctx: RunRender): HTMLElement {
   return shell(
     'hud-card',
     createElement(MessageCircleQuestionMark, iconAttrs(16, 'attn')),
-    t('hud.needsApp'),
+    titleNode(t('hud.needsApp')),
     [bodyText(ctx.run.title)],
     [],
     footer(

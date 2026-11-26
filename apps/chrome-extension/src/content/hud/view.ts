@@ -176,13 +176,19 @@ export class HudView {
 
   /**
    * Whether the capsule is still on its way somewhere: the shape or its content moving, a glide,
-   * the exit. Endless motion (the step's shimmer, a spinner) is not.
+   * the exit. Endless motion (the step's shimmer, a spinner) is not, nor are the scroll-driven
+   * animations of a scroll area (`scroll-area.css`): they follow the scroll, never run on their
+   * own, and their timing is a progress, never a finite time.
    */
   private moving(): boolean {
     if (this.stage.moving) return true;
     return this.capsule
       .getAnimations({ subtree: true })
-      .some((animation) => animation.effect?.getComputedTiming().endTime !== Infinity);
+      .some(
+        (animation) =>
+          animation.timeline instanceof DocumentTimeline &&
+          animation.effect?.getComputedTiming().endTime !== Infinity,
+      );
   }
 
   private anchorPoint(): AnchorPoint {

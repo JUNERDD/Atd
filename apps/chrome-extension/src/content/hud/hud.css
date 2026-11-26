@@ -210,12 +210,29 @@
   flex: 1;
 }
 
+/*
+ * A card's close button, in its top trailing corner: 6 px from both edges, so concentric with the
+ * corner (6 + 16) as the row's controls are, and centred on the title's line. It takes no more of
+ * the head than that line, so the head keeps its height.
+ */
+.gbtn.icon.hud-card-close {
+  flex: none;
+  margin: -7px -8px -7px 0;
+}
+
 /* As tall a line as the glyph, so the two centre on the same point. */
 .hud-card-title {
   font-size: 13px;
   font-weight: 600;
   line-height: 18px;
   overflow-wrap: anywhere;
+}
+
+/* A run's title (`card.ts`): one line, ending in an ellipsis when it does not fit. */
+.hud-card-title.clamped {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .hud-card-body {
@@ -248,6 +265,15 @@
 .hud-card-head,
 .hud-card-actions {
   flex: none;
+}
+
+/*
+ * A body that is its own section (`card.ts`, a run's reply): on the head's insets, so its text
+ * starts on the glyph's column and ends with the title, 14 px from the edge.
+ */
+.hud-card-section {
+  min-width: 0;
+  padding: 0 8px 0 7px;
 }
 
 /*

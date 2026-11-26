@@ -1,11 +1,15 @@
 /* A run's reply card (`reply.ts`), in the HUD's layer after hud.css. */
 
-/* The reply scrolls within the card when it is long (`scroll-area.css`), and its text selects. */
-.hud-card-body.reply {
+/*
+ * The reply is the card's section under its head, across the card's width (`card.ts`); it scrolls
+ * within the card when it is long (`scroll-area.css`), and its text selects.
+ */
+.hud-reply {
   max-height: min(260px, 45vh);
   color: var(--fg);
   font-size: 13px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
   user-select: text;
   -webkit-user-select: text;
   cursor: auto;

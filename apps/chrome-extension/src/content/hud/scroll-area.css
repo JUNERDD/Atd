@@ -7,6 +7,11 @@
  * in packages/ui/src/styles.css): the content itself dissolves over `--scroll-shadow-size` at an
  * edge where more of it continues. It comes in over the first `--scroll-shadow-ramp` px of scroll
  * (and leaves over the last), so it is all but immediate, as the product's, without popping.
+ *
+ * The animations are written as longhands, never the `animation` shorthand: Lightning CSS, which
+ * minifies the content script's CSS, folds an `animation-timeline` beside a shorthand into it, and
+ * Chrome drops that declaration (a timeline is reset-only there), leaving no shadow and a thumb
+ * stuck at the top (parcel-bundler/lightningcss#1283).
  */
 
 .scroll-area {
@@ -52,10 +57,10 @@
   mask-size:
     100% calc(100% + var(--scroll-shadow-size)),
     100% calc(100% + var(--scroll-shadow-size));
-  animation:
-    scroll-fade-top linear both,
-    scroll-fade-bottom linear both;
-  animation-timeline: --scroll-area, --scroll-area;
+  animation-name: scroll-fade-top, scroll-fade-bottom;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-timeline: --scroll-area;
   animation-range:
     0 var(--scroll-shadow-ramp),
     calc(100% - var(--scroll-shadow-ramp)) 100%;
@@ -126,7 +131,9 @@
     left 120ms ease-out,
     right 120ms ease-out,
     background-color 120ms ease-out;
-  animation: scroll-thumb linear both;
+  animation-name: scroll-thumb;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
   animation-timeline: --scroll-area;
 }
 

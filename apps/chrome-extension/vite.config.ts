@@ -41,6 +41,13 @@ export default defineConfig(({ mode }) => {
       outDir: `dist/${flavor}`,
       emptyOutDir: true,
       target: 'chrome125',
+      // Lightning CSS 1.33 (Vite's default CSS minifier) folds `animation-timeline` into the
+      // `animation` shorthand for Chrome targets; Chrome accepts a timeline there only as a reset,
+      // so it drops the whole declaration and the scroll-driven animation (the panel kit's scroll
+      // edges) stops. esbuild keeps the longhand. CRXJS builds the content script on its own and
+      // does not pass this on, so `scroll-area.css` avoids the shorthand instead. Back to the
+      // default once Vite's lightningcss includes parcel-bundler/lightningcss#1306.
+      cssMinify: 'esbuild',
       rolldownOptions: {
         treeshake: {
           moduleSideEffects: [{ test: DECLARATION_ONLY, sideEffects: false }],

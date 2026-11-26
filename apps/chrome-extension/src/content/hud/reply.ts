@@ -18,14 +18,15 @@ export function replyCard(ctx: RunRender, reply: ReplyView): HTMLElement {
   const content = h('div', { class: 'rt' }, ...reply.blocks.map(blockNode));
   const viewport = h(
     'div',
-    { class: 'hud-card-body reply scroll-viewport', attrs: { tabindex: 0, 'data-part': 'body' } },
+    { class: 'hud-reply scroll-viewport', attrs: { tabindex: 0, 'data-part': 'body' } },
     content,
   );
   return card(
     createElement(CircleCheck, iconAttrs(16, 'ok')),
     ctx.run.title,
     [scrollArea(viewport, content), reply.clipped ? note(t('hud.clipped')) : null],
-    [copyButton(ctx, reply.text), openButton(ctx), saveButton(ctx), dismissButton(ctx)],
+    [copyButton(ctx, reply.text), openButton(ctx), saveButton(ctx)],
+    dismissButton(ctx),
     true,
   );
 }
