@@ -156,7 +156,9 @@ public enum ChromeInboundKeys {
     case v, t, installationId, extensionVersion, flavor, chromeVersion, fileAccess, secret, profile
   }
   public enum Pair: String, CodingKey { case v, t, code }
-  public enum Ask: String, CodingKey { case v, t, requestId, tabId, url, title, text, ownInput }
+  public enum Ask: String, CodingKey {
+    case v, t, requestId, tabId, url, title, text, ownInput, elements
+  }
   public enum Run: String, CodingKey { case v, t, taskId, runId }
   public enum Hold: String, CodingKey { case v, t, taskId, runId, tabId, held, ownInput }
   public enum Answer: String, CodingKey {

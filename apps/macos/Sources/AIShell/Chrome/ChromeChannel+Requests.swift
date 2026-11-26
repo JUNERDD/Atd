@@ -79,7 +79,8 @@ extension ChromeChannel {
     let site = siteBinding(for: ask.url, on: link)
     let submit = ChromeTaskSubmit(
       operationId: Self.operationId(),
-      text: Self.pagePrompt(ask.text, title: ask.title, url: ask.url),
+      text: Self.pagePrompt(
+        ask.text, title: ask.title, url: ask.url, elements: ask.elements ?? []),
       bindingIds: site.map { [$0.bindingId] } ?? [],
       usesChrome: true)
     do {
@@ -168,13 +169,53 @@ extension ChromeChannel {
   /// `TaskInputSchema`'s limit of `text`, in UTF-16 code units.
   static let taskTextLimit = 100_000
 
-  /// The person's text with the page it came from, which the model reads, within the service's
-  /// limit: the page is cut first, the person's own text only when it alone is too long.
-  static func pagePrompt(_ text: String, title: String, url: String) -> String {
+  /// The person's text with the page it came from and the elements they picked on it, which the
+  /// model reads, within the service's limit. The person's text keeps priority (cut only when it
+  /// alone is too long), then the page line (cut to what is left), then whole element lines in
+  /// order; an ask without a page names no elements either.
+  static func pagePrompt(
+    _ text: String, title: String, url: String, elements: [ChromePickedElement]
+  ) -> String {
     let lead = "\n\nAsked from this page in my Chrome: "
     let room = taskTextLimit - text.utf16.count - lead.utf16.count
     guard !url.isEmpty, room > 0 else { return text.clipped(toUTF16: taskTextLimit) }
-    let page = title.isEmpty ? url : "\(title) (\(url))"
-    return text + lead + page.clipped(toUTF16: room)
+    let page = (title.isEmpty ? url : "\(title) (\(url))").clipped(toUTF16: room)
+    return text + lead + page + pickedElements(elements, room: room - page.utf16.count)
+  }
+
+  /// The picked elements' lines under their heading, as many whole lines, in order, as fit in
+  /// `room` UTF-16 code units; empty when none fits, so a selector is never cut.
+  private static func pickedElements(_ elements: [ChromePickedElement], room: Int) -> String {
+    let heading = "\nElements I picked on this page:"
+    var left = room - heading.utf16.count
+    var lines = ""
+    for (index, element) in elements.enumerated() {
+      let line = elementLine(index + 1, element)
+      guard line.utf16.count <= left else { break }
+      lines += line
+      left -= line.utf16.count
+    }
+    return lines.isEmpty ? "" : heading + lines
+  }
+
+  private static func elementLine(_ number: Int, _ element: ChromePickedElement) -> String {
+    let label = singleLine(element.label)
+    let selector = singleLine(element.selector)
+    let text = singleLine(element.text)
+    return "\n\(number). \(label) — selector: `\(selector)`"
+      + (text.isEmpty ? "" : "; text: \"\(text)\"")
+  }
+
+  /// `value` with every control character and line or paragraph separator replaced by a space,
+  /// so text from the page cannot start a line of its own in the prompt.
+  private static func singleLine(_ value: String) -> String {
+    var scalars = String.UnicodeScalarView()
+    for scalar in value.unicodeScalars {
+      switch scalar.properties.generalCategory {
+      case .control, .lineSeparator, .paragraphSeparator: scalars.append(" ")
+      default: scalars.append(scalar)
+      }
+    }
+    return String(scalars)
   }
 }

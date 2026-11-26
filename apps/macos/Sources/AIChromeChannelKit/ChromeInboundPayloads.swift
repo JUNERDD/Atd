@@ -86,6 +86,32 @@ public struct ChromeOwnInput: Decodable, Equatable, Sendable {
   }
 }
 
+/// `PickedElementSchema`: an element the person picked on the page with the in-page inspector.
+/// Page content the person chose, not an instruction: the shell only quotes it to the model.
+public struct ChromePickedElement: Decodable, Equatable, Sendable {
+  /// A CSS selector that matched only this element in the top document when it was picked.
+  public let selector: String
+  /// What it is, for a person: its role or tag and its accessible name, e.g. `button "Sign up"`.
+  public let label: String
+  /// Its visible text, whitespace collapsed to single spaces, clipped; empty when none.
+  public let text: String
+
+  public init(selector: String, label: String, text: String) {
+    self.selector = selector
+    self.label = label
+    self.text = text
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try ChromeChannelCoding.object(decoder, Keys.self)
+    selector = try container.text(.selector, minLength: 1, maxLength: 1_000)
+    label = try container.text(.label, minLength: 1, maxLength: 300)
+    text = try container.text(.text, maxLength: 1_000)
+  }
+
+  private enum Keys: String, CodingKey { case selector, label, text }
+}
+
 /// `ask`: the person's question from the in-page input capsule. `url` and `title` are empty when
 /// the person removed the page from the request.
 public struct ChromeAsk: Equatable, Sendable {
@@ -95,6 +121,9 @@ public struct ChromeAsk: Equatable, Sendable {
   public let title: String
   public let text: String
   public let ownInput: ChromeOwnInput?
+  /// The 1 to 5 elements the person picked on the page, in order. The extension sends them only
+  /// with the page (a non-empty `url`); the shell does not rely on it.
+  public let elements: [ChromePickedElement]?
 
   init(_ container: KeyedDecodingContainer<ChromeInboundKeys.Ask>) throws {
     requestId = try container.id(.requestId)
@@ -105,6 +134,8 @@ public struct ChromeAsk: Equatable, Sendable {
     ownInput =
       container.contains(.ownInput)
       ? try container.decode(ChromeOwnInput.self, forKey: .ownInput) : nil
+    elements = try container.optionalArray(
+      .elements, of: ChromePickedElement.self, minCount: 1, maxCount: 5)
   }
 }
 

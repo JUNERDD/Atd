@@ -1,10 +1,10 @@
 import Foundation
 
-/// The checks every channel frame runs while decoding: string lengths in Unicode code points and
-/// integer ranges. A member the contract does not declare is ignored, so an extension newer than
-/// this shell can add optional members (`protocol.ts` makes the same promise for shell frames). The
-/// kit is shared by the native host and AICore, so it carries these few rules itself instead of
-/// AICore's `BridgeCoding`.
+/// The checks every channel frame runs while decoding: string lengths in Unicode code points,
+/// integer ranges and array lengths. A member the contract does not declare is ignored, so an
+/// extension newer than this shell can add optional members (`protocol.ts` makes the same promise
+/// for shell frames). The kit is shared by the native host and AICore, so it carries these few
+/// rules itself instead of AICore's `BridgeCoding`.
 public enum ChromeChannelCoding {
   /// The object's members `Keys` names; any other member is ignored.
   public static func object<Keys: CodingKey>(_ decoder: any Decoder, _ keys: Keys.Type) throws
@@ -86,6 +86,21 @@ extension KeyedDecodingContainer {
         forKey: key, in: self, debugDescription: "\(key.stringValue) must be non-negative.")
     }
     return value
+  }
+
+  /// An optional array of `minCount`…`maxCount` items, each decoded with its own checks; an absent
+  /// member is nil, `null` is refused.
+  public func optionalArray<Item: Decodable>(
+    _ key: Key, of item: Item.Type, minCount: Int = 0, maxCount: Int
+  ) throws -> [Item]? {
+    guard contains(key) else { return nil }
+    let values = try decode([Item].self, forKey: key)
+    guard values.count >= minCount, values.count <= maxCount else {
+      throw DecodingError.dataCorruptedError(
+        forKey: key, in: self,
+        debugDescription: "\(key.stringValue) must have \(minCount) to \(maxCount) items.")
+    }
+    return values
   }
 
   /// The protocol version member every frame carries.
