@@ -7,7 +7,10 @@ import { TabGlow } from './tab-glow.ts';
 import { pageDarkness } from './tones.ts';
 import { signal } from '../lifetime.ts';
 
-/** While lit, the page's background is sampled again this often (pages change as they load). */
+/**
+ * While lit and shown, the page's background is sampled again this often (pages change as they
+ * load).
+ */
 const RESAMPLE_MS = 4000;
 const SCROLL_SETTLE_MS = 150;
 
@@ -38,11 +41,21 @@ export class EdgeLight {
     addEventListener(
       'scroll',
       () => {
-        if (!this.glow.lit) return;
+        if (!this.glow.lit || document.hidden) return;
         clearTimeout(this.scrollTimer);
         this.scrollTimer = window.setTimeout(() => this.sample(), SCROLL_SETTLE_MS);
       },
       { capture: true, passive: true, signal },
+    );
+    // Sampling pauses while the tab is hidden (`sample`) and starts again as it shows.
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+        if (!this.glow.lit || document.hidden) return;
+        this.sample();
+        this.scheduleSampling();
+      },
+      { signal },
     );
   }
 
@@ -126,7 +139,12 @@ export class EdgeLight {
     this.glow.dispose();
   }
 
+  /**
+   * Reads the page under the band (hit tests and computed styles, which lay the page out). Only
+   * while the tab shows: a hidden tab draws nothing, and it samples again as it is shown.
+   */
   private sample(): void {
+    if (document.hidden) return;
     this.darkness = pageDarkness(samplePageLuminance());
     this.glow.kick();
   }
@@ -134,7 +152,7 @@ export class EdgeLight {
   private scheduleSampling(): void {
     clearTimeout(this.sampleTimer);
     this.sampleTimer = window.setTimeout(() => {
-      if (!this.glow.lit) return;
+      if (!this.glow.lit || document.hidden) return;
       this.sample();
       this.scheduleSampling();
     }, RESAMPLE_MS);

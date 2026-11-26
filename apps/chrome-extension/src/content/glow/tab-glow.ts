@@ -38,8 +38,8 @@ interface Click {
  * clock stops, and once it has settled no frames are drawn until something changes. Recent agent
  * clicks are kept for the shader's rewrite wave while it runs. Hidden tabs get no animation
  * frames, so the light pauses with them. The canvas and its GPU context exist only while the light
- * shows: they are taken from the stage when it comes on (with glow effects on) and given back once
- * its exit fade has ended.
+ * shows: they are taken from the stage when it comes on (with glow effects on), or as the tab shows
+ * when it came on hidden, and given back once its exit fade has ended.
  */
 export class TabGlow {
   private on = false;
@@ -64,7 +64,11 @@ export class TabGlow {
     private readonly env: () => GlowEnv,
   ) {
     addEventListener('resize', () => this.kick(), { signal });
-    document.addEventListener('visibilitychange', () => this.kick(), { signal });
+    document.addEventListener(
+      'visibilitychange',
+      () => (this.on && !this.drawn ? this.refresh() : this.kick()),
+      { signal },
+    );
   }
 
   get lit(): boolean {
@@ -112,7 +116,8 @@ export class TabGlow {
   private apply(exit: number): void {
     const env = this.env();
     const wanted = this.on && env.enabled;
-    if (wanted && !this.drawn) this.drawn = this.stage.open();
+    // A run's background tabs the person never looks at build no context, shader or layer.
+    if (wanted && !this.drawn && !document.hidden) this.drawn = this.stage.open();
     const drawn = this.drawn;
     const visible = wanted && drawn !== null;
     if (drawn) {

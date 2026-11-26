@@ -187,6 +187,11 @@ export class OwnedTabs {
    */
   applyRuns(runs: readonly RunView[]): number[] {
     this.statuses = new Map(runs.map((run) => [run.runId, run.status]));
+    // The shell sends a snapshot for every step of a run, so storage is written only when what it
+    // keeps changed: the tabs (`changed`), the runs seen (exactly the listed ones) or the releases.
+    const sameRuns =
+      this.seenRuns.size === this.statuses.size &&
+      [...this.seenRuns].every((runId) => this.statuses.has(runId));
     for (const runId of this.seenRuns) if (!this.statuses.has(runId)) this.seenRuns.delete(runId);
     for (const run of runs) this.seenRuns.add(run.runId);
     const dropped: number[] = [];
@@ -195,10 +200,11 @@ export class OwnedTabs {
       this.tabs.delete(tabId);
       dropped.push(tabId);
     }
+    const releases = this.released.size;
     for (const pair of this.released)
       if (!this.statuses.has(pair.slice(0, pair.lastIndexOf(':')))) this.released.delete(pair);
     if (dropped.length > 0) this.changed();
-    else this.schedulePersist();
+    else if (!sameRuns || this.released.size !== releases) this.schedulePersist();
     return dropped;
   }
 

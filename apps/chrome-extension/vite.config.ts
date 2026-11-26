@@ -8,11 +8,22 @@ import { manifestFor } from './manifest.config.ts';
 const CONTENT_SCRIPT = 'src/content/index.ts';
 
 /**
+ * The shared contracts, whose modules only declare values (TypeBox schemas, constants, pure
+ * functions). Their package exports one barrel and declares no `sideEffects`, so importing
+ * `resolveLanguage` or `PermissionAnswerSchema` from it would otherwise bundle every schema of the
+ * app into the service worker and build them all at each of its starts.
+ */
+const DECLARATION_ONLY = /[\\/]packages[\\/](agent-contracts|plugin-kit)[\\/]src[\\/]/;
+
+/**
  * One source, two flavors: `vite build --mode release` writes `dist/release`, `--mode dev` writes
  * `dist/dev` (`flavors.ts`), and a dev build lets the extension reload itself after a rebuild
  * (`dev-plugins.ts`). The content script is a standalone IIFE (no loader, nothing web
  * accessible), so the background can also inject the same file into tabs that were open before
  * the extension loaded. Workspace packages resolve their TypeScript `source` like the renderer.
+ *
+ * Tree-shaking drops the contracts' unused modules, and the unused schemas of the ones kept:
+ * TypeBox's `Type.*` builders only construct schema objects, so a schema nothing reads goes.
  */
 export default defineConfig(({ mode }) => {
   const flavor = flavorFromMode(mode);
@@ -26,6 +37,16 @@ export default defineConfig(({ mode }) => {
       flavor === 'dev' ? devPlugins(CONTENT_SCRIPT) : [],
     ],
     resolve: { conditions: [...defaultClientConditions, 'source'] },
-    build: { outDir: `dist/${flavor}`, emptyOutDir: true, target: 'chrome125' },
+    build: {
+      outDir: `dist/${flavor}`,
+      emptyOutDir: true,
+      target: 'chrome125',
+      rolldownOptions: {
+        treeshake: {
+          moduleSideEffects: [{ test: DECLARATION_ONLY, sideEffects: false }],
+          manualPureFunctions: ['Type'],
+        },
+      },
+    },
   };
 });
