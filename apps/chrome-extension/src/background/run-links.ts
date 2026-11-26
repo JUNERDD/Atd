@@ -54,6 +54,16 @@ export class RunLinks {
     return link?.withPage === true && link.tabId === tabId;
   }
 
+  /**
+   * Whether Atd accepted an ask with its page from the tab and no snapshot lists its run yet: the
+   * tab's HUD already shows the run starting, before the run itself reaches the tab.
+   */
+  starting(tabId: number): boolean {
+    for (const link of this.links.values())
+      if (link.withPage && !link.listed && link.tabId === tabId) return true;
+    return false;
+  }
+
   /** Runs asked from the tab without its page: its HUD shows them though they do not own it. */
   displayRuns(tabId: number): string[] {
     return [...this.links.values()]

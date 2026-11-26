@@ -1,5 +1,5 @@
 import askCss from '../ask/ask.css?inline';
-import { focusedAct, h, refocus } from '../dom.ts';
+import { drawnBox, focusedAct, h, refocus } from '../dom.ts';
 import { Layer, sheet } from '../hosts.ts';
 import { wireDrag } from './drag.ts';
 import { ClickGuard } from './guard.ts';
@@ -96,6 +96,16 @@ export class HudView {
 
   get visible(): boolean {
     return this.shown;
+  }
+
+  /**
+   * Everything the HUD draws right now, in viewport CSS px, through its entrance, morphs and exit:
+   * the capsule's box with its glass and faces as they move (a morphing glass can reach past the
+   * box it heads for, and a leaving face stays where it stood). Null while nothing shows.
+   */
+  drawnBounds(): DOMRectReadOnly | null {
+    if (!this.layer.element || this.capsule.hidden) return null;
+    return drawnBox([this.capsule, ...this.capsule.children]);
   }
 
   /** Whether `event` is the HUD's global ⌃⌥⌘ + arrow move shortcut while the capsule is shown. */

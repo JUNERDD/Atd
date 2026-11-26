@@ -5,6 +5,7 @@
 
 import { Type, type Static } from 'typebox';
 import { Value } from 'typebox/value';
+import type { TransitionGate } from '../transition-gate.ts';
 import { CdpError, debuggerError, type CdpParams } from './messages.ts';
 
 /** The `chrome.debugger` protocol version the worker's Playwright speaks. */
@@ -46,7 +47,11 @@ export class Debuggee {
   /** Detaches in flight: attaching the same tab again waits for them. */
   private readonly detaching = new Map<number, Promise<void>>();
 
-  constructor(private readonly events: DebuggeeEvents) {}
+  /** `gate` may hold a tab's commands while its takeover transition plays (`transition-gate.ts`). */
+  constructor(
+    private readonly events: DebuggeeEvents,
+    private readonly gate: TransitionGate,
+  ) {}
 
   /**
    * Detaches what a previous worker lifetime left attached: its channel (and every worker
@@ -108,10 +113,20 @@ export class Debuggee {
   }
 
   /**
-   * Sends one command to the tab's session or a child session. `chrome.debugger.sendCommand` is
-   * called before the first `await`, so commands reach Chrome in the order they arrived.
+   * Sends one command to the tab's session or a child session, at once or, while the tab's
+   * takeover transition holds it, in order once it ends. `chrome.debugger.sendCommand` is called
+   * before the first `await` of `dispatch`, so commands reach Chrome in the order they arrived.
    */
-  async send(
+  send(
+    tabId: number,
+    child: string | undefined,
+    method: string,
+    params: CdpParams,
+  ): Promise<object> {
+    return this.gate.run(tabId, method, () => this.dispatch(tabId, child, method, params));
+  }
+
+  private async dispatch(
     tabId: number,
     child: string | undefined,
     method: string,

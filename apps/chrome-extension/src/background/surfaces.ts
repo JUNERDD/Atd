@@ -15,13 +15,21 @@ import type { PopupView, TabView } from '../messages/views.ts';
 /** A content message other than the `ready` handshake, which this module answers itself. */
 export type ContentIntent = Exclude<ContentMessage, { type: 'ready' }>;
 
+/**
+ * Posts to the content script an intent came from, only while it is still the tab's current one
+ * (an answer meant for one document never reaches the next); false when it is not.
+ */
+export type ContentReply = (message: BackgroundToContent) => boolean;
+
 export interface SurfaceViews {
   popup(): PopupView;
   tab(tabId: number, url: string): TabView;
 }
 
 export interface SurfaceHandlers {
-  content(tabId: number, intent: ContentIntent): void;
+  content(tabId: number, intent: ContentIntent, reply: ContentReply): void;
+  /** The tab's content script went away: its port closed, or a new document's replaced it. */
+  contentGone(tabId: number): void;
   /** A content message that failed validation (it may name a request to fail). */
   invalidContent(tabId: number, message: unknown): void;
   popup(intent: PopupMessage): void;
@@ -125,10 +133,14 @@ export class Surfaces {
     const tabId = tab.id;
     // A new document in the tab replaces the old entry; an older port is not closed, because its
     // content script would only reconnect.
+    const replaced = this.tabs.has(tabId);
     this.tabs.set(tabId, { port, ready: false, url: tab.url ?? '', sent: '' });
+    if (replaced) this.handlers.contentGone(tabId);
     port.onMessage.addListener((message: unknown) => this.contentMessage(tabId, port, message));
     port.onDisconnect.addListener(() => {
-      if (this.tabs.get(tabId)?.port === port) this.tabs.delete(tabId);
+      if (this.tabs.get(tabId)?.port !== port) return;
+      this.tabs.delete(tabId);
+      this.handlers.contentGone(tabId);
     });
   }
 
@@ -138,7 +150,9 @@ export class Surfaces {
       return;
     }
     if (message.type !== 'ready') {
-      this.handlers.content(tabId, message);
+      this.handlers.content(tabId, message, (reply) =>
+        this.tabs.get(tabId)?.port === port ? post(port, reply) : false,
+      );
       return;
     }
     const entry = this.tabs.get(tabId);

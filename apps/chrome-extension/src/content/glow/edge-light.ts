@@ -46,6 +46,16 @@ export class EdgeLight {
     );
   }
 
+  /** Whether the light is on (glow effects off still hides it). */
+  get lit(): boolean {
+    return this.glow.lit;
+  }
+
+  /** How dark the page under the light was when last sampled (`pageDarkness`). */
+  get sampledDarkness(): number {
+    return this.darkness;
+  }
+
   /** The person's glow effects setting. */
   setEnabled(enabled: boolean): void {
     if (enabled === this.enabled) return;
@@ -93,6 +103,15 @@ export class EdgeLight {
    */
   click(x: number, y: number): void {
     this.glow.click(x, y);
+  }
+
+  /**
+   * The done sweep's frozen frame now covers the page, the light in it: the live light leaves at
+   * once instead of shifting and fading, and the sweep carries the frozen one away.
+   */
+  handOff(): void {
+    clearTimeout(this.doneTimer);
+    this.glow.cut();
   }
 
   /** Reduce Motion changed. */

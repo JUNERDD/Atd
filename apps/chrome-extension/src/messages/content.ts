@@ -76,6 +76,15 @@ export const ContentMessageSchema = Type.Union([
    * reports it as `lastInputAt` for tabs a run owns and ignores it otherwise.
    */
   Type.Object({ type: Type.Literal('input') }),
+  /**
+   * A page transition is about to play: capture the tab's visible area for it (answered by
+   * `transition.frame` with the same id). `hold` (the takeover's ripple) holds the agent's
+   * screenshots and input to this tab, and every command after them, until `transition.end`
+   * (2.5 s at most), so its first look and its first click never meet the bent page.
+   */
+  Type.Object({ type: Type.Literal('transition.capture'), requestId: Id, hold: Type.Boolean() }),
+  /** The transition `requestId` has left the page (or never played): its hold ends. */
+  Type.Object({ type: Type.Literal('transition.end'), requestId: Id }),
 ]);
 export type ContentMessage = Static<typeof ContentMessageSchema>;
 
@@ -102,4 +111,11 @@ export type BackgroundToContent =
    * Save as automation did not reach Atd (the shell answered `error {ref: taskId}`, or the
    * channel was not ready): the HUD shows the failure instead of "Sent to Atd".
    */
-  | { type: 'followUp.failed'; taskId: string };
+  | { type: 'followUp.failed'; taskId: string }
+  /**
+   * The answer to `transition.capture`: the tab's visible area as base64 JPEG at device pixels
+   * (its pixel size is the decoded image's), or `null` when it could not be captured for this
+   * document (the tab was not the active one of its window, before or after the capture; the
+   * capture rate was spent; no run is in the tab).
+   */
+  | { type: 'transition.frame'; requestId: string; jpeg: string | null };

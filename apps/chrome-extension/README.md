@@ -48,7 +48,9 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
 | `src/channel/protocol.ts`, `payloads.ts` | K2, the extension ↔ shell channel (TypeBox, `Value.Check` only: MV3 forbids `eval`). The source of truth that the shell's `AIChromeChannelKit` mirrors.                                                                                       |
 | `src/messages/`                          | The extension's own contracts: views the service worker projects (`views.ts`) and the intents the content script and popup send (`content.ts`, `popup.ts`).                                                                                   |
 | `src/background/`                        | Service worker: native channel (chunk reassembly, backoff), pairing, state and projections, owned tabs, the "Atd" tab group and badge, content-script injection, and the CDP translator with its allowlist (`cdp/`, adapted from Playwright). |
+| `src/background/transition-*.ts`         | The page transitions' frames (`captureVisibleTab`) and the gate that holds the agent's screenshots and input while the takeover's ripple plays (`cdp/debuggee.ts` consults it).                                                               |
 | `src/content/`                           | Content script (one IIFE, closed Shadow DOM): HUD, in-page ask, edge light (`glow/`, on `@atd/ui/lib/glow`), pointer.                                                                                                                         |
+| `src/content/transition/`                | Page transitions: the takeover's ripple and the done sweep, drawn with WebGL2 over a captured frame of the tab, in their own layer under the light.                                                                                           |
 | `src/popup/`                             | Toolbar popup (React) on the apple-design web kit.                                                                                                                                                                                            |
 | `src/i18n/`                              | One i18next namespace per surface (`background`, `hud`, `popup`) in `en` and `zh-CN`; `public/_locales` holds only the manifest strings.                                                                                                      |
 | `icons/`                                 | Toolbar and manifest icons per flavor, exported by `node scripts/export-brand.mjs apps/chrome-extension` (never edited by hand).                                                                                                              |
@@ -57,9 +59,14 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
 
 `debugger` (only tabs handed to a run, only while it runs; Chrome shows its debugging infobar, and
 Cancel there stops the run), `tabs` and `tabGroups` (the "Atd" group), `scripting` (tabs open before
-the extension loaded), `nativeMessaging`, `storage`, and `<all_urls>` hosts for the HUD. No
-cookies, history, bookmarks, downloads or webRequest. The content script reads nothing from a page
-and sends nothing until the person acts.
+the extension loaded), `nativeMessaging`, `storage`, and `<all_urls>` hosts for the HUD. The same
+host access lets the service worker capture a tab (`chrome.tabs.captureVisibleTab`) as the frame
+its page transitions play over: only a tab a run is in (its HUD shows one, or Atd has just taken
+the person's ask with its page there), only while it is the active tab of its window (checked
+before and after the capture), at most twice a second, and the frame goes back only to that tab's
+document. Pages no content script runs on (chrome://, the Web Store) never
+ask. No cookies, history, bookmarks, downloads or webRequest. The content script reads nothing
+from a page and sends nothing until the person acts.
 
 Commands on selected text are not the extension's: Atd's own selection toolbar serves selections in
 Chrome as it does in any other app.

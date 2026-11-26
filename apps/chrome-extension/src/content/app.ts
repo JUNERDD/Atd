@@ -9,14 +9,17 @@ import { endLifetime } from './lifetime.ts';
 import { onReducedMotionChange } from './motion.ts';
 import { PointerLayer } from './pointer/mark.ts';
 import { ContentPort } from './port.ts';
+import { RunEdges } from './run-edges.ts';
+import { PageTransitions } from './transition/transitions.ts';
 
 /**
  * One tab's in-page surfaces, driven by the service worker's `TabView` and `PointerView` over the
- * content port: the edge light, the live pointer, and the HUD with the in-page ask. Each surface
- * adds its layer to the page only while it shows. The content script reads nothing from the page
- * and sends nothing until the person acts (an ask, a HUD control), apart from activity pings while
- * a run owns this tab; the light's background sampling stays in the page. Commands on selected
- * text are Atd's own selection toolbar, not the extension's.
+ * content port: the edge light with the page transitions at a run's start and end, the live
+ * pointer, and the HUD with the in-page ask. Each surface adds its layer to the page only while it
+ * shows. The content script reads nothing from the page and sends nothing until the person acts
+ * (an ask, a HUD control), apart from activity pings while a run owns this tab and the capture
+ * requests its page transitions make; the light's background sampling stays in the page. Commands
+ * on selected text are Atd's own selection toolbar, not the extension's.
  */
 export function startContent(): void {
   removeStaleHosts();
@@ -28,6 +31,7 @@ export function startContent(): void {
       // The extension was reloaded or removed: leave the page as it was.
       endLifetime();
       light.dispose();
+      transitions.dispose();
       removeLayers();
     },
   });
@@ -35,6 +39,15 @@ export function startContent(): void {
 
   const light = new EdgeLight(() => hud.view.bounds());
   const pointerLayer = new PointerLayer((at) => light.click(at.x, at.y));
+  const transitions = new PageTransitions({ send });
+  const edges = new RunEdges({
+    light,
+    transitions,
+    effects: () => tab?.prefs.glowEffects ?? true,
+    hudBounds: () => hud.view.bounds(),
+    hudDrawn: () => hud.view.drawnBounds(),
+    pointerBounds: () => pointerLayer.bounds(),
+  });
   const runActive = () => !!tab?.run && ACTIVE_RUN_STATUSES.includes(tab.run.status);
   const frozen = () =>
     tab !== null && (tab.connection !== 'ready' || tab.run?.status === 'disconnected');
@@ -47,7 +60,7 @@ export function startContent(): void {
   const hud = new Hud({
     send,
     takeOwnInput: () => activity.takeOwnInput(),
-    changed: () => light.show(hud.glowMode()),
+    changed: () => edges.follow(hud.glowMode()),
   });
   setLayersLanguage(currentDocumentLanguage());
   onReducedMotionChange(() => light.refresh());
@@ -76,6 +89,8 @@ export function startContent(): void {
         return hud.ask.status(message);
       case 'followUp.failed':
         return hud.followUpFailed(message.taskId);
+      case 'transition.frame':
+        return transitions.receive(message);
     }
   }
 

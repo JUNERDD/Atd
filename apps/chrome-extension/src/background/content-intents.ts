@@ -9,7 +9,8 @@ import { clipText, type SendFrame } from './native.ts';
 import type { Ownership } from './ownership.ts';
 import { failure, type PendingRequests } from './requests.ts';
 import type { Store } from './store.ts';
-import type { ContentIntent, Surfaces } from './surfaces.ts';
+import type { ContentIntent, ContentReply, Surfaces } from './surfaces.ts';
+import type { TransitionCaptures } from './transition-capture.ts';
 
 export interface ContentIntentDeps {
   store: Store;
@@ -22,6 +23,7 @@ export interface ContentIntentDeps {
   ownership: Ownership;
   followUps: FollowUps;
   hidden: HiddenRuns;
+  transitions: TransitionCaptures;
   /** The run the tab's HUD shows (`shownRun` in projection.ts), the only run it may act on. */
   shownRun(tabId: number): RunView | null;
 }
@@ -40,6 +42,7 @@ export function handleContentIntent(
   deps: ContentIntentDeps,
   tabId: number,
   intent: ContentIntent,
+  reply: ContentReply,
 ): void {
   switch (intent.type) {
     case 'ask':
@@ -104,6 +107,12 @@ export function handleContentIntent(
       return;
     case 'input':
       deps.ownership.noteInput(tabId);
+      return;
+    case 'transition.capture':
+      deps.transitions.capture(tabId, intent, reply);
+      return;
+    case 'transition.end':
+      deps.transitions.end(tabId, intent.requestId);
       return;
   }
 }

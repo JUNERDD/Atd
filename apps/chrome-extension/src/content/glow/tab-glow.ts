@@ -95,13 +95,28 @@ export class TabGlow {
 
   /** Applies the environment (setting, Reduce Motion) to the canvas and draws again. */
   refresh(): void {
+    this.apply(this.env().reduce ? GLOW_TIMING.quick : GLOW_TIMING.exit);
+  }
+
+  /**
+   * Turns the light off with no fade: a frozen frame of it already covers the page (the done
+   * sweep's), which carries it away.
+   */
+  cut(): void {
+    if (!this.on) return;
+    this.on = false;
+    this.apply(0);
+  }
+
+  /** `refresh`, with `exit` seconds for the fade-out should the light leave now. */
+  private apply(exit: number): void {
     const env = this.env();
     const wanted = this.on && env.enabled;
     if (wanted && !this.drawn) this.drawn = this.stage.open();
     const drawn = this.drawn;
     const visible = wanted && drawn !== null;
     if (drawn) {
-      const fade = visible ? GLOW_TIMING.quick : env.reduce ? GLOW_TIMING.quick : GLOW_TIMING.exit;
+      const fade = visible ? GLOW_TIMING.quick : exit;
       drawn.canvas.style.setProperty('transition-duration', `${fade}s`);
       if (visible && !this.visible) {
         clearTimeout(this.releaseTimer);
