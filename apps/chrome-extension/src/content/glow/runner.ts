@@ -1,13 +1,27 @@
 import type { GlowTones } from '@atd/ui/lib/glow/palettes';
+import { GLYPH_MAX_CLICKS } from './glyph.ts';
 import { GLOW_FRAGMENT, GLOW_UNIFORMS, GLOW_VERTEX, type GlowUniform } from './shader.ts';
+
+/** An agent click the light answers, in CSS px from the viewport's top left. */
+export interface GlowClick {
+  x: number;
+  y: number;
+  /** Seconds since the click. */
+  age: number;
+}
 
 /** One frame of the light, in CSS px where it says so. */
 export interface GlowFrame {
   phase: number;
   since: number;
   entry: boolean;
-  /** The HUD's box in CSS px from the viewport's top left; the light arrives out of its centre. */
+  /**
+   * The HUD's box in CSS px from the viewport's top left. Only its centre reaches the shader, as
+   * the entry's origin: the HUD gets no light of its own.
+   */
   hud: DOMRectReadOnly;
+  /** The most recent clicks first; the shader takes up to `GLYPH_MAX_CLICKS`. */
+  clicks: readonly GlowClick[];
   band: number;
   level: number;
   hue: number;
@@ -21,6 +35,10 @@ export interface GlowFrame {
 
 /** The light renders at the display's resolution (so its dither survives), up to this scale. */
 const MAX_SCALE = 2;
+/** The band's corners are rounded by its depth, up to this radius in CSS px. */
+const MAX_RADIUS = 60;
+/** A `u_clicks` entry with no click (`w` 0; `z` beyond any burst). */
+const NO_CLICK = [0, 0, 1000, 0] as const;
 
 /**
  * A small WebGL2 runner for the light's shader: one full-screen triangle, its uniforms, the
@@ -32,6 +50,7 @@ export class GlowSurface {
   private gl: WebGL2RenderingContext | null;
   private program: WebGLProgram | null = null;
   private uniforms = new Map<GlowUniform, WebGLUniformLocation | null>();
+  private readonly clicks = new Float32Array(GLYPH_MAX_CLICKS * 4);
   private lost = false;
   /** The shader did not build on a live context: this machine cannot draw the light. */
   private broken = false;
@@ -84,21 +103,23 @@ export class GlowSurface {
     gl.uniform1f(set('u_phase'), frame.phase);
     gl.uniform1f(set('u_since'), frame.since);
     gl.uniform1f(set('u_entry'), frame.entry ? 1 : 0);
-    // The HUD arrives in CSS px from the top left; the shader wants device px from the bottom.
+    // Positions arrive in CSS px from the top left; the shader wants device px from the bottom.
     const { hud } = frame;
     gl.uniform2f(
       set('u_origin'),
       (hud.left + hud.width / 2) * scale,
       (cssHeight - hud.top - hud.height / 2) * scale,
     );
-    gl.uniform4f(
-      set('u_hud'),
-      hud.left * scale,
-      (cssHeight - hud.bottom) * scale,
-      hud.width * scale,
-      hud.height * scale,
-    );
+    for (let index = 0; index < GLYPH_MAX_CLICKS; index++) {
+      const click = frame.clicks[index];
+      this.clicks.set(
+        click ? [click.x * scale, (cssHeight - click.y) * scale, click.age, 1] : NO_CLICK,
+        index * 4,
+      );
+    }
+    gl.uniform4fv(set('u_clicks'), this.clicks);
     gl.uniform1f(set('u_band'), frame.band * scale);
+    gl.uniform1f(set('u_radius'), Math.min(frame.band, MAX_RADIUS) * scale);
     gl.uniform1f(set('u_level'), frame.level);
     gl.uniform1f(set('u_hue'), frame.hue);
     gl.uniform1f(set('u_dark'), frame.darkness);

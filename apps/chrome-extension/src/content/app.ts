@@ -34,7 +34,7 @@ export function startContent(): void {
   const send = port.send.bind(port);
 
   const light = new EdgeLight(() => hud.view.bounds());
-  const pointerLayer = new PointerLayer();
+  const pointerLayer = new PointerLayer((at) => light.click(at.x, at.y));
   const runActive = () => !!tab?.run && ACTIVE_RUN_STATUSES.includes(tab.run.status);
   const frozen = () =>
     tab !== null && (tab.connection !== 'ready' || tab.run?.status === 'disconnected');

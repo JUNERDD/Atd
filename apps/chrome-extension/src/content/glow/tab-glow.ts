@@ -1,5 +1,5 @@
 import { GLOW_DONE_HUE, GLOW_TIMING } from '@atd/ui/lib/glow/timing';
-import { HAZE_ARRIVAL_SECONDS } from './haze.ts';
+import { GLYPH_ARRIVAL_SECONDS, GLYPH_CLICK_SECONDS, GLYPH_MAX_CLICKS } from './glyph.ts';
 import type { GlowCanvas, GlowStage } from './stage.ts';
 import { type ToneMix, bandFor, isAdditive, levelFor, tonesFor } from './tones.ts';
 import { signal } from '../lifetime.ts';
@@ -12,7 +12,7 @@ export interface GlowEnv {
   reduce: boolean;
   /** How dark the page is under the band (`pageDarkness`). */
   darkness: number;
-  /** The HUD's box in viewport CSS px: the light arrives out of it and gathers round it. */
+  /** The HUD's box in viewport CSS px: the light's entry resolves outward from its centre. */
   hud(): DOMRectReadOnly;
 }
 
@@ -21,18 +21,25 @@ const EASE_RATE = 7;
 const FREEZE_RATE = 5;
 const DONE_HUE = (GLOW_DONE_HUE * Math.PI) / 180;
 const SETTLED = 0.001;
-/** Under Reduce Motion the mist drifts at this fraction of its pace. */
-const REDUCED_PACE = 0.4;
+
+/** An agent click in viewport CSS px, and when it landed (`performance.now()`). */
+interface Click {
+  x: number;
+  y: number;
+  at: number;
+}
 
 /**
  * One light per tab, ported from the prototype's `TabGlow`. `set` drives it; the clock, the
  * palette blend, the hue shift and the freeze are eased here, so a change of state never restarts
- * the light. It arrives out of the HUD when it comes on (not under Reduce Motion), its clock
- * gathering (running ahead and easing back) as the panel's waiting light does; under Reduce Motion
- * the clock runs slower, and a frozen light's clock stops: once it has settled no frames are drawn
- * until something changes. Hidden tabs get no animation frames, so the light pauses with them. The
- * canvas and its GPU context exist only while the light shows: they are taken from the stage when
- * it comes on (with glow effects on) and given back once its exit fade has ended.
+ * the light. It resolves out of the HUD when it comes on (not under Reduce Motion), its clock
+ * gathering (running ahead and easing back) as the panel's waiting light does. Reduce Motion keeps
+ * the clock's pace, as the prototype does: the shader itself stills the light. A frozen light's
+ * clock stops, and once it has settled no frames are drawn until something changes. Recent agent
+ * clicks are kept for the shader's rewrite wave while it runs. Hidden tabs get no animation
+ * frames, so the light pauses with them. The canvas and its GPU context exist only while the light
+ * shows: they are taken from the stage when it comes on (with glow effects on) and given back once
+ * its exit fade has ended.
  */
 export class TabGlow {
   private on = false;
@@ -42,6 +49,8 @@ export class TabGlow {
   private gather = 0;
   private since = 0;
   private entry = false;
+  /** The most recent first, at most `GLYPH_MAX_CLICKS`, none older than its wave. */
+  private clicks: Click[] = [];
   private raf = 0;
   private last = 0;
   private fadeUntil = 0;
@@ -75,6 +84,13 @@ export class TabGlow {
     }
     this.on = on;
     this.refresh();
+  }
+
+  /** An agent click at viewport CSS px (x, y): a light that is on answers it with a wave. */
+  click(x: number, y: number): void {
+    if (!this.on) return;
+    this.clicks = [{ x, y, at: performance.now() }, ...this.clicks].slice(0, GLYPH_MAX_CLICKS);
+    this.kick();
   }
 
   /** Applies the environment (setting, Reduce Motion) to the canvas and draws again. */
@@ -141,8 +157,9 @@ export class TabGlow {
     this.since += dt;
     if (this.gather > 0) this.gather = Math.max(0, this.gather - dt / GLOW_TIMING.entry);
     const running = 1 - this.current.frozen;
-    const pace = env.reduce ? REDUCED_PACE : 1;
-    this.clock += dt * running * pace * (1 + 4 * this.gather * this.gather);
+    this.clock += dt * running * (1 + 4 * this.gather * this.gather);
+    // A click's wave runs on real time, so it plays out even while the clock stops.
+    this.clicks = this.clicks.filter((click) => now - click.at <= GLYPH_CLICK_SECONDS * 1000);
 
     const additive = isAdditive(env.darkness);
     if (additive !== this.additive) {
@@ -162,13 +179,26 @@ export class TabGlow {
       frozen: this.current.frozen,
       reduce: env.reduce,
       tones: tonesFor(env.darkness, this.current),
+      clicks: this.clicks.map((click) => ({
+        x: click.x,
+        y: click.y,
+        age: Math.max(0, (now - click.at) / 1000),
+      })),
     });
     if (!this.settled()) this.raf = requestAnimationFrame((next) => this.frame(next));
   }
 
-  /** A frozen light whose blend and arrival have come to rest draws nothing new until kicked. */
+  /**
+   * A frozen light whose blend and entry have come to rest, with no click wave running, draws
+   * nothing new until kicked.
+   */
   private settled(): boolean {
-    if (!this.on || this.gather > 0 || (this.entry && this.since < HAZE_ARRIVAL_SECONDS)) {
+    if (
+      !this.on ||
+      this.gather > 0 ||
+      this.clicks.length > 0 ||
+      (this.entry && this.since < GLYPH_ARRIVAL_SECONDS)
+    ) {
       return false;
     }
     const resting = (['attention', 'frozen', 'hue'] as const).every(

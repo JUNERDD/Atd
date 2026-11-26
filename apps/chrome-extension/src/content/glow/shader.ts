@@ -1,12 +1,15 @@
 import { GLOW_NOISE_GLSL } from '@atd/ui/lib/glow/field-glsl';
-import { HAZE_GLSL } from './haze.ts';
+import { EDGE_GEOMETRY_GLSL } from './edge-geometry.ts';
+import { GLYPH_GLSL, GLYPH_MAX_CLICKS } from './glyph.ts';
 
 /**
- * The tab's light: Ember Haze (`haze.ts`), a mist along the tab's edges that arrives out of the
- * HUD. The palette blend, the freeze and the done hue shift are eased by `TabGlow` and arrive as
- * uniforms, so a change of state never restarts the light.
+ * The tab's light: Glyph Stream (`glyph.ts`), a dot-matrix band of glyphs along the tab's edges
+ * whose cells resolve outward from the HUD's centre when it comes on. The palette blend, the freeze
+ * and the done hue shift are eased by `TabGlow` and arrive as uniforms, so a change of state never
+ * restarts the light. The HUD itself gets no light of its own: only its centre, the entry's origin,
+ * reaches the shader, and its glass shows the band through it like the rest of the page.
  *
- * The mist decides its coverage first and a pixel outside it returns at once: across a whole
+ * The band decides its coverage first and a pixel outside it returns at once: across a whole
  * viewport only the edges light up. The light is drawn at its final strength (`u_level`) with a
  * step of triangular noise per channel, so it does not band; a CSS opacity carries only the fades
  * (it would scale the dither down with the light).
@@ -22,18 +25,21 @@ precision highp float;
 // Canvas size in device px; device px per CSS px.
 uniform vec2 u_res;
 uniform float u_dpr;
-// The light's clock (s): it runs ahead while the light gathers, slower under Reduce Motion, and
-// stops when frozen. All motion follows it.
+// The light's clock (s): it runs ahead while the light gathers and stops when frozen. All motion
+// follows it.
 uniform float u_phase;
-// Seconds since the light came on, for its arrival.
+// Seconds since the light came on, for its entry.
 uniform float u_since;
-// 1 while the light arrives out of the HUD; 0 when it is in from the start (Reduce Motion).
+// 1 when the light resolves out of the HUD as it comes on; 0 when it only fades in (Reduce Motion).
 uniform float u_entry;
-// The HUD's centre and its box (x, y, w, h), in device px from the bottom left.
+// The HUD's centre, where the entry starts, in device px from the bottom left.
 uniform vec2 u_origin;
-uniform vec4 u_hud;
-// The band's depth, in device px.
+// The agent's recent clicks, in device px from the bottom left: z the seconds since, w 1 for a
+// click (unused entries are (0, 0, 1000, 0)).
+uniform vec4 u_clicks[${GLYPH_MAX_CLICKS}];
+// The band's depth and its corner radius, in device px.
 uniform float u_band;
+uniform float u_radius;
 uniform float u_level;
 // The hue rotation in radians (the done shift).
 uniform float u_hue;
@@ -59,10 +65,11 @@ vec3 hueRotate(vec3 c, float a) {
     0.072 - 0.072 * ca + 0.928 * sa, 0.072 - 0.072 * ca - 0.283 * sa, 0.072 + 0.928 * ca + 0.072 * sa);
   return m * c;
 }
-${HAZE_GLSL}
+${EDGE_GEOMETRY_GLSL}
+${GLYPH_GLSL}
 void main() {
   vec2 p = gl_FragCoord.xy;
-  vec4 light = haze(p);
+  vec4 light = glyphStream(p);
   if (light.a <= 0.0 && dot(light.rgb, vec3(1.0)) <= 0.0) {
     fragColor = vec4(0.0);
     return;
@@ -82,8 +89,9 @@ export const GLOW_UNIFORMS = [
   'u_since',
   'u_entry',
   'u_origin',
-  'u_hud',
+  'u_clicks',
   'u_band',
+  'u_radius',
   'u_level',
   'u_hue',
   'u_dark',

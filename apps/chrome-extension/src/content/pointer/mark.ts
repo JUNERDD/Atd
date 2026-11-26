@@ -86,7 +86,11 @@ export class PointerLayer {
   /** Until when page input is likely the host's own (it is dispatching), for activity reports. */
   dispatchingUntil = 0;
 
-  constructor() {
+  /**
+   * @param clicked Told where each click the host dispatches lands, in viewport CSS px, as its
+   *   ripple plays (the tab's light answers it).
+   */
+  constructor(private readonly clicked: (at: Point) => void) {
     this.layer = new Layer('atd-pointer', [sheet(pointerCss)]);
     this.layer.root.setAttribute('aria-hidden', 'true');
     this.ring = h('div', { class: 'pm-ring' });
@@ -155,6 +159,7 @@ export class PointerLayer {
       this.ripple.classList.remove('go');
       void this.ripple.offsetWidth;
       this.ripple.classList.add('go');
+      this.clicked(anchor);
     }
     if (phase === 'done') this.holdTimer = window.setTimeout(() => this.hide(), COMPLETION_HOLD_MS);
   }

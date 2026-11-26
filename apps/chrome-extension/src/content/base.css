@@ -176,31 +176,36 @@
 }
 
 /*
- * The working step echoes the tab's mist (`glow/haze.ts`): a teal-to-azure drift through the text
- * with a faint tinted glow. The gradient holds two equal periods, so moving it by one loops
- * seamlessly; its hues are mixed toward `--fg`, so the text stays legible on light and dark glass.
+ * The working step echoes the tab's glyph stream (`glow/glyph.ts`): a stepped scan, a short bright
+ * block led by a cool cell, sweeps the text in character-sized jumps, then rests off the text
+ * before it loops. Outside the block the text keeps `--fg-2`, so it stays legible on light and dark
+ * glass. The prototype's `glyph` option (`shimmer-glyph`).
  */
 .shimmer {
-  --haze-teal: color-mix(in oklab, #14b8a6 58%, var(--fg));
-  --haze-azure: color-mix(in oklab, #4f8dff 58%, var(--fg));
-  background: linear-gradient(
+  --glyph-lead: #0f7c99;
+  --glyph-mid: color-mix(in srgb, var(--fg-2) 50%, var(--fg));
+  background-image: linear-gradient(
     90deg,
-    var(--fg-2) 0%,
-    var(--haze-teal) 13%,
-    var(--haze-azure) 25%,
-    var(--fg-2) 38%,
-    var(--fg-2) 50%,
-    var(--haze-teal) 63%,
-    var(--haze-azure) 75%,
-    var(--fg-2) 88%,
-    var(--fg-2) 100%
+    var(--fg-2) 0 44%,
+    var(--glyph-mid) 44% 46%,
+    var(--fg) 46% 49%,
+    var(--glyph-lead) 49% 50.5%,
+    var(--fg-2) 50.5% 100%
   );
-  background-size: 200% 100%;
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 3px color-mix(in srgb, #2fb8c8 28%, transparent));
-  animation: shimmer 6s linear infinite;
+  font-variant-numeric: tabular-nums;
+  animation: shimmer 2.6s steps(26, end) infinite;
+}
+
+/* On dark glass the leading cell is a lighter cyan. */
+@media (prefers-color-scheme: dark) {
+  .shimmer {
+    --glyph-lead: #7fdcf0;
+  }
 }
 
 @keyframes shimmer {
@@ -217,7 +222,6 @@
   animation: none;
   color: var(--fg-2);
   background: none;
-  filter: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -225,6 +229,5 @@
     animation: none;
     color: var(--fg-2);
     background: none;
-    filter: none;
   }
 }

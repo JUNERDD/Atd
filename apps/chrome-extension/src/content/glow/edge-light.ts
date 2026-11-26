@@ -15,9 +15,9 @@ const SCROLL_SETTLE_MS = 150;
  * The continuous light at the tab's edges behind the HUD (spec 8, D13), in its own full-viewport
  * layer. Working → the working palette; attention → amber; held, stopped and failed → it leaves;
  * stopping keeps what it shows; disconnected → frozen (clock stopped, drained); done → the cyan
- * hue shift, then it leaves. Glow effects off leaves only the HUD and the pointer. On a dark page
- * the layer adds the light to the page (`GlowStage.blend`). The layer and its GPU context are in
- * the page only while the light shows.
+ * hue shift, then it leaves. Agent clicks ripple along the nearest edge (`click`). Glow effects off
+ * leaves only the HUD and the pointer. On a dark page the layer adds the light to the page
+ * (`GlowStage.blend`). The layer and its GPU context are in the page only while the light shows.
  */
 export class EdgeLight {
   private readonly glow: TabGlow;
@@ -82,9 +82,17 @@ export class EdgeLight {
     }
   }
 
-  /** The HUD moved or changed size: the arrival and the attention mist follow it. */
+  /** The HUD moved or changed size: an entry still resolving follows its centre. */
   kick(): void {
     this.glow.kick();
+  }
+
+  /**
+   * The agent clicked at viewport CSS px (x, y) (`PointerLayer`): a light that is on sends a brief
+   * rewrite wave along the edge nearest the click.
+   */
+  click(x: number, y: number): void {
+    this.glow.click(x, y);
   }
 
   /** Reduce Motion changed. */
