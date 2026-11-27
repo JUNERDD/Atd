@@ -4,6 +4,7 @@ import {
   type ShellFrame,
   type ShellFrameOf,
 } from '../channel/protocol.ts';
+import type { DiagRecorder } from '../diagnostics/recorder.ts';
 import type { AskFailure } from '../messages/views.ts';
 import type { CdpTranslator } from './cdp/translator.ts';
 import type { FollowUps } from './follow-ups.ts';
@@ -27,6 +28,7 @@ export interface ShellFrameDeps {
   links: RunLinks;
   hidden: HiddenRuns;
   followUps: FollowUps;
+  diagnostics: DiagRecorder;
 }
 
 /** Routes one validated shell frame (K2) to the module that owns its concern. */
@@ -37,9 +39,11 @@ export function handleShellFrame(deps: ShellFrameDeps, frame: ShellFrame): void 
       return;
     case 'pair.state':
       deps.pairing.onState(frame);
+      if (frame.state === 'paired' && frame.secret !== undefined) deps.diagnostics.setPaired(true);
       return;
     case 'unpaired':
       deps.pairing.onUnpaired();
+      deps.diagnostics.setPaired(false);
       return;
     case 'prefs': {
       const prefs = { language: frame.language, glowEffects: frame.glowEffects };
@@ -62,10 +66,19 @@ export function handleShellFrame(deps: ShellFrameDeps, frame: ShellFrame): void 
     case 'tab.hand':
       if (handAllowed(deps, frame.runId, frame.tabId))
         void deps.ownership.hand(frame.runId, frame.tabId);
-      else
+      else {
         console.warn(
           `[atd] refused to hand tab ${frame.tabId}: no ask of this tab started the run`,
         );
+        deps.diagnostics.recordBackground({
+          level: 'warn',
+          cat: 'ownership',
+          code: 'tab_hand_refused',
+          runId: frame.runId,
+          tabId: frame.tabId,
+          msg: 'Refused tab.hand: no ask of this tab started the run',
+        });
+      }
       return;
     case 'tab.open':
       void deps.ownership.open(frame.requestId, frame.runId, frame.url);
@@ -101,11 +114,25 @@ export function handleShellFrame(deps: ShellFrameDeps, frame: ShellFrame): void 
       if (ref !== undefined && (deps.requests.fail(ref, 'failed') || deps.followUps.refused(ref)))
         return;
       console.warn(`[atd] Atd reported "${frame.code}"`, frame.message);
-      if (ref === undefined) {
-        const rejection = channelRejection(frame.code);
-        if (rejection !== undefined) {
-          deps.channel.halt(rejection === 'originMismatch' ? 'hostMissing' : rejection);
-        }
+      const rejection = ref === undefined ? channelRejection(frame.code) : undefined;
+      if (rejection !== undefined) {
+        deps.diagnostics.recordBackground({
+          level: 'warn',
+          cat: 'native',
+          code: rejection,
+          msg: frame.message || `Shell rejected channel (${rejection})`,
+        });
+        deps.channel.halt(rejection === 'originMismatch' ? 'hostMissing' : rejection);
+        return;
+      }
+      // Never record `notPaired` or `malformed` shell errors to guarantee zero feedback loops.
+      if (frame.code !== 'notPaired' && frame.code !== 'malformed' && ref !== 'diag.batch') {
+        deps.diagnostics.recordBackground({
+          level: 'warn',
+          cat: 'native',
+          code: frame.code,
+          msg: frame.message || `Shell reported error "${frame.code}"`,
+        });
       }
       return;
     }
@@ -124,6 +151,7 @@ function welcome(deps: ShellFrameDeps, frame: ShellFrameOf<'welcome'>): void {
     sites: frame.sites,
   });
   deps.pairing.onWelcome(frame.paired, frame.label);
+  deps.diagnostics.setPaired(frame.paired);
 }
 
 /**

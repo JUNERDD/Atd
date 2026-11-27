@@ -1,3 +1,5 @@
+import type { DiagRecorder } from '../diagnostics/recorder.ts';
+import { summarizeError } from '../diagnostics/sanitize.ts';
 import type { CdpTranslator } from './cdp/translator.ts';
 import type { HiddenRuns } from './hidden-runs.ts';
 import type { Ownership } from './ownership.ts';
@@ -14,6 +16,7 @@ export interface TabEventDeps {
   translator: CdpTranslator;
   links: RunLinks;
   hidden: HiddenRuns;
+  diagnostics: DiagRecorder;
   /** Resolves once the restored state is loaded; events wait for it. */
   booted: Promise<void>;
 }
@@ -26,13 +29,20 @@ export interface TabEventDeps {
 export function listenToTabs(deps: TabEventDeps): void {
   const { ownership, links, hidden } = deps;
   const after = (task: () => unknown): void => {
-    deps.booted
-      .then(task)
-      .catch((error: unknown) => console.warn('[atd] a tab event failed', error));
+    deps.booted.then(task).catch((error: unknown) => {
+      console.warn('[atd] a tab event failed', error);
+      deps.diagnostics.recordBackground({
+        level: 'warn',
+        cat: 'tabs',
+        code: 'event_failed',
+        msg: summarizeError(error, 'Tab event handler failed'),
+      });
+    });
   };
   chrome.tabs.onCreated.addListener((tab) => after(() => ownership.adoptOpened(tab)));
   chrome.tabs.onRemoved.addListener((tabId) =>
     after(() => {
+      deps.diagnostics.forgetTab(tabId);
       ownership.release(tabId, 'closed');
       links.tabClosed(tabId);
       hidden.tabClosed(tabId);

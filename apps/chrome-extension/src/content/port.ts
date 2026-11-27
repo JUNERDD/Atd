@@ -1,3 +1,4 @@
+import { buildDiagEvent, summarizeError } from '../diagnostics/sanitize.ts';
 import type { BackgroundToContent, ContentMessage } from '../messages/content.ts';
 import { CONTENT_PORT } from '../messages/ports.ts';
 import { signal } from './lifetime.ts';
@@ -26,6 +27,8 @@ export class ContentPort {
   private retryTimer = 0;
   private cached = false;
   private dead = false;
+  /** At most one explicit port error kept outside `outbox` to report once reconnected. */
+  private pendingPortError: { code: string; msg: string } | null = null;
 
   constructor(private readonly handlers: PortHandlers) {}
 
@@ -56,7 +59,7 @@ export class ContentPort {
   send(message: ContentMessage): void {
     if (this.dead) return;
     if (this.port && this.post(this.port, message)) return;
-    if (message.type === 'input') return;
+    if (message.type === 'input' || message.type === 'diag.event') return;
     this.outbox.push(message);
     if (this.outbox.length > OUTBOX_LIMIT) this.outbox.shift();
     this.connect();
@@ -80,6 +83,11 @@ export class ContentPort {
     });
     port.onDisconnect.addListener(() => this.disconnected(port));
     if (!this.post(port, { type: 'ready' })) return;
+    if (this.pendingPortError !== null) {
+      const { code, msg } = this.pendingPortError;
+      this.pendingPortError = null;
+      this.post(port, buildDiagEvent('warn', 'port', msg, code));
+    }
     const pending = this.outbox;
     this.outbox = [];
     for (const message of pending) this.post(port, message);
@@ -87,11 +95,14 @@ export class ContentPort {
 
   private disconnected(port: chrome.runtime.Port): void {
     // Reading lastError marks it handled, so Chrome logs nothing on the page's console.
-    void chrome.runtime.lastError;
+    const lastError = chrome.runtime.lastError?.message;
     if (this.port !== port) return;
     this.port = null;
     if (!chrome.runtime?.id) return this.invalidate();
     if (this.cached) return;
+    if (lastError && this.pendingPortError === null) {
+      this.pendingPortError = { code: 'port_disconnected', msg: lastError };
+    }
     this.retryTimer = window.setTimeout(() => this.connect(), this.retryMs);
     this.retryMs = Math.min(this.retryMs * 2, RETRY_MAX_MS);
   }
@@ -100,7 +111,13 @@ export class ContentPort {
     try {
       port.postMessage(message);
       return true;
-    } catch {
+    } catch (error) {
+      if (message.type !== 'diag.event' && chrome.runtime?.id && this.pendingPortError === null) {
+        this.pendingPortError = {
+          code: 'port_post_failed',
+          msg: summarizeError(error, 'Port postMessage failed'),
+        };
+      }
       // The port closed between its last event and now; treat it as dropped.
       this.disconnected(port);
       return false;

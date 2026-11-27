@@ -41,6 +41,7 @@ export default defineConfig(({ mode }) => {
       outDir: `dist/${flavor}`,
       emptyOutDir: true,
       target: 'chrome125',
+      sourcemap: flavor === 'dev' ? 'inline' : false,
       // Lightning CSS 1.33 (Vite's default CSS minifier) folds `animation-timeline` into the
       // `animation` shorthand for Chrome targets; Chrome accepts a timeline there only as a reset,
       // so it drops the whole declaration and the scroll-driven animation (the panel kit's scroll

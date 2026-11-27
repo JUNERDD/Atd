@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from '../../messages/ports.ts';
+import type { ContentDiagReporter } from '../diag.ts';
 
 /**
  * Where the HUD rests: one of six anchors (top or bottom × left, centre or right). The person
@@ -53,26 +54,28 @@ function isAnchor(value: unknown): value is Anchor {
   return (v === 'top' || v === 'bottom') && (h === 'left' || h === 'center' || h === 'right');
 }
 
-export async function loadAnchor(): Promise<Anchor> {
+export async function loadAnchor(onDiag?: ContentDiagReporter): Promise<Anchor> {
   const key = storageKey();
   if (!key) return HOME;
   try {
     const stored = await chrome.storage.local.get(key);
     const value: unknown = stored[key];
     return isAnchor(value) ? value : HOME;
-  } catch {
+  } catch (error) {
+    if (chrome.runtime?.id) onDiag?.('warn', 'storage', 'hud_anchor_load_failed', error);
     return HOME;
   }
 }
 
-export function saveAnchor(at: Anchor): void {
+export function saveAnchor(at: Anchor, onDiag?: ContentDiagReporter): void {
   const key = storageKey();
   if (!key) return;
   // The default place is not stored: a reset site forgets its entry.
   const write = sameAnchor(at, HOME)
     ? chrome.storage.local.remove(key)
     : chrome.storage.local.set({ [key]: at });
-  write.catch(() => {
-    // The extension context went away; the position simply isn't kept.
+  write.catch((error: unknown) => {
+    // Report storage failures only while the extension context is still live.
+    if (chrome.runtime?.id) onDiag?.('warn', 'storage', 'hud_anchor_save_failed', error);
   });
 }

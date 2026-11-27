@@ -1,6 +1,7 @@
 import { PermissionAnswerSchema } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
 import { OwnInputSchema, PickedElementSchema } from '../channel/payloads.ts';
+import { DiagEventMessageSchema } from './diag-event.ts';
 import type { AskStatus, PointerView, TabView } from './views.ts';
 
 /**
@@ -87,6 +88,8 @@ export const ContentMessageSchema = Type.Union([
    * reports it as `lastInputAt` for tabs a run owns and ignores it otherwise.
    */
   Type.Object({ type: Type.Literal('input') }),
+  /** Explicit extension catch-site diagnostic (dropped while disconnected; rate-limited in SW). */
+  DiagEventMessageSchema,
 ]);
 export type ContentMessage = Static<typeof ContentMessageSchema>;
 

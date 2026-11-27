@@ -1,3 +1,4 @@
+import type { DiagRecorder } from '../diagnostics/recorder.ts';
 import type { PanelMessage } from '../messages/panel.ts';
 import { sendAsk } from './asks.ts';
 import type { SendFrame } from './native.ts';
@@ -15,6 +16,7 @@ export interface PanelIntentDeps extends SiteDeps {
   pairing: Pairing;
   owned: OwnedTabs;
   requests: PendingRequests;
+  diagnostics: DiagRecorder;
 }
 
 /**
@@ -74,6 +76,9 @@ export function handlePanelIntent(
       chrome.runtime.openOptionsPage().catch((error: unknown) => {
         console.info('[atd] could not open the options page', error);
       });
+      return;
+    case 'diag.event':
+      deps.diagnostics.recordSurfaceEvent('panel', intent);
       return;
   }
 }

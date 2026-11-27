@@ -4,6 +4,8 @@ import {
   type ExtensionFrameBody,
   type ShellFrame,
 } from '../channel/protocol.ts';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
+import { summarizeError } from '../diagnostics/sanitize.ts';
 import { NATIVE_HOST } from '../flavor.ts';
 import { ChunkJoiner, decodeShellMessage } from './frames.ts';
 
@@ -29,6 +31,7 @@ export interface NativeChannelEvents {
   hello(): Promise<ExtensionFrameBody<'hello'>>;
   frame(frame: ShellFrame): void;
   closed(reason: CloseReason): void;
+  onDiagnostic?: BackgroundDiagReporter;
 }
 
 /** The protocol's bound on page text such as a URL or a title (`Text` in `protocol.ts`). */
@@ -56,9 +59,11 @@ export class NativeChannel {
   private opening = false;
   private failures = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
-  private readonly chunks = new ChunkJoiner();
+  private readonly chunks: ChunkJoiner;
 
-  constructor(private readonly events: NativeChannelEvents) {}
+  constructor(private readonly events: NativeChannelEvents) {
+    this.chunks = new ChunkJoiner(events.onDiagnostic);
+  }
 
   /** Whether a port is open and its `hello` went out. */
   get isOpen(): boolean {
@@ -81,6 +86,12 @@ export class NativeChannel {
         if (attempt !== this.attempt) return;
         this.opening = false;
         console.warn('[atd] could not prepare the hello frame', error);
+        this.events.onDiagnostic?.({
+          level: 'error',
+          cat: 'native',
+          code: 'hello_failed',
+          msg: summarizeError(error, 'Could not prepare hello frame'),
+        });
         this.events.closed('disconnected');
         this.scheduleRetry();
       },
@@ -134,6 +145,15 @@ export class NativeChannel {
       return true;
     } catch (error) {
       console.warn(`[atd] could not send "${frame.t}"`, error);
+      // Never record a diagnostic for `diag.batch` failures (prevents feedback loops).
+      if (frame.t !== 'diag.batch') {
+        this.events.onDiagnostic?.({
+          level: 'warn',
+          cat: 'native',
+          code: 'send_failed',
+          msg: `Could not send "${frame.t}": ${summarizeError(error)}`,
+        });
+      }
       return false;
     }
   }
@@ -144,6 +164,12 @@ export class NativeChannel {
       port = chrome.runtime.connectNative(NATIVE_HOST);
     } catch (error) {
       console.warn('[atd] connectNative failed', error);
+      this.events.onDiagnostic?.({
+        level: 'error',
+        cat: 'native',
+        code: 'connect_failed',
+        msg: summarizeError(error, 'connectNative failed'),
+      });
       this.events.closed('disconnected');
       this.scheduleRetry();
       return;
@@ -156,7 +182,7 @@ export class NativeChannel {
 
   private receive(port: chrome.runtime.Port, message: unknown): void {
     if (port !== this.port) return;
-    const frame = decodeShellMessage(message, this.chunks);
+    const frame = decodeShellMessage(message, this.chunks, this.events.onDiagnostic);
     if (frame !== undefined) this.events.frame(frame);
   }
 
@@ -166,7 +192,14 @@ export class NativeChannel {
     if (port !== this.port) return;
     this.port = undefined;
     this.chunks.clear();
-    this.events.closed(closeReason(message));
+    const reason = closeReason(message);
+    this.events.onDiagnostic?.({
+      level: 'warn',
+      cat: 'native',
+      code: reason,
+      msg: message || 'Native messaging port disconnected',
+    });
+    this.events.closed(reason);
     this.scheduleRetry();
   }
 

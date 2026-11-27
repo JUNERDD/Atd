@@ -1,5 +1,6 @@
 {
   "loading": "Loading…",
+  "errorFallback": "Something went wrong.",
   "title": "{{name}} Settings",
   "version": "Version {{version}}",
   "toolbar": {

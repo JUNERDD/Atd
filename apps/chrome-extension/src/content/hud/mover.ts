@@ -1,3 +1,4 @@
+import type { ContentDiagReporter } from '../diag.ts';
 import { reducedMotion, springEasing } from '../motion.ts';
 import { type Anchor, type Arrow, HOME, sameAnchor, saveAnchor, stepAnchor } from './position.ts';
 
@@ -28,6 +29,7 @@ export class HudMover {
     private readonly capsule: HTMLElement,
     /** Called whenever the capsule moves, so the light can follow it. */
     private readonly moved: () => void,
+    private readonly onDiag?: ContentDiagReporter,
   ) {
     this.place(HOME);
   }
@@ -46,7 +48,7 @@ export class HudMover {
     this.glide = null;
     running?.cancel();
     this.place(at);
-    saveAnchor(at);
+    saveAnchor(at, this.onDiag);
     this.capsule.style.removeProperty('transform');
     const after = this.capsule.getBoundingClientRect();
     const ox = before.left - after.left;

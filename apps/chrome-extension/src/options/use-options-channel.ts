@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BackgroundToOptions, OptionsMessage } from '../messages/options.ts';
 import { OPTIONS_PORT } from '../messages/ports.ts';
 import type { OptionsView } from '../messages/views.ts';
+import { usePageDiagnostics } from '../pages/use-page-diagnostics.ts';
 
 /** MV3 may stop an idle service worker under an open page; the port is reopened after this. */
 const REOPEN_DELAY_MS = 300;
@@ -94,6 +95,7 @@ export function useOptionsChannel(): OptionsChannel {
     }
   }, []);
   useShortcutsRefresh(send);
+  usePageDiagnostics(send);
 
   return { view, send };
 }

@@ -1,4 +1,6 @@
 import { Value } from 'typebox/value';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
+import { sanitizeOrigin } from '../diagnostics/sanitize.ts';
 import {
   ContentMessageSchema,
   type BackgroundToContent,
@@ -37,7 +39,12 @@ export interface SurfaceViews {
 }
 
 export interface SurfaceHandlers {
-  content(tabId: number, intent: ContentIntent, reply: ContentReply): void;
+  content(
+    tabId: number,
+    intent: ContentIntent,
+    reply: ContentReply,
+    origin: string | undefined,
+  ): void;
   /** A content message that failed validation (it may name a request to fail). */
   invalidContent(tabId: number, message: unknown): void;
   panel(intent: PanelMessage, reply: PanelReply): void;
@@ -45,6 +52,7 @@ export interface SurfaceHandlers {
   options(intent: OptionsMessage, tab: chrome.tabs.Tab | undefined): void;
   /** A panel or options page opened: refresh what Chrome sends no event for (the shortcuts). */
   pageOpened(): void;
+  onDiagnostic?: BackgroundDiagReporter;
 }
 
 interface ContentPort {
@@ -84,6 +92,13 @@ export class Surfaces {
       schema: PanelMessageSchema,
       state: () => ({ type: 'state', view: views.panel() }),
       handle: (intent, from) => handlers.panel(intent, from.reply),
+      invalid: () =>
+        handlers.onDiagnostic?.({
+          level: 'warn',
+          cat: 'port',
+          code: 'invalid_panel_message',
+          msg: 'Dropped invalid panel port message',
+        }),
       opened,
     });
     this.options = new PagePorts<typeof OptionsMessageSchema, BackgroundToOptions>({
@@ -91,6 +106,13 @@ export class Surfaces {
       schema: OptionsMessageSchema,
       state: () => ({ type: 'state', view: views.options() }),
       handle: (intent, from) => handlers.options(intent, from.tab),
+      invalid: () =>
+        handlers.onDiagnostic?.({
+          level: 'warn',
+          cat: 'port',
+          code: 'invalid_options_message',
+          msg: 'Dropped invalid options port message',
+        }),
       opened,
     });
   }
@@ -178,8 +200,12 @@ export class Surfaces {
       return;
     }
     if (message.type !== 'ready') {
-      this.handlers.content(tabId, message, (reply) =>
-        this.tabs.get(tabId)?.port === port ? post(port, reply) : false,
+      const origin = sanitizeOrigin(port.sender?.tab?.url);
+      this.handlers.content(
+        tabId,
+        message,
+        (reply) => (this.tabs.get(tabId)?.port === port ? post(port, reply) : false),
+        origin,
       );
       return;
     }

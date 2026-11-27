@@ -1,4 +1,6 @@
 import type { ConnId } from '../../channel/protocol.ts';
+import type { BackgroundDiagReporter } from '../../diagnostics/recorder.ts';
+import { summarizeError } from '../../diagnostics/sanitize.ts';
 import type { SendFrame } from '../native.ts';
 import { CdpConnection } from './connection.ts';
 import type { Debuggee } from './debuggee.ts';
@@ -19,6 +21,7 @@ export interface TranslatorDeps {
   openTab(url: string): Promise<number>;
   closeTab(tabId: number): Promise<void>;
   version(): Promise<string>;
+  onDiagnostic?: BackgroundDiagReporter;
 }
 
 /**
@@ -43,10 +46,11 @@ export class CdpTranslator {
       closeTab: (tabId) => this.deps.closeTab(tabId),
       version: () => this.deps.version(),
       emit: (message) => {
-        const msg = fitted(message);
+        const msg = fitted(message, this.deps.onDiagnostic);
         if (msg !== undefined) this.deps.send({ t: 'cdp', conn, msg });
       },
       changed: () => this.settle(),
+      ...(this.deps.onDiagnostic === undefined ? {} : { onDiagnostic: this.deps.onDiagnostic }),
     });
     this.connections.set(key, { conn, connection });
   }
@@ -105,6 +109,12 @@ export class CdpTranslator {
       })
       .catch((error: unknown) => {
         console.warn('[atd] could not release debugger attachments', error);
+        this.deps.onDiagnostic?.({
+          level: 'warn',
+          cat: 'cdp',
+          code: 'detach_failed',
+          msg: summarizeError(error, 'Could not release debugger attachments'),
+        });
       });
   }
 }
@@ -113,13 +123,28 @@ export class CdpTranslator {
  * The message as CDP text. A response too large for the channel becomes an error in its place;
  * an event that large (a page logging megabytes) is dropped.
  */
-function fitted(message: CdpOutbound): string | undefined {
+function fitted(message: CdpOutbound, onDiagnostic?: BackgroundDiagReporter): string | undefined {
   const text = JSON.stringify(message);
   if (fitsBytes(text, MAX_CDP_BYTES)) return text;
+  const cdpSession = message.sessionId;
   if (!('id' in message)) {
     console.info('[atd] dropped a CDP event too large for the channel');
+    onDiagnostic?.({
+      level: 'warn',
+      cat: 'cdp',
+      code: 'cdp_message_too_large',
+      ...(cdpSession === undefined ? {} : { cdpSession }),
+      msg: `Dropped CDP event "${message.method}" exceeding 30 MiB limit`,
+    });
     return undefined;
   }
+  onDiagnostic?.({
+    level: 'warn',
+    cat: 'cdp',
+    code: 'cdp_message_too_large',
+    ...(cdpSession === undefined ? {} : { cdpSession }),
+    msg: 'Replaced CDP response exceeding 30 MiB limit with error',
+  });
   const error = {
     code: CDP_ERROR.server,
     message: 'The response is too large for Atd for Chrome.',

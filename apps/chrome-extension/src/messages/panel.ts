@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { OwnInputSchema } from '../channel/payloads.ts';
 import { MAX_REQUEST_TEXT } from './content.ts';
+import { DiagEventMessageSchema } from './diag-event.ts';
 import type { AskStatus, PanelView } from './views.ts';
 
 /**
@@ -47,6 +48,8 @@ export const PanelMessageSchema = Type.Union([
   Type.Object({ type: Type.Literal('settings.open') }),
   /** Extension Settings…: the extension's own options page, in a tab. */
   Type.Object({ type: Type.Literal('options.open') }),
+  /** Panel runtime or React error-boundary diagnostic. */
+  DiagEventMessageSchema,
 ]);
 export type PanelMessage = Static<typeof PanelMessageSchema>;
 

@@ -1,5 +1,6 @@
 {
   "loading": "正在载入…",
+  "errorFallback": "出了点问题。",
   "header": {
     "connected": "已连接",
     "notConnected": "未连接",

@@ -1,3 +1,5 @@
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
+import { sanitizeOrigin, summarizeError } from '../diagnostics/sanitize.ts';
 import { openPanel } from './action-surface.ts';
 import type { Surfaces } from './surfaces.ts';
 
@@ -13,7 +15,10 @@ export class ContentInjector {
   /** Whether the person allowed file URLs, as last read (unknown until the first read returns). */
   private fileAccess: boolean | undefined;
 
-  constructor(private readonly surfaces: Surfaces) {
+  constructor(
+    private readonly surfaces: Surfaces,
+    private readonly onDiagnostic?: BackgroundDiagReporter,
+  ) {
     this.readFileAccess().catch(() => undefined);
   }
 
@@ -36,14 +41,34 @@ export class ContentInjector {
     const file = chrome.runtime.getManifest().content_scripts?.[0]?.js?.[0];
     if (tab === undefined || file === undefined) return false;
     if (!scriptable(tab.url ?? '', await this.readFileAccess())) return false;
+    const origin = sanitizeOrigin(tab.url);
     try {
       await chrome.scripting.executeScript({ target: { tabId }, files: [file] });
     } catch (error) {
       // Pages Chrome keeps from extensions that a URL does not tell (error pages, blocked hosts).
       console.info(`[atd] could not reach tab ${tabId}`, error);
+      this.onDiagnostic?.({
+        level: 'warn',
+        cat: 'inject',
+        code: 'execute_failed',
+        tabId,
+        ...(origin === undefined ? {} : { origin }),
+        msg: summarizeError(error, 'Could not inject content script'),
+      });
       return false;
     }
-    return this.surfaces.waitForContent(tabId, READY_TIMEOUT_MS);
+    const ready = await this.surfaces.waitForContent(tabId, READY_TIMEOUT_MS);
+    if (!ready) {
+      this.onDiagnostic?.({
+        level: 'warn',
+        cat: 'inject',
+        code: 'ready_timeout',
+        tabId,
+        ...(origin === undefined ? {} : { origin }),
+        msg: `Content script did not become ready within ${READY_TIMEOUT_MS}ms`,
+      });
+    }
+    return ready;
   }
 
   private async readFileAccess(): Promise<boolean> {

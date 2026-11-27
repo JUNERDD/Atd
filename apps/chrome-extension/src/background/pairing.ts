@@ -1,6 +1,7 @@
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 import type { ShellFrameOf } from '../channel/protocol.ts';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
 import { STORAGE_KEYS } from '../messages/ports.ts';
 import { PAIR_FAILURES, type PairFailure } from '../messages/views.ts';
 import type { SendFrame } from './native.ts';
@@ -30,13 +31,24 @@ export class Pairing {
   constructor(
     private readonly store: Store,
     private readonly send: SendFrame,
+    private readonly onDiagnostic?: BackgroundDiagReporter,
   ) {}
 
   /** The kept pairing: shown as paired until Atd's `welcome` says otherwise. */
   async restore(): Promise<void> {
     const stored = await chrome.storage.local.get(STORAGE_KEYS.pairing);
     const value: unknown = stored[STORAGE_KEYS.pairing];
-    if (!Value.Check(StoredSchema, value)) return;
+    if (!Value.Check(StoredSchema, value)) {
+      if (value !== undefined) {
+        this.onDiagnostic?.({
+          level: 'warn',
+          cat: 'storage',
+          code: 'invalid_pairing',
+          msg: 'Ignored invalid stored pairing record',
+        });
+      }
+      return;
+    }
     this.secret = value.secret;
     this.label = value.label;
     this.store.update({ pairing: this.pairedView() });

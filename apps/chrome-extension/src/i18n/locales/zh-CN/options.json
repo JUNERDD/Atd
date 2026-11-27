@@ -1,5 +1,6 @@
 {
   "loading": "正在载入…",
+  "errorFallback": "出了点问题。",
   "title": "{{name}}设置",
   "version": "版本 {{version}}",
   "toolbar": {

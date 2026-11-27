@@ -1,5 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Value } from 'typebox/value';
+import type { BackgroundDiagInput } from '../../diagnostics/recorder.ts';
+import { summarizeError } from '../../diagnostics/sanitize.ts';
 
 /**
  * CDP messages between the worker (Playwright's `connectOverCDP`) and the emulated browser
@@ -31,14 +33,32 @@ export const CDP_ERROR = {
   invalidParams: -32602,
 } as const;
 
+export const CDP_DIAG = {
+  debuggerConflict: 'debugger_conflict',
+  attachFailed: 'attach_failed',
+} as const;
+
 /** A protocol error to send back as the command's `error`. */
 export class CdpError extends Error {
   constructor(
     message: string,
     readonly code: number = CDP_ERROR.server,
+    readonly diagCode?: string,
   ) {
     super(message);
   }
+}
+
+/** Classifies a tab debugger attach failure for the extension flight recorder. */
+export function cdpAttachDiagnostic(tabId: number, error: unknown): BackgroundDiagInput {
+  const conflict = error instanceof CdpError && error.diagCode === CDP_DIAG.debuggerConflict;
+  return {
+    level: 'warn',
+    cat: 'cdp',
+    code: conflict ? CDP_DIAG.debuggerConflict : CDP_DIAG.attachFailed,
+    tabId,
+    msg: summarizeError(error, 'Could not attach debugger to tab'),
+  };
 }
 
 /** A method the policy does not let through (`policy.ts`). */

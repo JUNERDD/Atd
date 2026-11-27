@@ -1,3 +1,4 @@
+import type { ContentDiagReporter } from '../diag.ts';
 import { h } from '../dom.ts';
 import { Layer } from '../hosts.ts';
 import glowCss from './glow.css?inline';
@@ -21,7 +22,7 @@ export class GlowStage {
   private current: GlowCanvas | null = null;
   private unavailable = false;
 
-  constructor() {
+  constructor(private readonly onDiag?: ContentDiagReporter) {
     this.layer.root.setAttribute('aria-hidden', 'true');
   }
 
@@ -29,7 +30,7 @@ export class GlowStage {
   open(): GlowCanvas | null {
     if (this.current || this.unavailable) return this.current;
     const canvas = h('canvas', { class: 'glow' });
-    const surface = new GlowSurface(canvas);
+    const surface = new GlowSurface(canvas, this.onDiag);
     if (!surface.supported) {
       surface.dispose();
       this.unavailable = true;

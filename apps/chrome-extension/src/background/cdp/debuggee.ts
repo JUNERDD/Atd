@@ -5,7 +5,8 @@
 
 import { Type, type Static } from 'typebox';
 import { Value } from 'typebox/value';
-import { CdpError, debuggerError, type CdpParams } from './messages.ts';
+import type { BackgroundDiagReporter } from '../../diagnostics/recorder.ts';
+import { CDP_DIAG, CDP_ERROR, CdpError, debuggerError, type CdpParams } from './messages.ts';
 
 /** The `chrome.debugger` protocol version the worker's Playwright speaks. */
 const PROTOCOL_VERSION = '1.3';
@@ -52,13 +53,21 @@ export class Debuggee {
    * Detaches what a previous worker lifetime left attached: its channel (and every worker
    * connection) died with it, so no tab needs the debugger now.
    */
-  async restore(): Promise<void> {
+  async restore(onDiagnostic?: BackgroundDiagReporter): Promise<void> {
     const stored = await chrome.storage.session.get(SESSION_KEY);
     const value: unknown = stored[SESSION_KEY];
-    if (Value.Check(Type.Array(Type.Integer({ minimum: 0 })), value))
+    if (Value.Check(Type.Array(Type.Integer({ minimum: 0 })), value)) {
       await Promise.all(
         value.map((tabId) => chrome.debugger.detach({ tabId }).catch(() => undefined)),
       );
+    } else if (value !== undefined) {
+      onDiagnostic?.({
+        level: 'warn',
+        cat: 'storage',
+        code: 'invalid_debugger_tabs',
+        msg: 'Ignored invalid stored debugger tab list',
+      });
+    }
     await chrome.storage.session.remove(SESSION_KEY);
   }
 
@@ -154,8 +163,19 @@ export class Debuggee {
     try {
       await chrome.debugger.attach({ tabId }, PROTOCOL_VERSION);
     } catch (error) {
-      // An attachment this extension still holds from before the worker restarted.
-      if (!(error instanceof Error && error.message.includes('already attached'))) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.toLowerCase().includes('already attached')) throw error;
+      // Verify whether this extension still holds the attachment (e.g. from before a worker
+      // restart) rather than DevTools or another debugger owning it.
+      try {
+        await chrome.debugger.sendCommand({ tabId }, 'Target.getTargetInfo', {});
+      } catch {
+        throw new CdpError(
+          'Another debugger is already attached to the tab.',
+          CDP_ERROR.server,
+          CDP_DIAG.debuggerConflict,
+        );
+      }
     }
     this.attached.set(tabId, new Set());
     this.persist();

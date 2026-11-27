@@ -4,6 +4,7 @@ import { canReply, turnTitle, type SurfaceRun, type TabView } from '../../messag
 import { replyTargetOf } from '../ask/context.ts';
 import { AskFlow } from '../ask/flow.ts';
 import { copyText } from '../clipboard.ts';
+import type { ContentDiagReporter } from '../diag.ts';
 import { t } from '../i18n.ts';
 import { answerableRequest, cardIdentity } from './card.ts';
 import type { HudIntent, RunRender } from './intents.ts';
@@ -23,6 +24,7 @@ export interface HudDeps {
   takeOwnInput(): OwnInput | undefined;
   /** The HUD's state or place changed: the light follows. */
   changed(): void;
+  onDiag?: ContentDiagReporter;
 }
 
 /**
@@ -109,7 +111,7 @@ export class Hud {
   /** The layer and capsule, built the first time the HUD has something to show. */
   private get view(): HudView {
     if (!this.built) {
-      this.built = new HudView(() => this.deps.changed());
+      this.built = new HudView(() => this.deps.changed(), this.deps.onDiag);
       if (this.tab) this.built.setEffects(this.tab.prefs.glowEffects);
     }
     return this.built;
@@ -135,7 +137,7 @@ export class Hud {
     if (this.anchor === 'read') return true;
     if (this.anchor === 'unread') {
       this.anchor = 'reading';
-      void loadAnchor().then((anchor) => {
+      void loadAnchor(this.deps.onDiag).then((anchor) => {
         this.anchor = 'read';
         this.view.mover.place(anchor);
         this.render();
@@ -299,7 +301,7 @@ export class Hud {
         if (isTerminal(run.status)) send({ type: 'run.dismiss', taskId, runId });
         return this.render();
       case 'copy':
-        void copyText(intent.text, this.view.layer.root).then((copied) => {
+        void copyText(intent.text, this.view.layer.root, this.deps.onDiag).then((copied) => {
           if (!copied) return;
           this.overlays.copied(run);
           this.render();

@@ -1,5 +1,6 @@
 import { Type, type Static, type TSchema } from 'typebox';
 import { Value } from 'typebox/value';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
 import { STORAGE_KEYS } from '../messages/ports.ts';
 import {
   DEFAULT_SETTINGS,
@@ -19,9 +20,21 @@ import type { Store } from './store.ts';
 const StoredSchema = Type.Record(Type.String(), Type.Unknown());
 
 /** Restores the settings an earlier session kept, then applies them (worker boot). */
-export async function restoreSettings(store: Store): Promise<void> {
+export async function restoreSettings(
+  store: Store,
+  onDiagnostic?: BackgroundDiagReporter,
+): Promise<void> {
   const stored = await chrome.storage.local.get(STORAGE_KEYS.settings);
-  adopt(store, fromStored(stored[STORAGE_KEYS.settings]));
+  const raw: unknown = stored[STORAGE_KEYS.settings];
+  if (raw !== undefined && !Value.Check(ExtensionSettingsSchema, raw)) {
+    onDiagnostic?.({
+      level: 'warn',
+      cat: 'storage',
+      code: 'invalid_settings',
+      msg: 'Stored extension settings had invalid fields; defaults applied',
+    });
+  }
+  adopt(store, fromStored(raw));
 }
 
 /** A change from the options page: shown, kept and applied at once. */

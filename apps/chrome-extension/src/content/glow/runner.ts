@@ -1,4 +1,5 @@
 import type { GlowTones } from '@atd/ui/lib/glow/palettes';
+import type { ContentDiagReporter } from '../diag.ts';
 import { GLYPH_MAX_CLICKS } from './glyph.ts';
 import { GLOW_FRAGMENT, GLOW_UNIFORMS, GLOW_VERTEX, type GlowUniform } from './shader.ts';
 
@@ -55,20 +56,32 @@ export class GlowSurface {
   /** The shader did not build on a live context: this machine cannot draw the light. */
   private broken = false;
 
-  constructor(private readonly canvas: HTMLCanvasElement) {
-    this.gl = canvas.getContext('webgl2', {
-      alpha: true,
-      premultipliedAlpha: true,
-      antialias: false,
-      depth: false,
-      stencil: false,
-      powerPreference: 'low-power',
-      failIfMajorPerformanceCaveat: true,
-    });
+  constructor(
+    private readonly canvas: HTMLCanvasElement,
+    private readonly onDiag?: ContentDiagReporter,
+  ) {
+    try {
+      this.gl = canvas.getContext('webgl2', {
+        alpha: true,
+        premultipliedAlpha: true,
+        antialias: false,
+        depth: false,
+        stencil: false,
+        powerPreference: 'low-power',
+        failIfMajorPerformanceCaveat: true,
+      });
+    } catch (error) {
+      this.gl = null;
+      this.onDiag?.('warn', 'webgl', 'context_error', error);
+    }
+    if (this.gl === null) {
+      this.onDiag?.('warn', 'webgl', 'context_unavailable', 'WebGL2 context unavailable');
+    }
     canvas.addEventListener('webglcontextlost', (event) => {
       event.preventDefault();
       this.lost = true;
       this.program = null;
+      this.onDiag?.('warn', 'webgl', 'context_lost', 'WebGL2 context lost');
     });
     canvas.addEventListener('webglcontextrestored', () => {
       this.lost = false;
@@ -142,8 +155,8 @@ export class GlowSurface {
   private build(): void {
     const gl = this.gl;
     if (!gl || gl.isContextLost()) return;
-    const vertex = compile(gl, gl.VERTEX_SHADER, GLOW_VERTEX);
-    const fragment = compile(gl, gl.FRAGMENT_SHADER, GLOW_FRAGMENT);
+    const vertex = compile(gl, gl.VERTEX_SHADER, GLOW_VERTEX, this.onDiag);
+    const fragment = compile(gl, gl.FRAGMENT_SHADER, GLOW_FRAGMENT, this.onDiag);
     const program = gl.createProgram();
     if (!vertex || !fragment || !program) {
       this.broken = !gl.isContextLost();
@@ -153,7 +166,9 @@ export class GlowSurface {
     gl.attachShader(program, fragment);
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.debug('[Atd] tab light unavailable:', gl.getProgramInfoLog(program));
+      const log = gl.getProgramInfoLog(program);
+      console.debug('[Atd] tab light unavailable:', log);
+      this.onDiag?.('warn', 'webgl', 'program_link_failed', log || 'Program link failed');
       this.broken = !gl.isContextLost();
       return;
     }
@@ -170,12 +185,19 @@ export class GlowSurface {
   }
 }
 
-function compile(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader | null {
+function compile(
+  gl: WebGL2RenderingContext,
+  type: number,
+  source: string,
+  onDiag?: ContentDiagReporter,
+): WebGLShader | null {
   const shader = gl.createShader(type);
   if (!shader) return null;
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader;
-  console.debug('[Atd] tab light unavailable:', gl.getShaderInfoLog(shader));
+  const log = gl.getShaderInfoLog(shader);
+  console.debug('[Atd] tab light unavailable:', log);
+  onDiag?.('warn', 'webgl', 'shader_compile_failed', log || 'Shader compile failed');
   return null;
 }

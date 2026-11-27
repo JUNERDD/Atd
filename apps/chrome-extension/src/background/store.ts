@@ -1,6 +1,7 @@
 import { resolveLanguage } from '@atd/agent-contracts';
 import { Value } from 'typebox/value';
 import { ChromePrefsSchema, type ChromePrefs, type RunView } from '../channel/payloads.ts';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
 import { STORAGE_KEYS } from '../messages/ports.ts';
 import { DEFAULT_SETTINGS, type ExtensionSettings } from '../messages/settings.ts';
 import type { Connection, PairingView, ShortcutView } from '../messages/views.ts';
@@ -66,10 +67,21 @@ export function effectivePrefs(prefs: ChromePrefs | undefined): ChromePrefs {
 }
 
 /** The prefs Atd forwarded in an earlier session, so surfaces start in the right language. */
-export async function restorePrefs(): Promise<ChromePrefs | undefined> {
+export async function restorePrefs(
+  onDiagnostic?: BackgroundDiagReporter,
+): Promise<ChromePrefs | undefined> {
   const stored = await chrome.storage.local.get(STORAGE_KEYS.prefs);
   const value: unknown = stored[STORAGE_KEYS.prefs];
-  return Value.Check(ChromePrefsSchema, value) ? value : undefined;
+  if (Value.Check(ChromePrefsSchema, value)) return value;
+  if (value !== undefined) {
+    onDiagnostic?.({
+      level: 'warn',
+      cat: 'storage',
+      code: 'invalid_prefs',
+      msg: 'Ignored invalid stored prefs',
+    });
+  }
+  return undefined;
 }
 
 export function persistPrefs(prefs: ChromePrefs): void {

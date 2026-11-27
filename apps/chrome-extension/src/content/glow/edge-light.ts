@@ -1,4 +1,5 @@
 import { GLOW_TIMING } from '@atd/ui/lib/glow/timing';
+import type { ContentDiagReporter } from '../diag.ts';
 import type { GlowMode } from '../hud/states.ts';
 import { reducedMotion } from '../motion.ts';
 import { samplePageLuminance } from './luminance.ts';
@@ -31,8 +32,11 @@ export class EdgeLight {
   private scrollTimer = 0;
   private mode: GlowMode = 'off';
 
-  constructor(private readonly hud: () => DOMRectReadOnly) {
-    this.glow = new TabGlow(new GlowStage(), () => ({
+  constructor(
+    private readonly hud: () => DOMRectReadOnly,
+    onDiag?: ContentDiagReporter,
+  ) {
+    this.glow = new TabGlow(new GlowStage(onDiag), () => ({
       enabled: this.enabled,
       reduce: reducedMotion(),
       darkness: this.darkness,

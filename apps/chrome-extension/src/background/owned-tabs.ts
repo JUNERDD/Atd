@@ -1,6 +1,7 @@
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 import type { RunView } from '../channel/payloads.ts';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
 import { isActiveStatus } from './projection.ts';
 
 /**
@@ -59,10 +60,20 @@ export class OwnedTabs {
   private readonly atdInputAt = new Map<number, number>();
   private persistScheduled = false;
 
-  async restore(): Promise<void> {
+  async restore(onDiagnostic?: BackgroundDiagReporter): Promise<void> {
     const stored = await chrome.storage.session.get(SESSION_KEY);
     const value: unknown = stored[SESSION_KEY];
-    if (!Value.Check(StoredSchema, value)) return;
+    if (!Value.Check(StoredSchema, value)) {
+      if (value !== undefined) {
+        onDiagnostic?.({
+          level: 'warn',
+          cat: 'storage',
+          code: 'invalid_owned_tabs',
+          msg: 'Ignored invalid stored owned-tabs state',
+        });
+      }
+      return;
+    }
     for (const { tabId, ...entry } of value.tabs) this.tabs.set(tabId, entry);
     for (const runId of value.seenRuns) this.seenRuns.add(runId);
     for (const pair of value.released) this.released.add(pair);

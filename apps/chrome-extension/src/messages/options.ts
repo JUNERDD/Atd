@@ -1,5 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { OriginSchema } from '../channel/payloads.ts';
+import { DiagEventMessageSchema } from './diag-event.ts';
 import { ToolbarActionSchema } from './settings.ts';
 import type { OptionsView } from './views.ts';
 
@@ -28,6 +29,8 @@ export const OptionsMessageSchema = Type.Union([
   /** Open Atd and Computer Use Settings, as in the panel's More menu: frames to the shell. */
   Type.Object({ type: Type.Literal('app.open') }),
   Type.Object({ type: Type.Literal('settings.open') }),
+  /** Options-page runtime or React error-boundary diagnostic. */
+  DiagEventMessageSchema,
 ]);
 export type OptionsMessage = Static<typeof OptionsMessageSchema>;
 

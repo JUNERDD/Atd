@@ -1,5 +1,6 @@
 {
   "loading": "Loading…",
+  "errorFallback": "Something went wrong.",
   "header": {
     "connected": "Connected",
     "notConnected": "Not Connected",

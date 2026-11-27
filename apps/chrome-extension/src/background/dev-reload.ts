@@ -12,6 +12,8 @@ export interface DevReloadDeps {
   contentTabs(): number[];
   /** Injects the content script into a tab that lacks one. */
   inject(tabId: number): Promise<boolean>;
+  /** Persists pending diagnostics into local storage before `chrome.runtime.reload()`. */
+  beforeReload?(): Promise<void>;
 }
 
 /**
@@ -40,7 +42,10 @@ export async function watchDevBuilds(deps: DevReloadDeps, booted: Promise<void>)
     loaded = build;
     // Tabs not reached yet stay on the list, so a reload right on startup keeps them.
     const tabs = [...new Set([...cutOff, ...deps.contentTabs()])];
-    await chrome.storage.local.set({ [LOADED_KEY]: build, [TABS_KEY]: tabs });
+    await Promise.all([
+      chrome.storage.local.set({ [LOADED_KEY]: build, [TABS_KEY]: tabs }),
+      deps.beforeReload?.(),
+    ]);
     chrome.runtime.reload();
     return true;
   };

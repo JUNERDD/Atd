@@ -1,5 +1,6 @@
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
 
 /**
  * The "Atd" tab group (D9, spec 13): one per window, holding the tabs runs own there. Cyan while
@@ -63,10 +64,20 @@ export class TabGroups {
   private queue: Promise<void> = Promise.resolve();
 
   /** Loads what the last worker lifetime kept; a stored value of another shape is ignored. */
-  async restore(): Promise<void> {
+  async restore(onDiagnostic?: BackgroundDiagReporter): Promise<void> {
     const stored = await chrome.storage.session.get(SESSION_KEY);
     const value: unknown = stored[SESSION_KEY];
-    if (!Value.Check(StoredSchema, value)) return;
+    if (!Value.Check(StoredSchema, value)) {
+      if (value !== undefined) {
+        onDiagnostic?.({
+          level: 'warn',
+          cat: 'storage',
+          code: 'invalid_tab_groups',
+          msg: 'Ignored invalid stored tab-group state',
+        });
+      }
+      return;
+    }
     for (const { windowId, groupId } of value.groups)
       if (await groupInWindow(groupId, windowId)) this.byWindow.set(windowId, groupId);
     for (const { tabId, ...origin } of value.origins) this.origins.set(tabId, origin);

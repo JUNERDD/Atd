@@ -1,6 +1,7 @@
 import { Type, type Static } from 'typebox';
 import { Value } from 'typebox/value';
 import type { RunView } from '../channel/payloads.ts';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
 
 /**
  * The runs this extension's asks started, each tied to the tab it was asked from (`ask.accepted`
@@ -35,10 +36,20 @@ export class RunLinks {
   /** `changed` is told whenever which runs a tab shows may have changed. */
   constructor(private readonly changed: () => void) {}
 
-  async restore(): Promise<void> {
+  async restore(onDiagnostic?: BackgroundDiagReporter): Promise<void> {
     const stored = await chrome.storage.session.get(SESSION_KEY);
     const value: unknown = stored[SESSION_KEY];
-    if (!Value.Check(Type.Array(LinkSchema), value)) return;
+    if (!Value.Check(Type.Array(LinkSchema), value)) {
+      if (value !== undefined) {
+        onDiagnostic?.({
+          level: 'warn',
+          cat: 'storage',
+          code: 'invalid_run_links',
+          msg: 'Ignored invalid stored run-links state',
+        });
+      }
+      return;
+    }
     for (const link of value) this.links.set(link.runId, link);
   }
 

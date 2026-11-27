@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OwnInput } from '../channel/payloads.ts';
+import { buildDiagEvent, summarizeError } from '../diagnostics/sanitize.ts';
 import type { PanelMessage } from '../messages/panel.ts';
 import type { PanelView } from '../messages/views.ts';
+import { PageErrorBoundary } from '../pages/error-boundary.tsx';
 import { linkStatus, shellAnswers } from '../pages/link.ts';
 import { useAtdLanguage } from '../pages/use-atd-language.ts';
 import { Composer, type ComposerReply } from './composer.tsx';
@@ -150,6 +152,7 @@ function MainView({ view, settled, page, act, channel, takeOwnInput }: MainProps
  * the tabs.
  */
 export function Panel() {
+  const { t } = useTranslation('panel');
   const channel = usePanelChannel();
   const { view, send } = channel;
   const page = useActivePage();
@@ -166,8 +169,24 @@ export function Panel() {
   const loaded = view !== null && page.kind !== 'loading' ? view : null;
   const screen = loaded ? screenFor(loaded) : null;
   const settled = useSettled(loaded !== null);
+  const onRenderError = useCallback(
+    (error: Error) =>
+      send(
+        buildDiagEvent(
+          'error',
+          'react',
+          summarizeError(error, 'Panel render error'),
+          'render_error',
+        ),
+      ),
+    [send],
+  );
   return (
-    <>
+    <PageErrorBoundary
+      className="pp-body"
+      fallbackMessage={t('errorFallback')}
+      onError={onRenderError}
+    >
       <PanelToolbar
         status={loaded ? linkStatus(loaded, reachOf(loaded)) : null}
         site={loaded ? siteOf(loaded, page) : null}
@@ -196,6 +215,6 @@ export function Panel() {
           )}
         </Body>
       )}
-    </>
+    </PageErrorBoundary>
   );
 }

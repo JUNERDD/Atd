@@ -1,6 +1,8 @@
 import { PermissionAnswerSchema } from '@atd/agent-contracts';
 import { Type, type Static } from 'typebox';
+import { DiagBatchFrameSchema } from './diagnostics.ts';
 import {
+  CHROME_CHANNEL_PROTOCOL,
   ChromePrefsSchema,
   IdSchema as Id,
   InstallationIdSchema,
@@ -16,6 +18,8 @@ import {
   TextSchema as Text,
 } from './payloads.ts';
 
+export { CHROME_CHANNEL_PROTOCOL };
+
 /**
  * K2 · the channel between Atd for Chrome and the Atd shell (`CHROME_CHANNEL_PROTOCOL = 1`).
  * This file is the source of truth; the shell mirrors it by hand in `AIChromeChannelKit` (Swift
@@ -30,8 +34,6 @@ import {
  * MV3's CSP forbids `eval`) and may carry fields this version does not know, which are ignored.
  * The payload shapes the frames carry (runs, requests, prefs) are in `payloads.ts`.
  */
-export const CHROME_CHANNEL_PROTOCOL = 1;
-/** The shell chunks any serialized frame longer than this (Chrome's limit is 1 MB). */
 export const CHUNK_THRESHOLD = 900_000;
 
 const V = Type.Literal(CHROME_CHANNEL_PROTOCOL);
@@ -167,6 +169,7 @@ export const ExtensionFrameSchema = Type.Union([
   Type.Object({ v: V, t: Type.Literal('run.dismiss'), taskId: Id, runId: Id }),
   /** `msg`: one CDP JSON message of the emulated browser (a response or an event). */
   Type.Object({ v: V, t: Type.Literal('cdp'), conn: ConnIdSchema, msg: Type.String() }),
+  DiagBatchFrameSchema,
 ]);
 export type ExtensionFrame = Static<typeof ExtensionFrameSchema>;
 export type HelloFrame = Static<typeof HelloFrameSchema>;

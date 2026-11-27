@@ -18,6 +18,8 @@ export interface PageKind<Schema extends TSchema, Out> {
   /** The page's current `state` message, posted on connect and whenever it changes. */
   state(): Out;
   handle(message: Static<Schema>, from: PageSender<Out>): void;
+  /** Called when a page sends a message that fails schema validation. */
+  invalid?(): void;
   /** A page of this kind connected. */
   opened(): void;
 }
@@ -47,7 +49,10 @@ export class PagePorts<Schema extends TSchema, Out> {
     };
     port.onMessage.addListener((message: unknown) => {
       if (Value.Check(this.kind.schema, message)) this.kind.handle(message, from);
-      else console.warn(`[atd] dropped an invalid ${this.kind.label} message`);
+      else {
+        console.warn(`[atd] dropped an invalid ${this.kind.label} message`);
+        this.kind.invalid?.();
+      }
     });
     port.onDisconnect.addListener(() => this.ports.delete(port));
     this.kind.opened();

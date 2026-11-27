@@ -1,7 +1,9 @@
-import { useLayoutEffect } from 'react';
+import { useCallback, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FLAVORS } from '../../flavors.ts';
+import { buildDiagEvent, summarizeError } from '../diagnostics/sanitize.ts';
 import { FLAVOR } from '../flavor.ts';
+import { PageErrorBoundary } from '../pages/error-boundary.tsx';
 import { channelBlock } from '../pages/link.ts';
 import { useAtdLanguage } from '../pages/use-atd-language.ts';
 import { AtdGroup } from './atd-group.tsx';
@@ -46,23 +48,42 @@ export function Options() {
   const { t } = useTranslation('options');
   useAtdLanguage(view?.prefs.language ?? null);
   useDocumentTitle(view ? t('title', { name: NAME }) : null);
+  const onRenderError = useCallback(
+    (error: Error) => {
+      send(
+        buildDiagEvent(
+          'error',
+          'react',
+          summarizeError(error, 'Options render error'),
+          'render_error',
+        ),
+      );
+    },
+    [send],
+  );
   return (
-    <main className="op-page">
-      {view ? (
-        <>
-          <header className="op-header">
-            <span className="atd-mark op-mark" aria-hidden="true" />
-            <h1 className="op-title">{NAME}</h1>
-          </header>
-          <ToolbarGroup view={view} send={send} />
-          <ShortcutsGroup shortcuts={view.shortcuts} name={NAME} send={send} />
-          <SitesGroup sites={view.sites} block={channelBlock(view)} send={send} />
-          <AtdGroup view={view} send={send} />
-          <p className="op-version">{t('version', { version: VERSION })}</p>
-        </>
-      ) : (
-        <Loading />
-      )}
-    </main>
+    <PageErrorBoundary
+      className="op-page"
+      fallbackMessage={t('errorFallback')}
+      onError={onRenderError}
+    >
+      <main className="op-page">
+        {view ? (
+          <>
+            <header className="op-header">
+              <span className="atd-mark op-mark" aria-hidden="true" />
+              <h1 className="op-title">{NAME}</h1>
+            </header>
+            <ToolbarGroup view={view} send={send} />
+            <ShortcutsGroup shortcuts={view.shortcuts} name={NAME} send={send} />
+            <SitesGroup sites={view.sites} block={channelBlock(view)} send={send} />
+            <AtdGroup view={view} send={send} />
+            <p className="op-version">{t('version', { version: VERSION })}</p>
+          </>
+        ) : (
+          <Loading />
+        )}
+      </main>
+    </PageErrorBoundary>
   );
 }

@@ -2,6 +2,7 @@ import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 import { InstallationIdSchema } from '../channel/payloads.ts';
 import type { ExtensionFrameBody } from '../channel/protocol.ts';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
 import { FLAVOR } from '../flavor.ts';
 import { STORAGE_KEYS } from '../messages/ports.ts';
 
@@ -33,8 +34,8 @@ let version: Promise<string> | undefined;
  * This installation's id, created on first use; one promise, so concurrent callers agree. Boot
  * awaits it before the pairing is restored: a new id also forgets the stored pairing.
  */
-export function installationId(): Promise<string> {
-  installation ??= loadInstallationId();
+export function installationId(onDiagnostic?: BackgroundDiagReporter): Promise<string> {
+  installation ??= loadInstallationId(onDiagnostic);
   return installation;
 }
 
@@ -43,11 +44,19 @@ export function installationId(): Promise<string> {
  * one is replaced by a new id, and the pairing secret stored with the old one is removed: Atd
  * paired that secret to an installation id this extension no longer sends.
  */
-async function loadInstallationId(): Promise<string> {
+async function loadInstallationId(onDiagnostic?: BackgroundDiagReporter): Promise<string> {
   const stored = await chrome.storage.local.get(STORAGE_KEYS.installation);
   const value: unknown = stored[STORAGE_KEYS.installation];
   if (Value.Check(InstallationSchema, value)) return value.installationId;
-  if (value !== undefined) console.warn('[atd] replaced an invalid installation id');
+  if (value !== undefined) {
+    console.warn('[atd] replaced an invalid installation id');
+    onDiagnostic?.({
+      level: 'warn',
+      cat: 'storage',
+      code: 'invalid_installation_id',
+      msg: 'Replaced invalid stored installation id and cleared pairing',
+    });
+  }
   const created = { installationId: crypto.randomUUID() };
   await chrome.storage.local.remove(STORAGE_KEYS.pairing);
   await chrome.storage.local.set({ [STORAGE_KEYS.installation]: created });

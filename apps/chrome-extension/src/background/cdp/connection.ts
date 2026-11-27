@@ -4,9 +4,11 @@
 // (packages/playwright-core/src/tools/mcp/cdpRelay.ts and cdpRelayV2.ts, playwright-core 1.65.1),
 // restricted to owned tabs and an allowlist (`policy.ts`).
 
+import type { BackgroundDiagReporter } from '../../diagnostics/recorder.ts';
 import type { Debuggee, PageTargetInfo } from './debuggee.ts';
 import {
   CDP_ERROR,
+  cdpAttachDiagnostic,
   CdpError,
   parseCommand,
   refused,
@@ -31,6 +33,7 @@ export interface CdpHost {
   emit(message: CdpOutbound): void;
   /** The tabs this connection uses changed; attachments nobody uses can go. */
   changed(): void;
+  onDiagnostic?: BackgroundDiagReporter;
 }
 
 /**
@@ -286,7 +289,12 @@ export class CdpConnection {
     if (this.sessions.tabSession(tabId) !== undefined) return Promise.resolve();
     const pending = this.announcing.get(tabId);
     if (pending !== undefined) return pending;
-    const task = this.attachAndAnnounce(tabId).finally(() => this.announcing.delete(tabId));
+    const task = this.attachAndAnnounce(tabId)
+      .catch((error: unknown) => {
+        this.host.onDiagnostic?.(cdpAttachDiagnostic(tabId, error));
+        throw error;
+      })
+      .finally(() => this.announcing.delete(tabId));
     this.announcing.set(tabId, task);
     return task;
   }

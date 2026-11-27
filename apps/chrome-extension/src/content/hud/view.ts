@@ -1,4 +1,5 @@
 import askCss from '../ask/ask.css?inline';
+import type { ContentDiagReporter } from '../diag.ts';
 import { focusedAct, h, refocus } from '../dom.ts';
 import { Layer } from '../hosts.ts';
 import { wireDrag } from './drag.ts';
@@ -55,7 +56,7 @@ export class HudView {
   private shown = false;
 
   /** `moved` follows every change of the capsule's place or size (the light follows it). */
-  constructor(moved: () => void) {
+  constructor(moved: () => void, onDiag?: ContentDiagReporter) {
     this.layer = new Layer('atd-hud', [hudCss, scrollAreaCss, replyCss, askCss]);
     this.capsule = h('div', { class: 'hud', attrs: { hidden: true } });
     const wrap = h('div', { class: 'wrap' }, this.capsule);
@@ -77,7 +78,7 @@ export class HudView {
       },
     });
     this.guard = new ClickGuard(this.capsule, wrap, sentinel, () => this.moving());
-    this.mover = new HudMover(wrap, this.capsule, this.moved);
+    this.mover = new HudMover(wrap, this.capsule, this.moved, onDiag);
     this.capsule.setAttribute('aria-keyshortcuts', MOVE_SHORTCUTS);
     wireDrag(this.capsule, this.mover, this.moved);
     addEventListener('resize', () => this.guard.touch(), { signal });

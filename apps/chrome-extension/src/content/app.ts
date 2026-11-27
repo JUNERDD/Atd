@@ -1,6 +1,7 @@
 import type { BackgroundToContent } from '../messages/content.ts';
 import { ACTIVE_RUN_STATUSES, type TabView } from '../messages/views.ts';
 import { watchActivity } from './activity.ts';
+import { createContentDiag } from './diag.ts';
 import { EdgeLight } from './glow/edge-light.ts';
 import { removeLayers, removeStaleHosts, setLayersLanguage } from './hosts.ts';
 import { Hud } from './hud/hud.ts';
@@ -33,8 +34,9 @@ export function startContent(): void {
     },
   });
   const send = port.send.bind(port);
+  const diag = createContentDiag(send);
 
-  const light = new EdgeLight(() => hud.bounds());
+  const light = new EdgeLight(() => hud.bounds(), diag);
   const pointerLayer = new PointerLayer((at) => light.click(at.x, at.y));
   const runActive = () => !!tab?.run && ACTIVE_RUN_STATUSES.includes(tab.run.status);
   const frozen = () =>
@@ -50,6 +52,7 @@ export function startContent(): void {
     send,
     takeOwnInput: () => activity.takeOwnInput(),
     changed: () => light.show(hud.glowMode()),
+    onDiag: diag,
   });
   setLayersLanguage(currentDocumentLanguage());
   onReducedMotionChange(() => light.refresh());

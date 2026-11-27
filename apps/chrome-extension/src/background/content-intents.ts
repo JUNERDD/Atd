@@ -1,6 +1,7 @@
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 import type { RunView } from '../channel/payloads.ts';
+import type { DiagRecorder } from '../diagnostics/recorder.ts';
 import { MAX_REQUEST_TEXT } from '../messages/content.ts';
 import { ENDED_RUN_STATUSES } from '../messages/views.ts';
 import { openPanel } from './action-surface.ts';
@@ -24,6 +25,7 @@ export interface ContentIntentDeps {
   ownership: Ownership;
   followUps: FollowUps;
   hidden: HiddenRuns;
+  diagnostics: DiagRecorder;
   /** The run the tab's HUD shows (`shownRun` in projection.ts), the only run it may act on. */
   shownRun(tabId: number): RunView | null;
 }
@@ -43,6 +45,7 @@ export function handleContentIntent(
   tabId: number,
   intent: ContentIntent,
   reply: ContentReply,
+  origin?: string,
 ): void {
   switch (intent.type) {
     case 'ask': {
@@ -131,6 +134,9 @@ export function handleContentIntent(
     case 'input':
       deps.ownership.noteInput(tabId);
       return;
+    case 'diag.event':
+      deps.diagnostics.recordContentEvent(tabId, origin, intent);
+      return;
   }
 }
 
@@ -146,6 +152,7 @@ export function handleInvalidContent(
 ): void {
   if (!Value.Check(NamedAskSchema, message)) {
     console.warn('[atd] dropped an invalid content message');
+    deps.diagnostics.recordContentInvalid(tabId);
     return;
   }
   const tooLong = overCap(Reflect.get(message, 'text'));

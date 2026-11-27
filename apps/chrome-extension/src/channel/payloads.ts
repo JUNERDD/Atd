@@ -5,6 +5,8 @@ import { Type, type Static } from 'typebox';
  * K2 source of truth that the shell mirrors in `AIChromeChannelKit`; change both together.
  */
 
+export const CHROME_CHANNEL_PROTOCOL = 1;
+
 export const IdSchema = Type.String({ minLength: 1, maxLength: 256 });
 export const TextSchema = Type.String({ maxLength: 100_000 });
 /** Chrome's `tabs.Tab.id`. */

@@ -1,6 +1,7 @@
 import { Type } from 'typebox';
 import { Value } from 'typebox/value';
 import type { RunView } from '../channel/payloads.ts';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
 import { ENDED_RUN_STATUSES } from '../messages/views.ts';
 
 /**
@@ -31,10 +32,20 @@ export class HiddenRuns {
   /** `changed` is told whenever which run a tab shows may have changed. */
   constructor(private readonly changed: () => void) {}
 
-  async restore(): Promise<void> {
+  async restore(onDiagnostic?: BackgroundDiagReporter): Promise<void> {
     const stored = await chrome.storage.session.get(SESSION_KEY);
     const value: unknown = stored[SESSION_KEY];
-    if (!Value.Check(Type.Array(EntrySchema), value)) return;
+    if (!Value.Check(Type.Array(EntrySchema), value)) {
+      if (value !== undefined) {
+        onDiagnostic?.({
+          level: 'warn',
+          cat: 'storage',
+          code: 'invalid_hidden_runs',
+          msg: 'Ignored invalid stored hidden-runs state',
+        });
+      }
+      return;
+    }
     for (const { runId, tabId } of value) this.runsOf(tabId).add(runId);
   }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BackgroundToPanel, PanelMessage } from '../messages/panel.ts';
 import { PANEL_PORT } from '../messages/ports.ts';
 import type { AskStatus, PanelView } from '../messages/views.ts';
+import { usePageDiagnostics } from '../pages/use-page-diagnostics.ts';
 
 /** MV3 may stop an idle service worker under an open panel; the port is reopened after this. */
 const REOPEN_DELAY_MS = 300;
@@ -82,11 +83,19 @@ export function usePanelChannel(): PanelChannel {
     (message: PanelMessage) => {
       const port = portRef.current;
       if (message.type === 'ask') asking.current.add(message.requestId);
-      if (port !== null) port.postMessage(message);
-      else if (message.type === 'ask') failAsking();
+      if (port !== null) {
+        try {
+          port.postMessage(message);
+          return;
+        } catch {
+          // The worker stopped before the port's disconnect arrived.
+        }
+      }
+      if (message.type === 'ask') failAsking();
     },
     [failAsking],
   );
+  usePageDiagnostics(send);
 
   const onAskStatus = useCallback((listener: AskStatusListener) => {
     listeners.current.add(listener);

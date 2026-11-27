@@ -1,5 +1,7 @@
 import type { ExtensionFrameBody } from '../channel/protocol.ts';
 import type { RunView } from '../channel/payloads.ts';
+import type { BackgroundDiagReporter } from '../diagnostics/recorder.ts';
+import { sanitizeOrigin, summarizeError } from '../diagnostics/sanitize.ts';
 import type { ContentInjector } from './inject.ts';
 import { clipText, type SendFrame } from './native.ts';
 import type { OwnedTabs } from './owned-tabs.ts';
@@ -26,6 +28,8 @@ export class Ownership {
     private readonly injector: ContentInjector,
     private readonly pointers: Pointers,
     private readonly send: SendFrame,
+    private readonly onDiagnostic?: BackgroundDiagReporter,
+    private readonly targetRetryMs = TARGET_RETRY_MS,
   ) {}
 
   /**
@@ -39,16 +43,45 @@ export class Ownership {
   async hand(runId: string, tabId: number): Promise<void> {
     if (this.owned.wasReleased(runId, tabId)) {
       console.info(`[atd] tab ${tabId} was released from its run; it is not taken back`);
+      this.onDiagnostic?.({
+        level: 'info',
+        cat: 'ownership',
+        code: 'tab_hand_skipped',
+        runId,
+        tabId,
+        msg: 'Tab was previously released from run; not taken back',
+      });
       return;
     }
     if (this.owned.get(tabId)?.runId !== runId) this.owned.own(tabId, runId, undefined);
     const tab = await chrome.tabs.get(tabId).catch(() => undefined);
     if (tab === undefined) {
+      this.onDiagnostic?.({
+        level: 'warn',
+        cat: 'ownership',
+        code: 'tab_hand_missing',
+        runId,
+        tabId,
+        msg: 'Tab closed before tab.hand completed',
+      });
       this.release(tabId, 'closed');
       return;
     }
     const targetId = await this.resolveTarget(tabId);
-    if (targetId !== undefined) this.send({ t: 'tab.handed', runId, tabId, targetId });
+    if (targetId !== undefined) {
+      this.send({ t: 'tab.handed', runId, tabId, targetId });
+      const origin = sanitizeOrigin(tab.url);
+      this.onDiagnostic?.({
+        level: 'info',
+        cat: 'ownership',
+        code: 'tab_handed',
+        runId,
+        tabId,
+        targetId,
+        ...(origin === undefined ? {} : { origin }),
+        msg: 'Handed tab to run',
+      });
+    }
     await this.reportState(tabId);
     await this.groups.take(tabId, tab.windowId);
     await this.letGoIfReleased(tabId);
@@ -57,14 +90,35 @@ export class Ownership {
 
   /** `tab.open`: a background tab in the run's group, answered by `tab.opened` or `tab.openFailed`. */
   async open(requestId: string, runId: string, url: string): Promise<void> {
+    const origin = sanitizeOrigin(url);
     try {
       const tabId = await this.openForRun(runId, url);
       const targetId = this.owned.get(tabId)?.targetId;
       if (targetId !== undefined) this.send({ t: 'tab.opened', requestId, tabId, targetId });
-      else this.send({ t: 'tab.openFailed', requestId, reason: 'The tab has no debugger target.' });
+      else {
+        this.onDiagnostic?.({
+          level: 'warn',
+          cat: 'ownership',
+          code: 'tab_open_failed',
+          runId,
+          tabId,
+          ...(origin === undefined ? {} : { origin }),
+          msg: 'Opened tab has no page debugger target',
+        });
+        this.send({ t: 'tab.openFailed', requestId, reason: 'The tab has no debugger target.' });
+      }
     } catch (error) {
       console.warn('[atd] could not open a tab for the run', error);
-      this.send({ t: 'tab.openFailed', requestId, reason: String(error).slice(0, 500) });
+      const reason = summarizeError(error, 'Could not open tab for run');
+      this.onDiagnostic?.({
+        level: 'warn',
+        cat: 'ownership',
+        code: 'tab_open_failed',
+        runId,
+        ...(origin === undefined ? {} : { origin }),
+        msg: reason,
+      });
+      this.send({ t: 'tab.openFailed', requestId, reason });
     }
   }
 
@@ -119,9 +173,19 @@ export class Ownership {
    * the person's group and place it came from (`TabGroups.letGo`).
    */
   release(tabId: number, reason: ReleaseReason): void {
-    if (this.owned.release(tabId) === undefined) return;
+    const entry = this.owned.release(tabId);
+    if (entry === undefined) return;
     this.pointers.clear(tabId);
     this.send({ t: 'tab.released', tabId, reason });
+    this.onDiagnostic?.({
+      level: 'info',
+      cat: 'ownership',
+      code: 'tab_released',
+      runId: entry.runId,
+      tabId,
+      ...(entry.targetId === undefined ? {} : { targetId: entry.targetId }),
+      msg: `Released tab (${reason})`,
+    });
     if (reason === 'closed' || reason === 'ungrouped') this.groups.forgetTab(tabId);
     else void this.groups.letGo([tabId]);
   }
@@ -219,18 +283,36 @@ export class Ownership {
     if (this.owned.get(tabId) === undefined) await this.groups.letGo([tabId]);
   }
 
-  /** The tab's CDP target id, recorded on its ownership. */
+  /** The tab's page CDP target id, recorded on its ownership. */
   private async resolveTarget(tabId: number): Promise<string | undefined> {
+    let observedTypes: string[] = [];
     for (let attempt = 0; attempt < TARGET_ATTEMPTS; attempt += 1) {
       const targets = await chrome.debugger.getTargets();
-      const targetId = targets.find((target) => target.tabId === tabId)?.id;
+      const targetId = targets.find(
+        (target) => target.tabId === tabId && target.type === 'page',
+      )?.id;
       if (targetId !== undefined) {
         this.owned.setTargetId(tabId, targetId);
         return targetId;
       }
-      await new Promise((resolve) => setTimeout(resolve, TARGET_RETRY_MS));
+      observedTypes = [
+        ...new Set(targets.filter((target) => target.tabId === tabId).map((target) => target.type)),
+      ];
+      if (attempt + 1 < TARGET_ATTEMPTS) {
+        await new Promise((resolve) => setTimeout(resolve, this.targetRetryMs));
+      }
     }
-    console.warn(`[atd] found no debugger target for tab ${tabId}`);
+    const observed = observedTypes.length > 0 ? observedTypes.join(',') : 'none';
+    console.warn(`[atd] found no page debugger target for tab ${tabId} (observed: ${observed})`);
+    const runId = this.owned.get(tabId)?.runId;
+    this.onDiagnostic?.({
+      level: 'warn',
+      cat: 'ownership',
+      code: 'no_page_target',
+      tabId,
+      ...(runId === undefined ? {} : { runId }),
+      msg: `No page debugger target for tab; observed types: ${observed}`,
+    });
     return undefined;
   }
 

@@ -1,4 +1,10 @@
 import {
+  DiagRecorder,
+  installBackgroundErrorCapture,
+  type BackgroundDiagReporter,
+} from '../diagnostics/recorder.ts';
+import { summarizeError } from '../diagnostics/sanitize.ts';
+import {
   actionClicked,
   configureActionSurface,
   openPanel,
@@ -60,7 +66,11 @@ const toShell: SendFrame = (frame) =>
   (store.state.connection === 'ready' || store.state.connection === 'serviceUnavailable') &&
   channel.send(frame);
 
-const pairing = new Pairing(store, send);
+const diagnostics = new DiagRecorder(send);
+installBackgroundErrorCapture(diagnostics);
+const onDiag: BackgroundDiagReporter = (input) => diagnostics.recordBackground(input);
+
+const pairing = new Pairing(store, send, onDiag);
 const owned = new OwnedTabs();
 const groups = new TabGroups();
 const links = new RunLinks(() => surfaces.schedulePush());
@@ -72,16 +82,18 @@ const surfaces = new Surfaces(
     tab: (tabId, url) => tabView(store.state, tabId, url, tabRuns(tabId), panel),
   },
   {
-    content: (tabId, intent, reply) => handleContentIntent(contentDeps, tabId, intent, reply),
+    content: (tabId, intent, reply, origin) =>
+      handleContentIntent(contentDeps, tabId, intent, reply, origin),
     invalidContent: (tabId, message) => handleInvalidContent(contentDeps, tabId, message),
     panel: (intent, reply) => handlePanelIntent(panelDeps, intent, reply),
     options: (intent, tab) => handleOptionsIntent(optionsDeps, intent, tab),
     pageOpened: () => void refreshShortcuts(store),
+    onDiagnostic: onDiag,
   },
 );
-const injector = new ContentInjector(surfaces);
+const injector = new ContentInjector(surfaces, onDiag);
 const pointers = new Pointers(owned, surfaces);
-const ownership = new Ownership(owned, groups, injector, pointers, send);
+const ownership = new Ownership(owned, groups, injector, pointers, send, onDiag);
 const requests = new PendingRequests();
 const followUps = new FollowUps((taskId) => {
   for (const tabId of surfaces.contentTabs())
@@ -100,11 +112,13 @@ const translator = new CdpTranslator({
   openTab: openForWorker,
   closeTab: (tabId) => chrome.tabs.remove(tabId),
   version: browserVersion,
+  onDiagnostic: onDiag,
 });
 const channel = new NativeChannel({
   hello: () => helloFrame(pairing.currentSecret()),
   frame: (frame) => handleShellFrame(frameDeps, frame),
   closed: channelClosed,
+  onDiagnostic: onDiag,
 });
 
 const contentDeps: ContentIntentDeps = {
@@ -116,6 +130,7 @@ const contentDeps: ContentIntentDeps = {
   ownership,
   followUps,
   hidden,
+  diagnostics,
   shownRun: (tabId) => shownRun(store.state, tabId, tabRuns(tabId)),
 };
 const panelDeps: PanelIntentDeps = {
@@ -129,8 +144,15 @@ const panelDeps: PanelIntentDeps = {
   pairing,
   owned,
   requests,
+  diagnostics,
 };
-const optionsDeps: OptionsIntentDeps = { store, forward, toShell, restored: () => booted };
+const optionsDeps: OptionsIntentDeps = {
+  store,
+  forward,
+  toShell,
+  restored: () => booted,
+  diagnostics,
+};
 const frameDeps: ShellFrameDeps = {
   store,
   channel,
@@ -142,6 +164,7 @@ const frameDeps: ShellFrameDeps = {
   links,
   hidden,
   followUps,
+  diagnostics,
 };
 
 store.subscribe(() => {
@@ -160,7 +183,11 @@ const booted = boot();
 // A literal mode, so the release build leaves the dev reloader out entirely.
 if (import.meta.env.MODE === 'dev') {
   void watchDevBuilds(
-    { contentTabs: () => surfaces.contentTabs(), inject: (tabId) => injector.ensure(tabId) },
+    {
+      contentTabs: () => surfaces.contentTabs(),
+      inject: (tabId) => injector.ensure(tabId),
+      beforeReload: () => diagnostics.prepareDevReload(),
+    },
     booted,
   );
 }
@@ -183,7 +210,17 @@ chrome.debugger.onDetach.addListener((source, reason) => {
     ownership.debuggerDetached(tabId, reason, () => translator.visibilityChanged()),
   );
 });
-listenToTabs({ ownership, owned, groups, surfaces, translator, links, hidden, booted });
+listenToTabs({
+  ownership,
+  owned,
+  groups,
+  surfaces,
+  translator,
+  links,
+  hidden,
+  diagnostics,
+  booted,
+});
 
 /**
  * What this worker knows of a tab's runs: the run owning it, those asked from it without its page,
@@ -201,27 +238,35 @@ function tabRuns(tabId: number): TabRuns {
  */
 async function boot(): Promise<void> {
   try {
-    await installationId();
+    await diagnostics.restore();
+    await installationId(onDiag);
     const [prefs] = await Promise.all([
-      restorePrefs(),
-      restoreSettings(store),
+      restorePrefs(onDiag),
+      restoreSettings(store, onDiag),
       pairing.restore(),
-      owned.restore(),
-      groups.restore(),
-      links.restore(),
-      hidden.restore(),
-      debuggee.restore(),
+      owned.restore(onDiag),
+      groups.restore(onDiag),
+      links.restore(onDiag),
+      hidden.restore(onDiag),
+      debuggee.restore(onDiag),
     ]);
     if (prefs !== undefined) store.update({ prefs });
     surfaces.schedulePush();
     await refreshShortcuts(store);
   } catch (error) {
     console.warn('[atd] could not restore the last state', error);
+    onDiag({
+      level: 'error',
+      cat: 'boot',
+      code: 'restore_failed',
+      msg: summarizeError(error, 'Could not restore service worker state'),
+    });
   }
   channel.connect();
 }
 
 function channelClosed(reason: CloseReason): void {
+  diagnostics.setPaired(false);
   store.update({ connection: reason });
   pairing.onDisconnected();
   translator.closeAll();

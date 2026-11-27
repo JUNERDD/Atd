@@ -1,3 +1,4 @@
+import type { DiagRecorder } from '../diagnostics/recorder.ts';
 import type { OptionsMessage } from '../messages/options.ts';
 import { openShortcutSettings, refreshShortcuts } from './commands.ts';
 import type { SendFrame } from './native.ts';
@@ -9,6 +10,7 @@ export interface OptionsIntentDeps extends SiteDeps {
   toShell: SendFrame;
   /** Resolves once the worker restored what it keeps, the settings among it. */
   restored(): Promise<void>;
+  diagnostics: DiagRecorder;
 }
 
 /**
@@ -42,6 +44,9 @@ export function handleOptionsIntent(
       return;
     case 'settings.open':
       deps.toShell({ t: 'settings.open' });
+      return;
+    case 'diag.event':
+      deps.diagnostics.recordSurfaceEvent('options', intent);
       return;
   }
 }
