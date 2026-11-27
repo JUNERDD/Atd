@@ -140,6 +140,7 @@ if (task) {
 // ---- audit (per run) --------------------------------------------------------------------
 const decisions = new Map(); // toolCallId -> audit decisions in order (e.g. review-ask, then once)
 const callAt = new Map(); // toolCallId -> timestamp of the assistant message that made the call
+const auditTimes = [];
 if (root && task) {
   say('', '## Run context (audit)');
   for (const r of task.runs) {
@@ -149,6 +150,8 @@ if (root && task) {
       continue;
     }
     for (const a of audit) {
+      const aMs = parseTimestampMs(a.ts);
+      if (Number.isFinite(aMs)) auditTimes.push(aMs);
       if (a.toolCallId || a.decision) {
         if (a.toolCallId) decisions.set(a.toolCallId, [...(decisions.get(a.toolCallId) ?? []), a]);
         else {
@@ -281,7 +284,306 @@ if (entries.length) {
     `- tokens in ${stats.input} out ${stats.output} cacheRead ${stats.cacheRead} · cost $${stats.cost.toFixed(4)}`,
   );
 }
+
+// ---- correlated shell, extension & browser worker logs ---------------------------------
+appendCorrelatedLogs();
 console.log(out.join('\n'));
+
+function parseTimestampMs(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const ms = Date.parse(value);
+    if (Number.isFinite(ms)) return ms;
+  }
+  return NaN;
+}
+
+const CALL_TRACE_AFTER_DASH_RE = /^(?:waiting for\b|fill\(|navigating to\b)/i;
+const INLINE_URL_RE =
+  /(?<![A-Za-z0-9+.-])(?:(https?):\/\/[^\s"'`<>]+|(wss?|file|chrome-extension|chrome):\/\/[^\s"'`<>]+|(blob):(?:(?:https?|file|chrome-extension):\/\/|null\/)[^\s"'`<>]+|(data):(?:[A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+)?(?:;[A-Za-z0-9!#$&^_.+-]+(?:=[A-Za-z0-9!#$&^_.+-]+)?)*,[^\s"'`<>]*)/gi;
+
+function isCallTraceLine(trimmed) {
+  if (trimmed.length < 3 || trimmed[0] !== '-' || trimmed.charCodeAt(1) > 0x20) return false;
+  return CALL_TRACE_AFTER_DASH_RE.test(trimmed.slice(1).trimStart());
+}
+
+function findCallLogBoundary(text) {
+  let from = 0;
+  while (from <= text.length) {
+    const idx = text.indexOf('Call log:', from);
+    if (idx < 0) return -1;
+    if (idx === 0 || text.charCodeAt(idx - 1) <= 0x20) return idx;
+    from = idx + 1;
+  }
+  return -1;
+}
+
+function stripCallLog(text) {
+  const raw = String(text ?? '');
+  const maxScan = Number.isNaN(MAX) ? 4096 : Math.max(MAX * 2, 4096);
+  const bounded = raw.length > maxScan ? raw.slice(0, maxScan) : raw;
+  const callLogIdx = findCallLogBoundary(bounded);
+  const head = callLogIdx >= 0 ? bounded.slice(0, callLogIdx).trimEnd() : bounded;
+  if (!head.includes('-')) return head;
+  const kept = [];
+  for (const line of head.split(/\r?\n/)) {
+    const trimmed = line.trimStart();
+    if (trimmed.startsWith('Call log:')) break;
+    if (isCallTraceLine(trimmed)) continue;
+    kept.push(line);
+  }
+  return kept.join('\n');
+}
+
+function splitTrailingUrlPunct(rawMatch) {
+  let parenBalance = 0;
+  let bracketBalance = 0;
+  let braceBalance = 0;
+  for (let i = 0; i < rawMatch.length; i += 1) {
+    const ch = rawMatch[i];
+    if (ch === '(') parenBalance -= 1;
+    else if (ch === ')') parenBalance += 1;
+    else if (ch === '[') bracketBalance -= 1;
+    else if (ch === ']') bracketBalance += 1;
+    else if (ch === '{') braceBalance -= 1;
+    else if (ch === '}') braceBalance += 1;
+  }
+  let end = rawMatch.length;
+  while (end > 0) {
+    const last = rawMatch[end - 1];
+    if (last === '.' || last === ',' || last === ';' || last === '!') {
+      end -= 1;
+      continue;
+    }
+    if (last === ':') {
+      const candidateEnd = end - 1;
+      const firstColon = rawMatch.indexOf(':');
+      if (
+        firstColon >= 0 &&
+        firstColon < candidateEnd - 1 &&
+        !(
+          candidateEnd >= 3 &&
+          rawMatch[candidateEnd - 3] === ':' &&
+          rawMatch[candidateEnd - 2] === '/' &&
+          rawMatch[candidateEnd - 1] === '/'
+        )
+      ) {
+        end = candidateEnd;
+        continue;
+      }
+      break;
+    }
+    if (last === ')' && parenBalance > 0) {
+      parenBalance -= 1;
+      end -= 1;
+      continue;
+    }
+    if (last === ']' && bracketBalance > 0) {
+      bracketBalance -= 1;
+      end -= 1;
+      continue;
+    }
+    if (last === '}' && braceBalance > 0) {
+      braceBalance -= 1;
+      end -= 1;
+      continue;
+    }
+    break;
+  }
+  return { url: rawMatch.slice(0, end), suffix: rawMatch.slice(end) };
+}
+
+function sanitizeHttpOrigin(url, fallbackScheme) {
+  try {
+    const parsed = new URL(url);
+    if ((parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.origin !== 'null') {
+      return parsed.origin;
+    }
+  } catch {
+    // Fall back to scheme-only token below.
+  }
+  return `${fallbackScheme.toLowerCase()}:`;
+}
+
+function scrubInlineUrls(text) {
+  return text.replace(
+    INLINE_URL_RE,
+    (match, httpScheme, authorityScheme, blobScheme, dataScheme) => {
+      const { url, suffix } = splitTrailingUrlPunct(match);
+      const otherScheme = authorityScheme ?? blobScheme ?? dataScheme;
+      if (otherScheme !== undefined) return `${otherScheme.toLowerCase()}:${suffix}`;
+      return `${sanitizeHttpOrigin(url, httpScheme ?? 'http')}${suffix}`;
+    },
+  );
+}
+
+function scrubSecrets(text) {
+  return scrubInlineUrls(stripCallLog(text))
+    .replace(/\b(Bearer\s+)[A-Za-z0-9._~+/=-]{8,}/gi, '$1[redacted]')
+    .replace(
+      /\b(sk-[A-Za-z0-9_-]{12,}|ghp_[A-Za-z0-9]{16,}|xox[baprs]-[A-Za-z0-9-]{12,})/g,
+      '[redacted]',
+    )
+    .replace(
+      /\b((?:api[_-]?key|access[_-]?token|refresh[_-]?token|auth[_-]?token|token|secret|password|authorization)\s*[:=]\s*["']?)[^\s"',;}{]+/gi,
+      '$1[redacted]',
+    );
+}
+
+function resolveLogSources(dataDir) {
+  const isReleaseDataDir = path.basename(path.resolve(dataDir)) === 'AgentService';
+  const logDir = isReleaseDataDir
+    ? path.join(os.homedir(), 'Library', 'Logs', 'AI')
+    : path.join(dataDir, 'logs');
+  const sources = [
+    { file: path.join(logDir, 'shell.1.log'), source: 'shell' },
+    { file: path.join(logDir, 'shell.log'), source: 'shell' },
+    { file: path.join(logDir, 'chrome-extension.1.jsonl'), source: 'chrome-extension' },
+    { file: path.join(logDir, 'chrome-extension.jsonl'), source: 'chrome-extension' },
+  ];
+  const workersDir = path.join(dataDir, 'computer', 'browser-workers');
+  if (fs.existsSync(workersDir)) {
+    try {
+      const names = fs
+        .readdirSync(workersDir)
+        .filter((name) => name.endsWith('.log'))
+        .sort();
+      for (const name of names) {
+        const file = path.join(workersDir, name);
+        if (fs.statSync(file).isFile()) {
+          sources.push({ file, source: `worker:${path.basename(name, '.log')}` });
+        }
+      }
+    } catch {
+      // Read-only best effort when directory cannot be enumerated.
+    }
+  }
+  return sources;
+}
+
+function computeTaskLogWindow() {
+  const MARGIN_MS = 5_000;
+  const TERMINAL_STATUSES = new Set([
+    'completed',
+    'failed',
+    'stopped',
+    'cancelled',
+    'aborted',
+    'errored',
+    'done',
+  ]);
+  const runs = task?.runs ?? [];
+  const entryTimes = entries.map((e) => parseTimestampMs(e.timestamp)).filter(Number.isFinite);
+  const runStarts = runs
+    .flatMap((r) => [parseTimestampMs(r.startedAt), parseTimestampMs(r.createdAt)])
+    .filter(Number.isFinite);
+  const startCandidates = [...runStarts, ...entryTimes, ...auditTimes];
+  if (startCandidates.length === 0) {
+    const taskCreated = parseTimestampMs(task?.createdAt);
+    if (Number.isFinite(taskCreated)) startCandidates.push(taskCreated);
+  }
+  if (startCandidates.length === 0) return null;
+  const firstRunStartMs = Math.min(...startCandidates);
+  const isRunning = runs.some((r) => !TERMINAL_STATUSES.has(String(r.status ?? '').toLowerCase()));
+  let lastRunEndMs;
+  if (isRunning) {
+    lastRunEndMs = Date.now();
+  } else {
+    const runEnds = runs
+      .flatMap((r) => [
+        parseTimestampMs(r.finishedAt),
+        parseTimestampMs(r.completedAt),
+        parseTimestampMs(r.updatedAt),
+        parseTimestampMs(r.createdAt),
+      ])
+      .filter(Number.isFinite);
+    const endCandidates = [
+      ...runEnds,
+      ...entryTimes,
+      ...auditTimes,
+      parseTimestampMs(task?.updatedAt),
+    ].filter(Number.isFinite);
+    lastRunEndMs = endCandidates.length > 0 ? Math.max(...endCandidates) : firstRunStartMs;
+  }
+  return {
+    startMs: firstRunStartMs - MARGIN_MS,
+    endMs: lastRunEndMs + MARGIN_MS,
+  };
+}
+
+function formatCorrelatedLogLine(matchedMs, source, row) {
+  const level = typeof row.level === 'string' && row.level ? row.level : 'info';
+  const prefix = [row.surface, row.cat, row.code]
+    .filter((part) => typeof part === 'string' && part.length > 0)
+    .join('/');
+  const rawBody = row.msg ?? row.message ?? row.preview ?? '';
+  const body = oneLine(scrubSecrets(rawBody), Math.min(MAX, 300));
+  const metaParts = [];
+  for (const key of ['tool', 'channel', 'pageId', 'operationId', 'origin']) {
+    if (typeof row[key] === 'string' && row[key].length > 0) {
+      metaParts.push(`${key}=${oneLine(scrubSecrets(row[key]), 120)}`);
+    }
+  }
+  const meta = metaParts.length > 0 ? ` (${metaParts.join(' ')})` : '';
+  return `[${time(matchedMs)}] [${source}:${level}] ${prefix ? `${prefix}: ` : ''}${body}${meta}`;
+}
+
+function appendCorrelatedLogs() {
+  if (!root) return;
+  const window = computeTaskLogWindow();
+  if (!window) return;
+  const CAP = 80;
+  const matched = [];
+  let seq = 0;
+  for (const { file, source } of resolveLogSources(root)) {
+    if (!fs.existsSync(file)) continue;
+    let raw;
+    try {
+      raw = fs.readFileSync(file, 'utf8');
+    } catch {
+      continue;
+    }
+    for (const line of raw.split('\n')) {
+      if (!line.trim()) continue;
+      let row;
+      try {
+        row = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (!row || typeof row !== 'object') continue;
+      const extMs = parseTimestampMs(row.extTs);
+      const tsMs = parseTimestampMs(row.ts);
+      const matchedMs =
+        Number.isFinite(extMs) && extMs >= window.startMs && extMs <= window.endMs
+          ? extMs
+          : Number.isFinite(tsMs) && tsMs >= window.startMs && tsMs <= window.endMs
+            ? tsMs
+            : NaN;
+      if (!Number.isFinite(matchedMs)) continue;
+      matched.push({
+        ms: matchedMs,
+        seq: seq++,
+        text: formatCorrelatedLogLine(matchedMs, source, row),
+      });
+    }
+  }
+  if (matched.length === 0) return;
+  matched.sort((a, b) => (a.ms !== b.ms ? a.ms - b.ms : a.seq - b.seq));
+  const seen = new Set();
+  const deduped = [];
+  for (const item of matched) {
+    if (seen.has(item.text)) continue;
+    seen.add(item.text);
+    deduped.push(item.text);
+  }
+  const shown = full ? deduped : deduped.slice(0, CAP);
+  say('', '## Correlated Shell, Extension & Browser Worker Logs');
+  if (!full && deduped.length > CAP) {
+    say(`- showing ${CAP} of ${deduped.length} matching lines (pass --full for all)`);
+  }
+  for (const line of shown) say(line);
+}
 
 function textOf(content) {
   if (typeof content === 'string') return content;
