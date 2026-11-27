@@ -84,6 +84,12 @@ const SHARED_STEPS = [
         Type.Literal('right'),
       ]),
       amount: Type.Integer({ minimum: 1, maximum: 20 }),
+      measure: Type.Optional(
+        Type.Boolean({
+          description:
+            'Browser pages only: scroll smoothly with wheel input while sampling requestAnimationFrame frame intervals, long tasks and layout shifts, returning frame-timing metrics in evidence.',
+        }),
+      ),
     },
     { additionalProperties: false },
   ),

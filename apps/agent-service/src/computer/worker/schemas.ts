@@ -174,6 +174,7 @@ export const scrollInput = {
   observationVersion: ObservationVersion.optional(),
   direction: z.enum(['up', 'down', 'left', 'right']),
   amount: z.number().int().min(1).max(20),
+  measure: z.boolean().optional(),
   ...withOperation,
 };
 export const scrollOutput = { ...common };

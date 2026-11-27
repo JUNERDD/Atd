@@ -80,7 +80,7 @@ extension BrowserPageDriver {
       // Trusted input reached the element; whether the page did what it means is for a
       // following wait or the postcondition to show.
       return write.outcome(reply, .dispatched, invalidated: Self.staleAfter(reply, record))
-    case .scroll(let locator, let direction, let amount):
+    case .scroll(let locator, let direction, let amount, let measure):
       if let locator {
         guard let locator = locator.element else { throw Self.imagePoint }
         arguments["ref"] = .string(try element(locator, in: record, context: context))
@@ -88,6 +88,7 @@ extension BrowserPageDriver {
       }
       arguments["direction"] = .string(direction.rawValue)
       arguments["amount"] = .int(amount)
+      if measure == true { arguments["measure"] = .bool(true) }
       return write.outcome(try await run(write, "scroll", arguments, context: context), .dispatched)
     case .key(let key, let modifiers, let locator):
       try onSite(record, binding)
@@ -225,8 +226,11 @@ extension BrowserPageDriver {
     _ write: Write, _ tool: String, _ arguments: [String: Value], context: EngineStepContext
   ) async throws(ComputerFailure) -> BrowserWorkerReply {
     context.report(.dispatching(nil))
+    let timeout: Duration =
+      tool == "scroll" && arguments["measure"] == .bool(true)
+      ? .seconds(25) : .seconds(tool == "navigate" ? 20 : 15)
     let (reply, _) = try await call(
-      write.endpoint, tool, arguments, timeout: .seconds(tool == "navigate" ? 20 : 15),
+      write.endpoint, tool, arguments, timeout: timeout,
       writes: true, pinned: write.record.workerGeneration)
     do {
       return try reply.checked(tool)

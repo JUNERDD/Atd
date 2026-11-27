@@ -25,7 +25,9 @@ public enum ComputerStepWire: Codable, Equatable, Sendable {
   case fill(locator: ComputerLocatorWire, text: String)
   /// A semantic press of the element (its accessibility or DOM action), not a pointer click.
   case press(locator: ComputerLocatorWire, effect: PressEffect)
-  case scroll(locator: ComputerPointLocatorWire?, direction: ScrollDirection, amount: Int)
+  case scroll(
+    locator: ComputerPointLocatorWire?, direction: ScrollDirection, amount: Int,
+    measure: Bool? = nil)
   case wait(condition: ComputerConditionWire, timeoutMs: Int)
   case setValue(locator: ComputerLocatorWire, text: String)
   /// A pointer click; absent `button` is left and absent `count` is 1.
@@ -91,7 +93,7 @@ public enum ComputerStepWire: Codable, Equatable, Sendable {
   /// `isVisualStep`: whether any locator of the step is an image point.
   public var isVisual: Bool {
     switch self {
-    case .scroll(let locator, _, _), .type(_, let locator): locator?.isImagePoint == true
+    case .scroll(let locator, _, _, _), .type(_, let locator): locator?.isImagePoint == true
     case .click(let locator, _, _): locator.isImagePoint
     case .drag(let from, let to): from.isImagePoint || to.isImagePoint
     case .navigate, .fill, .press, .wait, .setValue, .key, .clear, .menu, .select, .upload: false
@@ -125,7 +127,8 @@ public enum ComputerStepWire: Codable, Equatable, Sendable {
           try container.value($0, ComputerPointLocatorWire.self)
         },
         direction: try container.value(.direction, ScrollDirection.self),
-        amount: try container.integer(.amount, minimum: 1, maximum: 20))
+        amount: try container.integer(.amount, minimum: 1, maximum: 20),
+        measure: try container.optional(.measure) { try container.boolean($0) })
     case .wait:
       let container = try BridgeCoding.keyed(decoder, WaitKeys.self)
       self = .wait(
@@ -241,10 +244,11 @@ public enum ComputerStepWire: Codable, Equatable, Sendable {
     case .press(let locator, let effect):
       try container.encode(locator, forKey: .locator)
       try container.encode(effect, forKey: .effect)
-    case .scroll(let locator, let direction, let amount):
+    case .scroll(let locator, let direction, let amount, let measure):
       try container.encodeIfPresent(locator, forKey: .locator)
       try container.encode(direction, forKey: .direction)
       try container.encode(amount, forKey: .amount)
+      try container.encodeIfPresent(measure, forKey: .measure)
     case .wait(let condition, let timeoutMs):
       try container.encode(condition, forKey: .condition)
       try container.encode(timeoutMs, forKey: .timeoutMs)
@@ -275,13 +279,15 @@ public enum ComputerStepWire: Codable, Equatable, Sendable {
   }
 
   private enum Keys: String, CodingKey {
-    case kind, url, locator, text, effect, direction, amount, condition, timeoutMs
+    case kind, url, locator, text, effect, direction, amount, measure, condition, timeoutMs
     case button, count, key, modifiers, path, from, to, option, resourceIds, paths
   }
   private enum NavigateKeys: String, CodingKey, CaseIterable { case kind, url }
   private enum TextKeys: String, CodingKey, CaseIterable { case kind, locator, text }
   private enum PressKeys: String, CodingKey, CaseIterable { case kind, locator, effect }
-  private enum ScrollKeys: String, CodingKey, CaseIterable { case kind, locator, direction, amount }
+  private enum ScrollKeys: String, CodingKey, CaseIterable {
+    case kind, locator, direction, amount, measure
+  }
   private enum WaitKeys: String, CodingKey, CaseIterable { case kind, condition, timeoutMs }
   private enum ClickKeys: String, CodingKey, CaseIterable { case kind, locator, button, count }
   private enum KeyKeys: String, CodingKey, CaseIterable { case kind, key, modifiers, locator }

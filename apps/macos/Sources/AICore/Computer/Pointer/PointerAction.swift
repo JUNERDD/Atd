@@ -14,7 +14,7 @@ public enum PointerAction: Equatable, Sendable {
     case .fill, .setValue: self = .fill
     case .type: self = .type
     case .clear: self = .clear
-    case .scroll(_, let direction, _): self = .scroll(direction)
+    case .scroll(_, let direction, _, _): self = .scroll(direction)
     default: self = .other
     }
   }

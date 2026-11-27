@@ -16,6 +16,7 @@ import {
 } from './pages.js';
 import { PRESS_ROLES, TEXT_ROLES, truncate, visibleValue } from './text.js';
 import { fillWithFeedback, type TypingFeedback } from './typing.js';
+import { measureScroll } from './scroll-metrics.js';
 
 /**
  * The page-changing tools on Playwright locators. Each checks everything it can before it sets
@@ -28,7 +29,7 @@ import { fillWithFeedback, type TypingFeedback } from './typing.js';
 /** How long a filled field must keep its value before `fill` calls it verified. */
 const FILL_SETTLE_MS = 100;
 /** Pixels one scroll `amount` unit moves. */
-const SCROLL_STEP_PX = 100;
+export const SCROLL_STEP_PX = 100;
 const SCROLL_POSITION_EXPRESSION = '[Math.round(scrollX), Math.round(scrollY)]';
 /** Actionability budget of one action. */
 const ACTION_TIMEOUT_MS = 5_000;
@@ -208,9 +209,11 @@ export async function scroll(
     observationVersion?: number | undefined;
     direction: 'up' | 'down' | 'left' | 'right';
     amount: number;
+    measure?: boolean | undefined;
     allowedOrigins?: Origins;
   },
 ): Promise<Record<string, unknown>> {
+  if (input.measure === true) return measureScroll(pages, op, input);
   return pages.withPage(op, input.pageId, async (page) => {
     const element = await readOptional(pages, op, input, input.allowedOrigins, page);
     throwIfCancelled(op);

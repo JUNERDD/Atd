@@ -18,7 +18,11 @@ extension NativeEngine {
       return try await typeText(text, locator: locator, write)
     case .menu(let path):
       return try await menu(path, write)
-    case .scroll(let locator, let direction, let amount):
+    case .scroll(let locator, let direction, let amount, let measure):
+      if measure == true {
+        throw ComputerFailure(
+          .unsupported, "Scroll frame measurement is supported on browser pages only.")
+      }
       return try await scroll(locator, direction, amount, write)
     case .drag(let from, let to):
       return try await drag(from, to, write)

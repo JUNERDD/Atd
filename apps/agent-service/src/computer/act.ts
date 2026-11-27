@@ -50,10 +50,11 @@ function stepTime(step: ComputerAction['steps'][number]): number {
       return SLOW_STEP_MS;
     case 'type':
       return step.text.length * TYPE_MS_PER_CHAR;
+    case 'scroll':
+      return step.measure === true ? SLOW_STEP_MS : 0;
     case 'navigate':
     case 'fill':
     case 'press':
-    case 'scroll':
     case 'setValue':
     case 'click':
     case 'key':

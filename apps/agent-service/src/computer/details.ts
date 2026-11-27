@@ -47,7 +47,9 @@ export function stepSummary(step: ComputerModelStep): string {
         `${step.effect === 'submit' ? 'Submit with' : 'Click'} ${locatorText(step.locator)}`,
       );
     case 'scroll':
-      return clip(`Scroll ${step.direction} ${step.amount}${within(step.locator, 'in')}`);
+      return clip(
+        `Scroll ${step.direction} ${step.amount}${step.measure ? ' (measured)' : ''}${within(step.locator, 'in')}`,
+      );
     case 'wait':
       return clip(`Wait until ${step.condition.kind}`);
     case 'click': {

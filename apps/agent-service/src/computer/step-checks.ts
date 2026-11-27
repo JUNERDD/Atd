@@ -116,6 +116,10 @@ export function stepsAllowed(action: ComputerAction, scope: StepScope): { ok: tr
       return refuse(`The engine does not allow the ${stepEffect(step)} effect.`);
     if (step.kind === 'navigate' && !originAllowed(binding, step.url))
       return refuse('That address is outside the origins this target allows.');
+    if (step.kind === 'scroll' && step.measure === true && binding.kind !== 'browser')
+      return refuse(
+        'Scroll frame measurement (measure: true) is supported on browser targets only.',
+      );
     const unsupported = targetAllows(step, scope);
     if (unsupported) return refuse(unsupported);
     for (const locator of stepLocators(step)) {
