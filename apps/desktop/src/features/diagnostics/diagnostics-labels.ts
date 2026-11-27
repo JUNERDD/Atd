@@ -64,6 +64,7 @@ const CHECK_TITLE_KEYS = {
   'native.memory_index_health': 'checks.native_memory_index_health',
   'native.optional_addons': 'checks.native_optional_addons',
   'native.mcp_and_wps_bridges': 'checks.native_mcp_and_wps_bridges',
+  'native.chrome_extension_channel': 'checks.native_chrome_extension_channel',
   'conn.mirror_tls_and_clock_skew': 'checks.conn_mirror_tls_and_clock_skew',
   'conn.provider_endpoints': 'checks.conn_provider_endpoints',
 } as const;
@@ -141,6 +142,8 @@ const REASON_KEYS = {
   addon_broken_install_dropped: 'reasons.addon_broken_install_dropped',
   mcp_connections_degraded: 'reasons.mcp_connections_degraded',
   wps_bridge_error: 'reasons.wps_bridge_error',
+  chrome_host_manifest_failed: 'reasons.chrome_host_manifest_failed',
+  chrome_host_socket_inactive: 'reasons.chrome_host_socket_inactive',
   clock_skew_gt_300s: 'reasons.clock_skew_gt_300s',
   clock_skew_gt_120s: 'reasons.clock_skew_gt_120s',
   tls_untrusted_ca_mitm: 'reasons.tls_untrusted_ca_mitm',
@@ -179,6 +182,7 @@ const REMEDIATION_KEYS = {
   inspect_memory_index_fallback: 'remediation.inspect_memory_index_fallback',
   manage_browser_addon: 'remediation.manage_browser_addon',
   open_mcp_extensions_settings: 'remediation.open_mcp_extensions_settings',
+  repair_chrome_extension_channel: 'remediation.repair_chrome_extension_channel',
   sync_clock_or_trust_ca: 'remediation.sync_clock_or_trust_ca',
   check_provider_or_local_network: 'remediation.check_provider_or_local_network',
 } as const satisfies {

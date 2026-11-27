@@ -108,7 +108,7 @@ struct DiagnosticsDoctorMergeTests {
       ])
   }
 
-  @Test("encodeMergedDoctorReport reconciles net.system_proxy_alignment into 26 unique checks (B7)")
+  @Test("encodeMergedDoctorReport reconciles net.system_proxy_alignment into 27 unique checks (B7)")
   func encodeMergedDoctorReportReconcilesDuplicateProxyCheck() async throws {
     let tempDir = FileManager.default.temporaryDirectory
       .appending(path: "atd-b7-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -154,14 +154,14 @@ struct DiagnosticsDoctorMergeTests {
         unavailable: nil, lastFailure: nil))
     let root = try #require(JSONSerialization.jsonObject(with: mergedData) as? [String: Any])
     let checks = try #require(root["checks"] as? [[String: Any]])
-    #expect(checks.count == 26)
-    #expect(Set(checks.compactMap { $0["id"] as? String }).count == 26)
+    #expect(checks.count == 27)
+    #expect(Set(checks.compactMap { $0["id"] as? String }).count == 27)
 
     let summary = try #require(root["summary"] as? [String: Int])
     let sumTotal =
       (summary["passCount"] ?? 0) + (summary["warnCount"] ?? 0) + (summary["failCount"] ?? 0)
       + (summary["skippedCount"] ?? 0)
-    #expect(sumTotal == 26)
+    #expect(sumTotal == 27)
 
     let proxy = try #require(checks.first { $0["id"] as? String == "net.system_proxy_alignment" })
     #expect(proxy["status"] as? String == "warn")
@@ -252,6 +252,6 @@ struct DiagnosticsDoctorMergeTests {
     let report = try #require(JSONSerialization.jsonObject(with: reportData) as? [String: Any])
     let checks = try #require(report["checks"] as? [[String: Any]])
     #expect(report["serviceReachable"] as? Bool == true)
-    #expect(checks.count == 26)
+    #expect(checks.count == 27)
   }
 }

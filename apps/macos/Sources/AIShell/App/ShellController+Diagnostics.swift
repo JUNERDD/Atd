@@ -243,7 +243,12 @@ extension ShellController {
       hostLockHeldByOther: hostBusy,
       unsettledSessionPending: unsettled,
       heldArbiterClaims: deviceArbiter.heldResourceSummaries(),
-      devServerOrigin: services.devServerOrigin)
+      devServerOrigin: services.devServerOrigin,
+      chromeHostManifest: chrome.hostManifest,
+      chromeListenerActive: chrome.isListenerActive,
+      chromePairedCount: chrome.store?.pairings.count ?? 0,
+      chromeConnectedCount: chrome.links.links.count,
+      chromeInstalledBrowserCount: chrome.installedBrowsers.count)
   }
 
   private func resolveServiceStateSnapshot() -> (

@@ -62,6 +62,7 @@
     "native_memory_index_health": "Memory index health",
     "native_optional_addons": "Optional browser add-ons",
     "native_mcp_and_wps_bridges": "MCP & WPS bridges",
+    "native_chrome_extension_channel": "Chrome extension channel",
     "conn_mirror_tls_and_clock_skew": "Update mirror TLS & system clock",
     "conn_provider_endpoints": "Model provider endpoints"
   },
@@ -139,6 +140,8 @@
     "addon_broken_install_dropped": "A broken add-on installation was removed.",
     "mcp_connections_degraded": "One or more enabled MCP servers reported connection errors.",
     "wps_bridge_error": "WPS selection bridge reported an error.",
+    "chrome_host_manifest_failed": "Chrome Native Messaging manifest could not be installed.",
+    "chrome_host_socket_inactive": "Chrome extension host listener is not active for paired profiles.",
     "clock_skew_gt_300s": "System clock differs from server time by more than 5 minutes.",
     "clock_skew_gt_120s": "System clock differs from server time by more than 2 minutes.",
     "tls_untrusted_ca_mitm": "TLS verification failed; check proxy or custom root certificates.",
@@ -174,6 +177,7 @@
     "inspect_memory_index_fallback": "Check disk permissions or export a support bundle to inspect memory index logs.",
     "manage_browser_addon": "Manage or reinstall the browser add-on in Computer use settings.",
     "open_mcp_extensions_settings": "Review MCP server status and re-connect degraded servers in Extensions.",
+    "repair_chrome_extension_channel": "Open Computer use settings to refresh the Chrome host manifest or verify paired browsers.",
     "sync_clock_or_trust_ca": "Enable automatic date & time sync and verify trusted root certificates.",
     "check_provider_or_local_network": "Verify provider credentials in Models and macOS Local Network permission if using a local model."
   },

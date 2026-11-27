@@ -74,6 +74,7 @@ final class ChromeChannel {
   lazy var projection = ChromeProjection(channel: self)
 
   var observerCount: Int { observers.count }
+  var isListenerActive: Bool { listener != nil }
   private var isManifestRefreshEnabled: Bool { listener != nil || manifestRefreshEnabledForTesting }
 
   init(

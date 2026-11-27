@@ -41,6 +41,11 @@ nonisolated enum ShellEnvironmentChecks {
     let unsettledSessionPending: Bool
     let heldArbiterClaims: [String]
     var devServerOrigin: DevServerOrigin? = nil
+    var chromeHostManifest: ComputerStateEvent.Chrome.HostManifest = .chromeMissing
+    var chromeListenerActive = false
+    var chromePairedCount = 0
+    var chromeConnectedCount = 0
+    var chromeInstalledBrowserCount = 0
   }
 
   struct Evaluation: Sendable {
@@ -59,7 +64,7 @@ nonisolated enum ShellEnvironmentChecks {
     let capturedAt = DiagnosticsTimestamp.iso8601UTC(now)
 
     var checks: [ShellDoctorCheck] = []
-    checks.reserveCapacity(12)
+    checks.reserveCapacity(13)
 
     // Layer 1: install_and_bundle
     let tPlacement = ContinuousClock.now
@@ -132,6 +137,10 @@ nonisolated enum ShellEnvironmentChecks {
       isDevelopment: snapshot.isDevelopment,
       since: tLoopback)
     checks.append(loopbackCheck)
+
+    // Layer 6: native_addons_and_index (Swift Chrome extension channel)
+    let tChrome = ContinuousClock.now
+    checks.append(makeChromeExtensionChannelCheck(snapshot: snapshot, since: tChrome))
 
     let envRecord = DiagnosticsEnvironmentRecord(
       capturedAt: capturedAt,

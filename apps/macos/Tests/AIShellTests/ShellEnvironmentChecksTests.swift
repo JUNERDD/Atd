@@ -50,8 +50,8 @@ struct ShellEnvironmentChecksTests {
       heldArbiterClaims: ["interactiveScreen:\(fixtureHome)"])
   }
 
-  @Test("evaluate completes in <= 1,500 ms with all 12 shell checks and 4 scrubbed ring summaries")
-  func evaluateProducesAllTwelveChecksWithinBudget() async throws {
+  @Test("evaluate completes in <= 1,500 ms with all 13 shell checks and 4 scrubbed ring summaries")
+  func evaluateProducesAllThirteenChecksWithinBudget() async throws {
     let tempDir = FileManager.default.temporaryDirectory
       .appending(path: "atd-env-checks-\(UUID().uuidString)", directoryHint: .isDirectory)
     try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -87,6 +87,7 @@ struct ShellEnvironmentChecksTests {
       "service.computer_host_lock",
       "net.system_proxy_alignment",
       "net.loopback_ipc",
+      "native.chrome_extension_channel",
     ]
     #expect(evaluation.checks.map(\.id) == expectedIds)
     #expect(
