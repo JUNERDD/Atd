@@ -7,6 +7,7 @@ export const BILLING_ROLLOVER_MAX_AGE = 2 * 60 * 60000;
 const BILLING_FAILURE_REFRESH_INTERVAL = 5 * 60000;
 const BILLING_ROLLOVER_VERIFICATION_MAX_AGE = 30 * 60000;
 const DAY = 86400000;
+const ACTIVE_SUBSCRIPTION_STATES = new Set(['Trial', 'Provisioned', 'Paid']);
 
 /** @typedef {{start: string, end: string}} BillingPeriod */
 /** @typedef {{accountPath: string, subscriptionId: string, period: BillingPeriod, verifiedAt: number}} BillingCache */
@@ -31,11 +32,55 @@ function record(value) {
   return /** @type {Record<string, unknown>} */ (value);
 }
 
-/** @param {unknown[]} subscriptions */
-function selectSubscription(subscriptions) {
-  const matches = subscriptions.map(record).filter((s) => record(s.rate_plan).id === 'r2_paid');
-  if (matches.length !== 1) throw new ResponseValidationError('billing_subscription_ambiguous');
-  return matches[0];
+/** @param {unknown} subscriptions */
+function subscriptionList(subscriptions) {
+  if (!Array.isArray(subscriptions)) throw new ResponseValidationError('billing_invalid_response');
+  const rows = subscriptions.map(record);
+  return { rows, matches: rows.filter((row) => record(row.rate_plan).id === 'r2_paid') };
+}
+
+/** @param {number} count @param {string} [retryPath] */
+function ambiguousSubscription(count, retryPath) {
+  return new ResponseValidationError('billing_subscription_ambiguous', {
+    fields: { matchCount: String(count) },
+    retryable: !!retryPath,
+    retryPath,
+  });
+}
+
+/** @param {unknown} value @param {string} expected */
+function compatibleDate(value, expected) {
+  return (
+    value == null ||
+    value === '' ||
+    (typeof value === 'string' && Date.parse(value) === Date.parse(expected))
+  );
+}
+
+/** @param {unknown} state */
+function isActiveSubscription(state) {
+  return typeof state === 'string' && ACTIVE_SUBSCRIPTION_STATES.has(state);
+}
+
+/** Missing list evidence may be checked by ID; never override contradictory list evidence.
+ * @param {ReturnType<typeof subscriptionList>} list @param {BillingCache} cache */
+function permitsDetailCheck({ rows, matches }, cache) {
+  if (rows.some((row) => row.id === cache.subscriptionId && record(row.rate_plan).id !== 'r2_paid'))
+    return false;
+  const states = new Set();
+  for (const row of matches) {
+    if (row.id !== cache.subscriptionId) return false;
+    if (row.state != null) {
+      if (!isActiveSubscription(row.state)) return false;
+      states.add(row.state);
+    }
+    if (
+      !compatibleDate(row.current_period_start, cache.period.start) ||
+      !compatibleDate(row.current_period_end, cache.period.end)
+    )
+      return false;
+  }
+  return states.size <= 1;
 }
 
 /** Missing or stale metadata can be reread; malformed or contradictory dates fail closed.
@@ -102,7 +147,9 @@ function parsePeriod(subscription, now, cache, retryPath) {
 
 /** @param {unknown[]} subscriptions @param {Date} now */
 export function billingPeriod(subscriptions, now) {
-  return parsePeriod(selectSubscription(subscriptions), now);
+  const { matches } = subscriptionList(subscriptions);
+  if (matches.length !== 1) throw ambiguousSubscription(matches.length);
+  return parsePeriod(matches[0], now);
 }
 
 /** @param {BillingCache|undefined} cache @param {string} prefix @param {number} now */
@@ -189,6 +236,7 @@ export async function resolveBilling(request, prefix, now, state, options = {}) 
   /** @type {BillingCache|undefined} */
   let verified;
   let attempted = false;
+  let ambiguousList = false;
   let expectedId = cache?.accountPath === prefix ? cache.subscriptionId : undefined;
   const listPath = `${prefix}/subscriptions`;
   try {
@@ -203,12 +251,21 @@ export async function resolveBilling(request, prefix, now, state, options = {}) 
     attempted = true;
     await request(listPath, 'GET', undefined, {
       validate(payload, path) {
-        if (path === listPath && !Array.isArray(payload.result))
-          throw new ResponseValidationError('billing_invalid_response');
-        const subscription =
-          path === listPath
-            ? selectSubscription(/** @type {unknown[]} */ (payload.result))
-            : record(payload.result);
+        let subscription;
+        if (path === listPath) {
+          const list = subscriptionList(payload.result);
+          if (list.matches.length !== 1) {
+            ambiguousList = true;
+            const retryPath =
+              usable && cache && permitsDetailCheck(list, cache)
+                ? `${listPath}/${encodeURIComponent(cache.subscriptionId)}`
+                : undefined;
+            throw ambiguousSubscription(list.matches.length, retryPath);
+          }
+          subscription = list.matches[0];
+        } else {
+          subscription = record(payload.result);
+        }
         const id = subscription.id;
         if (typeof id !== 'string' || !id || record(subscription.rate_plan).id !== 'r2_paid')
           throw new ResponseValidationError('billing_subscription_identity_missing');
@@ -216,6 +273,7 @@ export async function resolveBilling(request, prefix, now, state, options = {}) 
           throw new ResponseValidationError('billing_subscription_conflict');
         expectedId = id;
         if (
+          (ambiguousList && !isActiveSubscription(subscription.state)) ||
           ['Cancelled', 'Failed', 'Expired', 'AwaitingPayment'].includes(String(subscription.state))
         )
           throw new ResponseValidationError('billing_subscription_inactive');
@@ -240,6 +298,12 @@ export async function resolveBilling(request, prefix, now, state, options = {}) 
       state.billingFailure = error.details;
       state.billingRetryNotBefore = +now + error.details.retryAfterMs;
       state.billingRefreshNotBefore = +now + BILLING_FAILURE_REFRESH_INTERVAL;
+    }
+    // A cached ID is only a lookup key here. A failed detail read supplies no
+    // proof of an active subscription and must not get a billing or usage grace.
+    if (ambiguousList) {
+      delete state.billing;
+      throw new BillingUnavailableError(error.details, cache, +now);
     }
     if (usable && cache && options.allowFallback !== false && !options.forceRefresh)
       return result(cache, 'fallback');

@@ -39,15 +39,46 @@ function enabled(response) {
   return result.enabled;
 }
 
-/** @param {Request} request @param {ReturnType<typeof publicEndpoints>} endpoints */
+/**
+ * Reads all configured custom and managed endpoints, distinguishing a genuine
+ * read error on an active or manually reopened bucket from a read error while
+ * previously paused.
+ * @param {Request} request @param {ReturnType<typeof publicEndpoints>} endpoints
+ */
 export async function publicAccessState(request, endpoints) {
-  const custom = await Promise.all(
+  const customChecks = await Promise.allSettled(
     endpoints.map(async ({ custom }) => enabled(await request(custom))),
   );
-  const managed = await Promise.all(
+  const anyCustomEnabled = customChecks.some(
+    (result) => result.status === 'fulfilled' && result.value === true,
+  );
+  const customFailure = customChecks.find((result) => result.status === 'rejected');
+  if (customFailure) {
+    return {
+      ok: /** @type {const} */ (false),
+      error: customFailure.reason,
+      anyCustomEnabled,
+    };
+  }
+  const allPaused = customChecks.every((result) => result.status === 'fulfilled' && !result.value);
+  const managedChecks = await Promise.allSettled(
     endpoints.map(async ({ managed }) => enabled(await request(managed))),
   );
-  return { allPaused: custom.every((value) => !value), managedEnabled: managed.some(Boolean) };
+  const managedFailure = managedChecks.find((result) => result.status === 'rejected');
+  if (managedFailure) {
+    return {
+      ok: /** @type {const} */ (false),
+      error: managedFailure.reason,
+      anyCustomEnabled,
+    };
+  }
+  return {
+    ok: /** @type {const} */ (true),
+    allPaused,
+    managedEnabled: managedChecks.some(
+      (result) => result.status === 'fulfilled' && result.value === true,
+    ),
+  };
 }
 
 /** Attempts every endpoint even when one fails; success requires reading all states back.

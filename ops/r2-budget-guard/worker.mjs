@@ -115,8 +115,20 @@ export async function runGuard(env, options = {}) {
   if (Object.values(limits).some((value) => value === 0))
     throw new Error('Limits must be positive');
 
-  /** @param {string[]} reasons @param {object} usage */
-  async function pause(reasons, usage) {
+  /** @param {unknown} error */
+  function diagnostics(error) {
+    return {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      ...(error instanceof ApiRequestError ? { request: error.details } : {}),
+      ...(error instanceof BillingUnavailableError ? { billingFailure: error.diagnostics } : {}),
+      ...(billing ? { billing } : {}),
+      lastHealthy: monitorState.lastHealthy ?? null,
+      observed,
+    };
+  }
+
+  /** @param {string[]} reasons @param {object} usage @param {boolean} [reconfirm] */
+  async function pause(reasons, usage, reconfirm = false) {
     if (paused) {
       recordPausedCheck(monitorState, +now, 0);
       const result = { event: 'paused_check_failed', reasons, usage, checkedAt: now.toISOString() };
@@ -136,7 +148,12 @@ export async function runGuard(env, options = {}) {
     }
     // A failed write or readback must not cancel the decision to close access.
     // Persist before I/O so an interrupted alarm retries the same decision.
-    monitorState.pendingPause ??= { requestedAt: now.toISOString(), reasons, usage };
+    monitorState.pendingPause ??= {
+      requestedAt: now.toISOString(),
+      reasons,
+      usage,
+      ...(reconfirm ? { reconfirm } : {}),
+    };
     await options.persistState?.(monitorState);
     // Disabling domains is persistent. This Worker deliberately never enables one.
     // Close every configured bucket, including a stray development URL.
@@ -149,12 +166,17 @@ export async function runGuard(env, options = {}) {
       });
       throw new PauseFailedError(reasons, usage, now.toISOString());
     }
-    const result = { event: 'paused', reasons, usage, checkedAt: now.toISOString() };
+    const result = {
+      event: reconfirm ? 'pause_reconfirmed' : 'paused',
+      reasons,
+      usage,
+      checkedAt: now.toISOString(),
+    };
     delete monitorState.pendingPause;
     delete monitorState.failureSince;
     delete monitorState.retryNotBefore;
     delete monitorState.lastFailure;
-    recordPausedCheck(monitorState, +now, 0);
+    if (!reconfirm) recordPausedCheck(monitorState, +now, 0);
     log(result);
     return result;
   }
@@ -162,13 +184,43 @@ export async function runGuard(env, options = {}) {
   try {
     // Complete an earlier protective pause even if analytics have recovered.
     // It must take priority over usage checks, grace and their API cooldowns.
-    if (monitorState.pendingPause)
-      return pause(monitorState.pendingPause.reasons, monitorState.pendingPause.usage);
-    if (monitorState.lastFailure && +now < (monitorState.retryNotBefore ?? 0))
-      throw new ApiRequestError(monitorState.lastFailure);
-    const access = await publicAccessState(request, endpoints);
-    if (access.managedEnabled) return pause(['public_entry_reopened'], {});
-    if (access.allPaused) {
+    /** @type {Pick<import('./health.mjs').PendingPause, 'reasons'|'usage'|'reconfirm'> | undefined} */
+    let pending = monitorState.pendingPause;
+    let reconfirmed;
+    let allPaused = false;
+    let managedEnabled = false;
+    if (!pending) {
+      if (monitorState.lastFailure && +now < (monitorState.retryNotBefore ?? 0)) {
+        const cooldownError = new ApiRequestError(monitorState.lastFailure);
+        if (!previousProbe) throw cooldownError;
+        pending = {
+          reasons: ['monitor_error'],
+          usage: diagnostics(cooldownError),
+          reconfirm: true,
+        };
+      } else {
+        const access = await publicAccessState(request, endpoints);
+        if (!access.ok) {
+          // A previous pause establishes intent, never the live access state.
+          if (!previousProbe || access.anyCustomEnabled) throw access.error;
+          pending = {
+            reasons: ['monitor_error'],
+            usage: diagnostics(access.error),
+            reconfirm: true,
+          };
+        } else {
+          allPaused = access.allPaused;
+          managedEnabled = access.managedEnabled;
+        }
+      }
+    }
+    if (pending) {
+      const result = await pause(pending.reasons, pending.usage, pending.reconfirm);
+      if (result.event !== 'pause_reconfirmed') return result;
+      reconfirmed = result;
+    }
+    if (managedEnabled) return pause(['public_entry_reopened'], {});
+    if (allPaused || reconfirmed) {
       paused = true;
       delete monitorState.failureSince;
       delete monitorState.retryNotBefore;
@@ -180,6 +232,7 @@ export async function runGuard(env, options = {}) {
         (previousProbe.successes === 0 ||
           (monitorState.billing && +now < Date.parse(monitorState.billing.period.end)))
       ) {
+        if (reconfirmed) return reconfirmed;
         const result = { event: 'remains_paused', checkedAt: now.toISOString() };
         log(result);
         return result;
@@ -362,17 +415,10 @@ export async function runGuard(env, options = {}) {
     log(result);
     return result;
   } catch (error) {
-    if (error instanceof PauseFailedError) throw error;
-    const usage = {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      ...(error instanceof ApiRequestError ? { request: error.details } : {}),
-      ...(error instanceof BillingUnavailableError ? { billingFailure: error.diagnostics } : {}),
-      ...(billing ? { billing } : {}),
-      lastHealthy: monitorState.lastHealthy ?? null,
-      observed,
-    };
+    if (error instanceof PauseFailedError || monitorState.pendingPause) throw error;
+    const usage = diagnostics(error);
     if (paused) return pause(['monitor_error'], usage);
-    if (error instanceof ApiRequestError && error.details.retryable) {
+    if (!previousProbe && error instanceof ApiRequestError && error.details.retryable) {
       monitorState.failureSince ??= +now;
       monitorState.lastFailure = error.details;
       // Do not move a server-provided cooldown forward on each skipped alarm.

@@ -14,6 +14,13 @@
   "secrets": {
     "required": ["CF_API_TOKEN"],
   },
+  "send_email": [
+    {
+      "name": "GUARD_EMAIL",
+      "destination_address": "YOUR_VERIFIED_ALERT_EMAIL",
+      "allowed_sender_addresses": ["alerts@atd.best"],
+    },
+  ],
   "durable_objects": {
     "bindings": [
       {
@@ -38,6 +45,8 @@
     "CLASS_B_LIMIT": 9000000,
     "STORAGE_BYTES_LIMIT": 9000000000,
     "MODE": "enforce",
+    "NOTIFY_FROM": "alerts@atd.best",
+    "NOTIFY_TO": "YOUR_VERIFIED_ALERT_EMAIL",
   },
   "triggers": {
     "crons": ["* * * * *"],

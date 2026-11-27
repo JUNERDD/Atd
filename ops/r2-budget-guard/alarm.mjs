@@ -1,6 +1,7 @@
 // @ts-check
 import { DurableObject } from 'cloudflare:workers';
 import { PauseFailedError, runGuard } from './worker.mjs';
+import { processNotifications } from './notifications.mjs';
 import { INVENTORY_INTERVAL } from './health.mjs';
 
 /** One persistent scheduler for this guard and R2 account, independent of visitor traffic.
@@ -35,7 +36,7 @@ export class BudgetAlarm extends DurableObject {
     // Old deployments have no health snapshot: require a complete first check.
     const lastInventory = monitorState.lastHealthy?.storageCheckedAt;
     const checkStorage = lastInventory === undefined || +now - lastInventory >= INVENTORY_INTERVAL;
-    /** @type {Awaited<ReturnType<typeof runGuard>> | {event: string, checkedAt: string, error: string}} */
+    /** @type {import('./notifications.mjs').GuardReport} */
     let result;
     let guardFailure;
     try {
@@ -61,6 +62,17 @@ export class BudgetAlarm extends DurableObject {
       monitorState,
       ...(checkStorage && result.event === 'within_limits' ? { lastInventory: +now } : {}),
     });
+    try {
+      await processNotifications(this.ctx.storage, this.env, result);
+    } catch (error) {
+      // A mail or outbox failure must not undo a pause or stop quota checks.
+      console.error(
+        JSON.stringify({
+          event: 'notification_queue_failed',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }),
+      );
+    }
     if (guardFailure) throw guardFailure;
   }
 }
