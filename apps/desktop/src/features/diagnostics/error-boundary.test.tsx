@@ -1,5 +1,6 @@
 import type { StreamTransportEvents, StreamTransportFactory } from '@atd/agent-client';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -164,7 +165,9 @@ describe('DiagnosticsErrorBoundary and service failure propagation', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <ServiceBanner onOpenSettings={vi.fn()} />
+        <TooltipProvider>
+          <ServiceBanner onOpenSettings={vi.fn()} />
+        </TooltipProvider>
       </QueryClientProvider>,
     );
 

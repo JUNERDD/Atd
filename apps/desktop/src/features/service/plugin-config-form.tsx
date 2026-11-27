@@ -290,7 +290,7 @@ export function PluginConfigForm({
               <span>{formError}</span>
             </p>
           ) : null}
-          <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="flex items-center justify-end gap-3">
             {saved ? (
               <output className="settings-field-note">
                 {t('extensions.plugins.config.saved')}

@@ -11,6 +11,8 @@ import type { AutomationItem } from '@atd/agent-contracts';
 import { Alert, AlertDescription, AlertTitle } from '@atd/ui/components/alert';
 import { Button } from '@atd/ui/components/button';
 import { Spinner } from '@atd/ui/components/spinner';
+import { BarAction } from '../../components/bar-action';
+import { useOneLineActions } from '../../components/one-line-actions';
 import { showErrorToast } from '../../components/toast-store';
 import { isActive } from '../../client/agent/task-schema';
 import { useAgent } from '../agent/use-agent';
@@ -44,6 +46,7 @@ export function ComputerAuthorization({
   onSaveAndAuthorize: () => void;
 }) {
   const { t } = useTranslation('automations');
+  const actionsRef = useOneLineActions<HTMLDivElement>();
   const tasks = useAgent().snapshot?.tasks;
   const [trial, setTrial] = useState<{ taskId: string; runId: string } | null>(null);
   const [starting, setStarting] = useState(false);
@@ -88,34 +91,35 @@ export function ComputerAuthorization({
           {t(`computer.trial.${trialStatus}`)}
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
-        <Button
+      {/* One line: short of room, the trial's actions show their icons alone. */}
+      <div ref={actionsRef} className="flex gap-2">
+        <BarAction
           type="button"
           variant="outline"
           aria-describedby="automation-computer-trial-note"
           aria-disabled={blocked || starting || trialStatus === 'running' || undefined}
           aria-busy={starting || undefined}
           className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+          icon={
+            starting ? (
+              <Spinner data-icon="inline-start" />
+            ) : (
+              <FlaskConical data-icon="inline-start" />
+            )
+          }
+          label={t('computer.trial.run')}
           onClick={() => {
             if (trialStatus !== 'running') void runTrial();
           }}
-        >
-          {starting ? (
-            <Spinner data-icon="inline-start" />
-          ) : (
-            <FlaskConical data-icon="inline-start" />
-          )}
-          {t('computer.trial.run')}
-        </Button>
+        />
         {trial && (
-          <Button
+          <BarAction
             type="button"
             variant="outline"
+            icon={<SquareArrowUpRightExit data-icon="inline-start" />}
+            label={t('computer.trial.open')}
             onClick={() => void automationsBridge().showTask(trial.taskId).catch(showErrorToast)}
-          >
-            <SquareArrowUpRightExit data-icon="inline-start" />
-            {t('computer.trial.open')}
-          </Button>
+          />
         )}
         <Button
           type="button"

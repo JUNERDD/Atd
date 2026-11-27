@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Camera, Pencil } from 'lucide-react';
-import { Button } from '@atd/ui/components/button';
 import { Label } from '@atd/ui/components/label';
 import { Spinner } from '@atd/ui/components/spinner';
 import { MAX_ATTACHMENTS } from '@atd/agent-contracts';
@@ -14,6 +13,8 @@ import {
   type Screenshot,
 } from '../../client/agent/screenshot-input';
 import type { FileRef, TaskInput } from '../../client/agent/task-schema';
+import { BarAction } from '../../components/bar-action';
+import { useOneLineActions } from '../../components/one-line-actions';
 import { showErrorToast } from '../../components/toast-store';
 import { ResourceImage } from './resource-image';
 
@@ -35,6 +36,7 @@ export function ScreenshotField({
   hintId: string;
 }) {
   const { t } = useTranslation('panel');
+  const rowRef = useOneLineActions<HTMLDivElement>();
   const [capturing, setCapturing] = useState(false);
   const shot = screenshotOf(input);
   /** Files a new capture leaves in place: all but the screenshot and its context. */
@@ -74,19 +76,30 @@ export function ScreenshotField({
   }
   return (
     <div className="settings-field">
-      <div className="flex items-center justify-between gap-2">
+      {/* One line beside the label: short of room, Edit and then Retake show their icons alone. */}
+      <div ref={rowRef} className="flex items-center justify-between gap-2">
         <Label>{t('input.screenshot')}</Label>
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex shrink-0 justify-end gap-2">
           {shot && (
-            <Button variant="outline" size="sm" disabled={capturing} onClick={() => edit(shot)}>
-              <Pencil />
-              {t('input.editScreenshot')}
-            </Button>
+            <BarAction
+              variant="outline"
+              size="sm"
+              disabled={capturing}
+              icon={<Pencil data-icon="inline-start" />}
+              label={t('input.editScreenshot')}
+              onClick={() => edit(shot)}
+            />
           )}
-          <Button variant="outline" size="sm" disabled={capturing} onClick={capture}>
-            {capturing ? <Spinner /> : <Camera />}
-            {shot ? t('input.retakeScreenshot') : t('input.takeScreenshot')}
-          </Button>
+          <BarAction
+            variant="outline"
+            size="sm"
+            disabled={capturing}
+            icon={
+              capturing ? <Spinner data-icon="inline-start" /> : <Camera data-icon="inline-start" />
+            }
+            label={shot ? t('input.retakeScreenshot') : t('input.takeScreenshot')}
+            onClick={capture}
+          />
         </div>
       </div>
       {shot ? (

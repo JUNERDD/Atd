@@ -17,6 +17,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@atd/ui/components/empty';
+import { BarAction } from '../../components/bar-action';
+import { useOneLineActions } from '../../components/one-line-actions';
 import type { TargetKind } from './computer-target-words';
 
 /**
@@ -101,8 +103,8 @@ export function AddTargetMenu({ offline, installed, onAdd }: AddTargetProps) {
 }
 
 const EMPTY_ICONS: Record<TargetKind, ReactNode> = {
-  browser: <Globe />,
-  application: <AppWindow />,
+  browser: <Globe data-icon="inline-start" />,
+  application: <AppWindow data-icon="inline-start" />,
 };
 
 const EMPTY_LABELS = {
@@ -112,10 +114,12 @@ const EMPTY_LABELS = {
 
 /**
  * The Targets group before any target exists, framed like the cards around it so the group keeps
- * its place on the page, with one button per kind; the buttons wrap on a narrow window.
+ * its place on the page, with one button per kind on one line: short of room, the leading ones
+ * show their icons alone.
  */
 export function AddTargetEmpty({ offline, installed, onAdd }: AddTargetProps) {
   const { t } = useTranslation('settings');
+  const actionsRef = useOneLineActions<HTMLDivElement>();
   const canAdd = (kind: TargetKind) => engineInstalled(kind, installed);
   const kinds: TargetKind[] = ['browser', 'application'];
   return (
@@ -127,17 +131,16 @@ export function AddTargetEmpty({ offline, installed, onAdd }: AddTargetProps) {
         <EmptyTitle>{t('computer.targets.emptyTitle')}</EmptyTitle>
         <EmptyDescription>{t('computer.targets.emptyDescription')}</EmptyDescription>
       </EmptyHeader>
-      <EmptyContent className="flex-row flex-wrap justify-center">
+      <EmptyContent ref={actionsRef} className="flex-row justify-center">
         {kinds.map((kind) => (
-          <Button
+          <BarAction
             key={kind}
             variant="outline"
             disabled={offline || !canAdd(kind)}
+            icon={EMPTY_ICONS[kind]}
+            label={t(EMPTY_LABELS[kind])}
             onClick={() => onAdd(kind)}
-          >
-            {EMPTY_ICONS[kind]}
-            {t(EMPTY_LABELS[kind])}
-          </Button>
+          />
         ))}
       </EmptyContent>
     </Empty>

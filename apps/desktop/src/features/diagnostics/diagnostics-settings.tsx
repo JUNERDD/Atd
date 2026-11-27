@@ -1,4 +1,4 @@
-import { useCallback, useContext, useState } from 'react';
+import { useCallback, useContext, useId, useState } from 'react';
 import { CircleAlert, Download, RefreshCw, RotateCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { LiveProbeKind } from '@atd/agent-contracts';
@@ -15,11 +15,14 @@ import {
 } from '@atd/ui/components/item';
 import { Label } from '@atd/ui/components/label';
 import { Switch } from '@atd/ui/components/switch';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import {
   ItemsPlaceholder,
   LoadingPlaceholder,
   TextPlaceholder,
 } from '../../components/loading-placeholder';
+import { BarAction } from '../../components/bar-action';
+import { useCompacted, useOneLineActions } from '../../components/one-line-actions';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { SettingsHeading } from '../settings/settings-heading';
 import { SettingsNavigationContext } from '../settings/settings-navigation';
@@ -58,6 +61,7 @@ function DoctorChecksPlaceholder({ label }: { label: string }) {
 export function DiagnosticsSettings() {
   const { t } = useTranslation('diagnostics');
   const navigate = useContext(SettingsNavigationContext);
+  const toolbarRef = useOneLineActions<HTMLDivElement>();
   const [includeConnectivity, setIncludeConnectivity] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [restarting, setRestarting] = useState(false);
@@ -117,51 +121,42 @@ export function DiagnosticsSettings() {
     <section className="flex flex-col gap-6" aria-label={t('overview.title')}>
       <SettingsHeading title={t('overview.title')} description={t('overview.description')} />
 
+      {/* One line: short of room, Export, Restart, then the connectivity option give up labels. */}
       <div
-        className="flex flex-wrap items-center justify-between gap-2"
+        ref={toolbarRef}
+        className="flex items-center gap-2"
         data-settings-anchor="diagnostics-doctor"
       >
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" disabled={running} onClick={() => void runChecks()}>
-            <RefreshCw
-              data-icon="inline-start"
-              aria-hidden="true"
-              className={running ? 'animate-spin' : undefined}
-            />
-            {running ? t('actions.runningChecks') : t('actions.runChecks')}
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            data-settings-anchor="diagnostics-export"
-            onClick={() => setPreviewOpen(true)}
-          >
-            <Download data-icon="inline-start" aria-hidden="true" />
-            {t('actions.exportBundle')}
-          </Button>
-          {showRestart && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={restarting}
-              onClick={() => void handleRestartService()}
-            >
-              <RotateCw data-icon="inline-start" aria-hidden="true" />
-              {restarting ? t('actions.restartingService') : t('actions.restartService')}
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Switch
-            id="diagnostics-include-connectivity"
-            checked={includeConnectivity}
-            onCheckedChange={setIncludeConnectivity}
+        <Button type="button" disabled={running} onClick={() => void runChecks()}>
+          <RefreshCw
+            data-icon="inline-start"
+            aria-hidden="true"
+            className={running ? 'animate-spin' : undefined}
           />
-          <Label htmlFor="diagnostics-include-connectivity" className="text-sm font-normal">
-            {t('actions.includeConnectivity')}
-          </Label>
-        </div>
+          {running ? t('actions.runningChecks') : t('actions.runChecks')}
+        </Button>
+        <BarAction
+          type="button"
+          variant="secondary"
+          data-settings-anchor="diagnostics-export"
+          icon={<Download data-icon="inline-start" aria-hidden="true" />}
+          label={t('actions.exportBundle')}
+          onClick={() => setPreviewOpen(true)}
+        />
+        {showRestart && (
+          <BarAction
+            type="button"
+            variant="outline"
+            disabled={restarting}
+            icon={<RotateCw data-icon="inline-start" aria-hidden="true" />}
+            label={restarting ? t('actions.restartingService') : t('actions.restartService')}
+            onClick={() => void handleRestartService()}
+          />
+        )}
+        <ConnectivitySwitch
+          checked={includeConnectivity}
+          onCheckedChange={setIncludeConnectivity}
+        />
       </div>
 
       {(shellError || offlineSummary) && (
@@ -255,5 +250,44 @@ export function DiagnosticsSettings() {
 
       <PrivacyPreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} />
     </section>
+  );
+}
+
+/**
+ * The run's connectivity option, at the toolbar's trailing end. Short of room it shows its switch
+ * alone and names itself in a tooltip; its label stays, out of sight, as the switch's name.
+ */
+function ConnectivitySwitch({
+  checked,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  const { t } = useTranslation('diagnostics');
+  const id = useId();
+  const { ref, compact } = useCompacted<HTMLDivElement>();
+  const [open, setOpen] = useState(false);
+  const label = t('actions.includeConnectivity');
+  return (
+    <Tooltip open={compact ? open : false} onOpenChange={setOpen}>
+      <TooltipTrigger asChild>
+        <div
+          ref={ref}
+          data-bar-action="control"
+          className="ms-auto flex shrink-0 items-center gap-2"
+        >
+          <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+          <span data-slot="bar-label">
+            <Label htmlFor={id} className="text-sm font-normal">
+              {label}
+            </Label>
+          </span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={4}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
   );
 }

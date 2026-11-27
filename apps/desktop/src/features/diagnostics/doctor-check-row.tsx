@@ -140,7 +140,7 @@ export function DoctorCheckRow({
                 <ItemDescription className="whitespace-normal">{reason}</ItemDescription>
               </ItemContent>
             </div>
-            <ItemActions className="shrink-0 flex-wrap">
+            <ItemActions className="shrink-0">
               <Badge variant={STATUS_BADGE_VARIANT[check.status]}>
                 {t(STATUS_KEYS[check.status])}
               </Badge>

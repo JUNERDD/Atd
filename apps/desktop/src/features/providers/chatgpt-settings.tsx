@@ -83,7 +83,7 @@ export function ChatGPTSettings({
       {saved?.chatgptUsagePaused && (
         <Alert role="note" aria-live="polite" aria-atomic="true">
           <AlertDescription>{t('chatgpt.usageLimit')}</AlertDescription>
-          <AlertAction className="flex flex-wrap gap-2">
+          <AlertAction className="flex gap-2">
             <ManageChatGPTUsage variant="default" />
             <Button
               variant="outline"

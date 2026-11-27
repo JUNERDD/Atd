@@ -216,10 +216,11 @@
   margin-top: -4px;
   padding-inline: 0;
 }
+/* Open, Continue editing and More on one line: short of room, Continue editing shows its icon
+   alone (`useOneLineActions`). */
 .app-detail-hero-actions {
   display: flex;
   grid-area: actions;
-  flex-wrap: wrap;
   gap: 8px;
 }
 /*

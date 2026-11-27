@@ -50,7 +50,7 @@ export function AppCard({ details }: { details: AppBuildDetails }) {
             )}
           </div>
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex gap-1.5">
           <Button
             variant="outline"
             size="sm"

@@ -13,7 +13,9 @@ import {
   DropdownMenuTrigger,
 } from '@atd/ui/components/dropdown-menu';
 import { Spinner } from '@atd/ui/components/spinner';
+import { BarAction } from '../../components/bar-action';
 import { IconButton } from '../../components/icon-button';
+import { useOneLineActions } from '../../components/one-line-actions';
 import { useAgent } from '../agent/use-agent';
 import { AppIcon } from './app-icon';
 import type { AppIntent } from './use-app-intent';
@@ -67,6 +69,7 @@ export function AppDetailHero({
 }) {
   const { t, i18n } = useTranslation('apps');
   const { t: tSettings } = useTranslation('settings');
+  const actionsRef = useOneLineActions<HTMLDivElement>();
   const tasks = useAgent().snapshot?.tasks;
   const shown = detail ?? app;
   const description = shown.description.trim();
@@ -125,7 +128,8 @@ export function AppDetailHero({
           </p>
           {source && <p className="app-detail-meta">{t('detail.builtIn', { task: source })}</p>}
         </div>
-        <div className="app-detail-hero-actions">
+        {/* One line: short of room, Continue editing shows its icon alone; Open keeps its label. */}
+        <div ref={actionsRef} className="app-detail-hero-actions">
           <Button
             type="button"
             aria-disabled={busy || undefined}
@@ -139,20 +143,21 @@ export function AppDetailHero({
             )}
             {t('panel.open')}
           </Button>
-          <Button
+          <BarAction
             type="button"
             variant="outline"
             aria-disabled={busy || undefined}
             aria-busy={pending === 'edit' || undefined}
+            icon={
+              pending === 'edit' ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <SquarePen data-icon="inline-start" />
+              )
+            }
+            label={t('panel.edit')}
             onClick={onEdit}
-          >
-            {pending === 'edit' ? (
-              <Spinner data-icon="inline-start" />
-            ) : (
-              <SquarePen data-icon="inline-start" />
-            )}
-            {t('panel.edit')}
-          </Button>
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <IconButton

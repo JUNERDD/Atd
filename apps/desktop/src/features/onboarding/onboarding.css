@@ -143,15 +143,14 @@
   text-align: end;
   text-wrap: pretty;
 }
+/* Back, then Later and the primary action trailing, on one line. */
 .onboarding-footer-actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 .onboarding-footer-end {
   display: flex;
-  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-inline-start: auto;

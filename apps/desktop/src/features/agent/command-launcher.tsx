@@ -5,6 +5,7 @@ import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { useTranslation } from 'react-i18next';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { keyedShortcuts } from '@atd/agent-contracts';
+import { useOneLineActions } from '../../components/one-line-actions';
 import { shortcutKeys } from '../../lib/shortcuts';
 import { CommandIcon } from '../commands/command-icon';
 import { preloadPanelView } from './panel-view-loaders';
@@ -30,7 +31,7 @@ function FirstShortcut({ command }: { command: CommandDefinition }) {
 
 /**
  * The new task's quick commands: the first few enabled ones (or all when expanded) inside a
- * bounded `ScrollArea` (`45cqh`), followed below by a wrapping row of outline buttons that browse
+ * bounded `ScrollArea` (`45cqh`), followed below by a one-line row of outline buttons that browse
  * further, All commands first. `children` adds buttons to that row, such as Create app and My
  * apps.
  */
@@ -46,6 +47,7 @@ export function CommandLauncher({
   const { t } = useTranslation('panel');
   const [expanded, setExpanded] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useOneLineActions<HTMLDivElement>();
   const available = commands.filter((command) => command.enabled);
   const visible = expanded ? available : available.slice(0, COLLAPSED_COUNT);
   const hasActions = available.length > COLLAPSED_COUNT || Boolean(children);
@@ -84,7 +86,7 @@ export function CommandLauncher({
         </ScrollArea>
       )}
       {hasActions && (
-        <div className="flex flex-wrap gap-2">
+        <div ref={actionsRef} className="flex gap-2">
           {available.length > COLLAPSED_COUNT && (
             <Button
               variant="outline"

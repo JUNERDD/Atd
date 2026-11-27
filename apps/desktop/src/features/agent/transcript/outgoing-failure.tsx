@@ -17,7 +17,7 @@ export function OutgoingFailure({ message, error }: { message: OutgoingMessage; 
       <CircleAlert aria-hidden />
       <AlertTitle>{t('conversation.notSent')}</AlertTitle>
       <AlertDescription className="wrap-anywhere">{error}</AlertDescription>
-      <AlertAction className="flex flex-wrap justify-end gap-2">
+      <AlertAction className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={message.discard}>
           {t('conversation.discardUnsent')}
         </Button>

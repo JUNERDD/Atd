@@ -12,8 +12,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@atd/ui/components/alert-dialog';
-import { Button } from '@atd/ui/components/button';
 import type { BlockOf } from '../../../client/agent/transcript-schema';
+import { BarAction } from '../../../components/bar-action';
+import { useOneLineActions } from '../../../components/one-line-actions';
 import { showErrorToast } from '../../../components/toast-store';
 import {
   computerBridge,
@@ -72,6 +73,7 @@ export function ComputerFollowUp({
   data: ComputerDetails;
 }) {
   const { t } = useTranslation('tasks');
+  const actionsRef = useOneLineActions<HTMLDivElement>();
   const turns = useTaskTurns();
   const shell = useComputerShellState();
   const [note, setNote] = useState<string | null>(null);
@@ -162,42 +164,40 @@ export function ComputerFollowUp({
             </p>
           )}
           {(checkIds.length > 0 || offersConsent || browserId) && (
-            <div className="flex flex-wrap gap-2">
+            /* One line: short of room, the leading actions show their icons alone. */
+            <div ref={actionsRef} className="flex gap-2">
               {checkIds.length > 0 && (
-                <Button
+                <BarAction
                   type="button"
                   variant="outline"
                   size="xs"
                   disabled={pending}
+                  icon={<CircleCheck data-icon="inline-start" />}
+                  label={t('computer.check.action')}
                   onClick={() => setConfirming(true)}
-                >
-                  <CircleCheck data-icon="inline-start" />
-                  {t('computer.check.action')}
-                </Button>
+                />
               )}
               {offersConsent && (
-                <Button
+                <BarAction
                   type="button"
                   variant="outline"
                   size="xs"
                   disabled={pending}
+                  icon={<ScanEye data-icon="inline-start" />}
+                  label={t('computer.handoff.prepareConsent')}
                   onClick={() => void prepareConsent()}
-                >
-                  <ScanEye data-icon="inline-start" />
-                  {t('computer.handoff.prepareConsent')}
-                </Button>
+                />
               )}
               {browserId && (
-                <Button
+                <BarAction
                   type="button"
                   variant="outline"
                   size="xs"
                   disabled={pending}
+                  icon={<Globe data-icon="inline-start" />}
+                  label={t('computer.handoff.openBrowser')}
                   onClick={() => void openBrowser(browserId)}
-                >
-                  <Globe data-icon="inline-start" />
-                  {t('computer.handoff.openBrowser')}
-                </Button>
+                />
               )}
             </div>
           )}

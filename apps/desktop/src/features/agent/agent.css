@@ -1250,8 +1250,10 @@
   font-size: 13px;
   line-height: 20px;
 }
+/* The state keeps this much room (it ends in an ellipsis) before its actions compact. */
 .service-banner-text {
-  min-width: 0;
+  flex: 1 1 auto;
+  min-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
