@@ -41,7 +41,10 @@ export default defineConfig(({ mode }) => {
       outDir: `dist/${flavor}`,
       emptyOutDir: true,
       target: 'chrome125',
-      sourcemap: flavor === 'dev' ? 'inline' : false,
+      // External `.map` files keep dev chunks at release size (Chrome only fetches them when
+      // DevTools is open); `manifest.config.ts` exposes `src/content/index.js.map` in dev only so
+      // webpage DevTools can resolve the content script's map.
+      sourcemap: flavor === 'dev',
       // Lightning CSS 1.33 (Vite's default CSS minifier) folds `animation-timeline` into the
       // `animation` shorthand for Chrome targets; Chrome accepts a timeline there only as a reset,
       // so it drops the whole declaration and the scroll-driven animation (the panel kit's scroll

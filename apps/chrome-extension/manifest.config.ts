@@ -68,5 +68,18 @@ export function manifestFor(flavor: Flavor) {
       'sidePanel',
     ],
     host_permissions: ['<all_urls>'],
+    // Dev builds emit external `.map` files; webpage DevTools needs the content script's map
+    // reachable at its static extension URL, while release keeps `web_accessible_resources` empty.
+    ...(flavor === 'dev'
+      ? {
+          web_accessible_resources: [
+            {
+              resources: ['src/content/index.js.map'],
+              matches: ['<all_urls>'],
+              use_dynamic_url: false,
+            },
+          ],
+        }
+      : {}),
   });
 }
