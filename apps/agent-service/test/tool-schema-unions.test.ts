@@ -107,7 +107,11 @@ test('pure non-root unions strip redundant parent type while root keeps type', (
     widenedNumber: -12,
   });
   assert.throws(() => callArgs(tool, { nullable: { bad: 1 } }));
-  assert.throws(() => callArgs(tool, { widenedNumber: 1.5 }));
+  // pi-schema@1.6+ truncates 1.5 -> 1 into the `minimum: 0` integer branch, matching the
+  // unnormalized schema; values outside both integer ranges or non-integers that stay invalid fail.
+  assert.deepEqual(callArgs(tool, { widenedNumber: 1.5 }), { widenedNumber: 1 });
+  assert.throws(() => callArgs(tool, { widenedNumber: -5 }));
+  assert.throws(() => callArgs(tool, { widenedNumber: -1.5 }));
 
   const rootUnion = normalizeToolSchema({
     type: 'object',
