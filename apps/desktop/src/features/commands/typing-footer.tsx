@@ -41,7 +41,7 @@ export function CommandTypingFooter({ settings }: { settings: SettingsSnapshot |
   return (
     <footer ref={footerRef} className="editor-footer overlay-footer">
       {/* The trailing actions slot, where the other footers keep theirs. */}
-      <div className="flex-wrap justify-end">
+      <div>
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="glass" data-settings-anchor="command-typing">

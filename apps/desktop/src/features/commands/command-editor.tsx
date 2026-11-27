@@ -10,7 +10,8 @@ import { CommandSchema, type CommandDefinition } from '../../client/agent/comman
 import { parse } from '../../client/agent/validation';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import type { AgentTask } from '../../client/agent/task-schema';
-import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { BarAction } from '../../components/bar-action';
+import { useActionFooter } from '../../components/use-overlay-footer';
 import { agentApi } from '../agent/use-agent';
 import { showErrorToast } from '../../components/toast-store';
 import { messageOf } from '../../lib/errors';
@@ -81,7 +82,7 @@ export function CommandEditor({
   const registrationError = useRegistrationError(draft);
   const nameError = problems.text('name');
   const errorMessage = useRef<HTMLDivElement>(null);
-  const footerRef = useOverlayFooter<HTMLElement>();
+  const footerRef = useActionFooter<HTMLElement>();
   // Hands the work to a fresh panel session where the agent edits the command with its tools.
   const startSession = useCommandAiSession();
   function showError(message: string) {
@@ -288,26 +289,27 @@ export function CommandEditor({
       <footer ref={footerRef} className="editor-footer overlay-footer">
         {plugin ? (
           <div>
-            <Button variant="glass" onClick={onDuplicate}>
-              <Copy data-icon="inline-start" />
-              {t('list.duplicateToPersonal')}
-            </Button>
+            <BarAction
+              variant="glass"
+              icon={<Copy data-icon="inline-start" />}
+              label={t('list.duplicateToPersonal')}
+              onClick={onDuplicate}
+            />
           </div>
         ) : (
           <>
-            <Button
+            <BarAction
               type="button"
               variant="glass"
               disabled={!window.desktop?.settings}
               aria-disabled={pending || undefined}
               className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              icon={<Sparkles data-icon="inline-start" />}
+              label={baseRevision ? t('session.triggerEdit') : t('session.trigger')}
               onClick={() => {
                 if (!pending) void startSession(baseRevision ? draft.id : null);
               }}
-            >
-              <Sparkles data-icon="inline-start" />
-              {baseRevision ? t('session.triggerEdit') : t('session.trigger')}
-            </Button>
+            />
             <div>
               <Button
                 variant="glass"

@@ -1,7 +1,7 @@
 import type { RunPolicy } from '../../client/agent/run-policy';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Brain, Paperclip, Shield, X } from 'lucide-react';
+import { Brain, Paperclip, Settings2, Shield, X } from 'lucide-react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { Button } from '@atd/ui/components/button';
 import { Kbd, KbdGroup } from '@atd/ui/components/kbd';
@@ -19,7 +19,8 @@ import { agentApi } from './use-agent';
 import { FileKindIcon } from '../../components/file-kind-icon';
 import { showErrorToast } from '../../components/toast-store';
 import { reportImportFailures } from '../../components/use-imported-files';
-import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { BarAction } from '../../components/bar-action';
+import { useActionFooter } from '../../components/use-overlay-footer';
 import { acceleratorToHotkey, shortcutKeys } from '../../lib/shortcuts';
 import { isImageMime, type CommandOutput } from '@atd/agent-contracts';
 import { ResourceImage } from './resource-image';
@@ -59,7 +60,7 @@ export function CommandInput({
 }) {
   const { t } = useTranslation('panel');
   const rootRef = useRef<HTMLElement>(null);
-  const footerRef = useOverlayFooter<HTMLElement>();
+  const footerRef = useActionFooter<HTMLElement>();
   const runLabel = customRunLabel ?? t('input.run');
   const { command, input } = prepared;
   useRememberedArguments(command.id, input.arguments, prepared.shortcutId);
@@ -265,9 +266,13 @@ export function CommandInput({
       </ScrollArea>
       <footer ref={footerRef} className="command-run-footer overlay-footer">
         <div className="command-run-actions">
-          <Button variant="glass" onClick={onOpenSettings}>
-            {t('input.commandSettings')}
-          </Button>
+          <BarAction
+            variant="glass"
+            icon={<Settings2 data-icon="inline-start" />}
+            iconAtRest={false}
+            label={t('input.commandSettings')}
+            onClick={onOpenSettings}
+          />
           <Button
             disabled={pending || needsScreenshot}
             aria-describedby={needsScreenshot ? SCREENSHOT_HINT_ID : undefined}

@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Badge } from '@atd/ui/components/badge';
 import { Button } from '@atd/ui/components/button';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
-import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { BarAction } from '../../components/bar-action';
+import { useActionFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
 
 /** The item's state next to its name: on, off, or failing. */
@@ -72,7 +73,7 @@ export function ExtensionPage({
   children: ReactNode;
 }) {
   const { t } = useTranslation('settings');
-  const footerRef = useOverlayFooter<HTMLElement>();
+  const footerRef = useActionFooter<HTMLElement>();
   const pageRef = useRef<HTMLElement>(null);
   const [expanded, setExpanded] = useState(false);
   const clamped = useDescriptionClamped(pageRef, description);
@@ -122,10 +123,14 @@ export function ExtensionPage({
       {hasFooter ? (
         <footer ref={footerRef} className="editor-footer overlay-footer">
           {ai ? (
-            <Button type="button" variant="glass" disabled={ai.disabled} onClick={ai.onClick}>
-              <Sparkles data-icon="inline-start" />
-              {ai.label}
-            </Button>
+            <BarAction
+              type="button"
+              variant="glass"
+              disabled={ai.disabled}
+              icon={<Sparkles data-icon="inline-start" />}
+              label={ai.label}
+              onClick={ai.onClick}
+            />
           ) : note ? (
             <p className="settings-field-note">{note}</p>
           ) : null}

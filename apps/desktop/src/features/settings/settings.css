@@ -581,23 +581,31 @@
   display: grid;
   gap: 16px;
 }
+/* One line (`useActionFooter`): where the actions are short of room, the leading group's actions
+   show their icons alone (`BarAction`) instead of the groups wrapping. A hint or note beside them
+   takes the room they leave and wraps its own text. */
 .editor-footer {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
   min-width: 0;
   /* The band reserves room above the controls for the overlay fade to finish. */
   padding-top: 24px;
 }
+.editor-footer > * {
+  flex-shrink: 0;
+}
+.editor-footer > :is(p, span) {
+  flex: 1 1 0;
+  min-width: 0;
+  text-wrap: pretty;
+}
 .editor-footer > div {
   display: flex;
   gap: 8px;
 }
-/* Only the trailing group is pushed to the end (onto a line of its own when the groups do not
-   fit); a leading group stays at the start edge. */
+/* Only the trailing group is pushed to the end; a leading group stays at the start edge. */
 .editor-footer > div:last-child {
   margin-left: auto;
 }

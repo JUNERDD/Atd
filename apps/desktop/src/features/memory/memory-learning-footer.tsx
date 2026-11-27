@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next';
-import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { useActionFooter } from '../../components/use-overlay-footer';
 import { SettingsFooterSwitch } from '../settings/settings-footer-switch';
 
 /**
  * The Memory section's bottom action bar: the shared floating settings footer (`.editor-footer`,
  * `.overlay-footer`) holding the learning settings at the trailing edge, where the other footers
- * keep their actions; they wrap onto a second line in a narrow window. Automatic learning, then
+ * keep their actions, on one line: in a narrow window they show their switches alone, named in
+ * their tooltips (`SettingsFooterSwitch`). Automatic learning, then
  * Ask before saving, which routes what learning would save to Suggestions and only matters while
  * learning runs, so it waits while learning is paused and says why. Settings, not memories, so
  * they stay out of the list; each switch is its own undo, so neither asks for confirmation.
@@ -27,11 +28,11 @@ export function MemoryLearningFooter({
   onChange: (settings: { paused?: boolean; askFirst?: boolean }) => void;
 }) {
   const { t } = useTranslation('memory');
-  const footerRef = useOverlayFooter<HTMLElement>();
+  const footerRef = useActionFooter<HTMLElement>();
   return (
     <footer ref={footerRef} className="editor-footer overlay-footer">
       {/* The trailing actions slot, where the other footers keep theirs. */}
-      <div className="flex-wrap justify-end">
+      <div>
         <SettingsFooterSwitch
           label={t('memory.learning.label')}
           description={t('memory.learning.description')}

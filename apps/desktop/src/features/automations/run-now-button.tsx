@@ -1,12 +1,13 @@
 import type { ComponentProps } from 'react';
 import { Play } from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
+import { BarAction } from '../../components/bar-action';
 
 /**
  * Run now with a label (the run history's and the editor's; the list row has its icon button).
  * While the automation cannot run, the button stays focusable and its tooltip says why, as the
- * row's does; a busy button ignores presses without a reason.
+ * row's does; a busy button ignores presses without a reason. In the editor's footer it shows its
+ * icon alone where the footer is short of room (`BarAction`).
  */
 export function RunNowButton({
   label,
@@ -22,27 +23,18 @@ export function RunNowButton({
   variant?: ComponentProps<typeof Button>['variant'];
   onRun: () => void;
 }) {
-  const button = (
-    <Button
+  return (
+    <BarAction
       type="button"
       variant={variant}
+      icon={<Play data-icon="inline-start" />}
+      label={label}
+      hint={reason ?? undefined}
       aria-disabled={reason !== null || busy || undefined}
       className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       onClick={() => {
         if (reason === null && !busy) onRun();
       }}
-    >
-      <Play data-icon="inline-start" />
-      {label}
-    </Button>
-  );
-  if (reason === null) return button;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent side="top" sideOffset={4}>
-        {reason}
-      </TooltipContent>
-    </Tooltip>
+    />
   );
 }

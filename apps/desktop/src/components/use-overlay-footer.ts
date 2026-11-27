@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { keepOneLine } from './one-line-actions';
 
 /**
  * Ref for a bottom action bar that floats over the surface's scrolling content (`.overlay-footer`).
@@ -33,6 +34,26 @@ export function useOverlayFooter<T extends HTMLElement>() {
       surface.style.removeProperty('--overlay-footer-height');
     };
   }, []);
+}
+
+/**
+ * `useOverlayFooter` for a bar of actions, which also stays one line (`keepOneLine`): its secondary
+ * actions (`BarAction`) show their icons alone where it is short of room, rather than wrapping.
+ */
+export function useActionFooter<T extends HTMLElement>() {
+  const overlay = useOverlayFooter<T>();
+  return useCallback(
+    (footer: T | null) => {
+      if (!footer) return;
+      const release = overlay(footer);
+      const unfit = keepOneLine(footer);
+      return () => {
+        unfit();
+        release?.();
+      };
+    },
+    [overlay],
+  );
 }
 
 /**

@@ -6,7 +6,8 @@ import { Alert, AlertAction, AlertDescription } from '@atd/ui/components/alert';
 import { Badge } from '@atd/ui/components/badge';
 import { Button } from '@atd/ui/components/button';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
-import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { BarAction } from '../../components/bar-action';
+import { useActionFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
 import {
@@ -90,7 +91,7 @@ export function MemoryPage({
 }) {
   const { t } = useTranslation('memory');
   const formId = useId();
-  const footerRef = useOverlayFooter<HTMLElement>();
+  const footerRef = useActionFooter<HTMLElement>();
   /** The saved unit the draft started from, or last reloaded. */
   const [base, setBase] = useState(unit);
   const [draft, setDraft] = useState(() => draftOf(unit));
@@ -198,10 +199,14 @@ export function MemoryPage({
       </ScrollArea>
       <footer ref={footerRef} className="editor-footer overlay-footer">
         {creating ? null : (
-          <Button type="button" variant="glass" {...busyProps} onClick={guarded(onDelete)}>
-            <Trash2 />
-            {t('memory.page.delete')}
-          </Button>
+          <BarAction
+            type="button"
+            variant="glass"
+            {...busyProps}
+            icon={<Trash2 data-icon="inline-start" />}
+            label={t('memory.page.delete')}
+            onClick={guarded(onDelete)}
+          />
         )}
         <div>
           <Button type="button" variant="glass" {...busyProps} onClick={guarded(onCancel)}>

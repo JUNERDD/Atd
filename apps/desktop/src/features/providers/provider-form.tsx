@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react';
-import { CircleAlert } from 'lucide-react';
+import { BadgeCheck, CircleAlert, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@atd/ui/components/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { Connection, ProviderCatalogEntry } from '../../client/providers/schema';
 import { showErrorToast, showToast } from '../../components/toast-store';
-import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { BarAction } from '../../components/bar-action';
+import { useActionFooter } from '../../components/use-overlay-footer';
 import { SettingsHeading } from '../settings/settings-heading';
 import { ProviderConnectionFields } from './provider-connection-fields';
 import { ProviderSignIn } from './provider-login';
@@ -37,7 +37,7 @@ export function ProviderForm({
   const { draft, dirty, change, load } = useProviderDraft(provider, connection, presetId);
   const login = useProviderLogin();
   const [pending, setPending] = useState('');
-  const footerRef = useOverlayFooter<HTMLElement>();
+  const footerRef = useActionFooter<HTMLElement>();
   const bridge = window.desktop?.settings.providers;
   const disabled = Boolean(pending) || login.waiting || !bridge;
   const saved = connection && connection.connectionId === draft.connectionId ? connection : null;
@@ -160,57 +160,46 @@ export function ProviderForm({
         </div>
       </ScrollArea>
       <footer ref={footerRef} className="editor-footer overlay-footer">
-        {/* The saved connection's catalog actions lead; the edit's own Cancel and Save trail. */}
+        {/* The saved connection's catalog actions lead; the edit's own Cancel and Save trail.
+            Their labels say them; short of room, they show icons alone (`BarAction`). */}
         {saved && (
           <div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="glass"
-                  aria-disabled={refreshBlocked || undefined}
-                  className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-                  onClick={() => {
-                    if (refreshBlocked) return;
-                    void perform('refreshing', async () => {
-                      await bridge!.refresh(saved.connectionId);
-                      showToast({ kind: 'info', text: t('form.catalogUpdated') });
-                    });
-                  }}
-                >
-                  {pending === 'refreshing' ? t('form.refreshing') : t('form.refresh')}
-                </Button>
-              </TooltipTrigger>
-              {dirty && (
-                <TooltipContent side="top" className="max-w-80">
-                  {t('form.saveBeforeRefresh')}
-                </TooltipContent>
-              )}
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {/* aria-disabled keeps the action's explanation reachable while it is blocked. */}
-                <Button
-                  variant="glass"
-                  aria-disabled={verifyBlocked || undefined}
-                  className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-                  onClick={() => {
-                    if (verifyBlocked) return;
-                    void perform('verifying', async () => {
-                      await bridge!.verify({
-                        connectionId: saved.connectionId,
-                        modelId: saved.defaultModel,
-                      });
-                      showToast({ kind: 'info', text: t('form.verified') });
-                    });
-                  }}
-                >
-                  {pending === 'verifying' ? t('form.verifying') : t('form.verify')}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-80">
-                {t(dirty ? 'form.saveBeforeVerify' : 'form.verifyNote')}
-              </TooltipContent>
-            </Tooltip>
+            <BarAction
+              variant="glass"
+              aria-disabled={refreshBlocked || undefined}
+              className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              icon={<RefreshCw data-icon="inline-start" />}
+              iconAtRest={false}
+              label={pending === 'refreshing' ? t('form.refreshing') : t('form.refresh')}
+              hint={dirty ? t('form.saveBeforeRefresh') : undefined}
+              onClick={() => {
+                if (refreshBlocked) return;
+                void perform('refreshing', async () => {
+                  await bridge!.refresh(saved.connectionId);
+                  showToast({ kind: 'info', text: t('form.catalogUpdated') });
+                });
+              }}
+            />
+            {/* aria-disabled keeps the action's explanation reachable while it is blocked. */}
+            <BarAction
+              variant="glass"
+              aria-disabled={verifyBlocked || undefined}
+              className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+              icon={<BadgeCheck data-icon="inline-start" />}
+              iconAtRest={false}
+              label={pending === 'verifying' ? t('form.verifying') : t('form.verify')}
+              hint={t(dirty ? 'form.saveBeforeVerify' : 'form.verifyNote')}
+              onClick={() => {
+                if (verifyBlocked) return;
+                void perform('verifying', async () => {
+                  await bridge!.verify({
+                    connectionId: saved.connectionId,
+                    modelId: saved.defaultModel,
+                  });
+                  showToast({ kind: 'info', text: t('form.verified') });
+                });
+              }}
+            />
           </div>
         )}
         <div>

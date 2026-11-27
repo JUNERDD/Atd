@@ -94,19 +94,17 @@
 .command-run-footer {
   display: flex;
   flex-shrink: 0;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   /* The band reserves room above the controls for the overlay fade to finish. */
   padding: 24px 16px 16px;
 }
+/* One line (`useActionFooter`): short of room, Command settings shows its icon alone. */
 .command-run-actions {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 8px;
-}
-.command-run-actions {
   margin-left: auto;
 }
 /* The Run shortcut sits on the solid primary button, so its keycaps take the button's own

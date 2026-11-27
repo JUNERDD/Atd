@@ -11,7 +11,8 @@ import { ScrollArea } from '@atd/ui/components/scroll-area';
 import type { CommandDefinition } from '../../client/agent/command-schema';
 import { shortcutProblem } from '../../client/agent/shortcut-validation';
 import type { SettingsSnapshot } from '../../client/settings-contract';
-import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { BarAction } from '../../components/bar-action';
+import { useActionFooter } from '../../components/use-overlay-footer';
 import { SettingsGroup } from '../settings/settings-group';
 import { SettingsHeading } from '../settings/settings-heading';
 import { useSettingsUnsavedChanges } from '../settings/settings-unsaved-changes';
@@ -59,7 +60,7 @@ export function ShortcutEditor({
   useSettingsUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(start));
   const [error, setError] = useState<{ keys: boolean; text: string } | null>(null);
   const errorMessage = useRef<HTMLParagraphElement>(null);
-  const footerRef = useOverlayFooter<HTMLElement>();
+  const footerRef = useActionFooter<HTMLElement>();
   function done() {
     if (!initial && isBlankShortcut(draft)) return onCancel();
     const next = {
@@ -159,10 +160,12 @@ export function ShortcutEditor({
       <footer ref={footerRef} className="editor-footer overlay-footer">
         <div>
           {initial && (
-            <Button variant="glass" onClick={onDelete}>
-              <Trash2 data-icon="inline-start" />
-              {t('shortcut.row.remove')}
-            </Button>
+            <BarAction
+              variant="glass"
+              icon={<Trash2 data-icon="inline-start" />}
+              label={t('shortcut.row.remove')}
+              onClick={onDelete}
+            />
           )}
         </div>
         <div>

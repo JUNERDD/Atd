@@ -16,7 +16,8 @@ import type { CommandDefinition } from '../../client/agent/command-schema';
 import { AutomationConflictError } from '../../client/automations-contract';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { showErrorToast } from '../../components/toast-store';
-import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { BarAction } from '../../components/bar-action';
+import { useActionFooter } from '../../components/use-overlay-footer';
 import { messageOf } from '../../lib/errors';
 import { FieldError } from '../commands/field-error';
 import { SettingsHeading } from '../settings/settings-heading';
@@ -103,7 +104,7 @@ export function AutomationEditor({
   const folderName = (id: string) => picked[id] ?? folderNameOf(automations, id);
   const problems = useAutomationProblems(draft, commands, folderName);
   const preview = useTriggerPreview(draft.trigger, automationId);
-  const footerRef = useOverlayFooter<HTMLElement>();
+  const footerRef = useActionFooter<HTMLElement>();
   const failureRef = useRef<HTMLDivElement>(null);
   // The panel session edits the saved automation with the agent's tools, not this draft.
   const startSession = useAutomationAiSession();
@@ -276,20 +277,19 @@ export function AutomationEditor({
       </ScrollArea>
       <footer ref={footerRef} className="editor-footer overlay-footer">
         <div>
-          <Button
+          <BarAction
             type="button"
             variant="glass"
             disabled={!window.desktop?.settings}
             {...busy}
+            icon={<Sparkles data-icon="inline-start" />}
+            label={saved ? t('session.triggerEdit') : t('session.trigger')}
             onClick={() => {
               if (pending) return;
               const automation = saved?.automation;
               void startSession(automation ? { id: automation.id, name: automation.name } : null);
             }}
-          >
-            <Sparkles data-icon="inline-start" />
-            {saved ? t('session.triggerEdit') : t('session.trigger')}
-          </Button>
+          />
           {saved && !dirty ? (
             <RunNowButton
               variant="glass"

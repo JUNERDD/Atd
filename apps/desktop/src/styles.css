@@ -216,6 +216,23 @@ body {
 .overlay-footer:is(button, a, input, [role='button']) {
   pointer-events: auto;
 }
+/* A secondary action compacted in a bar that stays one line (`one-line-actions.ts`): its label out
+   of sight but still its accessible name. `BarAction` becomes a square icon button as tall as it
+   was; `SettingsFooterSwitch` keeps its pill around the switch. */
+[data-bar-action='icon'][data-compact] {
+  aspect-ratio: 1;
+  gap: 0;
+  padding-inline: 0;
+}
+[data-bar-action][data-compact] > [data-slot='bar-label'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 /* Applied to the ScrollArea viewport a surface's overlay footer covers. The mask reaches well above
    the bar so the content has finished fading by the time it slides under the controls. */
 .overlay-footer-fade {

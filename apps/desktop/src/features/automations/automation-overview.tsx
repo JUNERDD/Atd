@@ -26,7 +26,7 @@ import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { useCompositionQuery } from '@atd/ui/lib/ime';
 import { ItemsPlaceholder, LoadingPlaceholder } from '../../components/loading-placeholder';
 import { showErrorToast } from '../../components/toast-store';
-import { useOverlayFooter } from '../../components/use-overlay-footer';
+import { useActionFooter } from '../../components/use-overlay-footer';
 import { ExtensionLoadError } from '../service/extension-detail-fields';
 import { SettingsFooterSwitch } from '../settings/settings-footer-switch';
 import { SettingsHeading } from '../settings/settings-heading';
@@ -69,7 +69,7 @@ export function AutomationOverview({
   useSettingsSectionExit(() => search.change(''));
   const [deleting, setDeleting] = useState<AutomationItem | null>(null);
   const { toggle, pending, pause } = useAutomationSwitches(t);
-  const footerRef = useOverlayFooter<HTMLElement>();
+  const footerRef = useActionFooter<HTMLElement>();
   const create = (
     <Button disabled={!automations} onClick={onCreate}>
       <Plus />
@@ -158,7 +158,7 @@ export function AutomationOverview({
       {automations !== null && (automations.length > 0 || paused) && (
         <footer ref={footerRef} className="editor-footer overlay-footer">
           {/* The trailing actions slot, where the other footers keep theirs. */}
-          <div className="flex-wrap justify-end">
+          <div>
             <SettingsFooterSwitch
               label={t('list.pause')}
               description={t('list.pauseDescription')}
