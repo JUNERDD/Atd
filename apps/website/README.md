@@ -461,9 +461,10 @@ The Vercel project `atd-agent` is connected to `JUNERDD/Atd` with
 ### Domain and media delivery
 
 The production origin is `https://atd.best`; `www.atd.best` redirects to the apex through Vercel.
-Cloudflare remains authoritative DNS. Set Vercel build variables `SITE_URL=https://atd.best` and
+Cloudflare remains authoritative DNS (grey-cloud DNS Only on the apex and `www`, direct to Vercel, with Zone SSL/TLS set to `Full (strict)` and `Always Use HTTPS` enabled). Set Vercel build variables `SITE_URL=https://atd.best` and
 `VITE_ASSET_BASE_URL=https://assets.atd.best`. The latter is public configuration, never a credential.
-The dedicated R2 bucket is `atd-assets`, exposed through its custom domain `assets.atd.best`.
+The dedicated R2 bucket is `atd-assets`, exposed through its custom domain `assets.atd.best` with a Cloudflare Cache Rule (`cache: true`, `edge_ttl: respect_origin`, `browser_ttl: respect_origin`).
+Production builds on Vercel (`VERCEL_ENV=production`) inject the manual Cloudflare Web Analytics beacon (`scripts/prerender.ts`) so preview and local builds do not pollute production analytics.
 
 Only raster images and videos under `public/cases/` and `public/summon/` enter the media pipeline.
 Their keys are `assets/media/<source-name>-<first-16-SHA256-characters>.<extension>`.

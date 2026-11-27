@@ -19,6 +19,8 @@ const serverDir = new URL('../dist-ssr/', import.meta.url);
 const HTML_OPEN = '<html lang="en">';
 const HEAD_MARK = '<!--app-head-->';
 const APP_MARK = '<!--app-html-->';
+const BODY_CLOSE = '</body>';
+const CLOUDFLARE_WEB_ANALYTICS_TOKEN = 'f4cd11a22cbe46f2a97edb78d28184c1';
 
 function isEntry(value: unknown): value is Entry {
   return (
@@ -67,11 +69,17 @@ const initialStars =
   (await fetchGitHubStars({ token: process.env.GITHUB_TOKEN })) ?? GITHUB_STARS_FALLBACK;
 console.log(`stars snapshot: ${initialStars}`);
 
+const analytics =
+  process.env.VERCEL_ENV === 'production'
+    ? `\n    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "${CLOUDFLARE_WEB_ANALYTICS_TOKEN}"}'></script>`
+    : '';
+
 const renderDocument = (rendered: ReturnType<Entry['render']>) =>
   template
     .replace(HTML_OPEN, `<html ${rendered.htmlAttrs}>`)
     .replace(HEAD_MARK, rendered.head + preload)
-    .replace(APP_MARK, rendered.html);
+    .replace(APP_MARK, rendered.html)
+    .replace(BODY_CLOSE, `${analytics}\n  ${BODY_CLOSE}`);
 
 for (const route of entry.routes) {
   const page = entry.render(route.lang, origin, route.page, initialStars);
