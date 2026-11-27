@@ -74,11 +74,11 @@ function scriptable(url: string, fileAccess: boolean): boolean {
 }
 
 /**
- * Opens the in-page ask in `tab` (the toolbar button, or the ask shortcut ⇧⌘K by default), or
- * closes it where it shows: the tab's content script shows it at the HUD's place in every
- * connection state, saying why when Atd cannot take a request. Where the script turns out not to
- * run after all, Atd's panel opens instead; Chrome may refuse that this long after the person's
- * action, which leaves nothing more to do.
+ * Opens the in-page ask in `tab` (the toolbar button with its `ask` choice, or the ask shortcut
+ * ⇧⌘K by default), or closes it where it shows: the tab's content script shows it at the HUD's
+ * place in every connection state, saying why when Atd cannot take a request. Where the script
+ * turns out not to run after all, Atd's panel opens instead; Chrome may refuse that this long after
+ * the person's action, which leaves nothing more to do.
  */
 export async function openAsk(
   tab: { id: number; windowId: number },

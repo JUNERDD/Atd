@@ -1,5 +1,6 @@
 import type { RunView } from '../channel/payloads.ts';
 import { ACTIVE_RUN_STATUSES, type PanelView, type SurfaceRun } from '../messages/views.ts';
+import { channelBlock, channelReach, type ChannelBlock, type Reach } from '../pages/link.ts';
 
 /**
  * What the panel shows for a background `PanelView`, kept apart from rendering so every state rule
@@ -53,67 +54,18 @@ export function screenFor(view: PanelView): Screen {
 }
 
 /**
- * Whether the paired panel can reach Atd. A run the shell reports as `disconnected` means its
- * progress is unconfirmed even when the channel itself answers, so it counts as lost too.
+ * Whether the paired panel can reach Atd: what the channel says, except that a run the shell
+ * reports as `disconnected` means its progress is unconfirmed even when the channel itself
+ * answers, so it counts as lost too.
  */
-export type Reach = 'ready' | 'connecting' | 'lost';
-
 export function reachOf(view: PanelView): Reach {
-  if (view.connection === 'connecting') return 'connecting';
-  if (view.connection !== 'ready') return 'lost';
+  const reach = channelReach(view.connection);
+  if (reach !== 'ready') return reach;
   return view.runs.some((run) => run.status === 'disconnected') ? 'lost' : 'ready';
-}
-
-/** The header's status line. */
-export type LinkStatus = 'connected' | 'connecting' | 'notConnected';
-
-export function linkStatus(view: PanelView): LinkStatus {
-  if (view.connection === 'connecting') return 'connecting';
-  return view.pairing.state === 'paired' && reachOf(view) === 'ready'
-    ? 'connected'
-    : 'notConnected';
-}
-
-/**
- * Open Atd and Computer Use Settings travel over the channel to the shell, which still answers
- * while only its service is down.
- */
-export function shellAnswers(view: PanelView): boolean {
-  return view.connection === 'ready' || view.connection === 'serviceUnavailable';
 }
 
 export function isActiveRun(run: RunView): boolean {
   return ACTIVE_RUN_STATUSES.includes(run.status);
-}
-
-/**
- * Why nothing in the panel can reach Atd now: the composer and the site switch both travel over
- * the channel of a paired Chrome. Null when they can. A missing host reads as not connected; its
- * notice already says how to finish setup.
- */
-export type ChannelBlock =
-  | 'notPaired'
-  | 'connecting'
-  | 'notConnected'
-  | 'otherHost'
-  | 'serviceUnavailable';
-
-export function channelBlock(view: PanelView): ChannelBlock | null {
-  if (view.pairing.state !== 'paired') return 'notPaired';
-  switch (view.connection) {
-    case 'ready':
-      return null;
-    case 'connecting':
-      return 'connecting';
-    case 'disconnected':
-    case 'hostMissing':
-    case 'browserNotVerified':
-    case 'browserMismatch':
-      return 'notConnected';
-    case 'otherHost':
-    case 'serviceUnavailable':
-      return view.connection;
-  }
 }
 
 /**

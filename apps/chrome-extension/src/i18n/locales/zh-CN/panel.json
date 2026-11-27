@@ -67,7 +67,8 @@
   "actions": {
     "more": "更多",
     "openApp": "打开 Atd",
-    "settings": "电脑操作设置…"
+    "settings": "电脑操作设置…",
+    "extensionSettings": "扩展设置…"
   },
   "connect": {
     "title": "连接到 Atd",

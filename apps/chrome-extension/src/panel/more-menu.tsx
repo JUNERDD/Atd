@@ -58,8 +58,9 @@ function SiteItem({ site, onChoose }: { site: SiteState; onChoose: Choose }) {
 /**
  * The toolbar's More menu, a Mac pull-down: this page's permission while the window shows a
  * website, then the commands that go to the Atd shell, unavailable (dimmed, never hidden) while it
- * cannot be reached. The kit's menu script anchors it to its button and adds the keyboard; as the
- * toolbar popup, a command that moves the person to Atd also closes the popup.
+ * cannot be reached, and last the extension's own settings, which need no connection. The kit's
+ * menu script anchors it to its button and adds the keyboard; as the toolbar popup, a command that
+ * moves the person to Atd or to a tab also closes the popup.
  */
 export function MoreMenu({
   site,
@@ -129,6 +130,15 @@ export function MoreMenu({
           onClick={command({ type: 'settings.open' })}
         >
           {t('actions.settings')}
+        </button>
+        <hr className="menu__separator" />
+        <button
+          type="button"
+          className="menu__item pp-menu-item"
+          role="menuitem"
+          onClick={() => onChoose({ type: 'options.open' }, { close: true })}
+        >
+          {t('actions.extensionSettings')}
         </button>
       </div>
     </>

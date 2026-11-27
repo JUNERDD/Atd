@@ -2,7 +2,8 @@ import { resolveLanguage } from '@atd/agent-contracts';
 import { Value } from 'typebox/value';
 import { ChromePrefsSchema, type ChromePrefs, type RunView } from '../channel/payloads.ts';
 import { STORAGE_KEYS } from '../messages/ports.ts';
-import type { Connection, PairingView } from '../messages/views.ts';
+import { DEFAULT_SETTINGS, type ExtensionSettings } from '../messages/settings.ts';
+import type { Connection, PairingView, ShortcutView } from '../messages/views.ts';
 
 /**
  * The service worker's state as the shell last reported it, plus the channel and pairing as the
@@ -20,8 +21,10 @@ export interface BackgroundState {
   sites: readonly string[];
   /** The shell's last `runs` snapshot as sent; `projectRuns` adds the disconnected view. */
   runs: readonly RunView[];
-  /** The ask command's shortcut as Chrome shows it, '' when unassigned. */
-  askShortcut: string;
+  /** The extension's commands with their shortcuts as Chrome last reported them (`commands.ts`). */
+  shortcuts: readonly ShortcutView[];
+  /** The extension's own settings; only `settings.ts` changes them. */
+  settings: ExtensionSettings;
 }
 
 type Listener = (state: BackgroundState, previous: BackgroundState) => void;
@@ -34,7 +37,8 @@ export class Store {
     prefs: undefined,
     sites: [],
     runs: [],
-    askShortcut: '',
+    shortcuts: [],
+    settings: DEFAULT_SETTINGS,
   };
   private readonly listeners = new Set<Listener>();
 

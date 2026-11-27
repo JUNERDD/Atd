@@ -1,0 +1,54 @@
+/* Atd for Chrome · what the extension's own pages share (the panel, the options page), loaded right
+   after the generated kit (src/kit/apple-kit.css) and before each page's own rules. Both are Mac
+   surfaces at the same density: 13-pt body, 28-pt targets, 10-px list corners, no list inset. Like
+   the pages' rules, unlayered on top of the kit. */
+:root {
+  --hit: 28px;
+  --corner-list: 10px;
+  --list-inset: 0px;
+}
+/* A Mac window is never pure black: in dark mode the base is window gray and raised surfaces (a
+   group, the composer, the connect facts) sit one step lighter. */
+:root {
+  --page-base: light-dark(#f2f2f7, #1e1e20);
+  --page-box: light-dark(#fff, #2c2c2e);
+  --secondary-system-grouped-background: var(--page-box);
+}
+html,
+body {
+  margin: 0;
+  background: var(--page-base);
+}
+
+/* The Atd mark: the brand master as a currentColor alpha mask (never redrawn), at the size its page
+   sets with --atd-mark-size. */
+.atd-mark {
+  display: block;
+  flex: none;
+  width: var(--atd-mark-size, 18px);
+  height: var(--atd-mark-size, 18px);
+  background: currentColor;
+  mask: url('@atd/ui/assets/brands/atd/symbol.svg') center / contain no-repeat;
+}
+@media (forced-colors: active) {
+  .atd-mark {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}
+
+/* The connection's dot beside its words (`pages/link.ts` LinkStatus on the parent's data-state):
+   green connected, orange connecting, gray otherwise. */
+.link-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--system-gray);
+}
+[data-state='connected'] > .link-dot {
+  background: var(--system-green);
+}
+[data-state='connecting'] > .link-dot {
+  background: var(--system-orange);
+}

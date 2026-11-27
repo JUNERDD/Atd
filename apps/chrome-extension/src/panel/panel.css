@@ -1,27 +1,13 @@
 /* Atd for Chrome · panel: Chrome's side panel, or the toolbar popup where a browser has none. Laid out
    as a Mac sidebar: a slim toolbar (the connection, the More menu), content that scrolls under the
    kit's scroll edges instead of dividers, and the composer kept in view at the bottom (composer.css).
-   The panel is its own document, so it carries the apple-design web kit by itself (apple-kit.css,
-   generated), at macOS density: 13-pt body, 28-pt targets, one filled action, title-case labels. The
-   kit is built unlayered (--no-layer), so these rules win by coming after it at equal specificity;
-   where a kit rule is more specific, the override below matches or exceeds it and says so. */
+   The panel is its own document, so it carries the apple-design web kit by itself (src/kit/,
+   generated) and what the extension's pages share (src/pages/page.css: density, window gray, the
+   mark, the connection's dot), at macOS density: one filled action, title-case labels. The kit is
+   built unlayered (--no-layer), so these rules win by coming after it at equal specificity; where a
+   kit rule is more specific, the override below matches or exceeds it and says so. */
 :root {
-  --hit: 28px;
-  --corner-list: 10px;
-  --list-inset: 0px;
   --margin-page: 10px;
-}
-/* A Mac sidebar is never pure black: in dark mode the base is window gray and raised surfaces (the
-   composer, the connect facts) sit one step lighter. */
-:root {
-  --pp-base: light-dark(#f2f2f7, #1e1e20);
-  --pp-box: light-dark(#fff, #2c2c2e);
-  --secondary-system-grouped-background: var(--pp-box);
-}
-html,
-body {
-  margin: 0;
-  background: var(--pp-base);
 }
 /* The side panel fills its column, as wide as the person drags it. */
 html,
@@ -51,22 +37,6 @@ html[data-surface='popup'] #root {
   min-height: 0;
 }
 
-/* The Atd mark: the brand master as a currentColor alpha mask (never redrawn). */
-.pp-mark {
-  display: block;
-  flex: none;
-  width: 18px;
-  height: 18px;
-  background: currentColor;
-  mask: url('@atd/ui/assets/brands/atd/symbol.svg') center / contain no-repeat;
-}
-@media (forced-colors: active) {
-  .pp-mark {
-    forced-color-adjust: none;
-    background: CanvasText;
-  }
-}
-
 /* Toolbar: the connection leads, aligned with the rows' tiles; More trails. No bar background and no
    divider: content meets it under the top scroll edge. */
 .pp-toolbar {
@@ -85,19 +55,6 @@ html[data-surface='popup'] #root {
   min-width: 0;
   color: var(--secondary-label);
   font: 500 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
-}
-.pp-dot {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--system-gray);
-}
-.pp-status[data-state='connected'] .pp-dot {
-  background: var(--system-green);
-}
-.pp-status[data-state='connecting'] .pp-dot {
-  background: var(--system-orange);
 }
 /* More: a borderless symbol, monochrome as Mac toolbar symbols are, held pressed while its menu is
    open (the kit's menu script keeps aria-expanded). */
@@ -188,7 +145,7 @@ html[data-surface='popup'] #root {
   overscroll-behavior: contain;
 }
 .pp-body > :is(.scroll-edge-top, .scroll-edge-bottom) {
-  --scroll-edge-bg: var(--pp-base);
+  --scroll-edge-bg: var(--page-base);
 }
 .pp-body > .scroll-edge-top {
   --_se-h: 16px;
@@ -351,7 +308,7 @@ html[data-surface='popup'] #root {
   margin: 0;
   padding: 7px 10px;
   border-radius: 8px;
-  background: var(--pp-box);
+  background: var(--page-box);
   box-shadow: inset 0 0 0 0.5px var(--separator);
   white-space: pre-wrap;
   overflow-wrap: anywhere;

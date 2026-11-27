@@ -1,0 +1,47 @@
+{
+  "loading": "Loading…",
+  "title": "{{name}} Settings",
+  "version": "Version {{version}}",
+  "toolbar": {
+    "heading": "Toolbar Button",
+    "label": "When You Click the Atd Button",
+    "ask": "Ask on This Page",
+    "panel": "Open Side Panel",
+    "footer": "Ask on This Page opens a field on the page you’re viewing. On pages Atd can’t reach, such as chrome:// pages and the Chrome Web Store, the side panel opens instead. The ask shortcut always asks on the page.",
+    "footerPopup": "This browser has no side panel, so the Atd button always opens Atd in its toolbar popup."
+  },
+  "shortcuts": {
+    "heading": "Keyboard Shortcuts",
+    "ask": "Ask Atd on This Page",
+    "action": "Click the Atd Button",
+    "notSet": "Not Set",
+    "change": "Change Shortcuts…",
+    "footer": "Chrome keeps extension shortcuts. Change Shortcuts opens Chrome’s shortcut page, where you’ll find {{name}}; your changes show here when you come back. You can also set combinations such as ⌥⌘K there."
+  },
+  "sites": {
+    "heading": "Allowed Websites",
+    "empty": "No Websites Allowed",
+    "remove": "Remove",
+    "removeLabel": "Remove {{host}}",
+    "footer": "Atd can act on these websites only in tasks you start, and always asks before submitting. To allow another website, go to it and allow Atd there from the More menu in Atd’s panel.",
+    "blocked": {
+      "notPaired": "Connect this browser to Atd to change this list.",
+      "connecting": "You can change this list once Atd connects.",
+      "notConnected": "Reconnect to Atd to change this list.",
+      "otherHost": "Another Atd build is connected to this browser. Quit it to change this list.",
+      "serviceUnavailable": "Atd isn’t responding. You can change this list once it does."
+    }
+  },
+  "atd": {
+    "heading": "Atd",
+    "connection": "Connection",
+    "connected": "Connected",
+    "connecting": "Connecting…",
+    "notConnected": "Not Connected",
+    "browser": "Browser",
+    "openApp": "Open Atd",
+    "settings": "Computer Use Settings…",
+    "footerPaired": "Language and the edge light follow your settings in Atd. To disconnect this browser, use Computer Use Settings in Atd.",
+    "footerUnpaired": "Language and the edge light follow your settings in Atd. To connect this browser, use the Atd button in Chrome’s toolbar."
+  }
+}

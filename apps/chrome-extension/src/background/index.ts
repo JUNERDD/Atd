@@ -7,7 +7,7 @@ import {
 import { CdpError } from './cdp/messages.ts';
 import { Debuggee } from './cdp/debuggee.ts';
 import { CdpTranslator } from './cdp/translator.ts';
-import { ASK_COMMAND, askShortcut } from './commands.ts';
+import { ASK_COMMAND, refreshShortcuts } from './commands.ts';
 import {
   handleContentIntent,
   handleInvalidContent,
@@ -21,14 +21,16 @@ import { browserLabel, browserVersion, helloFrame, installationId } from './iden
 import { Indicators } from './indicators.ts';
 import { ContentInjector, openAsk } from './inject.ts';
 import { NativeChannel, type CloseReason, type SendFrame } from './native.ts';
+import { handleOptionsIntent, type OptionsIntentDeps } from './options-intents.ts';
 import { OwnedTabs } from './owned-tabs.ts';
 import { Ownership } from './ownership.ts';
 import { Pairing } from './pairing.ts';
 import { Pointers } from './pointer.ts';
 import { handlePanelIntent, type PanelIntentDeps } from './panel-intents.ts';
-import { panelView, shownRun, tabView, type TabRuns } from './projection.ts';
+import { optionsView, panelView, shownRun, tabView, type TabRuns } from './projection.ts';
 import { PendingRequests } from './requests.ts';
 import { RunLinks } from './run-links.ts';
+import { restoreSettings } from './settings.ts';
 import { handleShellFrame, type ShellFrameDeps } from './shell-frames.ts';
 import { effectivePrefs, restorePrefs, Store } from './store.ts';
 import { Surfaces } from './surfaces.ts';
@@ -47,7 +49,7 @@ import { TransitionGate } from './transition-gate.ts';
  */
 
 const store = new Store();
-/** Where the in-page ask's Open side panel leads; fixed for the browser. */
+/** Where Atd's panel opens (the in-page ask's Open side panel, the options page); fixed. */
 const panel = panelSurface();
 const send: SendFrame = (frame) => channel.send(frame);
 /** Frames that need Atd: dropped while the channel is not ready. */
@@ -68,6 +70,7 @@ const hidden = new HiddenRuns(() => surfaces.schedulePush());
 const surfaces = new Surfaces(
   {
     panel: () => panelView(store.state, browserLabel()),
+    options: () => optionsView(store.state, browserLabel(), panel),
     tab: (tabId, url) => tabView(store.state, tabId, url, tabRuns(tabId), panel),
   },
   {
@@ -75,7 +78,8 @@ const surfaces = new Surfaces(
     contentGone: (tabId) => gate.release(tabId),
     invalidContent: (tabId, message) => handleInvalidContent(contentDeps, tabId, message),
     panel: (intent, reply) => handlePanelIntent(panelDeps, intent, reply),
-    panelOpened: () => void refreshShortcut(),
+    options: (intent, tab) => handleOptionsIntent(optionsDeps, intent, tab),
+    pageOpened: () => void refreshShortcuts(store),
   },
 );
 const injector = new ContentInjector(surfaces);
@@ -139,6 +143,7 @@ const panelDeps: PanelIntentDeps = {
   owned,
   requests,
 };
+const optionsDeps: OptionsIntentDeps = { store, forward, toShell, restored: () => booted };
 const frameDeps: ShellFrameDeps = {
   store,
   channel,
@@ -174,7 +179,9 @@ if (import.meta.env.MODE === 'dev') {
 }
 
 chrome.runtime.onConnect.addListener((port) => surfaces.accept(port));
-chrome.action.onClicked.addListener((tab) => actionClicked(tab, askIn));
+chrome.action.onClicked.addListener((tab) =>
+  actionClicked(tab, store.state.settings.toolbarAction, askIn),
+);
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command === ASK_COMMAND) void askFromShortcut(tab);
 });
@@ -210,6 +217,7 @@ async function boot(): Promise<void> {
     await installationId();
     const [prefs] = await Promise.all([
       restorePrefs(),
+      restoreSettings(store),
       pairing.restore(),
       owned.restore(),
       groups.restore(),
@@ -219,7 +227,7 @@ async function boot(): Promise<void> {
     ]);
     if (prefs !== undefined) store.update({ prefs });
     surfaces.schedulePush();
-    await refreshShortcut();
+    await refreshShortcuts(store);
   } catch (error) {
     console.warn('[atd] could not restore the last state', error);
   }
@@ -258,8 +266,9 @@ function askIn(tab: chrome.tabs.Tab): void {
 }
 
 /**
- * The ask shortcut, as the toolbar button. Chrome names the tab for a shortcut pressed in a browser
- * window; without one, the query costs the gesture and the panel may no longer open.
+ * The ask shortcut: the in-page ask (or the panel where it cannot run) whatever the person chose
+ * for the toolbar button. Chrome names the tab for a shortcut pressed in a browser window; without
+ * one, the query costs the gesture and the panel may no longer open.
  */
 async function askFromShortcut(tab: chrome.tabs.Tab | undefined): Promise<void> {
   const target =
@@ -267,10 +276,4 @@ async function askFromShortcut(tab: chrome.tabs.Tab | undefined): Promise<void> 
       ? (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]
       : tab;
   if (target !== undefined) askIn(target);
-}
-
-/** Chrome sends no event when the person changes a shortcut, so it is read when it may show. */
-async function refreshShortcut(): Promise<void> {
-  const shortcut = await askShortcut().catch(() => store.state.askShortcut);
-  if (shortcut !== store.state.askShortcut) store.update({ askShortcut: shortcut });
 }

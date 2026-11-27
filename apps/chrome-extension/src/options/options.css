@@ -1,0 +1,205 @@
+/* Atd for Chrome · options: the extension's own settings, the page Chrome opens in a tab (options_ui).
+   Laid out as a macOS System Settings pane: one centered column of grouped forms, each with its
+   title, its rows on one raised surface, the buttons that act on it trailing under it, and footers
+   that say what it means. The page carries the apple-design web kit by itself, the same generated
+   build as the panel (src/kit/apple-kit.css), and what the extension's pages share
+   (src/pages/page.css: the panel's macOS density, window gray, the mark, the connection's dot), with
+   title-case labels. The kit is built unlayered (--no-layer), so these rules win by coming after it
+   at equal specificity; where a kit rule is more specific, the override below matches or exceeds it
+   and says so. No glass in the content: only the pop-up's menu floats. */
+/* The page scrolls as a document: no fixed heights, the column only as tall as its content, at
+   least the window so the spinner can center in it. */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100dvh;
+}
+
+/* One column, centered with the window's margins beside it at every width; the top margin shrinks
+   with a short window instead of pushing the first group out of view. */
+.op-page {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: 24px;
+  inline-size: 100%;
+  max-inline-size: calc(600px + 2 * var(--margin-page));
+  margin-inline: auto;
+  padding: clamp(20px, 7vh, 56px) var(--margin-page) 32px;
+}
+
+/* Until the first state: the spinner appears only if the wait is noticeable. */
+.op-loading {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  min-block-size: 96px;
+}
+.op-loading .activity-indicator {
+  --motion-delay: 400ms;
+}
+
+/* The page's title: the Atd mark and the extension's name, on the groups' leading text edge. */
+.op-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-inline: 12px;
+}
+/* The Atd mark at the title's size (src/pages/page.css draws it). */
+.op-mark {
+  --atd-mark-size: 28px;
+}
+.op-title {
+  min-inline-size: 0;
+  margin: 0;
+  font: 700 var(--fs-title1) / var(--lh-title1) var(--ff-sans);
+  letter-spacing: calc(var(--tr-title1) * var(--tracking-scale));
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+/* A group, as a Mac grouped form's section. Its title is a Mac form's (semibold, label color) and
+   its footers are explanations at the Mac's 11-pt size; both start where the rows' text does. The
+   kit's iOS header and footer (secondary, 10-pt footnote here) are matched by .op-group's extra
+   class. */
+.op-group {
+  min-inline-size: 0;
+}
+.op-group .list-header {
+  padding: 0 12px 6px;
+  color: var(--label);
+}
+.op-group .list-footer {
+  padding: 6px 12px 0;
+  font: 400 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
+  letter-spacing: calc(var(--tr-subheadline) * var(--tracking-scale));
+  text-wrap: pretty;
+}
+.op-list {
+  --list-sep-inset: 12px;
+}
+/* Increase Contrast draws each group's edge, as macOS does for grouped boxes. */
+@media (prefers-contrast: more) {
+  .op-list {
+    box-shadow: inset 0 0 0 1px var(--separator);
+  }
+}
+
+/* A row at Mac density: one 28-pt control with room for its focus ring inside the group, which
+   clips. The label takes the room left and wraps; the trailing value or control keeps its size.
+   When both cannot sit side by side (the label would get less than its basis), the trailing part
+   wraps under the label, leading-aligned, instead of squeezing either. */
+.op-row {
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 6px;
+  min-height: 40px;
+  padding: 6px 12px;
+}
+.op-row > .list__label {
+  flex: 1 1 10rem;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+/* The pop-up's menu is a child of its row too, but sits in the top layer with the kit's own width. */
+.op-row > :not(.list__label, [popover]) {
+  flex: none;
+  max-inline-size: 100%;
+}
+.op-row[data-tone='secondary'] > .list__label {
+  color: var(--secondary-label);
+}
+/* A long value (Atd's label for this browser, often an email) wraps rather than overflowing. */
+.op-value {
+  overflow-wrap: anywhere;
+}
+
+/* Push buttons read as Mac push buttons, as the panel's row buttons do: a gray fill with a
+   label-colored title, not accent ink, at a row's height; .hit-extend grows the target to --hit. */
+.op-btn {
+  --_btn-h: 22px;
+  --_btn-ink: var(--label);
+  gap: 4px;
+  padding: 0 10px;
+  font-weight: 500;
+}
+/* The buttons that act on a whole group trail under it, and wrap at narrow widths. */
+.op-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-block-start: 8px;
+}
+
+/* The pop-up button: the current choice, then the up and down chevrons in secondary ink; held
+   pressed while its menu is open (the kit's menu script keeps aria-expanded). `.op-popup svg`
+   matches the kit's `.btn-bordered > svg` and comes later. */
+.op-popup {
+  gap: 6px;
+  padding-inline: 10px 6px;
+}
+.op-popup svg {
+  width: 12px;
+  height: 12px;
+  color: var(--secondary-label);
+}
+.op-popup[aria-expanded='true'] {
+  background-image: linear-gradient(var(--press-fill) 0 0);
+}
+
+/* The pop-up's menu, at Mac density as the panel's More menu: a row is one target tall (--hit),
+   the height the kit's capsule highlight and the menu's concentric corners are drawn for. Every
+   item leads with the checkmark column, between two narrow gaps in place of the leading inset.
+   Its items keep the kit's arrow, as the panel's More menu does. */
+.op-menu {
+  --op-menu-row-pad: calc((var(--menu-item-h) - var(--lh-body)) / 2);
+  min-inline-size: min(12rem, 100vw - 2 * var(--margin-page));
+}
+.op-menu-item {
+  gap: var(--space-1);
+  padding: var(--op-menu-row-pad) var(--space-3) var(--op-menu-row-pad) var(--space-1);
+}
+
+/* A shortcut as Mac keycaps: one small raised cap per key, the glyph at body size. */
+.op-keycaps {
+  display: inline-flex;
+  gap: 3px;
+  font: inherit;
+}
+.op-key {
+  box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 22px;
+  block-size: 22px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--fill-tertiary);
+  box-shadow: inset 0 -1px 0 var(--separator);
+  color: var(--label);
+  font: 500 var(--fs-body) / 1 var(--ff-sans);
+}
+@media (forced-colors: active) {
+  .op-key {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* The connection, as the panel's toolbar shows it: a dot and the state in words. */
+.op-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--secondary-label);
+}
+
+/* The quiet last line. */
+.op-version {
+  margin: 0;
+  color: var(--secondary-label);
+  font: 400 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
+  text-align: center;
+}

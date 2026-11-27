@@ -2,6 +2,7 @@ import type { RunView } from '../channel/payloads.ts';
 import {
   ACTIVE_RUN_STATUSES,
   ENDED_RUN_STATUSES,
+  type OptionsView,
   type PanelSurface,
   type PanelView,
   type SiteView,
@@ -9,6 +10,7 @@ import {
   type TabView,
 } from '../messages/views.ts';
 import { parseReply } from '../rich-text/parse.ts';
+import { askShortcut } from './commands.ts';
 import { effectivePrefs, type BackgroundState } from './store.ts';
 import { webOrigin } from './urls.ts';
 
@@ -52,7 +54,25 @@ export function panelView(state: BackgroundState, fallbackBrowser: string): Pane
     prefs: effectivePrefs(state.prefs),
     runs: projectRuns(state).map(surfaceRun),
     sites: [...state.sites],
-    askShortcut: state.askShortcut,
+    askShortcut: askShortcut(state.shortcuts),
+  };
+}
+
+/** The options page's view; `panel` is where Atd's panel opens in this browser (`panelSurface`). */
+export function optionsView(
+  state: BackgroundState,
+  fallbackBrowser: string,
+  panel: PanelSurface | null,
+): OptionsView {
+  return {
+    connection: state.connection,
+    pairing: state.pairing,
+    profileLabel: state.browser || fallbackBrowser,
+    prefs: effectivePrefs(state.prefs),
+    settings: { ...state.settings },
+    sites: [...state.sites],
+    shortcuts: [...state.shortcuts],
+    panel,
   };
 }
 

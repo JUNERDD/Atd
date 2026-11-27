@@ -16,7 +16,7 @@ export function EmptyState({
 }) {
   return (
     <section className="empty-state pp-empty">
-      <span className="pp-mark empty-state__symbol" aria-hidden="true" />
+      <span className="atd-mark empty-state__symbol" aria-hidden="true" />
       <h2 className="empty-state__title">{title}</h2>
       <p className="empty-state__description">{body}</p>
       {children}

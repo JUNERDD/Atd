@@ -5,12 +5,18 @@ import {
   type ContentMessage,
 } from '../messages/content.ts';
 import {
+  OptionsMessageSchema,
+  type BackgroundToOptions,
+  type OptionsMessage,
+} from '../messages/options.ts';
+import {
   PanelMessageSchema,
   type BackgroundToPanel,
   type PanelMessage,
 } from '../messages/panel.ts';
-import { CONTENT_PORT, PANEL_PORT } from '../messages/ports.ts';
-import type { PanelView, TabView } from '../messages/views.ts';
+import { CONTENT_PORT, OPTIONS_PORT, PANEL_PORT } from '../messages/ports.ts';
+import type { OptionsView, PanelView, TabView } from '../messages/views.ts';
+import { PagePorts, post } from './page-ports.ts';
 
 /** A content message other than the `ready` handshake, which this module answers itself. */
 export type ContentIntent = Exclude<ContentMessage, { type: 'ready' }>;
@@ -26,6 +32,7 @@ export type PanelReply = (message: BackgroundToPanel) => boolean;
 
 export interface SurfaceViews {
   panel(): PanelView;
+  options(): OptionsView;
   tab(tabId: number, url: string): TabView;
 }
 
@@ -36,8 +43,10 @@ export interface SurfaceHandlers {
   /** A content message that failed validation (it may name a request to fail). */
   invalidContent(tabId: number, message: unknown): void;
   panel(intent: PanelMessage, reply: PanelReply): void;
-  /** A panel opened: refresh what Chrome sends no event for (the ask shortcut). */
-  panelOpened(): void;
+  /** An options page's intent; `tab` is the page's own tab. */
+  options(intent: OptionsMessage, tab: chrome.tabs.Tab | undefined): void;
+  /** A panel or options page opened: refresh what Chrome sends no event for (the shortcuts). */
+  pageOpened(): void;
 }
 
 interface ContentPort {
@@ -51,28 +60,49 @@ interface ContentPort {
 }
 
 /**
- * The extension's own surfaces: one content port per tab (top frame only) and one port per open
- * panel (a window's side panel, or the toolbar popup).
+ * The extension's own surfaces: one content port per tab (top frame only), and one port per open
+ * panel (a window's side panel, or the toolbar popup) and per open options page (`PagePorts`).
  * Every message is validated before it reaches a handler (a compromised renderer can send
  * anything on a content port). Views are pushed on connect and on every change, coalesced into
  * one push per microtask and skipped when a surface already shows the same view.
  */
 export class Surfaces {
   private readonly tabs = new Map<number, ContentPort>();
-  private readonly panels = new Map<chrome.runtime.Port, { sent: string }>();
+  private readonly panels: PagePorts<typeof PanelMessageSchema, BackgroundToPanel>;
+  private readonly options: PagePorts<typeof OptionsMessageSchema, BackgroundToOptions>;
   private readonly waiters = new Map<number, Set<() => void>>();
   private scheduled = false;
 
   constructor(
     private readonly views: SurfaceViews,
     private readonly handlers: SurfaceHandlers,
-  ) {}
+  ) {
+    const opened = (): void => {
+      handlers.pageOpened();
+      this.schedulePush();
+    };
+    this.panels = new PagePorts<typeof PanelMessageSchema, BackgroundToPanel>({
+      label: 'panel',
+      schema: PanelMessageSchema,
+      state: () => ({ type: 'state', view: views.panel() }),
+      handle: (intent, from) => handlers.panel(intent, from.reply),
+      opened,
+    });
+    this.options = new PagePorts<typeof OptionsMessageSchema, BackgroundToOptions>({
+      label: 'options',
+      schema: OptionsMessageSchema,
+      state: () => ({ type: 'state', view: views.options() }),
+      handle: (intent, from) => handlers.options(intent, from.tab),
+      opened,
+    });
+  }
 
   /** `chrome.runtime.onConnect`: takes the extension's own ports and closes anything else. */
   accept(port: chrome.runtime.Port): void {
     if (port.sender?.id !== chrome.runtime.id) port.disconnect();
     else if (port.name === CONTENT_PORT) this.acceptContent(port);
-    else if (port.name === PANEL_PORT) this.acceptPanel(port);
+    else if (port.name === PANEL_PORT) this.panels.accept(port);
+    else if (port.name === OPTIONS_PORT) this.options.accept(port);
     else port.disconnect();
   }
 
@@ -167,34 +197,9 @@ export class Surfaces {
     this.schedulePush();
   }
 
-  private acceptPanel(port: chrome.runtime.Port): void {
-    // Only the extension's own pages: a content script could otherwise pose as the panel.
-    if (!(port.sender?.url ?? '').startsWith(chrome.runtime.getURL(''))) {
-      port.disconnect();
-      return;
-    }
-    this.panels.set(port, { sent: '' });
-    const reply: PanelReply = (message) => this.panels.has(port) && post(port, message);
-    port.onMessage.addListener((message: unknown) => {
-      if (Value.Check(PanelMessageSchema, message)) this.handlers.panel(message, reply);
-      else console.warn('[atd] dropped an invalid panel message');
-    });
-    port.onDisconnect.addListener(() => this.panels.delete(port));
-    this.handlers.panelOpened();
-    this.schedulePush();
-  }
-
   private flush(): void {
-    if (this.panels.size > 0) {
-      const view = this.views.panel();
-      const text = JSON.stringify(view);
-      const message: BackgroundToPanel = { type: 'state', view };
-      for (const [port, entry] of this.panels) {
-        if (entry.sent === text) continue;
-        if (post(port, message)) entry.sent = text;
-        else this.panels.delete(port);
-      }
-    }
+    this.panels.push();
+    this.options.push();
     for (const [tabId, entry] of this.tabs) {
       if (!entry.ready) continue;
       const view = this.views.tab(tabId, entry.url);
@@ -208,18 +213,5 @@ export class Surfaces {
         this.handlers.contentGone(tabId);
       }
     }
-  }
-}
-
-/** Posts on a port that may have closed meanwhile; false when it has. */
-function post(
-  port: chrome.runtime.Port,
-  message: BackgroundToContent | BackgroundToPanel,
-): boolean {
-  try {
-    port.postMessage(message);
-    return true;
-  } catch {
-    return false;
   }
 }

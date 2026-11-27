@@ -43,6 +43,8 @@ export const PanelMessageSchema = Type.Union([
   Type.Object({ type: Type.Literal('tab.show'), tabId: TabId }),
   Type.Object({ type: Type.Literal('app.open'), taskId: Type.Optional(Id) }),
   Type.Object({ type: Type.Literal('settings.open') }),
+  /** Extension Settings…: the extension's own options page, in a tab. */
+  Type.Object({ type: Type.Literal('options.open') }),
 ]);
 export type PanelMessage = Static<typeof PanelMessageSchema>;
 

@@ -5,13 +5,13 @@ import { useTranslation } from 'react-i18next';
 import type { RunView } from '../channel/payloads.ts';
 import type { PanelMessage } from '../messages/panel.ts';
 import type { SurfaceRun } from '../messages/views.ts';
+import type { Reach } from '../pages/link.ts';
 import {
   isActiveRun,
   runControl,
   runNeedsPerson,
   runReply,
   runTarget,
-  type Reach,
   type RunTarget,
 } from './model.ts';
 import { RunReply } from './run-reply.tsx';

@@ -1,22 +1,14 @@
-import type { AppLanguage } from '@atd/agent-contracts';
-import { useCallback, useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OwnInput } from '../channel/payloads.ts';
-import { documentLanguage } from '../i18n/create.ts';
 import type { PanelMessage } from '../messages/panel.ts';
 import type { PanelView } from '../messages/views.ts';
+import { linkStatus, shellAnswers } from '../pages/link.ts';
+import { useAtdLanguage } from '../pages/use-atd-language.ts';
 import { Composer } from './composer.tsx';
 import { ConnectView } from './connect-view.tsx';
 import { EmptyState } from './empty-state.tsx';
-import {
-  composeBlock,
-  linkStatus,
-  reachOf,
-  screenFor,
-  shellAnswers,
-  siteOf,
-  type ActivePage,
-} from './model.ts';
+import { composeBlock, reachOf, screenFor, siteOf, type ActivePage } from './model.ts';
 import { NoticeView } from './notice-view.tsx';
 import { RunsGroup } from './runs-group.tsx';
 import { SURFACE } from './surface.ts';
@@ -26,19 +18,6 @@ import { useOwnInput } from './use-own-input.ts';
 import { usePanelChannel, type PanelChannel } from './use-panel-channel.ts';
 
 type Act = (message: PanelMessage, options?: { close: boolean }) => void;
-
-/**
- * Follows Atd's language setting (D13) in the copy and in `<html lang>`. A layout effect, so the
- * first state never paints in the start-up language: the bundled resources switch synchronously.
- */
-function useAtdLanguage(language: AppLanguage | null) {
-  const { i18n } = useTranslation('panel');
-  useLayoutEffect(() => {
-    if (!language) return;
-    document.documentElement.lang = documentLanguage(language);
-    if (i18n.language !== language) void i18n.changeLanguage(language);
-  }, [i18n, language]);
-}
 
 /**
  * Esc dismisses the popup, as it does a Mac popover, unless it closes the open menu first; the
@@ -162,7 +141,7 @@ export function Panel() {
   return (
     <>
       <PanelToolbar
-        status={loaded ? linkStatus(loaded) : null}
+        status={loaded ? linkStatus(loaded, reachOf(loaded)) : null}
         site={loaded ? siteOf(loaded, page) : null}
         shellEnabled={loaded ? shellAnswers(loaded) : false}
         onChoose={act}

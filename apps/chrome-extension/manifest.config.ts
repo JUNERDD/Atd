@@ -6,15 +6,20 @@ import { FLAVORS, type Flavor } from './flavors.ts';
  * The extension manifest per flavor. Permissions are the minimum the channel needs: `debugger` for
  * tabs handed to a task (never others), `tabs` and `tabGroups` for the "Atd" group, `scripting` to
  * reach tabs that were open before the extension loaded, `nativeMessaging` for the Atd shell,
- * `storage` for the pairing and HUD positions, and `sidePanel` for the panel. No cookies, history,
- * bookmarks, downloads or webRequest. `<all_urls>` lets the in-page HUD run on any site; the
- * content script reads nothing from a page until the person picks an element of it for a request
- * or sends one.
+ * `storage` for the pairing, the settings and HUD positions, and `sidePanel` for the panel. No
+ * cookies, history, bookmarks, downloads or webRequest. `<all_urls>` lets the in-page HUD run on
+ * any site; the content script reads nothing from a page until the person picks an element of it
+ * for a request or sends one.
  *
- * The toolbar button has no popup here: it opens the in-page ask in the active tab, as the ask
- * command does, or the panel in Chrome's side panel on a tab no content script can run in; where a
- * browser has no side panel, the service worker sets the panel page as its popup instead
+ * The toolbar button has no popup here: by default it opens the in-page ask in the active tab, as
+ * the ask command does, or the panel in Chrome's side panel on a tab no content script can run in;
+ * the options page can make it open the side panel on every tab instead. Where a browser has no
+ * side panel, the service worker sets the panel page as its popup
  * (`src/background/action-surface.ts`).
+ *
+ * The options page (`options_ui`, opened in a tab from the panel's More menu or Chrome's extension
+ * details) holds the extension's own settings, its command shortcuts and the allowed websites;
+ * crxjs builds the HTML it names.
  */
 export function manifestFor(flavor: Flavor) {
   const identity = FLAVORS[flavor];
@@ -40,6 +45,7 @@ export function manifestFor(flavor: Flavor) {
       },
     },
     side_panel: { default_path: 'src/panel/index.html' },
+    options_ui: { page: 'src/options/index.html', open_in_tab: true },
     background: { service_worker: 'src/background/index.ts', type: 'module' },
     content_scripts: [
       { matches: ['<all_urls>'], js: ['src/content/index.ts'], run_at: 'document_idle' },

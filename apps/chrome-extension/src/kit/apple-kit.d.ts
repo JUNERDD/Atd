@@ -1,6 +1,7 @@
 /**
  * The apple-design web kit's classic-script bundle (`apple-kit.js`, generated with `apple-kit.css`;
- * see the README). Importing it installs `window.AppleBlocks`; the panel uses its menu behavior.
+ * see the README). Importing it installs `window.AppleBlocks`; the panel and the options page use its
+ * menu behavior.
  */
 export {};
 

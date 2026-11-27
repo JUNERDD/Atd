@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { PanelMessage } from '../messages/panel.ts';
-import type { LinkStatus, SiteState } from './model.ts';
+import type { LinkStatus } from '../pages/link.ts';
+import type { SiteState } from './model.ts';
 import { MoreMenu } from './more-menu.tsx';
 
 const STATUS_KEYS = {
@@ -31,7 +32,7 @@ export function PanelToolbar({
     <header className="pp-toolbar">
       {status ? (
         <output className="pp-status" data-state={status}>
-          <span className="pp-dot" aria-hidden="true" />
+          <span className="link-dot" aria-hidden="true" />
           {t(STATUS_KEYS[status])}
         </output>
       ) : (

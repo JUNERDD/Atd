@@ -4,14 +4,10 @@ import type { SendFrame } from './native.ts';
 import type { OwnedTabs } from './owned-tabs.ts';
 import type { Pairing } from './pairing.ts';
 import type { PendingRequests } from './requests.ts';
-import type { Store } from './store.ts';
+import { setSite, type SiteDeps } from './sites.ts';
 import type { PanelReply } from './surfaces.ts';
-import { webOrigin } from './urls.ts';
 
-export interface PanelIntentDeps {
-  store: Store;
-  /** Sends frames that need Atd: dropped while the channel is not ready. */
-  forward: SendFrame;
+export interface PanelIntentDeps extends SiteDeps {
   /** Sends frames the shell handles itself: also while its service is unavailable. */
   toShell: SendFrame;
   /** Reconnect now: the panel's answer to a broken channel. */
@@ -23,7 +19,8 @@ export interface PanelIntentDeps {
 
 /**
  * What the panel asks for: pairing and the connection, the composer's requests, the site switch,
- * and control of the runs in this browser. Answers to an ask go back to the panel that sent it.
+ * control of the runs in this browser, and the extension's options page. Answers to an ask go back
+ * to the panel that sent it.
  */
 export function handlePanelIntent(
   deps: PanelIntentDeps,
@@ -64,18 +61,13 @@ export function handlePanelIntent(
     case 'settings.open':
       deps.toShell({ t: 'settings.open' });
       return;
+    case 'options.open':
+      // It needs no connection: the extension's own page, in a tab (`options_ui`).
+      chrome.runtime.openOptionsPage().catch((error: unknown) => {
+        console.info('[atd] could not open the options page', error);
+      });
+      return;
   }
-}
-
-/**
- * The site switch (D6): sent to Atd and shown at once; Atd's `sites` frame that follows is the
- * truth. Only an http(s) origin, exactly as `URL.origin` writes it, is a site.
- */
-function setSite(deps: PanelIntentDeps, origin: string, allowed: boolean): void {
-  if (webOrigin(origin)?.origin !== origin || !deps.forward({ t: 'site.set', origin, allowed }))
-    return;
-  const others = deps.store.state.sites.filter((site) => site !== origin);
-  deps.store.update({ sites: allowed ? [...others, origin] : others });
 }
 
 /** Show Tab: brings a run's tab and its window forward; only tabs runs work in. */

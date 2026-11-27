@@ -1,5 +1,6 @@
 import type { ChromePrefs, PointerPhase, RunView } from '../channel/payloads.ts';
 import type { RichBlock } from '../rich-text/tree.ts';
+import type { ExtensionSettings } from './settings.ts';
 
 /**
  * The state the service worker projects for the extension's own surfaces. The background owns the
@@ -155,6 +156,41 @@ export interface PanelView {
   sites: string[];
   /** The ask command's shortcut as Chrome shows it (e.g. `⇧⌘K`), '' when unassigned. */
   askShortcut: string;
+}
+
+/**
+ * One of the extension's commands as `chrome.commands.getAll` reports it, in Chrome's order:
+ * the manifest's (`ask-on-page`) and the one Chrome adds for the toolbar button
+ * (`_execute_action`), which does what a click does.
+ */
+export interface ShortcutView {
+  name: string;
+  /** As Chrome shows it (e.g. `⇧⌘K`), '' when unassigned. */
+  shortcut: string;
+  /** The manifest's description in Chrome's language, '' for `_execute_action`. */
+  description: string;
+}
+
+/**
+ * Everything the options page renders: the extension's own settings, the command shortcuts
+ * (changed only on Chrome's shortcut page), the websites the person allowed (D6), and the
+ * connection to Atd, whose language the page follows (D13).
+ */
+export interface OptionsView {
+  connection: Connection;
+  pairing: PairingView;
+  /** The browser name shown before pairing (as in `PanelView`). */
+  profileLabel: string;
+  prefs: ChromePrefs;
+  settings: ExtensionSettings;
+  /** Origins the person allowed, as in `PanelView`. */
+  sites: string[];
+  shortcuts: ShortcutView[];
+  /**
+   * Where the panel opens in this browser: the toolbar choice exists only with Chrome's side panel
+   * (`sidePanel`); with the popup, or nowhere, a click always opens the popup.
+   */
+  panel: PanelSurface | null;
 }
 
 /** Runs the HUD and the panel treat as in progress. */

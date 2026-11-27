@@ -41,9 +41,10 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
 - The toolbar button opens the in-page ask in the active tab, and closes it again on a second click.
   On a tab no content script can run in (chrome:// pages, the new tab page, the Web Store, other
   extensions' pages, local files without file access) it opens the panel in Chrome's side panel
-  (`side_panel` in the manifest) instead. Where a Chromium browser has no side panel API, the
-  service worker sets the panel page as the button's popup (`src/background/action-surface.ts`,
-  opened with `?surface=popup`).
+  (`side_panel` in the manifest) instead. Set to Open Side Panel in the settings page, it opens the
+  side panel on every tab (`setPanelBehavior`, which Chrome keeps across sessions). Where a
+  Chromium browser has no side panel API, the service worker sets the panel page as the button's
+  popup whatever the setting (`src/background/action-surface.ts`, opened with `?surface=popup`).
 - The in-page ask opens in every connection state. While Atd cannot take a request (not
   connected, not paired, or busy with one already) it says why, with send disabled, and offers the
   side panel; its Open side panel control opens the panel for the tab's window at any time.
@@ -63,14 +64,27 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
   tree that both surfaces render without HTML (raw HTML stays text, an image is its alt text, a
   link keeps only an http(s) or mailto destination). In the HUD a long reply scrolls inside the
   card under an overlay thumb, with edges that fade where it continues; Copy copies the Markdown.
-- The ask shortcut (⇧⌘K by default; Ctrl+Shift+K off macOS) does what the toolbar button does. It can be changed at `chrome://extensions/shortcuts`, which also accepts ⌥⌘K: Chrome refuses Alt with Ctrl or Command only as a manifest default.
+- The ask shortcut (⇧⌘K by default; Ctrl+Shift+K off macOS) always opens the in-page ask, whatever
+  the toolbar button does. It can be changed at `chrome://extensions/shortcuts`, which also accepts
+  ⌥⌘K: Chrome refuses Alt with Ctrl or Command only as a manifest default.
+- The settings page (`options_ui`, in a tab: the panel's More › Extension Settings…, or Details ›
+  Extension options at `chrome://extensions`) holds what the extension owns: the toolbar button's
+  click, the command shortcuts, the allowed websites and the connection to Atd. Its settings
+  (`ExtensionSettings`) live in `chrome.storage.local` under `atd.settings`; the service worker
+  validates, keeps and applies them. Chrome lets no extension change its own shortcuts, so the
+  page shows each command's (`chrome.commands.getAll`, `_execute_action` included) and Change
+  Shortcuts… opens `chrome://extensions/shortcuts`; Chrome sends no event for a change, so the page
+  reads them again whenever it shows or gains focus. Allowed websites can only be removed there
+  (allowing stays in the panel, on the site); like the panel's switch, a removal needs a paired,
+  ready connection. Language and glow effects follow Atd (D13), and pairing and disconnecting stay
+  in the panel and in Atd.
 
 ## Layout
 
 | Path                                     | Role                                                                                                                                                                                                                                          |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/channel/protocol.ts`, `payloads.ts` | K2, the extension ↔ shell channel (TypeBox, `Value.Check` only: MV3 forbids `eval`). The source of truth that the shell's `AIChromeChannelKit` mirrors.                                                                                       |
-| `src/messages/`                          | The extension's own contracts: views the service worker projects (`views.ts`) and the intents the content script and panel send (`content.ts`, `panel.ts`).                                                                                   |
+| `src/messages/`                          | The extension's own contracts: views the service worker projects (`views.ts`), the intents the content script, panel and settings page send (`content.ts`, `panel.ts`, `options.ts`), and the extension's own settings (`settings.ts`).       |
 | `src/background/`                        | Service worker: native channel (chunk reassembly, backoff), pairing, state and projections, owned tabs, the "Atd" tab group and badge, content-script injection, and the CDP translator with its allowlist (`cdp/`, adapted from Playwright). |
 | `src/background/transition-*.ts`         | The page transitions' frames (`captureVisibleTab`) and the gate that holds the agent's screenshots and input while the takeover's ripple plays (`cdp/debuggee.ts` consults it).                                                               |
 | `src/content/`                           | Content script (one IIFE, closed Shadow DOM): HUD, in-page ask (`ask/`), edge light (`glow/`, on `@atd/ui/lib/glow`), pointer.                                                                                                                |
@@ -78,15 +92,18 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
 | `src/content/transition/`                | Page transitions: the takeover's ripple and the done sweep, drawn with WebGL2 over a captured frame of the tab, in their own layer under the light.                                                                                           |
 | `src/rich-text/`                         | A run's reply as a tree (`tree.ts`, types only) and its parser (`parse.ts`, service worker only): `marked`'s lexer, sanitized and bounded. The HUD (`content/hud/reply.ts`) and the panel (`panel/rich-text.tsx`) render it.                  |
 | `src/panel/`                             | The panel (React) on the apple-design web kit, laid out as a Mac sidebar: Chrome's side panel, or the toolbar popup where a browser has none. A toolbar (connection, More menu with this site's permission), the runs, and the composer.      |
+| `src/options/`                           | The settings page (React, `options_ui` in a tab), a macOS System Settings pane on the same kit: Toolbar Button, Keyboard Shortcuts, Allowed Websites and Atd groups.                                                                          |
+| `src/pages/`, `src/kit/`                 | What the extension's own pages share: the connection rules (`link.ts`), following Atd's language, base styles (`page.css`), and the generated kit.                                                                                            |
 | `src/own-input.ts`                       | Timestamps of the person's input on Atd's own UI (HUD, panel), sent with their requests so the host tells them from input to the page.                                                                                                        |
-| `src/i18n/`                              | One i18next namespace per surface (`background`, `hud`, `panel`) in `en` and `zh-CN`; `public/_locales` holds only the manifest strings.                                                                                                      |
+| `src/i18n/`                              | One i18next namespace per surface (`background`, `hud`, `panel`, `options`) in `en` and `zh-CN`; `public/_locales` holds only the manifest strings.                                                                                           |
 | `icons/`                                 | Toolbar and manifest icons per flavor, exported by `node scripts/export-brand.mjs apps/chrome-extension` (never edited by hand).                                                                                                              |
 
 ## Permissions
 
 `debugger` (only tabs handed to a run, only while it runs; Chrome shows its debugging infobar, and
 Cancel there stops the run), `tabs` and `tabGroups` (the "Atd" group), `scripting` (tabs open before
-the extension loaded), `nativeMessaging`, `storage`, `sidePanel` (the panel), and `<all_urls>`
+the extension loaded), `nativeMessaging`, `storage` (the pairing, settings and HUD positions),
+`sidePanel` (the panel), and `<all_urls>`
 hosts for the HUD and the in-page ask. The same host access lets the service worker capture a tab
 (`chrome.tabs.captureVisibleTab`) as the frame its page transitions play over: only a tab a run is in (its HUD shows one, or Atd has just taken
 the person's ask with its page there), only while it is the active tab of its window (checked
@@ -103,8 +120,9 @@ Chrome as it does in any other app.
 
 ## Generated files
 
-- `src/panel/apple-kit.css` and `src/panel/apple-kit.js` (the kit's script, for its menu):
-  `python3 .agents/skills/apple-design/scripts/build_kit.py base type type-macos list switch field button motion menu empty-state scroll-edge --no-layer --css apps/chrome-extension/src/panel/apple-kit.css --js apps/chrome-extension/src/panel/apple-kit.js`,
+- `src/kit/apple-kit.css` and `src/kit/apple-kit.js` (the kit's script, for the menus), shared by
+  the panel and the settings page:
+  `python3 .agents/skills/apple-design/scripts/build_kit.py base type type-macos list switch field button motion menu empty-state scroll-edge --no-layer --css apps/chrome-extension/src/kit/apple-kit.css --js apps/chrome-extension/src/kit/apple-kit.js`,
   then `pnpm exec oxfmt` on both. Never edit them by hand.
 - `icons/`: see the brand README (`packages/ui/src/assets/brands/atd/README.md`).
 

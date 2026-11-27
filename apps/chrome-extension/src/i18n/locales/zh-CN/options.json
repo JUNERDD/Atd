@@ -1,0 +1,47 @@
+{
+  "loading": "正在载入…",
+  "title": "{{name}}设置",
+  "version": "版本 {{version}}",
+  "toolbar": {
+    "heading": "工具栏按钮",
+    "label": "点击 Atd 按钮时",
+    "ask": "在此页面提问",
+    "panel": "打开侧边栏",
+    "footer": "“在此页面提问”会在你正在浏览的页面上打开输入框。在 Atd 无法访问的页面上（例如 chrome:// 页面和 Chrome 应用商店），会改为打开侧边栏。提问快捷键总是在页面上提问。",
+    "footerPopup": "此浏览器没有侧边栏，因此 Atd 按钮总是在工具栏弹出窗口中打开 Atd。"
+  },
+  "shortcuts": {
+    "heading": "键盘快捷键",
+    "ask": "在此页面问 Atd",
+    "action": "点击 Atd 按钮",
+    "notSet": "未设置",
+    "change": "更改快捷键…",
+    "footer": "扩展的快捷键由 Chrome 管理。“更改快捷键”会打开 Chrome 的快捷键页面，你可以在其中找到“{{name}}”；回到此页面后会显示你的更改。你也可以在那里设置 ⌥⌘K 等组合键。"
+  },
+  "sites": {
+    "heading": "允许的网站",
+    "empty": "尚未允许任何网站",
+    "remove": "移除",
+    "removeLabel": "移除 {{host}}",
+    "footer": "Atd 只在你发起的任务中在这些网站上操作，提交前总会先问你。要允许其他网站，请前往该网站，在 Atd 面板的“更多”菜单中允许 Atd 在此操作。",
+    "blocked": {
+      "notPaired": "将此浏览器连接到 Atd 后才能更改此列表。",
+      "connecting": "连接到 Atd 后即可更改此列表。",
+      "notConnected": "重新连接 Atd 后才能更改此列表。",
+      "otherHost": "另一个 Atd 版本已连接到此浏览器。请先退出那个版本，再更改此列表。",
+      "serviceUnavailable": "Atd 没有响应。待它恢复响应后即可更改此列表。"
+    }
+  },
+  "atd": {
+    "heading": "Atd",
+    "connection": "连接",
+    "connected": "已连接",
+    "connecting": "正在连接…",
+    "notConnected": "未连接",
+    "browser": "浏览器",
+    "openApp": "打开 Atd",
+    "settings": "电脑操作设置…",
+    "footerPaired": "语言和页面边缘的光效跟随你在 Atd 中的设置。要断开此浏览器的连接，请在 Atd 中使用“电脑操作设置”。",
+    "footerUnpaired": "语言和页面边缘的光效跟随你在 Atd 中的设置。要连接此浏览器，请使用 Chrome 工具栏中的 Atd 按钮。"
+  }
+}

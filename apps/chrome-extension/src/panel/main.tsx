@@ -8,8 +8,9 @@ import { Panel } from './app.tsx';
 import { SURFACE } from './surface.ts';
 // The kit first: the panel's own rules are unlayered too and win by coming later. Its script
 // installs the menu behavior the toolbar's More menu uses.
-import './apple-kit.css';
-import './apple-kit.js';
+import '../kit/apple-kit.css';
+import '../kit/apple-kit.js';
+import '../pages/page.css';
 import './panel.css';
 import './connect.css';
 import './composer.css';

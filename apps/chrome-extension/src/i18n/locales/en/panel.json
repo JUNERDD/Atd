@@ -67,7 +67,8 @@
   "actions": {
     "more": "More",
     "openApp": "Open Atd",
-    "settings": "Computer Use Settings…"
+    "settings": "Computer Use Settings…",
+    "extensionSettings": "Extension Settings…"
   },
   "connect": {
     "title": "Connect to Atd",
