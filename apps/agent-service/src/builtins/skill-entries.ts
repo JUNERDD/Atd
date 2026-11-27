@@ -1,0 +1,290 @@
+/**
+ * Product skill version manifest, imported by `builtins/manifest.ts`.
+ *
+ * Each `history` holds the fingerprints of the versions releases shipped, oldest first, with the
+ * first tag that shipped each (see `builtins/manifest.ts` for the upgrade and fingerprint rules).
+ */
+export interface BuiltinSkillEntry {
+  id: string;
+  kind: 'skill';
+  name: string;
+  version: number;
+  history: readonly string[];
+}
+
+function skill(name: string, version: number, history: string[]): BuiltinSkillEntry {
+  return { id: `skill:${name}`, kind: 'skill', name, version, history };
+}
+
+/** Product skills, installed as whole directories into `<atdHome>/skills/<name>`. */
+export const BUILTIN_SKILL_ENTRIES: readonly BuiltinSkillEntry[] = [
+  // Version 6 asks, through ask_user with recommended options, only when a skill applies and the
+  // steps the request leaves open; saves one model-loadable SKILL.md by default and reports the
+  // defaults it assumed, since the write may not ask; and keeps the description's intent within
+  // the 250 characters the catalog shows.
+  // Version 7 resolves the Personal catalog from the loaded skill's base directory, so isolated
+  // profiles use their own product home without widening access to the rest of their data dir.
+  skill('create-skill', 7, [
+    '52ab561a0217ae8a36d38f325cac6ad50fef2e9a08ebe2b909cf583a49c1f4ae', // v0.1.0
+    'd1a926174cf39e889bb828f533cd6e5025753dd5f5b58a907d1298207240a261', // v0.2.0
+    '507a3dd5b0aaf1bad22e95b69a725d70f57c4be00dbd1c0517d1705a360a177b', // v0.3.0
+    '2140d55c1734d3af7e809a67179880c6d4b202c5ec6911ceebb4219746940945', // v0.4.0
+    '291d1d6f98f5267e6363b205e6e4cf27929929830374e1b1420135383b6dbb2f', // v0.7.0
+    'bf8c5d94445d00bc0ea07712ca6be924617c57fad151c7a76960a6865e242bcf', // v0.8.0
+  ]),
+  // Version 5 drops the subagent model, which runs never apply (children use the parent run's
+  // model with reasoning off), asks through ask_user what the subagent may do (its tools) and, when
+  // vague, when to delegate to it, and saves without a draft since the write always shows the file.
+  // Version 6 resolves the Personal agents directory from this skill's active product home.
+  skill('create-subagent', 6, [
+    'afcd5e17fcd95c7a24175b9ad23b1d34fa5d7ec91a2ba2535b3708d2f8a18716', // v0.1.0
+    '8d375554aef2b10a951ae07c8fa1b08e8ca14a4099fbb160c61e74ccd43217f9', // v0.2.0
+    '037b52d1b12f3eb384c20b4613592d4b166fd6cd6ab88ceb656cbfea5e472e5a', // v0.3.0
+    'd9b472312c181712db6891c44c99eac33ba131b5f8fa9e65ed333321a510126a', // v0.7.0
+    '8b302d312310a13a717679bf6dec11e4a4a447123ed2b238e5cca9a35b4699a9', // v0.8.0
+  ]),
+  // Version 4 asks through ask_user only which server to add when the request names a capability
+  // and how a remote server signs in, never for commands, URLs or secrets; relies on configure_mcp
+  // asking the user to confirm every save; and tells the user which environment variable holds a
+  // bearer token and how to set it for the app.
+  skill('create-mcp', 4, [
+    'a6b2db9e4c7a64c07d796c9a185485c3066891e5347cabca2c60e9493fe53a9a', // v0.1.0
+    '0218f3a2554a829f7a8b88804ff7ed3b5735256d72b82cd9b1f79afe0d0f6917', // v0.2.0
+    '077f36db740d59e1db3a53a8fd6a5e6edfd21a6d19b54c7d10bf136cc0c08588', // v0.3.0
+  ]),
+  skill('plan-mode', 2, [
+    '5f1235318d9257d80386978821d81716ba17e4f7f246f88ef4ecb6e7db791d7b', // v0.1.0
+    '732475e07f6357b331dd900d716353f6d30545aa7e418fe7841a693e9ad7ec5b', // v0.7.0
+  ]),
+  skill('grill-me', 1, [
+    '67b57791c003d7a625a77ffa09057ddfbfe303a8c38bc2d5e5b310346e5c848f', // v0.1.0
+  ]),
+  // Version 4 saves the user's own wording at once and otherwise asks once, through ask_user,
+  // whether to save the proposed memory as written, reword it or not save it.
+  skill('create-memory', 4, [
+    'f313bd78fc680783f18d1eacc387bb04acac33890c5d9e51121ab3f9a2ebdf2e', // v0.1.0
+    '27713671066dcb1661f796a5bca20b420c6aff4890966a865ed188cac3d8cbc9', // v0.3.0
+    '3dbd0e3190798314786266117667c12532b6ba366fb7746fc0e5ce702e6a0453', // v0.7.0
+  ]),
+  // Version 2 says that the Agent sets where a command's answer goes (its output) but leaves where
+  // it is offered and its model to Settings, that it may set a command's own reasoning level only
+  // when the user asks for one, that a command without tools or references runs on the
+  // lightweight path, and that a light command (a self-contained text transform) gets no tools or
+  // memory and short result-only instructions. Before saving, the Agent asks the user, through
+  // ask_user with recommended options, only about the few choices the request leaves open: where
+  // the text comes from, where the answer goes, and whether each named value is fixed or a choice.
+  // It relies on the run asking for the text when a selection command finds nothing selected,
+  // writing that answer at the cursor, and showing an answer the app cannot take in a card. On
+  // macOS a shortcut may be a modifier's double-tap, which needs Accessibility. The instructions
+  // take the text a command works on through {{input}} alone, since a used variable is required
+  // on every run. A parameter value is remembered once a run uses it or the user changes it in a
+  // command's options or input step, and changing a parameter's default replaces it.
+  // Version 3 replaces the single shortcut with a list of up to eight shortcuts, each an entry
+  // point that may fix parameter values and override the answer's destination and the reasoning
+  // level while the rest follows the command; says when to add a shortcut to a command and when
+  // to create another one, that fixed values are never remembered, that a save's list replaces the
+  // stored one (an id updates a shortcut, an omitted field keeps the list, [] removes it) and that
+  // a shortcut's model is the user's to set in Settings.
+  // Version 4 says that computer use is no command field or tool: the user picks the registered
+  // targets for a run, editing a command that a computer automation runs voids that automation's
+  // authorization, and targets need the add-on of their engine installed first.
+  // Version 5 discovers the deferred management tool before using it.
+  // Version 7 drops `computer.flow` and foreground routes: a repeated route is described by its
+  // control labels and immediate checks, apps need no engine add-on (websites need the browser
+  // engine), and every step runs in the background, so a step the app offers no other way to do
+  // becomes one the run asks the user to do.
+  // Version 8: steps still run in the background, but when the user runs the command, a left
+  // click, key, typing or drag in an app that no background route can do runs briefly in the
+  // foreground: Atd sends that step's clicks and keys straight to the app without moving the
+  // user's pointer, then puts back the app and window the user had. Keys and typing in Chromium,
+  // Electron and CEF apps never run there; websites and automation-started runs stay in the
+  // background, and only a step neither way can do, such as one that needs the real pointer or a
+  // context menu, goes to the user.
+  // Version 9 distinguishes spreadsheet regions from text for selection write-back.
+  // Version 10 names the app-control permission in both current and earlier macOS settings.
+  // Version 11 says that a write-back under review waits on the island's review card, where the
+  // user regenerates, adjusts and steps between versions before writing it, and adds the command's
+  // adjustment suggestions (`adjustments`): the card's chips, at most eight of up to 40
+  // characters, which the Agent writes for a command that reviews and an update keeps when left out.
+  // Version 12 adds the screenshot toolbar: a command whose input is a screenshot is offered there
+  // by default, runs on the screenshot without the panel (in a card, at the cursor, copied, or in
+  // the conversation), and its choices and toggles are picked beside it, like the selection
+  // toolbar's. It adds the `card` output, the island's answer card for answers the user reads, and
+  // the screenshot starters that make another screenshot command worth saving only when they
+  // do not cover the request. It also adds text in a screenshot: a command that reads the
+  // selection runs on paragraphs picked in the capture editor or a long screenshot's preview while
+  // the screenshot stays open, its answer replacing them, marking them (insertAfterSelection's
+  // numbered steps, the new `annotate` output's highlights and steps) or showing on the result card
+  // beside them; review previews only annotate's marks on the screenshot (replacements and steps
+  // land at once), and a screenshot command reading {{selection}} gets the text picked there.
+  // Every such run keeps its versions on the result card whatever the review setting, so a command
+  // that reads the selection gets adjustment suggestions too. Version 13 keeps eligible
+  // screenshot-text runs on the lightweight path and answers targeted screenshot-text asks directly;
+  // version 14 extends `annotate` to mosaics, visual shapes and plain-text card answers when no mark helps.
+  skill('create-command', 14, [
+    '5ca2e75cb515fcae3111580bb88925f2213f731916d8b671a787b178f8020b00', // v0.4.0
+    '10d86caf2cef8420067ecb3258e5a462fd09c2785723ba03789e6b42a9c22122', // v0.8.0
+    '810ed01dbd7273ddaf6d2b0f9a3fa1f63d8b72daa01106f366759592cceb4503', // v0.9.1
+    '42c6c0fbf5744db29f638249ecdde4e939dedb3612a098b83cd01989e00d89c8', // v0.10.0
+    '63edff2ac25f051a01be354bd2e65b2fbe026e0db1ea61ebfd839366578c7c39', // v0.10.5
+  ]),
+  // Version 2 covers command reasoning defaults and the user's separate ChatGPT background consent,
+  // asks through ask_user only when an automation runs, what each run produces and, for work that
+  // writes or runs commands, what a run may do, and saves without a draft since the save confirms.
+  // Version 3 lets the agent propose a computer scope (`policy.computer`) but never authorize it:
+  // the user runs a trial and authorizes it in Settings, a new one is saved switched off, and only
+  // the user resolves a hold; a scope's engines are add-ons the user installs, and without them a
+  // trial cannot run and each run fails naming the missing add-on.
+  // Version 4 discovers deferred automation and command management tools when needed.
+  // Version 5 says that app targets need no engine install (their engine is built in) but are not
+  // qualified for unattended runs, so a computer scope uses browser targets, whose engine is the
+  // add-on a trial and each run need.
+  // Version 6: only managed browser targets run unattended; a scope naming a target in the
+  // person's own Chrome (Atd for Chrome) is refused, so its sites become managed targets first.
+  skill('create-automation', 6, [
+    'f390806f5e7adad1ce065e0c01c93ce4aaab1422bd7b776ffe6e05e1213f2fc1', // v0.7.0
+    'fedcfc22a10b6877f5deef0aa01cc31d31e6b12ae2b230463aead37f8264a0ea', // v0.8.0
+    'a00c31ca75d36fdce649564ceff17e711803c02b96c57bec2d401d10705d4c96', // v0.10.0
+  ]),
+  // Version 2 requires ChatGPT background consent for both model calls and app-started agents, and
+  // asks at most three questions, one per ask_user call, never about the app's look, name or layout.
+  // Version 3 states the WebKit 18.0 baseline: type checking is advisory and covers only ECMAScript
+  // built-ins (fix it in web/ and shared/, ignore the ES2025 class in server/, which runs on Node
+  // 24), DOM and CSS APIs need feature detection, the window material differs between macOS 15 and
+  // 26, and widget symbols must exist on macOS 15.0.
+  // Version 4 says that a pin may also show the widget whose preview the user dragged out of the
+  // app's page in Settings.
+  // Version 5 states the DuckDuckGo budget `ctx.web.search` shares with the agent's searches since
+  // pi-web-access 0.48, so apps search on user actions and keep the results.
+  skill('create-app', 5, [
+    'b06fa40069a44df38a73d234f70d1eb7a6fb8167c78f2d16dae3e3f07183a17b', // v0.7.0
+    'e83225d07c69498f669a4e203b521d9915382a7c79cf2aa520205baf191f7c9b', // v0.8.0
+    '320c51d014765e1071682461c9bfb465a34aa9051547f2812907d3739f7522d9', // v0.9.0
+    'cf67645980ffdd7d7d8449f379d1b08ba6bb4de0670c7e58107aed18ad8544cc', // v0.10.2
+  ]),
+  // Teaches the `computer` tool: act only on targets approved for the run, observe
+  // before and after every change, prove completion with an explicit postcondition rather than a
+  // dispatched click, never retry an unknown or partial submit, and propose but never authorize an
+  // automation's computer scope. Version 2 adds live setup diagnosis and screenshot/OCR
+  // verification; attended runs keep the tool even before targets or engines are available.
+  // Version 4 adds on-demand access: Manual lasts for the run; Auto and Always save approved
+  // target access for later attended tasks. Access approval resumes the pending tool call.
+  // Version 5 uses native menu state for playback verification instead of OCR icon guesses.
+  // Version 6 resolves application mentions by bundle id through the existing access flow.
+  // Version 7 uses returned nextObservation images and native regional newText baselines.
+  // Version 8 describes host-owned typing feedback without agent pacing or split tool calls.
+  // Version 9 bundles initial/recovery observations, exposes capture use-by deadlines, and
+  // prefers app-reported playback state over redundant progress checks for start/stop requests.
+  // Version 10 separates observed inputs from expected results and keeps advanced verification
+  // and automation guidance in references loaded only when those conditions apply.
+  // Version 12 adds system-selected screen sharing scoped to the current attended run.
+  // Version 14 is background only: the host picks each step's route and never takes the person's
+  // pointer, keyboard or screen; a step without a route is refused (`noBackgroundRoute` and its
+  // reason) and handed to the person, `targetInUse` waits for them, `needsConsent` points to
+  // preparing screen access in Settings and `disturbed` stops work on the target. Foreground
+  // delivery, takeover and `flow` are gone, capture points need a background visual
+  // qualification, and browser targets list no `click` step.
+  // Version 15 submits a text or search field with Return or a `submit` press, which the host
+  // sends as the field's own confirm action; a `click` press never submits a field. A click or
+  // drag on text no element holds names it with a `text` locator, which the host finds on screen
+  // when the step runs. An app that is still starting is requested again, never opened from a
+  // shell, which would bring it in front of the person. `targetInUse` means the target is in
+  // front of the person and they just typed, clicked or scrolled; Atd keeps working on a target
+  // they only watch. A navigation postcondition names text the destination is sure to show, since
+  // one that never holds leaves the action unconfirmed; app text checks ignore case and spacing
+  // and allow the view a moment to render; `press` needs an element, never recognized text; and
+  // an unconfirmed action whose original condition cannot hold goes to the person's Mark as
+  // checked on its step instead of retries, releases or new access requests.
+  // Version 16 scopes native `newText` for a submit or invoke by a pattern or region: the host
+  // refuses an unscoped one, which any text changing anywhere in the window would satisfy, and an
+  // automation scope whose app step submits with one is refused when saved.
+  // Version 17: after a `disturbed` action, the route it took stays off for that app until the
+  // person replies, and until Atd restarts once that route has disturbed them twice.
+  // Version 18 states the postcondition rule by step kind: every `click` (any locator, including
+  // `text`), `menu`, `drag`, `upload`, non-typing key and typed line break is an `invoke`, so it
+  // needs a postcondition, not only a screenshot click.
+  // Version 19: an app's `menuItemAvailable` postcondition is read for about eight seconds and a
+  // `textAppears` one for three, so a `wait` helps only a longer change; a submit or invoke whose
+  // `textAppears` text its observation already shows is refused before input; navigation names
+  // text the destination is sure to show, preferring a control it always offers over its title
+  // and never a recalled label or a variant of a title already on screen; and an action whose
+  // postcondition did not hold returns the observation read after its steps.
+  // Version 20: a step the host held back because the person is typing, clicking or scrolling
+  // right now is refused `inputInUse`, no longer `noBackgroundRoute`: it passes in a moment, so
+  // the agent waits a few seconds and tries again, never asking the person to stop or to do it.
+  // Version 21 adds the host's foreground fallback: in an interactive task, a left `click`, a
+  // `key`, a `type` or a `drag` with both ends on its window that no background route can do on
+  // an app (a route switched off after a disturbance included) is completed in the foreground
+  // within the same act: the host brings the app forward, sends the step's clicks and keys
+  // straight to it without moving the person's pointer, then puts back their app and window; the
+  // result's `delivery` says so, and the agent never requests it. Right clicks are refused (Atd
+  // never opens a context menu), and keys and text in Chromium, Electron and CEF apps, areas drawn
+  // without accessibility and steps that need the real pointer go to the person:
+  // `noBackgroundRoute` remains for these and the other limits the foreground does not lift, plus
+  // `covered` and `notActivated` when bringing the app forward failed, and a key or text refusal
+  // that names an input method asks the person to switch to a layout such as ABC. A
+  // `staleObservation` after part of a foreground step went out is an uncertain outcome. Person or
+  // unknown disturbances are only reported, and a raised window or an activated app a background
+  // route caused and the host repaired no longer stops the task. Websites, capture points,
+  // automation runs and trials stay in the background.
+  // Version 22 puts the routine decision order first, refreshes incomplete initial observations,
+  // uses text clicks directly when OCR has no element, and distinguishes observed input targets
+  // from expected result states. Known absolute conditions take priority over relative newText;
+  // an expected menu item can be absent or disabled in the baseline, but cannot already be available.
+  // Version 23 leaves new action ids to the service and reuses an existing id only to retrieve
+  // that action's recorded result; safe retries submit new acts without generating ids.
+  // Version 24 pairs playback clicks with a known menu-state transition; an existing title
+  // identifies content but cannot replace proof that playback started.
+  // Version 25 adds observed OCR refs, scoped navigation waits, requestAccess readiness waits
+  // and a final completion summary gated on a verified absolute result.
+  // Version 27 requires an explicit nullable completion decision and rejects existing literal
+  // newText patterns before input; unknown navigation wording uses a region without a pattern.
+  // Version 29 moves delivery and refusal details into an on-demand reference so the main
+  // skill stays below the load limit while retaining routine execution and safety boundaries.
+  // Version 31 makes conditional completion part of the original final input; extra state
+  // checks are reserved for missing evidence rather than repeated verified conditions.
+  // Version 32 keeps targets as an authorized-reference refresh, with stable tool declarations
+  // across access changes; discovery and new access still start with requestAccess.
+  // Version 33 distinguishes a window reference from an observed click or drag target.
+  // Version 34 explains fresh observations attached to no-input native click locator refusals.
+  // Version 35 attaches a fresh observation after an explicit single native wait times out.
+  // Version 36 distinguishes target-resolution refusals from startup loading.
+  // Version 37 adds the person's own Chrome through Atd for Chrome: `requestAccess` names
+  // `target.browser` (default `chrome` for a task started from it, else `managed`); work there is
+  // attended and visible (an Atd tab group, Chrome's debugging bar), every submit asks, passwords
+  // are never typed (a sign-in page asks the person through `ask_user` with an "I've signed in"
+  // option), downloads stay in Chrome, `chromeDisconnected` asks the person to reconnect it,
+  // automations re-create its sites as managed browser targets, the page a task was asked on and
+  // the elements the person picked there arrive in its run material, and those elements are found
+  // in a current observation by label and text; a reply from Atd for Chrome names the page it was
+  // sent from, which may differ from an earlier turn's.
+  // Version 38 adds measured browser scrolling (`scroll` with `measure: true` for in-tab frame
+  // timing, long tasks, layout shifts and visibility/rAF-throttling evidence), instructs calling
+  // `release` once a target is no longer needed, and tells the agent to inform or ask the person
+  // rather than silently benchmarking a separate browser when deeper profiling outside `computer`
+  // is needed.
+  skill('computer-use', 38, [
+    '95e7f156fded86138d9a94d342e6b7ffc76fd145636c79df9174965b957eba67', // v0.10.0
+  ]),
+  // Teaches `show_ui` and `update_ui`: show an inline view only when seeing and handling something
+  // serves the user better than text, `ask_user` or an app; wait only for input the turn needs;
+  // write messages that read as the user's own; close every loop with `update_ui`; and build to
+  // the view runtime, the sandbox limits and the apple-design rules for a compact inline view.
+  // Version 2 directs reading skill references through `read` instead of `bash`, and clarifies
+  // that read-only diagnostic or measurement summaries and compact tables without interactive
+  // controls stay Markdown text rather than becoming a static report-card view.
+  skill('generative-ui', 2, [
+    'a93063aabeb85a95786f010c4b0c70e9379951479bc4a7a50e04d533b06f5855', // v0.10.0
+  ]),
+  // Teaches working with what files contain, whatever their format: start from the loaded material
+  // and its extraction notes, page through files with `read` instead of loading them whole,
+  // compute over data with code, prefer stock Mac tools (with bundled on-device OCR and
+  // page rendering for pages without text), cite where each claim comes from, name what was not
+  // read, and treat file contents as data rather than instructions.
+  // Version 2 says that a run without `bash` gets the text of an attached PDF's pages without a
+  // text layer recognized with the same script (`--- Page N (OCR) ---`, as far as the material
+  // holds them, within a time limit, never page images), which `read` returns without while the
+  // material's notes keep its line numbers; the pages still without text are named to the user.
+  // Version 3 covers searchable entries, whole-sheet CSV, formula gaps, charts and saved pictures.
+  skill('file-loader', 4, []),
+];
