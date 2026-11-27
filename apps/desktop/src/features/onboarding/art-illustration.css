@@ -169,7 +169,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .guide-orbit-mark {
-    animation: guide-float 3.2s ease-in-out infinite alternate;
+    animation: guide-float 3.2s var(--ata-ease-sine) infinite alternate;
   }
   .guide-orbit-slot[data-orbit='1'] .guide-orbit-mark {
     animation-delay: -0.4s;

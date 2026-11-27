@@ -77,6 +77,7 @@ public enum NativeCall: Equatable, Sendable {
   case filesPick(FilesPickParams)
   case filesPickFolder(FilesPickFolderParams)
   case filesSave(FilesSaveParams)
+  case filesOpenPrivacySettings(FilesOpenPrivacySettingsParams)
   case textWrite(TextWriteParams)
   case commandProgressShow(CommandProgressShowParams)
   case textWriteFocused(TextWriteFocusedParams)
@@ -157,6 +158,7 @@ public enum NativeCall: Equatable, Sendable {
     case .filesPick: "files.pick"
     case .filesPickFolder: "files.pickFolder"
     case .filesSave: "files.save"
+    case .filesOpenPrivacySettings: "files.openPrivacySettings"
     case .textWrite: "text.write"
     case .commandProgressShow: "commandProgress.show"
     case .textWriteFocused: "text.writeFocused"

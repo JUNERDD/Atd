@@ -1,6 +1,6 @@
 import type { FaqGroup } from './types.ts';
 
-/** Which Macs Atd runs on, how to install it, a blocked first launch, and updates. */
+/** Which Macs Atd runs on, how to install it, signing and notarization, and updates. */
 export const install = {
   id: 'download-and-install',
   title: { en: 'Download, install and updates', zh: '下载、安装与更新' },
@@ -24,11 +24,11 @@ export const install = {
       question: { en: 'How do I install Atd?', zh: '如何安装 Atd？' },
       answer: {
         en: [
-          'Download the installer for your Mac from atd.best: https://downloads.atd.best/latest/Atd-arm64.dmg for Apple silicon or https://downloads.atd.best/latest/Atd-x64.dmg for Intel. Open the DMG and drag Atd to Applications.',
+          'Download the installer for your Mac from atd.best: https://downloads.atd.best/latest/Atd-arm64.dmg for Apple silicon or https://downloads.atd.best/latest/Atd-x64.dmg for Intel. Releases are signed with Apple Developer ID and notarized by Apple. Open the DMG and drag Atd to Applications.',
           'Open Atd, add a model connection in Settings → Models and choose your default model, then press ⌘ ⇧ Space to open the panel. Atd includes everything it needs to run, so you don’t need to install Node.js; only external tools that a task uses must be on your Mac.',
         ],
         zh: [
-          '从 atd.best 下载适合你 Mac 的安装包：Apple 芯片请用 https://downloads.atd.best/latest/Atd-arm64.dmg，Intel 请用 https://downloads.atd.best/latest/Atd-x64.dmg。打开 DMG，把 Atd 拖到“应用程序”文件夹。',
+          '从 atd.best 下载适合你 Mac 的安装包：Apple 芯片请用 https://downloads.atd.best/latest/Atd-arm64.dmg，Intel 请用 https://downloads.atd.best/latest/Atd-x64.dmg。正式版安装包已使用 Apple Developer ID 签名并通过 Apple 公证。打开 DMG，把 Atd 拖到“应用程序”文件夹。',
           '打开 Atd，在“设置 → 模型”中添加模型连接并选择默认模型，然后按 ⌘ ⇧ Space 打开面板。Atd 自带运行所需的一切，无需安装 Node.js；只有任务要用到的外部工具需要事先装在 Mac 上。',
         ],
       },
@@ -36,17 +36,17 @@ export const install = {
     {
       id: 'blocked-first-launch',
       question: {
-        en: 'What do I do if macOS blocks Atd from opening?',
-        zh: 'macOS 阻止打开 Atd 怎么办？',
+        en: 'Is Atd signed and notarized by Apple?',
+        zh: 'Atd 是否经过 Apple 签名与公证？',
       },
       answer: {
         en: [
-          'If macOS blocks the first launch, open System Settings › Privacy & Security and choose Open Anyway, then confirm Open in the prompt that follows.',
-          'Do this only for an installer you downloaded from the official links on atd.best or the project’s GitHub releases page.',
+          'Yes. Releases from 0.12.0 onward are signed with an Apple Developer ID certificate and notarized by Apple, so macOS verifies them on first launch without requiring Open Anyway.',
+          'If you are opening an older build from before 0.12.0 and macOS blocks it, open System Settings › Privacy & Security, choose Open Anyway and confirm Open—only for installers downloaded from atd.best or the project’s GitHub releases page. When upgrading from a pre-0.11 self-signed build, macOS may ask once to reconfirm Accessibility, Screen Recording or Keychain access.',
         ],
         zh: [
-          '如果 macOS 阻止首次打开，请前往“系统设置 › 隐私与安全性”，点按“仍要打开”，再在随后的提示中确认“打开”。',
-          '请只对从 atd.best 或项目 GitHub 发布页的官方链接下载的安装包这样操作。',
+          '是的。自 0.12.0 起，正式版应用与 DMG 安装包均已使用 Apple Developer ID 证书签名并通过 Apple 公证，首次打开时由 macOS 正常校验，无需再点按“仍要打开”。',
+          '如果你打开的是 0.12.0 之前的旧版本且被 macOS 阻止，请前往“系统设置 › 隐私与安全性”点按“仍要打开”并确认“打开”（请仅对来自 atd.best 或项目 GitHub 发布页官方链接的安装包这样操作）。从 0.11 之前的自签名版本升级时，macOS 可能会提示重新确认一次辅助功能、屏幕录制或钥匙串访问权限。',
         ],
       },
     },

@@ -5,9 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { DISABLED_SUBAGENT_FEATURES, managedSubagentConfig } from '../dist/subagents/config.js';
+import { subagentsModuleUrl } from '../dist/subagents/package-root.js';
 
 // Load the real patched extension in separate processes: its config and temporary paths are
-// process globals. Registration needs neither a model nor a running agent service.
+// process globals. Registration needs neither a model nor a running agent service. The entry is
+// the one the service loads (package-root.ts); the package's bundled default lacks the patch that
+// keeps a disabled watchdog from registering.
 async function registrations(disabled: boolean) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'atd-watchdog-'));
   const agentDir = path.join(root, 'agent');
@@ -23,7 +26,7 @@ async function registrations(disabled: boolean) {
     const { DefaultResourceLoader, SettingsManager } = await import(
       ${JSON.stringify(import.meta.resolve('@earendil-works/pi-coding-agent'))}
     );
-    const { default: subagents } = await import(${JSON.stringify(import.meta.resolve('pi-subagents'))});
+    const { default: subagents } = await import(${JSON.stringify(subagentsModuleUrl('index.js'))});
     const loader = new DefaultResourceLoader({
       cwd: process.cwd(), agentDir: process.env.PI_CODING_AGENT_DIR,
       settingsManager: SettingsManager.inMemory({}),

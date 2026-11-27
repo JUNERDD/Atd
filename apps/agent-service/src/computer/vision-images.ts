@@ -84,7 +84,8 @@ export async function prepareVisionFrames(
         image = { type: 'image', data: source.base64, mimeType: source.mime };
       else {
         const resized = await resizeImage(Buffer.from(source.base64, 'base64'), source.mime, {
-          ...profile,
+          // The model's own quality; the bounds below are the ones this request computed.
+          ...(profile?.jpegQuality !== undefined ? { jpegQuality: profile.jpegQuality } : {}),
           maxWidth,
           maxHeight,
           maxBytes,

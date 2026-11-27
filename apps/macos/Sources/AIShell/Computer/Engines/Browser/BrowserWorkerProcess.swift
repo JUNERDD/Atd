@@ -122,8 +122,18 @@ actor BrowserWorkerProcess {
     } catch {
       throw process.isRunning ? .failed(String(describing: error)) : .exited
     }
+    return try Self.reply(result, of: tool)
+  }
+
+  /// The worker's reply in one tool result. A result without structured content is the SDK
+  /// refusing the arguments (`isError`): its text items, joined and cut to 500 characters, say why.
+  nonisolated static func reply(_ result: CallTool.Result, of tool: String)
+    throws(BrowserWorkerCallError) -> BrowserWorkerReply
+  {
     guard let structured = result.structuredContent else {
-      let text = result.content.compactMap { if case .text(let text) = $0 { text } else { nil } }
+      let text = result.content.compactMap {
+        if case .text(let text, _, _) = $0 { text } else { nil }
+      }
       throw .rejected(String(text.joined(separator: " ").prefix(500)))
     }
     do {

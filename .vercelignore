@@ -1,0 +1,32 @@
+# Local dependencies, build outputs, and caches
+**/node_modules/**
+**/dist/**
+**/dist-native/**
+**/dist-ssr/**
+**/.vercel/**
+**/.turbo/**
+**/.vite/**
+**/.wrangler/**
+**/*.tsbuildinfo
+**/*.log
+logs/**
+
+# Local environment, secrets, and temporary artifacts
+.env
+.env.*
+**/.env
+**/.env.*
+**/.dev.vars
+**/.dev.vars.*
+.local/**
+ops/r2-budget-guard/wrangler.local.jsonc
+tmp/**
+.artifacts/**
+.agents/**
+docs/**
+
+# Native Rust and Xcode build trees (preserve workspace package.json files for frozen lockfile installs)
+crates/**
+target/**
+apps/macos/DerivedData/**
+apps/macos/*.xcodeproj/**

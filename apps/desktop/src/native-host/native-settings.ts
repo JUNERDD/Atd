@@ -228,6 +228,7 @@ export function nativeSettings(
     },
     requestAccessibility: async () => void (await native.call('accessibility.request', {})),
     requestScreenRecording: async () => void (await native.call('screenRecording.request', {})),
+    openFilesPrivacySettings: async () => void (await native.call('files.openPrivacySettings', {})),
     pickApps: async () => (await native.call('apps.pick', {})).apps,
     onChange: (listener) => {
       listeners.add(listener);

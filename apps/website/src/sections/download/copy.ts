@@ -12,7 +12,7 @@ interface DownloadCopy {
   which: string;
   /** Readouts beside the board; one with an `href` links to what it names. */
   specs: { label: string; value: string; href?: string }[];
-  /** What to expect the first time it opens, in one line. */
+  /** Signing, notarization and install guidance under the download keys, in one line. */
   firstLaunch: string;
   /** Leads the preview line, before each chip family's name linking to its preview download. */
   preview: string;
@@ -48,7 +48,7 @@ export const downloadCopy = {
       { label: 'License', value: site.license, href: site.licenseUrl },
     ],
     firstLaunch:
-      'Atd isn’t notarized: the first time, choose Open Anyway in System Settings › Privacy & Security.',
+      'Developer ID signed and notarized by Apple. Open the DMG and drag Atd to Applications.',
     preview: 'Preview: ',
   },
   zh: {
@@ -63,7 +63,8 @@ export const downloadCopy = {
       { label: '最新版本', value: `v${site.version}` },
       { label: '开源许可', value: site.license, href: site.licenseUrl },
     ],
-    firstLaunch: 'Atd 未经公证，首次打开请在“系统设置 › 隐私与安全性”中点按“仍要打开”。',
+    firstLaunch:
+      '已使用 Apple Developer ID 签名并通过 Apple 公证。打开 DMG，将 Atd 拖入“应用程序”即可。',
     preview: '预览版：',
   },
 } satisfies Localized<DownloadCopy>;

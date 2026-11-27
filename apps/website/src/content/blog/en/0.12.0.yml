@@ -9,7 +9,7 @@ highlights:
 
       - **Inherit or override defaults** — leave context window or reasoning effort inherited from the connection or model, or pin custom values and reset to inherited anytime; switching models automatically clamps reasoning effort to supported levels.
       - **Update once, apply everywhere** — editing an alias updates every command and automation bound to it, and you can set a default model alias for new sessions.
-      - **Switch from the composer** — pick an alias from the model switcher, type `/model`, or press `⇧⌘M` (customizable under **Settings › Shortcuts**). Draft tweaks stay scoped to the current conversation without altering saved alias defaults, with one-click **Restore** or **Save as new alias**.
+      - **Switch from the composer** — pick an alias from the model switcher, type `/model`, or press `⇧⌘M` (customizable under **Settings › General**). Draft tweaks stay scoped to the current conversation without altering saved alias defaults, with one-click **Restore** or **Save as new alias**.
     image: /media/blog/0.12.0/model-aliases.en.webp
     alt: The Models settings list three saved aliases with their provider, model, context window and effort. The same aliases appear in the open model menu above the task panel’s composer.
   - title: Expanded screenshot annotations and floating pinned cutouts

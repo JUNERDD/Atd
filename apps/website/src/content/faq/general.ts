@@ -20,6 +20,18 @@ export const general = {
       },
     },
     {
+      id: 'what-does-atd-stand-for',
+      question: { en: 'What does Atd stand for?', zh: 'Atd 这个名字是什么意思？' },
+      answer: {
+        en: [
+          'Atd stands for “anything, anytime, anywhere, to do.” It is the free, open-source AI desktop agent app for macOS published at atd.best and github.com/JUNERDD/Atd.',
+        ],
+        zh: [
+          'Atd 代表 “anything, anytime, anywhere, to do”。它是发布在 atd.best 与 github.com/JUNERDD/Atd 的免费开源 macOS AI 桌面智能体应用。',
+        ],
+      },
+    },
+    {
       id: 'is-atd-free',
       question: { en: 'Is Atd free and open source?', zh: 'Atd 免费吗？开源吗？' },
       answer: {

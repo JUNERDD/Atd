@@ -165,9 +165,12 @@
     "recursive": "包含子文件夹",
     "recursiveDescription": "最多向下查找 4 层。",
     "failure": {
+      "missing": "找不到 {{name}}。",
+      "denied": "Atd 没有读取 {{name}} 的权限。",
       "unreadable": "无法读取 {{name}}。",
       "unsupported": "不支持 {{name}}。",
       "tooLarge": "{{name}} 太大。",
+      "noSpace": "存储空间不足，无法添加 {{name}}。",
       "notDirectory": "{{name}} 不是文件夹。",
       "forbidden": "无法使用 {{name}}：自动化不能读取整个个人文件夹或 Atd 自己的数据。",
       "failed": "无法添加 {{name}}，请重试。",

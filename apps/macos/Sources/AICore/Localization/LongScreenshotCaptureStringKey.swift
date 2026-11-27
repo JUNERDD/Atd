@@ -13,6 +13,9 @@ public enum LongScreenshotCaptureStringKey: String, CaseIterable, ShellCatalogKe
   case tooltipNotScrollable = "longScreenshot.capture.tooltip.notScrollable"
   /// The button's tooltip when the selection reaches over more than one display.
   case tooltipSpansDisplays = "longScreenshot.capture.tooltip.spansDisplays"
+  /// The button's tooltip when the selection is too small to follow the page: `%@` is the
+  /// smallest width and height in points.
+  case tooltipTooSmall = "longScreenshot.capture.tooltip.tooSmall"
   /// The live phase's bottom bar after the Space keycap while Atd does not scroll the page.
   case barAutoScroll = "longScreenshot.capture.bar.autoScroll"
   /// The same place while Atd scrolls the page.

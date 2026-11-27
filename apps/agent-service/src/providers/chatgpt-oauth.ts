@@ -34,7 +34,8 @@ async function configuration(clientId: string, signal: AbortSignal) {
   );
 }
 
-type Tokens = Awaited<ReturnType<typeof oidc.authorizationCodeGrant>>;
+/** What both the code and refresh grants return, without their grant-specific decryption brand. */
+type Tokens = oidc.TokenEndpointResponse & oidc.TokenEndpointResponseHelpers;
 
 function credentialFrom(
   tokens: Tokens,

@@ -7,12 +7,15 @@ import {
 } from '@atd/agent-contracts';
 
 /**
- * Occurrence math for schedule triggers (decision D6). croner (pinned 10.0.1) only evaluates
+ * Occurrence math for schedule triggers (decision D6). croner (pinned 11.0.1) only evaluates
  * calendar and cron schedules here: it is built without a callback, so it never arms its own
- * timer (its timer loop has open DST bugs), and the engine's tick owns all timing. Its observed
- * daylight-saving behavior is the product rule, pinned by tests: a wall-clock time inside a
- * spring-forward gap runs once, shifted forward by the gap, and a time inside a fall-back
- * overlap runs once, at its first occurrence. Intervals and one-time runs are plain arithmetic.
+ * timer, and the engine's tick owns all timing. Its daylight-saving behavior is the product rule,
+ * pinned by tests. A schedule of explicit times (no `*` or step in its minute and hour, croner's
+ * `no-wildcard` fixed-time rule, so presets and lists such as `30 1,13 * * *`) runs once for each
+ * time it names: a time inside a spring-forward gap runs when the gap ends, and a time inside a
+ * fall-back overlap at its first occurrence. A schedule with a `*` or step there keeps its pace
+ * in real time: times inside a gap do not exist, and the repeated hour runs on both passes.
+ * Intervals and one-time runs are plain arithmetic.
  */
 
 const MINUTE_MS = 60_000;
@@ -88,10 +91,20 @@ export function scheduleClock(
   }
 }
 
+/** Every croner job here: evaluated only, five fields, and the daylight-saving rule above. */
+function cronJob(expression: string, timezone: string): Cron {
+  return new Cron(expression, {
+    timezone,
+    paused: true,
+    mode: '5-part',
+    fixedTimeRule: 'no-wildcard',
+  });
+}
+
 function cronClock(expression: string, timezone: string): ScheduleClock {
-  const cron = new Cron(expression, { timezone, paused: true, mode: '5-part' });
+  const job = cronJob(expression, timezone);
   const nextAfter = (after: number): number | null =>
-    cron.nextRun(new Date(after))?.getTime() ?? null;
+    job.nextRun(new Date(after))?.getTime() ?? null;
   return {
     next: (after) => {
       // croner moves a second forward and drops milliseconds, so its next run is later than
@@ -99,12 +112,9 @@ function cronClock(expression: string, timezone: string): ScheduleClock {
       const next = nextAfter(after);
       return next === null || next > after ? next : nextAfter(after + 1000);
     },
-    latest: (time) => {
-      // previousRuns steps a second back before matching, so the reference sits one second past
-      // `time` (floored) to include an occurrence exactly at it.
-      const reference = new Date(Math.floor(time / 1000) * 1000 + 1000);
-      return cron.previousRuns(1, reference)[0]?.getTime() ?? null;
-    },
+    // previousRuns finds runs strictly before its reference, to the millisecond, so a reference
+    // a millisecond past `time` includes an occurrence exactly at it.
+    latest: (time) => job.previousRuns(1, new Date(time + 1))[0]?.getTime() ?? null,
   };
 }
 
@@ -124,8 +134,9 @@ function calendarExpression(schedule: CalendarSchedule): string {
 }
 
 /**
- * Exactly five fields, as the contract promises. croner 10.0.1 reads `?` in the day fields as
- * "every day" (croner#392) and a string with `:` as a one-time date, so both are refused.
+ * Exactly five fields, as the contract promises. `?` is croner's non-portable alias of `*`, which
+ * the contract leaves out, and croner reads a string with `:` as a one-time date, so both are
+ * refused.
  */
 function customShapeOk(expression: string): boolean {
   return (
@@ -170,11 +181,11 @@ function cronProblem(
   spacing: boolean,
 ): AutomationTriggerProblem | undefined {
   if (!customShapeOk(expression)) return 'invalidExpression';
-  let cron: Cron;
+  let job: Cron;
   try {
-    cron = new Cron(expression.trim(), { timezone, paused: true, mode: '5-part' });
+    job = cronJob(expression.trim(), timezone);
     // An expression that never fires (the 30th of February) cannot be used either.
-    if (!cron.nextRun(new Date(now))) return 'invalidExpression';
+    if (!job.nextRun(new Date(now))) return 'invalidExpression';
   } catch {
     return 'invalidExpression';
   }
@@ -182,7 +193,7 @@ function cronProblem(
   // A daylight-saving change can bring two wall-clock times close in real time, so the
   // occurrences around each change of the coming year are checked as well.
   const starts = [now, ...offsetChanges(timezone, now).map((change) => change - DAY_MS)];
-  return starts.some((start) => closePair(cron.nextRuns(SPACING_SCAN, new Date(start))))
+  return starts.some((start) => closePair(job.nextRuns(SPACING_SCAN, new Date(start))))
     ? 'tooFrequent'
     : undefined;
 }

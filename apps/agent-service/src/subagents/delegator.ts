@@ -30,6 +30,7 @@ import {
   unregisterParentBySession,
   type ChildModelRuntime,
 } from './registry.js';
+import { subagentsModuleUrl } from './package-root.js';
 import { resolveRequiredExtensionPath, REQUIRED_EXTENSION_ID } from './required-extension.js';
 import { createTaskAgents, type TaskAgents } from './task-agents.js';
 import { withServiceSubagentTool } from './tool-contract.js';
@@ -70,10 +71,13 @@ interface Preloaded {
   };
 }
 
-/** Preloads delegator seams; fails closed before the parent loader runs. */
+/**
+ * Preloads delegator seams; fails closed before the parent loader runs. The extension comes from
+ * pi-subagents' compiled entry, beside the child-session module trigger.ts wraps (package-root.ts).
+ */
 async function preload(): Promise<Preloaded> {
   const [main, required, ceiling, agents] = await Promise.all([
-    import('pi-subagents'),
+    import(subagentsModuleUrl('index.js')),
     import('pi-subagents/required-child-extensions'),
     import('pi-subagents/capability-ceiling'),
     import('pi-subagents/agents'),
@@ -107,10 +111,11 @@ async function preload(): Promise<Preloaded> {
 type ParentBinding = Pick<RunBinding, 'agents' | 'mcp'>;
 
 /**
- * Prepares the parent subagent factory. Writes the managed config, pins the
- * agent dir, installs the trigger and validates the bridge path. Returns the
- * single factory pi-session appends to its extension list. `childRuntime` builds a child's model
- * runtime like the session's own, which a runtime change rebuilds the session for.
+ * Prepares the parent subagent factory. Writes the managed config into the agent dir that
+ * pi-subagents reads (`createService` pins it in `PI_CODING_AGENT_DIR`), installs the trigger
+ * and validates the bridge path. Returns the single factory pi-session appends to its extension
+ * list. `childRuntime` builds a child's model runtime like the session's own, which a runtime
+ * change rebuilds the session for.
  */
 export async function prepareSubagentsParent(
   deps: SessionFactoryDeps,
@@ -118,7 +123,6 @@ export async function prepareSubagentsParent(
   childRuntime: ChildModelRuntime,
 ): Promise<ExtensionFactory> {
   const agentDir = deps.ctx.paths.agentDir;
-  process.env.PI_CODING_AGENT_DIR = agentDir;
   // Ready by session_start, which checks the session's agents against the configured ones.
   preloadConfiguredAgents();
   const { config } = await ensureManagedSubagentConfig(agentDir, deps.ctx.paths.tasksDir);

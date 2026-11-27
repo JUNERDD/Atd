@@ -2,11 +2,12 @@
  * Dev-only click-to-component inspector: resolves a DOM node to the chain of components that
  * rendered it.
  *
- * The Babel plugin tags every JSX element with `data-insp-*` props naming the file, position and
- * owning component of that call site. A DOM node keeps only one set: a component that spreads
- * its props onto its root (`<Button {...props}>`) overwrites the caller's tags with its own, and
- * a component that renders no element of its own leaves no tag at all. Each React fiber's props
- * still hold the tags of the JSX that created it, so the chain walks fibers, not DOM parents.
+ * The dev transform (`plugins/component-inspector.ts`) tags every JSX element with `data-insp-*`
+ * props naming the file, position and owning component of that call site. A DOM node keeps only
+ * one set: a component that spreads its props onto its root (`<Button {...props}>`) overwrites the
+ * caller's tags with its own, and a component that renders no element of its own leaves no tag at
+ * all. Each React fiber's props still hold the tags of the JSX that created it, so the chain walks
+ * fibers, not DOM parents.
  */
 
 export interface ComponentNode {

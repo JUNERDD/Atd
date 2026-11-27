@@ -1,0 +1,25 @@
+version: '0.12.1'
+date: '2026-11-23'
+title: Clear reasons for refused attachments and long screenshots in more apps
+summary: See why a file couldn’t be attached and open the right privacy setting in one click, watch the Atd mark while windows load, and take long screenshots in apps that draw their own interface.
+highlights:
+  - title: Know why a file wasn’t attached
+    body: |-
+      When a file or folder you drop, paste, pick, or send from Finder can’t be added, its toast now leads with the reason as a short title and puts the item’s name on a line below. Long names shorten in the middle as Finder does, so a hashed file name keeps its extension in view instead of wrapping across the card.
+
+      - **Fix access in one click** — when macOS privacy settings keep Atd from reading a file, the toast offers **Open System Settings**, which opens **Privacy & Security › Files & Folders** directly.
+      - **Tell the causes apart** — a file that is missing or not saved yet, a file Atd isn’t allowed to read, and a disk without enough storage each get their own message instead of a generic “could not be read”.
+      - **The same words in the command island** — its compose card names a refused file with the same reason, the name on its own line.
+    image: /media/blog/0.12.1/refused-attachments.en.webp
+    alt: The task panel over a northern lights backdrop shows a toast reading “No access to this file” above the shortened name 1ce5da53f…faf484.jpg, with an Open System Settings button. A handwritten note and arrow point to the button.
+improvements:
+  - text: '**A new loading indicator**: while the task panel and Settings load or the local service starts, the two drops of the Atd mark orbit each other and re-form the mark instead of a plain spinner, from the window’s first native frame through the page. With Reduce Motion on, the mark rests whole and gently breathes.'
+  - text: '**Smoother looping motion**: placeholder pulses, the scroll-to-latest glow, the Welcome guide’s illustrations, and the shimmer on running text now ease continuously instead of pausing or sweeping at one constant speed.'
+  - text: '**Automation folder triggers** now say when a chosen folder can’t be found or Atd isn’t allowed to read it, instead of reporting it as unreadable.'
+fixes:
+  - text: Fixed **Long screenshot** being unavailable over scrolling content in apps that draw their own interface, such as WeChat and Warp, and in other apps’ floating windows; when Accessibility can’t tell whether an area scrolls, the button is now offered.
+  - text: Fixed long screenshots that stopped growing while the page scrolled when the selection covered blank or uniform content. Atd now measures scrolling across the surrounding scroll area while the image keeps exactly your selection.
+  - text: Selections too small to stitch no longer offer **Long screenshot**, which used to scroll the page without extending the image; the button’s tooltip names the minimum size instead.
+  - text: Fixed screenshot selections not being recognized while a background app such as Notification Center kept an invisible full-screen window on top.
+other:
+  - text: Updated the bundled Node.js runtime to 24.22.3 and the built-in agent engine, and moved the local service’s HTTP client past six published security advisories.

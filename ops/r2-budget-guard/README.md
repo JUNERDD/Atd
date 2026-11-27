@@ -2,7 +2,7 @@
 
 `atd-r2-budget-guard` 管理 `TARGETS` 配置中的 Atd 公开入口：`atd-assets` 的 `assets.atd.best`、`atd-releases` 的 `downloads.atd.best`，以及这两个桶各自的 `r2.dev`。它独立于其他预算守护，不修改配置之外的桶、Worker、DNS 或对象。守护直接使用 R2 账户 API，无需 zone ID。
 
-守护包含账期验证、有限重试、持久状态和暂停后自检；不包含邮件或其他消息发送。运行状态保存在独立 Durable Object，并输出到 Cloudflare Worker Logs。
+守护包含账期验证、有限重试、持久状态、暂停后自检与邮件通知（通过 Cloudflare Email Routing 的 `GUARD_EMAIL` 绑定从 `alerts@atd.best` 发送到已验证目标邮箱）。运行状态保存在独立 Durable Object，并输出到 Cloudflare Worker Logs。
 
 ## 共享额度和行为
 
@@ -138,4 +138,12 @@ pnpm --filter @atd/website assets:check --base https://assets.atd.best --full
 
 这是提前停用措施，不是账单硬上限。Cloudflare 统计可能延迟/采样，调度和域名传播也有延迟；Worker 免费额度耗尽、服务故障或令牌被撤销时无法保证成功关闭。缓存中的内容可能继续可读。公开访问关闭不影响存储计费、私有 API 读取、其他桶或 Vercel。
 
-存储检查采用当前对象总大小，不等于 GB-month 账单，也不包含未完成的分段上传。默认司法辖区之外的桶、超过 20 页对象清单或不完整分页会触发保护性暂停。没有配置邮件/短信通知；应在控制台检查 Logs 中的 `monitor_degraded`、`billing_degraded`、`paused`、`pause_failed` 和 `recovery_ready`。
+存储检查采用当前对象总大小，不等于 GB-month 账单，也不包含未完成的分段上传。默认司法辖区之外的桶、超过 20 页对象清单或不完整分页会触发保护性暂停。邮件送达仍可能受退信、垃圾邮件过滤或服务不可用影响；必要时应在控制台核查 Logs 中的 `monitor_degraded`、`billing_degraded`、`paused`、`pause_reconfirmed`、`pause_failed` 和 `recovery_ready`。
+
+## 2026-11-27 订阅复核、暂停复查与邮件通知对齐
+
+同步了对标项目（`ooooh-r2-budget-guard`）的两项防误停修复并接入邮件告警：
+
+- 订阅列表漏列或重复返回 `r2_paid`（`billing_subscription_ambiguous`）时记录 `fields.matchCount`，在无状态/日期冲突前提下用缓存的订阅 ID 复核订阅详情，确认有效再放行，否则失败关闭。
+- 已暂停期间读取公开入口失败时，持久化 `reconfirm: true` 的停用待办，完成复核后记录 `pause_reconfirmed` 并保留已累计的恢复检查进度；若人工已重新开放任一自定义域名后发生读取失败，则仍按新暂停处理。
+- 在 `atd.best` 启用 Cloudflare Email Routing，新增 `GUARD_EMAIL` 绑定与 `notifications.mjs`，由 `alerts@atd.best` 向已验证邮箱发送配置验证、降级、停用、复核失败与 `recovery_ready` 通知，并补齐本地单测（`node --test ops/r2-budget-guard/*.test.mjs`）。

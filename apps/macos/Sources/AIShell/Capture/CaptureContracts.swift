@@ -91,11 +91,12 @@ nonisolated protocol ElementTargeting: Sendable {
   /// a window, the display, or when Accessibility cannot tell. Called once, when the selection is
   /// confirmed, for a selection committed from a detected element.
   func describe(at point: CGPoint, frame: CGRect) async -> ElementDescription?
-  /// The scroll area a screenshot selection lies over (`selection` and the answer in Quartz
-  /// points), for the long screenshot (decision D5): its visible frame and its vertical scroll
-  /// value; nil when nothing there scrolls or Accessibility cannot tell. Asked once per settled
-  /// selection of a session that offers the long screenshot, while elements are detected.
-  func scrollArea(around selection: CGRect) async -> LongScreenshotScrollArea?
+  /// What Accessibility says about scrolling under a screenshot selection (`selection` and the
+  /// area in Quartz points), for the long screenshot (decision D5): the scroll area there with its
+  /// visible frame and vertical scroll value, `.none` when Accessibility shows nothing there
+  /// scrolls, `.unknown` when it cannot tell. Asked once per settled selection of a session that
+  /// offers the long screenshot, while elements are detected.
+  func scrollArea(around selection: CGRect) async -> LongScreenshotScrollProbe
   /// Ends the session and restores any state it changed in other apps.
   func end() async
 }

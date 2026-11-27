@@ -4,36 +4,50 @@ import CoreGraphics
 import Foundation
 
 extension ElementResolver {
-  /// The scroll area a screenshot selection lies over (`selection` and the answer in Quartz
-  /// points), for the long screenshot (decision D5): the selection's centre is hit-tested in the
-  /// topmost app, and its ancestor chain walked up to the innermost scroll area that overlaps
-  /// the selection by at least ``LongScreenshotGeometry/minimumBand`` both ways
-  /// (``ElementChain/scrollAreaIndex(in:window:selection:minimumOverlap:)``). Its visible frame,
-  /// cut to the window, and its vertical scroll bar's value come back; nil without Accessibility,
-  /// when nothing there scrolls, or when the app does not answer. Called once per settled
-  /// selection, so its budgets are ``describe(at:frame:)``'s.
+  /// What Accessibility says about scrolling under a screenshot selection (`selection` and the
+  /// area in Quartz points), for the long screenshot (decision D5): the selection's centre is
+  /// hit-tested in the topmost app, and its ancestor chain walked up to the innermost scroll area
+  /// that overlaps the selection by at least ``LongScreenshotGeometry/minimumBand`` both ways
+  /// (``ElementChain/scrollEvidence(in:window:selection:minimumOverlap:)``). A found area comes
+  /// back with its visible frame, cut to the window, and its vertical scroll bar's value.
+  /// `.none` only when no window is there or the chain describes the selection without a scroll
+  /// area; whatever Accessibility cannot tell is `.unknown`. Called once per settled selection,
+  /// so its budgets are ``describe(at:frame:)``'s.
   ///
   /// AppKit apps answer well; Safari's main frame answers with a scroll area around its web
   /// area, its scroll bar value only partly (WebKit bug 292898); Chromium and Electron answer with
   /// the web contents' scroll area and no scroll bar value; scrolling `div`s are plain groups, so
-  /// the page around them is offered.
-  func scrollArea(around selection: CGRect) async -> LongScreenshotScrollArea? {
+  /// the page around them is offered. Apps that draw their own content answer with nothing
+  /// under the window (WeChat implements no hit-test) or one element for all of it (Warp's text
+  /// area), which tells nothing either way.
+  func scrollArea(around selection: CGRect) async -> LongScreenshotScrollProbe {
     let point = CGPoint(x: selection.midX, y: selection.midY)
-    guard let found = element(at: point) else { return nil }
-    let window = found.window
+    let window: ElementChain.Window
+    let hit: AXUIElement
+    switch element(at: point) {
+    case .noWindow: return .none
+    case .silent: return .unknown
+    case .element(let found, let element):
+      window = found
+      hit = element
+    }
     var refinement = AccessibilityBudget(milliseconds: 100, calls: 96)
-    let target = AccessibilityProbe.deepest(below: found.element, at: point, budget: &refinement)
+    let target = AccessibilityProbe.deepest(below: hit, at: point, budget: &refinement)
     var walk = AccessibilityBudget(milliseconds: 400, calls: 160)
     let elements = AccessibilityProbe.elements(from: target, budget: &walk)
-    guard
-      let index = ElementChain.scrollAreaIndex(
-        in: elements.map(\.node), window: window, selection: selection,
-        minimumOverlap: LongScreenshotGeometry.minimumBand)
-    else { return nil }
-    let read = Self.frameAndVerticalValue(of: elements[index].element)
-    let frame = (read.frame ?? elements[index].node.frame).intersection(window.frame)
-    guard !frame.isNull, !frame.isEmpty else { return nil }
-    return LongScreenshotScrollArea(frame: frame, verticalValue: read.value)
+    let evidence = ElementChain.scrollEvidence(
+      in: elements.map(\.node), window: window, selection: selection,
+      minimumOverlap: LongScreenshotGeometry.minimumBand)
+    switch evidence {
+    case .none: return .none
+    case .unknown: return .unknown
+    case .scrollArea(let index):
+      let read = Self.frameAndVerticalValue(of: elements[index].element)
+      let frame = (read.frame ?? elements[index].node.frame).intersection(window.frame)
+      // The area moved out of the window between the walk and this read.
+      guard !frame.isNull, !frame.isEmpty else { return .unknown }
+      return .area(LongScreenshotScrollArea(frame: frame, verticalValue: read.value))
+    }
   }
 
   /// A scroll area's `AXFrame` and its `AXVerticalScrollBar` in one round trip, then the bar's

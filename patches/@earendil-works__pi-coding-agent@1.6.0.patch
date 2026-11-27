@@ -1,8 +1,8 @@
 diff --git a/dist/core/compaction/branch-summarization.js b/dist/core/compaction/branch-summarization.js
-index dba3462974d41ae6201ccf12a775c75ec6c7de5e..3f98859ddbc6de3b6075c08557fe396a61d1814e 100644
+index 9952cf5caeebb5d26782b7f0368175ffa41ec31d..882f968630ac0474fe8c82a3b70e8f16aa391d57 100644
 --- a/dist/core/compaction/branch-summarization.js
 +++ b/dist/core/compaction/branch-summarization.js
-@@ -216,12 +216,13 @@ export async function generateBranchSummary(entries, options) {
+@@ -225,12 +225,13 @@ export async function generateBranchSummary(entries, options) {
              timestamp: Date.now(),
          },
      ];
@@ -14,9 +14,9 @@ index dba3462974d41ae6201ccf12a775c75ec6c7de5e..3f98859ddbc6de3b6075c08557fe396a
      const context = normalizeContext({ systemPrompt: SUMMARIZATION_SYSTEM_PROMPT, messages: summarizationMessages });
 -    const requestOptions = { apiKey, headers, env, signal };
 +    const requestOptions = { apiKey, headers, env, signal, maxTokens };
-     const response = await completeSummarization(model, context, requestOptions, streamFn, retry, callbacks);
-     // Check if aborted or errored
-     if (response.stopReason === "aborted") {
+     if (model.reasoning && thinkingLevel && thinkingLevel !== "off") {
+         requestOptions.reasoning = thinkingLevel;
+     }
 diff --git a/dist/core/compaction/compaction.js b/dist/core/compaction/compaction.js
 index 9b1a409d96b39413d8598c79f14fee72f4cd533c..57e3979982a80fc2284704dc24c4f25da7f8e56d 100644
 --- a/dist/core/compaction/compaction.js

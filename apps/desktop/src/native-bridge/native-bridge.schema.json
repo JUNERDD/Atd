@@ -53,6 +53,7 @@
       "files.pick",
       "files.pickFolder",
       "files.save",
+      "files.openPrivacySettings",
       "text.write",
       "commandProgress.show",
       "text.writeFocused",
@@ -1683,6 +1684,30 @@
                   ]
                 }
               },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "id", "method", "params"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "call"
+            },
+            "id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "method": {
+              "type": "string",
+              "const": "files.openPrivacySettings"
+            },
+            "params": {
+              "type": "object",
+              "properties": {},
               "additionalProperties": false
             }
           },
@@ -5557,6 +5582,14 @@
                         "anyOf": [
                           {
                             "type": "string",
+                            "const": "missing"
+                          },
+                          {
+                            "type": "string",
+                            "const": "denied"
+                          },
+                          {
+                            "type": "string",
                             "const": "unreadable"
                           },
                           {
@@ -5566,6 +5599,10 @@
                           {
                             "type": "string",
                             "const": "tooLarge"
+                          },
+                          {
+                            "type": "string",
+                            "const": "noSpace"
                           },
                           {
                             "type": "string",
@@ -10351,6 +10388,14 @@
                 "anyOf": [
                   {
                     "type": "string",
+                    "const": "missing"
+                  },
+                  {
+                    "type": "string",
+                    "const": "denied"
+                  },
+                  {
+                    "type": "string",
                     "const": "unreadable"
                   },
                   {
@@ -10360,6 +10405,10 @@
                   {
                     "type": "string",
                     "const": "tooLarge"
+                  },
+                  {
+                    "type": "string",
+                    "const": "noSpace"
                   },
                   {
                     "type": "string",
@@ -10437,6 +10486,14 @@
                 "anyOf": [
                   {
                     "type": "string",
+                    "const": "missing"
+                  },
+                  {
+                    "type": "string",
+                    "const": "denied"
+                  },
+                  {
+                    "type": "string",
                     "const": "unreadable"
                   },
                   {
@@ -10446,6 +10503,10 @@
                   {
                     "type": "string",
                     "const": "tooLarge"
+                  },
+                  {
+                    "type": "string",
+                    "const": "noSpace"
                   },
                   {
                     "type": "string",
@@ -10527,6 +10588,16 @@
           "type": "boolean"
         }
       },
+      "additionalProperties": false
+    },
+    "FilesOpenPrivacySettingsParams": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "FilesOpenPrivacySettingsResult": {
+      "type": "object",
+      "properties": {},
       "additionalProperties": false
     },
     "TextWriteParams": {
@@ -14560,6 +14631,14 @@
                 "anyOf": [
                   {
                     "type": "string",
+                    "const": "missing"
+                  },
+                  {
+                    "type": "string",
+                    "const": "denied"
+                  },
+                  {
+                    "type": "string",
                     "const": "unreadable"
                   },
                   {
@@ -14569,6 +14648,10 @@
                   {
                     "type": "string",
                     "const": "tooLarge"
+                  },
+                  {
+                    "type": "string",
+                    "const": "noSpace"
                   },
                   {
                     "type": "string",

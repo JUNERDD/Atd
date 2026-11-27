@@ -240,15 +240,10 @@ impl Scope {
     /// Absolute path of a stored entry.
     pub fn absolute(&self, root: usize, rel: &str) -> PathBuf {
         let root = &self.roots[root];
-        let below = rel.trim_start_matches('/');
-        let below = if root.label.is_empty() {
-            below
-        } else {
-            below
-                .strip_prefix(root.label.as_str())
-                .unwrap_or(below)
-                .trim_start_matches('/')
-        };
+        let below = rel
+            .trim_start_matches('/')
+            .trim_prefix(root.label.as_str())
+            .trim_start_matches('/');
         root.path.join(below)
     }
 

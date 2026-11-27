@@ -53,7 +53,7 @@ jobs:
           # Scan all reachable head history in that case, including removed values.
           gitleaks git --log-opts="$scan_range" --config .gitleaks.toml \
             --redact --verbose --no-banner --ignore-gitleaks-allow
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
       - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
@@ -61,9 +61,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Serves turbo's remote cache from the GitHub Actions cache, one entry per task hash, so
       # tasks whose inputs did not change replay their logs and outputs instead of running again.
-      # GitHub evicts the least recently used entries. Pinned to the v2.5.1 commit: a
+      # GitHub evicts the least recently used entries. Pinned to the v2.5.2 commit: a
       # third-party action that can write this repository's cache.
-      - uses: rharkor/caching-for-turbo@2238fae6eb9a9936f92356f54cb3660200d105e7
+      - uses: rharkor/caching-for-turbo@760158c05c47e7a764f78e9a22ca3b5a6ed8c52e
       # On Linux this skips the Swift and Rust checks (scripts/on-macos.mjs); the swift and rust
       # jobs run them.
       - run: pnpm check
@@ -146,6 +146,9 @@ jobs:
     name: PR release candidate
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.candidate == 'true'
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/release-candidate.yml
     with:
       marketing_version: ${{ needs.changes.outputs.marketing-version }}
@@ -167,7 +170,7 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
       # No pnpm store cache: the small set of tools and schema dependencies downloads faster
       # than the full store restores on macOS.
       - uses: actions/setup-node@v7.1.0
@@ -200,7 +203,7 @@ jobs:
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
       # No dependencies to install: check:rust runs a Node built-ins script and cargo.
       - uses: actions/setup-node@v7.1.0
         with:
@@ -213,7 +216,7 @@ jobs:
           cargo --version
       # Caches the registry and the compiled dependencies; the workspace crates always rebuild.
       # Only main saves, so pull requests reuse its cache without each storing their own copy.
-      - uses: Swatinem/rust-cache@v2.9.2
+      - uses: Swatinem/rust-cache@v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Rust checks (file length, fmt, clippy, test)
@@ -260,7 +263,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: pnpm/action-setup@v6.1.1
       - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
@@ -296,13 +299,15 @@ jobs:
   # it, since that also skips both jobs.
   desktop:
     name: macOS desktop smoke test
-    needs: [changes, swift, rust]
+    needs: [changes, swift, rust, candidate]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Require the Swift and Rust checks
         env:
           CHANGES: ${{ needs.changes.result }}
+          REQUIRE_CANDIDATE: ${{ needs.changes.outputs.candidate }}
+          CANDIDATE: ${{ needs.candidate.result }}
           SWIFT: ${{ needs.swift.result }}
           RUST: ${{ needs.rust.result }}
           RUN_SWIFT: ${{ github.event_name != 'pull_request' || needs.changes.outputs.swift == 'true' }}
@@ -310,5 +315,9 @@ jobs:
         run: |
           echo "Change detection: $CHANGES, Swift checks: $SWIFT, Rust checks: $RUST"
           if [ "$CHANGES" = failure ]; then exit 1; fi
+          if [ "$REQUIRE_CANDIDATE" = true ]; then
+            [ "$CANDIDATE" = success ] || { echo "::error::The release candidate is not ready."; exit 1; }
+            echo "Signed installers for both architectures passed macOS 15 verification. The release candidate is ready." >> "$GITHUB_STEP_SUMMARY"
+          fi
           expected() { if [ "$1" = true ]; then echo success; else echo skipped; fi; }
           [ "$SWIFT" = "$(expected "$RUN_SWIFT")" ] && [ "$RUST" = "$(expected "$RUN_RUST")" ]

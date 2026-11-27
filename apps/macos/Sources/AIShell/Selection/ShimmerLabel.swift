@@ -251,7 +251,9 @@ private final class Overlay: NSView {
     move.fromValue = sweep.startCenter
     move.toValue = sweep.endCenter
     move.duration = ShimmerSweep.duration
-    move.timingFunction = CAMediaTimingFunction(name: .linear)
+    let easing = ShimmerSweep.easing
+    move.timingFunction = CAMediaTimingFunction(
+      controlPoints: Float(easing.x1), Float(easing.y1), Float(easing.x2), Float(easing.y2))
     move.repeatCount = .infinity
     // Started as far back as the shared clock's phase, so a sweep added again carries on where
     // the band was rather than jumping back to the leading edge (``ShimmerSweep/phase(at:)``).

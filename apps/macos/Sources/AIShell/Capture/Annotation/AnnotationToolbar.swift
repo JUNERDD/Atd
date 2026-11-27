@@ -180,6 +180,10 @@ final class AnnotationToolbar: NSView {
       case .checking: strings.text(LongScreenshotCaptureStringKey.tooltipChecking)
       case .notScrollable: strings.text(LongScreenshotCaptureStringKey.tooltipNotScrollable)
       case .spansDisplays: strings.text(LongScreenshotCaptureStringKey.tooltipSpansDisplays)
+      case .tooSmall:
+        String(
+          format: strings.text(LongScreenshotCaptureStringKey.tooltipTooSmall),
+          "\(Int(LongScreenshotGeometry.minimumBand))")
       }
     longButton.isEnabled = longScreenshot == .available
     longButton.image = AnnotationIcons.glyph(AnnotationIcons.longScreenshot, label: name)

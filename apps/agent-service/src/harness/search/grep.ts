@@ -5,11 +5,11 @@ import {
   truncateHead,
   truncateLine,
   type AgentToolResult,
-  type GrepOperations,
   type GrepToolDetails,
   type GrepToolInput,
 } from '@earendil-works/pi-coding-agent';
 import { resolveToolPath } from '../../service-fs.js';
+import type { GrepOperations } from './confine.js';
 import { pathGlob, type PathGlob } from './glob.js';
 import { nameFilterArgs, runRipgrep } from './ripgrep.js';
 

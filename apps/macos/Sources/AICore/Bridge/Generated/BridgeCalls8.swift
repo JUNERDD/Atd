@@ -101,9 +101,12 @@ public struct FilesPickResult: Codable, Equatable, Sendable {
     }
 
     public enum Reason: String, Codable, Equatable, Sendable {
+      case missing
+      case denied
       case unreadable
       case unsupported
       case tooLarge
+      case noSpace
       case notDirectory
       case forbidden
       case failed
@@ -182,9 +185,12 @@ public struct FilesPickFolderResult: Codable, Equatable, Sendable {
     }
 
     public enum Reason: String, Codable, Equatable, Sendable {
+      case missing
+      case denied
       case unreadable
       case unsupported
       case tooLarge
+      case noSpace
       case notDirectory
       case forbidden
       case failed

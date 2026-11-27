@@ -28,7 +28,7 @@ nonisolated final class LongScreenshotStream: NSObject, SCStreamOutput, SCStream
   /// held back is a frame matched late.
   static func configuration(for geometry: LongScreenshotGeometry) -> SCStreamConfiguration {
     let configuration = SCStreamConfiguration()
-    configuration.width = geometry.width
+    configuration.width = geometry.streamWidth
     configuration.height = geometry.height
     configuration.sourceRect = geometry.sourceRect
     configuration.minimumFrameInterval = CMTime(value: 1, timescale: framesPerSecond)

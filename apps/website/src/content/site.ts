@@ -21,9 +21,15 @@ export const site = {
   name: 'Atd',
   author: 'JUNERDD',
   /** The version described by this site; the stable download follows verified releases. */
-  version: '0.12.0',
+  version: '0.12.1',
   repoUrl: 'https://github.com/JUNERDD/Atd',
   releasesUrl: 'https://github.com/JUNERDD/Atd/releases',
+  /**
+   * Canonical external profiles representing the Atd software entity (emitted in schema.org
+   * `sameAs`). Append official listings such as Homebrew Cask, Product Hunt, YouTube, or Wikidata
+   * here as they go live.
+   */
+  sameAs: ['https://github.com/JUNERDD/Atd'] as const satisfies readonly string[],
   /** One installer per architecture, offered side by side; the visitor picks their Mac's chip. */
   downloads: [
     {

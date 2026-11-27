@@ -13,7 +13,7 @@
     radial-gradient(95% 90% at 74% 22%, var(--scroll-jump-glow-b), transparent 75%);
   animation:
     scroll-jump-glow-in 0.4s ease-in-out,
-    scroll-jump-glow-pulse 2.8s ease-in-out infinite alternate;
+    scroll-jump-glow-pulse 2.8s var(--ata-ease-sine) infinite alternate;
 }
 
 .dark .scroll-jump-glow {

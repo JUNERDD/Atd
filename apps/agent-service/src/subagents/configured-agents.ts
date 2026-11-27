@@ -1,6 +1,4 @@
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { subagentsModuleUrl } from './package-root.js';
 
 /**
  * The names of the configured agents pi-subagents discovers for a parent's cwd: its builtin,
@@ -10,8 +8,8 @@ import { pathToFileURL } from 'node:url';
  * every list and launch of that parent fails; no runtime agent may therefore take one.
  *
  * pi-subagents exports no discovery entry point, so this loads the module its list action and
- * launches discover with by file path, as trigger.ts loads its child-session module, with the
- * global npm root its extension also resolves. It fails when those modules moved or their
+ * launches discover with from its compiled tree (package-root.ts), as trigger.ts loads its
+ * child-session module, with the global npm root its extension also resolves. It fails when those modules moved or their
  * output changed shape, so callers fail closed instead of missing a collision.
  */
 
@@ -53,21 +51,10 @@ function isGlobalRootModule(value: unknown): value is GlobalRootModule {
   return isRecord(value) && typeof value['resolveGlobalNpmRoot'] === 'function';
 }
 
-function packageRoot(): string {
-  const require = createRequire(import.meta.url);
-  // The exports map hides ./package.json, so the main entry's directory is the package root.
-  try {
-    return path.dirname(require.resolve('pi-subagents'));
-  } catch {
-    return path.join(process.cwd(), 'node_modules', 'pi-subagents');
-  }
-}
-
 async function load(): Promise<Discovery> {
-  const agents = path.join(packageRoot(), 'src', 'agents');
   const [agentsModule, globalRootModule]: unknown[] = await Promise.all([
-    import(pathToFileURL(path.join(agents, 'agents.js')).href),
-    import(pathToFileURL(path.join(agents, 'global-npm-root.js')).href),
+    import(subagentsModuleUrl('src', 'agents', 'agents.js')),
+    import(subagentsModuleUrl('src', 'agents', 'global-npm-root.js')),
   ]);
   if (!isDiscoveryModule(agentsModule))
     throw new Error('pi-subagents agent discovery is unavailable.');

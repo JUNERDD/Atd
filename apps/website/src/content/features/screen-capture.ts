@@ -3,9 +3,9 @@ import type { FeaturePage } from './types.ts';
 export const screenCapture = {
   slug: 'screen-capture',
   illustration: { case: 'screenshot' },
-  updated: '2026-11-19',
+  updated: '2026-11-23',
   related: ['selection-toolbar', 'computer-use', 'privacy'],
-  posts: ['atd-0-12-0', 'atd-0-11-0', 'atd-0-10-7'],
+  posts: ['atd-0-12-1', 'atd-0-12-0', 'atd-0-11-0', 'atd-0-10-7'],
   copy: {
     en: {
       name: 'Screen capture',

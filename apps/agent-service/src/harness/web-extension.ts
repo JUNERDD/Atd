@@ -15,8 +15,13 @@ import { fetchPages } from './web/fetch.js';
 import { fetchOutput } from './web/fetch-output.js';
 import { QUERY_MAX_LENGTH, runSearch } from './web/search.js';
 
-/** Queries per call: each one is a separate provider request. */
-const MAX_QUERIES = 4;
+/**
+ * Queries per call. Each is a separate DuckDuckGo request, which pi-web-access 0.48 starts at
+ * least 10 s after the previous one and refuses, as rate limited, when it could not start within
+ * 20 s of the call (web/package.ts). Two is the most a call can search when it follows the
+ * previous call directly: its queries start about 10 s and 20 s after that call's last one.
+ */
+const MAX_QUERIES = 2;
 const DEFAULT_RESULTS = 5;
 const MAX_RESULTS = 10;
 
@@ -28,7 +33,7 @@ const SearchParams = Type.Object({
     Type.Array(Type.String({ minLength: 1, maxLength: QUERY_MAX_LENGTH }), {
       maxItems: MAX_QUERIES,
       description:
-        'Several queries searched concurrently. Prefer 2-4 varied angles for research over near-duplicates.',
+        'Up to 2 queries, searched about 10 s apart. Add a second only for a genuinely different angle, never a near-duplicate.',
     }),
   ),
   numResults: Type.Optional(
@@ -88,7 +93,7 @@ function webTools(gate: Gate) {
     name: WEB_SEARCH_TOOL,
     label: 'Web search',
     description:
-      'Search the web (DuckDuckGo). Returns titles, URLs and snippets per query; use fetch_content to read a result page.',
+      'Search the web (DuckDuckGo). Returns titles, URLs and snippets per query; use fetch_content to read a result page. Searches are rate limited to about one every 10 s and 10 every 10 minutes; a query over that limit fails as rate limited, so search with few, well-chosen queries.',
     parameters: SearchParams,
     async execute(toolCallId: string, params: Static<typeof SearchParams>, signal?: AbortSignal) {
       const queries = unique([...(params.queries ?? []), ...(params.query ? [params.query] : [])]);

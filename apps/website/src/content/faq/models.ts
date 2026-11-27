@@ -11,11 +11,11 @@ export const models = {
       answer: {
         en: [
           'Atd works with the models you connect in Settings → Models. Its catalog covers cloud providers such as OpenAI, Anthropic, Google, DeepSeek, Mistral and OpenRouter, cloud services such as Amazon Bedrock, Azure and Google Vertex AI, and local or custom endpoints.',
-          'Connect with an account sign-in where a provider supports it, an API key, or a local endpoint. Each connection keeps its own credentials and default model; new tasks use the default provider and model you choose, and existing tasks keep the model they started with.',
+          'Connect with an account sign-in where a provider supports it, an API key, or a local endpoint. Each connection keeps its own credentials and default model; you can also bundle a connection, model, context window and reasoning effort into reusable model aliases (switched with ⌘ ⇧ M or /model). New tasks use your default provider or alias, and existing tasks keep the model they started with.',
         ],
         zh: [
           'Atd 使用你在“设置 → 模型”中接入的模型。内置目录涵盖 OpenAI、Anthropic、Google、DeepSeek、Mistral、OpenRouter 等云端提供商，Amazon Bedrock、Azure、Google Vertex AI 等云服务，以及本地或自定义端点。',
-          '连接方式可以是提供商支持的账号登录、API 密钥或本地端点。每个连接有各自的凭据和默认模型；新任务使用你选定的默认提供商与模型，已有任务则保留开始时的模型。',
+          '连接方式可以是提供商支持的账号登录、API 密钥或本地端点。每个连接有各自的凭据和默认模型；你还可以把连接、模型、上下文窗口和推理强度保存为可复用的模型别名（按 ⌘ ⇧ M 或输入 /model 快速切换）。新任务使用你选定的默认提供商或别名，已有任务则保留开始时的模型。',
         ],
       },
       see: 'models',

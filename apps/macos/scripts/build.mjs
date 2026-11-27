@@ -5,11 +5,14 @@
  *
  *   node scripts/build.mjs --configuration <Debug|Release> [--arch <arm64|x64>]
  *     [--marketing-version <v>] [--build-version <v>] [--timing-summary] [--dry-run]
+ *     [--native-component]
  *
  * It regenerates the Xcode project with XcodeGen and runs xcodebuild into
  * DerivedData/Build/Products/<Configuration>/Atd.app. The checked-in Package.resolved is copied into
  * the generated workspace and xcodebuild may use only the versions it pins, so the app builds with
- * exactly the transitive Swift package versions `swift build` and the tests use.
+ * exactly the transitive Swift package versions `swift build` and the tests use. A Release
+ * --native-component build produces an ad hoc shell for later embedding and distribution signing
+ * by release/assemble-components.mjs.
  *
  * The app is built for the host's native architecture only: the service pack staged beside it
  * (Node, the native addons and the app toolchain) comes from this host's install, so an app for
@@ -63,6 +66,7 @@ function readOptions() {
         'marketing-version': { type: 'string' },
         'build-version': { type: 'string' },
         'timing-summary': { type: 'boolean', default: false },
+        'native-component': { type: 'boolean', default: false },
         'dry-run': { type: 'boolean', default: false },
       },
       strict: true,
@@ -77,6 +81,8 @@ function readOptions() {
     );
   if (parsed.arch !== undefined && !(parsed.arch in MACHO_ARCHS))
     fail(`--arch must be arm64 or x64, not ${parsed.arch}.`);
+  if (parsed['native-component'] && configuration !== 'Release')
+    fail('--native-component requires --configuration Release.');
   const marketingVersion = parsed['marketing-version'];
   const buildVersion = parsed['build-version'];
   for (const [flag, value] of [
@@ -98,12 +104,20 @@ function readOptions() {
     marketingVersion,
     buildVersion,
     timingSummary: parsed['timing-summary'],
+    nativeComponent: parsed['native-component'],
     dryRun: parsed['dry-run'],
   };
 }
 
 /** The xcodebuild arguments for one configuration and architecture. */
-function xcodebuildArgs({ configuration, arch, marketingVersion, buildVersion, timingSummary }) {
+function xcodebuildArgs({
+  configuration,
+  arch,
+  marketingVersion,
+  buildVersion,
+  timingSummary,
+  nativeComponent,
+}) {
   const xcodeArch = MACHO_ARCHS[arch];
   return [
     '-project',
@@ -121,6 +135,14 @@ function xcodebuildArgs({ configuration, arch, marketingVersion, buildVersion, t
     '-onlyUsePackageVersionsFromResolvedFile',
     // Also covers the AIMac package targets, whose Release builds otherwise include both slices.
     `ARCHS=${xcodeArch}`,
+    ...(nativeComponent
+      ? [
+          'ATD_NATIVE_COMPONENT=YES',
+          'CODE_SIGN_IDENTITY=-',
+          'CODE_SIGN_KEYCHAIN=',
+          'DEVELOPMENT_TEAM=',
+        ]
+      : []),
     ...(arch === 'x64' ? [`ATD_SPARKLE_FEED_URL=${X64_FEED_URL}`] : []),
     ...(marketingVersion === undefined ? [] : [`MARKETING_VERSION=${marketingVersion}`]),
     ...(buildVersion === undefined ? [] : [`CURRENT_PROJECT_VERSION=${buildVersion}`]),
@@ -175,7 +197,8 @@ if (options.dryRun) {
 }
 if (arch !== native)
   fail(`--arch ${arch} does not match this host's native ${native}; build on an ${arch} Mac.`);
-const releaseSigning = options.configuration === 'Release' ? configureSigning('Release') : null;
+const completeRelease = options.configuration === 'Release' && !options.nativeComponent;
+const releaseSigning = completeRelease ? configureSigning('Release') : null;
 // Every real Debug build registers DerivedData, even if Xcode leaves the bundle unchanged.
 // Only the dev supervisor can issue a new receipt after validating and installing that build.
 if (options.configuration === 'Debug') {
@@ -203,7 +226,7 @@ pinPackages();
 removeSigningTemporaries(options.configuration);
 run('xcodebuild', args);
 
-if (options.configuration === 'Release') {
+if (completeRelease) {
   const app = path.join(packageRoot, 'DerivedData/Build/Products/Release/Atd.app');
   checkUpgradeCompatibility(app);
   if (releaseSigning) await signApp(app, releaseSigning);

@@ -30,11 +30,16 @@ public struct ResourceRef: Codable, Equatable, Sendable {
   }
 }
 
-/// Why the service did not import a path (`ResourceImportFailureReasonSchema`).
+/// Why the service did not import a path (`ResourceImportFailureReasonSchema`): nothing at the
+/// path, a read macOS privacy protection refused, any other read failure, not a regular file, over
+/// the size limit, or no room to store it.
 public enum ResourceImportFailureReason: String, Codable, Equatable, Sendable {
+  case missing
+  case denied
   case unreadable
   case unsupported
   case tooLarge
+  case noSpace
 }
 
 /// The answer of `POST /v1/resources/import` (`ResourceImportResponseSchema`). Every requested
@@ -82,9 +87,12 @@ extension FileRef {
 extension ResourcesImportedEvent.Failure.Reason {
   init(_ reason: ResourceImportFailureReason) {
     switch reason {
+    case .missing: self = .missing
+    case .denied: self = .denied
     case .unreadable: self = .unreadable
     case .unsupported: self = .unsupported
     case .tooLarge: self = .tooLarge
+    case .noSpace: self = .noSpace
     }
   }
 }
@@ -104,9 +112,12 @@ extension FilesPickResult {
 extension FilesPickResult.Failure.Reason {
   init(_ reason: ResourceImportFailureReason) {
     switch reason {
+    case .missing: self = .missing
+    case .denied: self = .denied
     case .unreadable: self = .unreadable
     case .unsupported: self = .unsupported
     case .tooLarge: self = .tooLarge
+    case .noSpace: self = .noSpace
     }
   }
 }

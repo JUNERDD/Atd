@@ -280,6 +280,7 @@ export function installBridge(extras?: {
       setNextStepClick: vi.fn(async (nextStepClick) => writeSettings({ nextStepClick })),
       requestAccessibility: vi.fn(async () => {}),
       requestScreenRecording: vi.fn(async () => {}),
+      openFilesPrivacySettings: vi.fn(async () => {}),
       pickApps: vi.fn(async () => []),
       onOpenCommand: () => () => {},
       onOpenSection: () => () => {},

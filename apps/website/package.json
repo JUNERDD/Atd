@@ -24,9 +24,9 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@types/three": "catalog:",
-    "@vitejs/plugin-react": "6.1.2",
+    "@vitejs/plugin-react": "6.3.0",
     "aws4fetch": "catalog:",
-    "image-size": "2.0.4",
+    "image-size": "2.1.0",
     "lucide-react": "catalog:",
     "marked": "catalog:",
     "marked-cjk-friendly": "catalog:",
@@ -34,8 +34,8 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "typebox": "catalog:",
-    "vite": "8.3.5",
-    "wrangler": "4.152.0",
+    "vite": "8.3.8",
+    "wrangler": "4.166.0",
     "yaml": "2.9.1"
   }
 }

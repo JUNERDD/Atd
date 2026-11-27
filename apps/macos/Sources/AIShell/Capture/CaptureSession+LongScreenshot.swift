@@ -300,7 +300,7 @@ extension CaptureSession {
     let origin = primary.quartzFrame.origin
     let quartz = geometry.quartzRect(part)
     let center = CGPoint(x: quartz.midX, y: quartz.midY)
-    let area = longScreenshot.answer(for: rect)?.area
+    let area = longScreenshot.answer(for: rect)?.probe.area
     let band = area.map { $0.frame.intersection(quartz) }
     let aimRect = band.flatMap { $0.isNull || $0.isEmpty ? nil : $0 } ?? quartz
     let aim = CGPoint(x: aimRect.midX, y: aimRect.midY)

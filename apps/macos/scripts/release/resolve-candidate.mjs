@@ -193,11 +193,28 @@ function resolveCandidate() {
       check('macOS desktop smoke test', ['Require the Swift and Rust checks']),
     );
   }
+  checks.push(
+    check(`${source.prefix}Build the current renderer`, [
+      'Build the renderer and workspace dependencies',
+      'Upload the renderer',
+    ]),
+  );
   for (const arch of ['arm64', 'x64']) {
     const lane = `${source.prefix}${arch} / `;
+    for (const kind of ['native', 'service']) {
+      const label = kind === 'native' ? 'Native' : 'Service';
+      checks.push(
+        check(`${lane}${label} / Prepare ${kind} component`, [
+          'Find a verified component with matching inputs',
+          'Select the immutable component',
+        ]),
+      );
+    }
     checks.push(
       check(`${lane}Build and sign the app`, [
-        'Build the Release app',
+        'Download the current renderer',
+        'Restore the verified components',
+        'Assemble and sign the Release app',
         'Check the built app',
         "Check the add-ons against the app's lock",
         'Archive the signed app and add-ons',

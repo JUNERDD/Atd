@@ -1,6 +1,11 @@
 import type { Api, Model } from '@earendil-works/pi-ai';
 import type { ServiceModelDefinition } from '@atd/agent-contracts';
-import { isLocalProvider, nativeThinkingOverrides, protocolModelDirectory } from './catalog.js';
+import {
+  contractLevelMap,
+  isLocalProvider,
+  nativeThinkingOverrides,
+  protocolModelDirectory,
+} from './catalog.js';
 import { bailianCapabilities, isBailianEndpoint } from './bailian.js';
 
 /** One capability resolution for the public catalog, default selection and inference runtime. */
@@ -27,13 +32,14 @@ export async function resolveModelCapabilities(
       provider === 'openai-compatible' && isBailianEndpoint(definition.baseUrl)
         ? bailianCapabilities(definition.id, definition.api)
         : undefined;
-    const levelMap = hints?.thinkingLevelMap ?? known?.thinkingLevelMap;
+    const levelMap = hints?.thinkingLevelMap ?? contractLevelMap(known?.thinkingLevelMap);
+    const corrected = contractLevelMap(correction?.thinkingLevelMap);
     return {
       known,
       definition: {
         ...definition,
         ...(correction?.reasoningControl ? { reasoningControl: correction.reasoningControl } : {}),
-        ...(correction?.thinkingLevelMap ? { thinkingLevelMap: correction.thinkingLevelMap } : {}),
+        ...(corrected ? { thinkingLevelMap: corrected } : {}),
         ...(definition.reasoning && !definition.thinkingLevelMap && levelMap
           ? { thinkingLevelMap: levelMap }
           : {}),

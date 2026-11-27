@@ -32,17 +32,86 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 defaults:
   run:
     shell: bash
 
 jobs:
+  renderer:
+    name: Build the current renderer
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter atd --filter @atd/desktop...
+      - name: Build the renderer and workspace dependencies
+        run: pnpm -w exec turbo run build --filter=@atd/desktop...
+      - name: Upload the renderer
+        id: upload
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: release-renderer
+          path: apps/desktop/dist-native/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  native-arm64:
+    name: arm64 / Native
+    uses: ./.github/workflows/release-component.yml
+    with:
+      kind: native
+      arch: arm64
+      marketing_version: ${{ inputs.marketing_version }}
+      build_version: ${{ inputs.build_version }}
+
+  service-arm64:
+    name: arm64 / Service
+    uses: ./.github/workflows/release-component.yml
+    with:
+      kind: service
+      arch: arm64
+      marketing_version: ${{ inputs.marketing_version }}
+      build_version: ${{ inputs.build_version }}
+
+  native-x64:
+    name: x64 / Native
+    uses: ./.github/workflows/release-component.yml
+    with:
+      kind: native
+      arch: x64
+      marketing_version: ${{ inputs.marketing_version }}
+      build_version: ${{ inputs.build_version }}
+
+  service-x64:
+    name: x64 / Service
+    uses: ./.github/workflows/release-component.yml
+    with:
+      kind: service
+      arch: x64
+      marketing_version: ${{ inputs.marketing_version }}
+      build_version: ${{ inputs.build_version }}
+
   arm64:
     name: arm64
+    needs: [renderer, native-arm64, service-arm64]
     uses: ./.github/workflows/release-architecture.yml
     with:
       arch: arm64
+      renderer_id: ${{ needs.renderer.outputs.artifact-id }}
+      native_component: ${{ needs.native-arm64.outputs.component }}
+      service_component: ${{ needs.service-arm64.outputs.component }}
       marketing_version: ${{ inputs.marketing_version }}
       build_version: ${{ inputs.build_version }}
       notarize: ${{ inputs.notarize }}
@@ -54,9 +123,13 @@ jobs:
 
   x64:
     name: x64
+    needs: [renderer, native-x64, service-x64]
     uses: ./.github/workflows/release-architecture.yml
     with:
       arch: x64
+      renderer_id: ${{ needs.renderer.outputs.artifact-id }}
+      native_component: ${{ needs.native-x64.outputs.component }}
+      service_component: ${{ needs.service-x64.outputs.component }}
       marketing_version: ${{ inputs.marketing_version }}
       build_version: ${{ inputs.build_version }}
       notarize: ${{ inputs.notarize }}
@@ -84,7 +157,7 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
-      - uses: actions/download-artifact@v8.0.0
+      - uses: actions/download-artifact@v8.0.2
         with:
           artifact-ids: ${{ needs.arm64.outputs.dmg-id }},${{ needs.x64.outputs.dmg-id }}
           merge-multiple: true
@@ -145,13 +218,13 @@ jobs:
       - name: Record the candidate source
         run: node apps/macos/scripts/release/write-candidate-source.mjs
       - name: Upload the candidate source
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: Atd-${{ inputs.marketing_version }}-source
           path: dist/candidate-source.json
           if-no-files-found: error
           overwrite: true
-      - uses: actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@v7.0.2
         id: artifact
         with:
           name: Atd-${{ inputs.marketing_version }}
