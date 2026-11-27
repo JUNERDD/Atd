@@ -29,7 +29,7 @@ export interface PanelModalSlideProps {
   media?: ReactNode | undefined;
   /** Optional body rendered inside a bounded ScrollArea between the header and footer. */
   children?: ReactNode | undefined;
-  /** Optional footer actions; wraps cleanly and stacks full-width below 360px. */
+  /** Optional footer actions, on one line at every width the panel takes. */
   footer?: ReactNode | undefined;
   className?: string | undefined;
 }

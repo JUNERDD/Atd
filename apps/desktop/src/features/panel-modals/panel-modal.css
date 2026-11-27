@@ -4,7 +4,7 @@
  * 16px unified outer inset (`--modal-pad`) and 16px inner corner radius (`--modal-inner-radius`)
  * yielding a concentric 32px dialog radius (`inner + inset`) shared across the top media stage,
  * inset-grouped card, 32px capsule footer actions, and non-media close control; 8pt/4pt vertical
- * rhythm (`16px` sections, `8px` title/description), full-width stacked actions below 360px,
+ * rhythm (`16px` sections, `8px` title/description), footer actions on one line at every width,
  * Embla drag carousel chrome, and calibrated entrance/exit keyframes.
  */
 .panel-modal-overlay[data-state='open'] {
@@ -328,7 +328,6 @@
   display: flex;
   flex-shrink: 0;
   flex-direction: row;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
@@ -409,15 +408,6 @@
 @media (width < 360px) {
   .panel-modal-stage {
     height: 124px;
-  }
-
-  .panel-modal-footer[data-slot='dialog-footer'] {
-    flex-direction: column-reverse;
-    align-items: stretch;
-  }
-
-  .panel-modal-footer[data-slot='dialog-footer'] > * {
-    width: 100%;
   }
 }
 

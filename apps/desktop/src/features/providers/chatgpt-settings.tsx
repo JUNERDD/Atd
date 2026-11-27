@@ -140,7 +140,7 @@ function ChatGPTPrivacyDialog() {
             <p>{t('chatgpt.backgroundDescription')}</p>
           </div>
         </ScrollArea>
-        <DialogFooter className="shrink-0 sm:justify-between">
+        <DialogFooter className="shrink-0 justify-between">
           <Button
             variant="link"
             size="sm"

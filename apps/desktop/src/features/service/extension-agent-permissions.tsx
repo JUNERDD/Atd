@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   SUBAGENT_TOOLS,
@@ -28,6 +28,8 @@ import {
   SelectValue,
 } from '@atd/ui/components/select';
 import { Switch } from '@atd/ui/components/switch';
+import { BarAction } from '../../components/bar-action';
+import { useOneLineActions } from '../../components/one-line-actions';
 import { showToast } from '../../components/toast-store';
 import type { ExtensionAgentRow } from './extension-rows';
 
@@ -123,6 +125,7 @@ function AgentPermissionsForm({
   onSave: (permissions: SubagentPermissions | null) => Promise<boolean>;
 }) {
   const { t } = useTranslation('settings');
+  const footerRef = useOneLineActions<HTMLDivElement>();
   const [draft, setDraft] = useState(() => draftOf(row.permissions));
   const approvalId = useId();
   const noTools = draft.limit && draft.tools.length === 0;
@@ -235,18 +238,20 @@ function AgentPermissionsForm({
           </div>
         </div>
       </ScrollArea>
-      <DialogFooter>
+      {/* One line: short of room, Restore defaults shows its icon alone (`BarAction`). */}
+      <DialogFooter ref={footerRef}>
         {row.customized ? (
-          <Button
+          <BarAction
             variant="ghost"
-            className="aria-disabled:opacity-50 sm:mr-auto"
+            className="mr-auto aria-disabled:opacity-50"
             disabled={disabled}
             aria-disabled={pending || undefined}
             aria-busy={pending || undefined}
+            icon={<RotateCcw data-icon="inline-start" />}
+            iconAtRest={false}
+            label={t('extensions.agentPermissions.restore')}
             onClick={() => save(null)}
-          >
-            {t('extensions.agentPermissions.restore')}
-          </Button>
+          />
         ) : null}
         <Button variant="outline" onClick={onClose}>
           {t('extensions.cancel')}

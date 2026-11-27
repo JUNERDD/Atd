@@ -39,7 +39,7 @@ function AlertDialogOverlay({
 /**
  * Desktop windows lay the dialog out by its size variant, never by the viewport: the default size
  * keeps a left-aligned header and trailing Cancel/confirm row in a narrow panel exactly as in the
- * wide settings window, wrapping the row only when the buttons no longer fit.
+ * wide settings window, on one line.
  */
 function AlertDialogContent({
   className,
@@ -99,7 +99,7 @@ function AlertDialogFooter({ className, ...props }: React.ComponentProps<'div'>)
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        'flex shrink-0 flex-wrap justify-end gap-2 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2',
+        'flex shrink-0 justify-end gap-2 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2',
         className,
       )}
       {...props}

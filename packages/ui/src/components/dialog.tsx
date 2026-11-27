@@ -107,6 +107,11 @@ function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
+/**
+ * The dialog's actions, trailing on one line at every width a desktop window takes, as the alert
+ * dialog's are: never stacked by the viewport. A footer that may run short of room keeps itself on
+ * one line by compacting its secondary actions (the renderer's `useOneLineActions`).
+ */
 function DialogFooter({
   className,
   showCloseButton = false,
@@ -116,11 +121,7 @@ function DialogFooter({
   showCloseButton?: boolean;
 }) {
   return (
-    <div
-      data-slot="dialog-footer"
-      className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
-      {...props}
-    >
+    <div data-slot="dialog-footer" className={cn('flex justify-end gap-2', className)} {...props}>
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
