@@ -30,14 +30,18 @@
     "clipped": "Shortened here. Open in Atd for the full reply.",
     "needsApp": "Atd needs you in the app",
     "saveFailed": "Couldn’t send to Atd · Retry",
+    "reply": "Reply",
     "covered": "Something on this page is covering this card, so it can’t take answers here. Answer in Atd."
   },
   "ask": {
     "label": "Ask Atd",
     "placeholder": "Ask about this page, or tell Atd what to do",
+    "replyPlaceholder": "Reply to continue this conversation",
     "send": "Send",
     "removePage": "Don’t include this page",
     "addPage": "Include this page",
+    "replyingTo": "Replying to “{{label}}”",
+    "removeReply": "Start a new task instead",
     "pick": "Pick an element on the page",
     "stopPicking": "Stop picking",
     "elementsFull": "Up to {{max}} elements per request",

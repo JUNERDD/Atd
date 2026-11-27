@@ -300,7 +300,7 @@ html[data-surface='popup'] #root {
 }
 
 /* A finished request's reply, under its run and aligned with its title (8 + 20 + 8 px): the text as
-   Atd wrote it, selectable, then Copy. */
+   Atd wrote it, selectable, then Copy and, on a conversation's latest turn, Reply. */
 .pp-reply {
   padding: 0 8px 8px 36px;
 }
@@ -319,15 +319,52 @@ html[data-surface='popup'] #root {
   color: var(--secondary-label);
   font: 400 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
 }
-.pp-reply-copy {
+.pp-reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 4px 0 0 -6px;
+}
+.pp-reply-action {
   --_btn-h: 22px;
   gap: 4px;
-  margin: 4px 0 0 -6px;
   padding: 0 6px;
   font-size: var(--fs-subheadline);
   font-weight: 500;
 }
-.pp-reply-copy svg {
+.pp-reply-action svg {
   width: 12px;
   height: 12px;
+}
+
+/* A conversation of several turns: each starts with the person's request, set apart as theirs,
+   trailing on a gray fill as a message they sent, no wider than the replies' column; a long one
+   keeps to six lines. An earlier turn that ended without a reply says how it ended instead. */
+.pp-turn-prompt {
+  display: -webkit-box;
+  width: fit-content;
+  max-width: calc(100% - 44px);
+  margin: 2px 8px 6px auto;
+  padding: 5px 10px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--fill-tertiary);
+  color: var(--label);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
+}
+.pp-turn-note {
+  margin: 0;
+  padding: 0 8px 8px 36px;
+  color: var(--secondary-label);
+  font: 400 var(--fs-subheadline) / var(--lh-subheadline) var(--ff-sans);
+}
+/* Reply on its own line, where the latest turn ended without a reply (Stopped, Couldn't finish). */
+.pp-turn-actions {
+  display: flex;
+  padding: 0 8px 8px 30px;
 }

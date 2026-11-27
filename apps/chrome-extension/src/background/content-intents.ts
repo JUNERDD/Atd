@@ -48,13 +48,19 @@ export function handleContentIntent(
 ): void {
   switch (intent.type) {
     case 'ask': {
-      const { requestId, text, includePage, elements, ownInput } = intent;
+      const { requestId, text, includePage, taskId, elements, ownInput } = intent;
+      // A tab replies only to the conversation its HUD shows.
+      if (taskId !== undefined && shows(deps, tabId, taskId, undefined) === undefined) {
+        deps.surfaces.postToTab(tabId, failure(requestId, 'failed'));
+        return;
+      }
       const ask = {
         from: 'tab',
         tabId,
         requestId,
         text,
         includePage,
+        ...(taskId === undefined ? {} : { taskId }),
         ...(elements === undefined ? {} : { elements }),
         ...(ownInput === undefined ? {} : { ownInput }),
       } as const;

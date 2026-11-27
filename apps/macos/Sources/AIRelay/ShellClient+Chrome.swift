@@ -35,14 +35,16 @@ public nonisolated struct ChromeTaskSubmit: Sendable {
   public let operationId: String
   /// What the person typed.
   public let text: String
-  /// The page an ask came from; nil for an ask whose page the person removed, and for follow-ups.
+  /// The page an ask came from; nil for an ask whose page the person removed, and for Save as
+  /// automation.
   public let page: Page?
   /// The site binding when the person allowed the site; empty starts the run with no site yet.
   public let bindingIds: [String]
-  /// Whether the run may use the person's Chrome at all (an ask does; a follow-up from the HUD
-  /// does not).
+  /// Whether the run may use the person's Chrome at all (an ask does, also one that continues a
+  /// task; Save as automation does not).
   public let usesChrome: Bool
-  /// The task a follow-up message continues; nil starts a new task.
+  /// The task the run continues (an ask's conversation, or Save as automation); nil starts a new
+  /// task.
   public let taskId: String?
 
   public init(

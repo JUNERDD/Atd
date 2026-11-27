@@ -1,5 +1,6 @@
-import { Globe, Plus, SquareMousePointer, X, createElement, type IconNode } from 'lucide';
-import type { PickedElement } from '../../channel/payloads.ts';
+import { Globe, Plus, Reply, SquareMousePointer, X, createElement, type IconNode } from 'lucide';
+import type { PickedElement, RunView } from '../../channel/payloads.ts';
+import { turnTitle } from '../../messages/views.ts';
 import { h, iconAttrs } from '../dom.ts';
 import { t } from '../i18n.ts';
 import { atdMark } from '../mark.ts';
@@ -14,6 +15,18 @@ export interface ContextEvents {
   highlight(element: Element | null): void;
 }
 
+/** The conversation a request replies to: its task, the turn it follows, and that turn's name. */
+export interface ReplyTarget {
+  taskId: string;
+  runId: string;
+  label: string;
+}
+
+/** The conversation a reply to `run` continues, named by the turn it follows. */
+export function replyTargetOf(run: RunView): ReplyTarget {
+  return { taskId: run.taskId, runId: run.runId, label: turnTitle(run) };
+}
+
 /**
  * One picked element: what goes to Atd (read when it was picked), and the element itself, held
  * weakly, so a page that removes it is not kept from freeing it.
@@ -24,13 +37,16 @@ interface Picked {
 }
 
 /**
- * What goes with the in-page ask besides its text: the page (its URL and title: the page chip) and
- * the elements picked on it (a chip each). Elements are part of the page, so picking one includes
- * the page again, and leaving the page out drops them. The chips fill the composer's meta row after
+ * What goes with the in-page ask besides its text: the conversation it replies to (the reply chip;
+ * removing it starts a new task instead), the page (its URL and title: the page chip) and the
+ * elements picked on it (a chip each). Elements are part of the page, so picking one includes the
+ * page again, and leaving the page out drops them. The chips fill the composer's meta row after
  * the Atd mark; `trailing` (the length count) stays last.
  */
 export class AskContext {
   includePage = true;
+  /** The conversation the request continues; null starts a new task. */
+  reply: ReplyTarget | null = null;
   private picked: Picked[] = [];
   private host = '';
 
@@ -68,9 +84,15 @@ export class AskContext {
     return this.includePage ? this.picked.map((entry) => entry.data) : [];
   }
 
-  /** After Atd took the request: the page again, and no elements. */
+  setReply(reply: ReplyTarget | null): void {
+    this.reply = reply;
+    this.render();
+  }
+
+  /** After Atd took the request: a new task, with the page again and no elements. */
   reset(): void {
     this.includePage = true;
+    this.reply = null;
     this.drop();
     this.render();
   }
@@ -79,6 +101,15 @@ export class AskContext {
     const chips: HTMLElement[] = [
       h('span', { class: 'ask-mark', attrs: { 'aria-hidden': 'true' } }, atdMark(16)),
     ];
+    if (this.reply) {
+      const { label } = this.reply;
+      const node = chip(label, Reply, t('ask.removeReply'), 'reply', () =>
+        this.change(() => (this.reply = null)),
+      );
+      node.classList.add('reply');
+      node.title = t('ask.replyingTo', { label });
+      chips.push(node);
+    }
     if (this.includePage) {
       if (this.host) {
         const leave = () => {

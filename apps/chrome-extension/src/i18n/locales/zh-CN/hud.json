@@ -30,14 +30,18 @@
     "clipped": "此处只显示部分内容，完整回复请在 Atd 中查看。",
     "needsApp": "Atd 需要你在应用中处理",
     "saveFailed": "未能发送给 Atd · 重试",
+    "reply": "回复",
     "covered": "此页面上有内容遮挡了这张卡片，无法在这里回答。请在 Atd 中回答。"
   },
   "ask": {
     "label": "问 Atd",
     "placeholder": "问问这个页面，或让 Atd 做点什么",
+    "replyPlaceholder": "回复以继续这段对话",
     "send": "发送",
     "removePage": "不附上此页面",
     "addPage": "附上此页面",
+    "replyingTo": "正在回复“{{label}}”",
+    "removeReply": "改为新建任务",
     "pick": "选择页面上的元素",
     "stopPicking": "停止选择",
     "elementsFull": "每个请求最多附上 {{max}} 个元素",

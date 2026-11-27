@@ -112,14 +112,17 @@ public struct ChromePickedElement: Decodable, Equatable, Sendable {
   private enum Keys: String, CodingKey { case selector, label, text }
 }
 
-/// `ask`: the person's question from the in-page input capsule. `url` and `title` are empty when
-/// the person removed the page from the request.
+/// `ask`: the person's request from the in-page ask or the panel. `url` and `title` are empty
+/// when the person removed the page from the request.
 public struct ChromeAsk: Equatable, Sendable {
   public let requestId: String
   public let tabId: Int
   public let url: String
   public let title: String
   public let text: String
+  /// The conversation the request continues: a task this profile started from Chrome, whose run
+  /// it follows up; nil starts a new task.
+  public let taskId: String?
   public let ownInput: ChromeOwnInput?
   /// The 1 to 5 elements the person picked on the page, in order. The extension sends them only
   /// with the page (a non-empty `url`); the shell does not rely on it.
@@ -131,6 +134,7 @@ public struct ChromeAsk: Equatable, Sendable {
     url = try container.text(.url, maxLength: ChromeChannelProtocol.maxTextLength)
     title = try container.text(.title, maxLength: ChromeChannelProtocol.maxTextLength)
     text = try container.text(.text, maxLength: ChromeChannelProtocol.maxTextLength)
+    taskId = container.contains(.taskId) ? try container.id(.taskId) : nil
     ownInput =
       container.contains(.ownInput)
       ? try container.decode(ChromeOwnInput.self, forKey: .ownInput) : nil

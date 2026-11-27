@@ -70,19 +70,26 @@ extension ChromeChannel {
 
   /// `ask`: a task with the person's text and the page it came from, in their Chrome, on the
   /// site's binding when they allowed the site; the tab they asked from becomes the run's. An ask
-  /// whose page the person removed (empty `url`) names no page and hands over no tab.
+  /// whose page the person removed (empty `url`) names no page and hands over no tab. An ask that
+  /// names a task continues that conversation with a run of it: only a task this profile started
+  /// from Chrome, and only once its runs have ended.
   private func ask(_ ask: ChromeAsk, on link: ChromeLink) async {
     let state = environment.hostState()
     guard state == .ready else {
       return link.send(.askFailed(requestId: ask.requestId, reason: state.rawValue))
     }
+    if let taskId = ask.taskId, !mayContinue(taskId, on: link) {
+      return link.send(.askFailed(requestId: ask.requestId, reason: "failed"))
+    }
     let site = siteBinding(for: ask.url, on: link)
+    let text = ask.text.clipped(toUTF16: Self.taskTextLimit)
     let submit = ChromeTaskSubmit(
-      operationId: Self.operationId(), text: ask.text.clipped(toUTF16: Self.taskTextLimit),
-      page: Self.askedPage(ask), bindingIds: site.map { [$0.bindingId] } ?? [], usesChrome: true)
+      operationId: Self.operationId(), text: text, page: Self.askedPage(ask),
+      bindingIds: site.map { [$0.bindingId] } ?? [], usesChrome: true, taskId: ask.taskId)
     do {
       let run = try await environment.client().submitChromeTask(submit)
-      extensionRuns[run.runId] = .init(installationId: link.installationId, taskId: run.taskId)
+      extensionRuns[run.runId] = .init(
+        installationId: link.installationId, taskId: run.taskId, prompt: text)
       link.send(.askAccepted(requestId: ask.requestId, taskId: run.taskId, runId: run.runId))
       if !ask.url.isEmpty { link.hand(tabId: ask.tabId, runId: run.runId) }
       projection.refresh(link)
@@ -90,6 +97,14 @@ extension ChromeChannel {
       Self.log.error("An ask from Chrome could not start a task.")
       link.send(.askFailed(requestId: ask.requestId, reason: "failed"))
     }
+  }
+
+  /// Whether `link` may continue the conversation `taskId`: the profile started it, and no run of
+  /// it is still active (the service takes one run per task at a time).
+  private func mayContinue(_ taskId: String, on link: ChromeLink) -> Bool {
+    extensionRuns.values.contains {
+      $0.installationId == link.installationId && $0.taskId == taskId
+    } && !projection.hasActiveRun(taskId: taskId)
   }
 
   // MARK: Runs

@@ -37,6 +37,25 @@ export const TaskActivityStepSchema = Type.Union([
 ]);
 export type TaskActivityStep = Static<typeof TaskActivityStepSchema>;
 
+/** The most of a run's live reply a row carries, in UTF-16 code units (`TaskActivityReply`). */
+export const TASK_ACTIVITY_REPLY_CHARS = 2_000;
+
+/**
+ * The message an active run is writing, or wrote last before the step it took since, as far as it
+ * has been written: its own words, which the person sees in its transcript too. Display state that
+ * changes as the message streams (at most a few times a second); the run's next message replaces
+ * it, and it leaves once the run ends, whose answer is read from the task itself. `clipped` when
+ * the message is longer than `TASK_ACTIVITY_REPLY_CHARS`.
+ */
+export const TaskActivityReplySchema = Type.Object(
+  {
+    text: Type.String({ minLength: 1, maxLength: TASK_ACTIVITY_REPLY_CHARS }),
+    clipped: Type.Boolean(),
+  },
+  { additionalProperties: false },
+);
+export type TaskActivityReply = Static<typeof TaskActivityReplySchema>;
+
 /** A request's text the card shows in full; longer details are cut and marked `detailClipped`. */
 export const TASK_ACTIVITY_DETAIL_CHARS = 20_000;
 /** Pending requests listed per task; the oldest come first. */
@@ -175,6 +194,8 @@ export const TaskActivityRunSchema = Type.Object(
     requests: Type.Array(TaskActivityRequestSchema, { maxItems: TASK_ACTIVITY_MAX_REQUESTS }),
     /** Absent between steps, and once the run ended. */
     step: Type.Optional(TaskActivityStepSchema),
+    /** Absent until the run has written a message, and once it ended. */
+    reply: Type.Optional(TaskActivityReplySchema),
     /** Present once the run called the computer tool. */
     computer: Type.Optional(ComputerActivitySchema),
   },

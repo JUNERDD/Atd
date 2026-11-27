@@ -24,9 +24,12 @@
     "label": "问 Atd",
     "placeholder": "问问这个页面，或让 Atd 做点什么",
     "placeholderNoPage": "告诉 Atd 要在此浏览器中做什么",
+    "placeholderReply": "回复以继续这段对话",
     "send": "发送",
     "removePage": "不附上此页面",
     "addPage": "附上此页面",
+    "replyingTo": "正在回复“{{title}}”",
+    "removeReply": "改为新建任务",
     "otherPage": "Atd 无法在这类浏览器自带页面上操作。请求将不附上此页面，Atd 会自行打开所需的网站。",
     "failure": {
       "notConnected": "与 Atd 的连接已断开，你的请求已保留。Atd 重新连接后请再次发送。",
@@ -62,6 +65,9 @@
     "openInAtd": "在 Atd 中打开：{{title}}",
     "copy": "复制",
     "copied": "已复制",
+    "reply": "回复",
+    "replyLabel": "回复“{{title}}”",
+    "you": "你：",
     "clipped": "此处已截断，在 Atd 中打开可查看完整回复。"
   },
   "actions": {

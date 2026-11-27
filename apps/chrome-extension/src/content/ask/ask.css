@@ -120,6 +120,11 @@
   max-width: 180px;
 }
 
+/* The conversation a request replies to: named by its last request, which can run long. */
+.ask-chip.reply {
+  max-width: 200px;
+}
+
 .ask-chip.add {
   padding: 0 8px 0 7px;
   background: none;

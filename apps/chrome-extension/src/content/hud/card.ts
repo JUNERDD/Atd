@@ -1,5 +1,6 @@
 import { MessageCircleQuestionMark, ShieldCheck, createElement } from 'lucide';
 import type { HudRequest, RunView } from '../../channel/payloads.ts';
+import { turnTitle } from '../../messages/views.ts';
 import { gbtn, h, iconAttrs, type ButtonOptions } from '../dom.ts';
 import { t } from '../i18n.ts';
 import { openButton, stopButton } from './buttons.ts';
@@ -71,14 +72,15 @@ function footer(lead: readonly HTMLElement[], trail: readonly HTMLElement[]): HT
 /**
  * A run's card (its reply): the run's `title` on one line, its `body` its own section under
  * the head, as wide as the head (long text reads across the card, not in the title's column beside
- * the glyph), `close` in its top trailing corner and its `actions` at the footer's trailing edge.
+ * the glyph), `close` (if any) in its top trailing corner and its `actions` in the footer: Stop
+ * alone at the leading edge (`lead`), the rest at the trailing one.
  */
 export function card(
   glyph: Element,
   title: string,
   body: readonly (HTMLElement | null)[],
-  actions: readonly HTMLElement[],
-  close: HTMLElement,
+  actions: { lead?: readonly HTMLElement[]; trail: readonly HTMLElement[] },
+  close: HTMLElement | null,
   wide = false,
 ): HTMLElement {
   const section = h('div', { class: 'hud-card-section' }, ...body);
@@ -88,7 +90,7 @@ export function card(
     titleNode(title, true),
     [],
     [section],
-    footer([], actions),
+    footer(actions.lead ?? [], actions.trail),
     close,
   );
 }
@@ -220,7 +222,7 @@ export function appNeededCard(ctx: RunRender): HTMLElement {
     'hud-card',
     createElement(MessageCircleQuestionMark, iconAttrs(16, 'attn')),
     titleNode(t('hud.needsApp')),
-    [bodyText(ctx.run.title)],
+    [bodyText(turnTitle(ctx.run))],
     [],
     footer(
       [stopButton(ctx, 'card')],

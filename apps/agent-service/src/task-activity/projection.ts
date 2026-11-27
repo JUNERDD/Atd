@@ -30,8 +30,8 @@ interface ProjectionDeps {
 
 /**
  * Current/recent root task runs. A run joins once it is seen active in this epoch (so a restart
- * never lists old results), lifecycle comes only from the ledger, and steps and computer facts
- * are transient. The first terminal observation fixes its expiry, independent of subscribers or
+ * never lists old results), lifecycle comes only from the ledger, and steps, live replies and
+ * computer facts are transient. The first terminal observation fixes its expiry, independent of subscribers or
  * connection loss; a task's next run replaces its row.
  */
 export class TaskActivityProjection {
@@ -140,6 +140,7 @@ export class TaskActivityProjection {
           (bindingId) => bindings.get(bindingId)?.label,
         );
     const step = ended ? undefined : steps.current(task.id, run.id);
+    const reply = ended ? undefined : steps.reply(task.id, run.id);
     const observed = board.entries().get(key);
     const computer: ComputerActivity | undefined = observed && {
       operation: { ...observed.operation, inFlight: !ended && observed.operation.inFlight },
@@ -160,6 +161,7 @@ export class TaskActivityProjection {
       ...(ended ? { terminalAt: new Date(terminalAt).toISOString() } : {}),
       requests,
       ...(step ? { step } : {}),
+      ...(reply ? { reply } : {}),
       ...(computer ? { computer } : {}),
     };
   }

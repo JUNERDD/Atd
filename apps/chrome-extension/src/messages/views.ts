@@ -1,4 +1,4 @@
-import type { ChromePrefs, PointerPhase, RunView } from '../channel/payloads.ts';
+import type { ChromePrefs, PointerPhase, RunResult, RunView } from '../channel/payloads.ts';
 import type { RichBlock } from '../rich-text/tree.ts';
 import type { ExtensionSettings } from './settings.ts';
 
@@ -88,13 +88,17 @@ export interface AskStatus {
 
 /**
  * A run's reply as the surfaces show it: `text` is the Markdown as Atd sent it (what Copy copies),
- * `clipped` whether the shell clipped it, and `blocks` the tree the HUD and the panel render, which
- * the service worker parses (`rich-text/parse.ts`) so neither surface carries a parser.
+ * `clipped` whether the shell clipped it, `state` whether the run is still writing it
+ * (`RunResultSchema`), and `blocks` the tree the HUD and the panel render, which the service
+ * worker parses (`rich-text/parse.ts`) so neither surface carries a parser.
  */
-export interface ReplyView {
-  text: string;
-  clipped: boolean;
+export interface ReplyView extends RunResult {
   blocks: RichBlock[];
+}
+
+/** Whether `reply` is a live message of a run still under way, not its answer. */
+export function isLive(reply: Pick<RunResult, 'state'>): boolean {
+  return reply.state !== undefined;
 }
 
 /** A run as the surfaces get it: the shell's `RunView`, its reply ready to render. */
@@ -207,3 +211,20 @@ export const ACTIVE_RUN_STATUSES: readonly RunView['status'][] = [
  * its own) it stays away from that tab until the run is live again.
  */
 export const ENDED_RUN_STATUSES: readonly RunView['status'][] = ['done', 'stopped', 'failed'];
+
+/**
+ * Whether the person can reply to `run`'s conversation (its task): this extension started it and
+ * it has ended, as Atd takes one run per task at a time. A reply is the task's next run, so the
+ * agent continues with everything said so far.
+ */
+export function canReply(run: Pick<RunView, 'fromExtension' | 'status'>): boolean {
+  return run.fromExtension && ENDED_RUN_STATUSES.includes(run.status);
+}
+
+/**
+ * What one turn of a conversation is called: the person's own request for it (`prompt`), else,
+ * for a run Atd started, its task's title.
+ */
+export function turnTitle(run: Pick<RunView, 'prompt' | 'title'>): string {
+  return run.prompt?.trim() || run.title;
+}

@@ -2,10 +2,12 @@ import AIChromeChannelKit
 import AICore
 import Foundation
 
-/// A run Atd for Chrome started (an `ask`).
+/// A run Atd for Chrome started (an `ask`): a new task, or the next turn of one it started.
 struct ChromeExtensionRun: Equatable {
   let installationId: String
   let taskId: String
+  /// What the person sent to start it, as submitted.
+  let prompt: String
 }
 
 /// Projects the service's task activity and the chrome engine's progress onto every connected
@@ -15,10 +17,12 @@ struct ChromeExtensionRun: Equatable {
 /// was shown, and only the requests its HUD may answer, may be acted on from it.
 ///
 /// An ended run the profile started or whose tabs it owned stays in its HUD (S10) after the
-/// service stops listing it: until the person dismisses it, a newer run takes over one of its
-/// tabs, or ``keepEnded`` passed.
+/// service stops listing it: until the person dismisses it, a newer run of another task takes over
+/// one of its tabs (the next turn of the same conversation keeps it, an earlier turn), or
+/// ``keepEnded`` passed.
 final class ChromeProjection {
-  /// How much of a finished run's answer the HUD shows.
+  /// How much of a run's reply the HUD shows, as much as task activity carries of a live one
+  /// (`TASK_ACTIVITY_REPLY_CHARS`).
   static let resultLimit = 2_000
   static let maxRuns = 8
   static let keepEnded: Duration = .seconds(30 * 60)
@@ -43,6 +47,9 @@ final class ChromeProjection {
   private var dismissed: Set<String> = []
   /// The answers of finished extension runs, once read from their task (nil: it gave none).
   var answers: [String: ChromeRunView.Result?] = [:]
+  /// The last message each extension run wrote while it ran: what a run that just ended shows
+  /// until its answer is read, and in its place should the read fail.
+  private var lastReplies: [String: TaskActivityReplyWire] = [:]
   /// Finished extension runs already settled (answer read).
   private var settled: Set<String> = []
   /// The page each run last acted on, which the HUD focuses.
@@ -62,6 +69,9 @@ final class ChromeProjection {
     }
     snapshot = next
     current = true
+    for run in next.runs where channel.extensionRuns[run.runId] != nil {
+      if let reply = run.reply { lastReplies[run.runId] = reply }
+    }
     for run in next.runs where run.status.isTerminal {
       for link in channel.links.links.values { keepIfEnded(run, on: link) }
       if channel.extensionRuns[run.runId] != nil { settle(run) }
@@ -223,6 +233,7 @@ final class ChromeProjection {
       answers[runId] = nil
       channel.extensionRuns[runId] = nil
     }
+    lastReplies = lastReplies.filter { !gone($0.key) }
     lastPage = lastPage.filter { !gone($0.key) }
   }
 
@@ -236,11 +247,18 @@ final class ChromeProjection {
         text = (try? await client.runAnswer(taskId: run.taskId, runId: run.runId)) ?? nil
       }
       guard let self else { return }
-      answers[run.runId] = text.map {
-        ChromeRunView.Result(
-          text: $0.clipped(toUTF16: Self.resultLimit), clipped: $0.utf16.count > Self.resultLimit)
-      }
+      answers[run.runId] =
+        text.map {
+          ChromeRunView.Result(
+            text: $0.clipped(toUTF16: Self.resultLimit), clipped: $0.utf16.count > Self.resultLimit)
+        } ?? lastReply(of: run.runId)
+      lastReplies[run.runId] = nil
       refreshAll()
     }
+  }
+
+  /// The last message `runId` wrote while it ran, as the reply of a run that is done.
+  func lastReply(of runId: String) -> ChromeRunView.Result? {
+    lastReplies[runId].map { .init(text: $0.text, clipped: $0.clipped) }
   }
 }

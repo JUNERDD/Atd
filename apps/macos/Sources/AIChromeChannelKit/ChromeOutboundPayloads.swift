@@ -145,14 +145,26 @@ public struct ChromeRunView: Encodable, Equatable, Sendable {
     case disconnected
   }
 
+  /// A run's reply: its answer once it is done, or, while it runs, the message it is writing or
+  /// wrote last (`state`), which its next message replaces.
   public struct Result: Encodable, Equatable, Sendable {
+    public enum State: String, Encodable, Sendable {
+      /// The run is writing this message, and has started nothing else since.
+      case writing
+      /// The run went on to another step after writing it.
+      case paused
+    }
+
     public let text: String
     public let clipped: Bool
+    /// Absent once the run is done: the text is its answer.
+    public let state: State?
 
-    public init(text: String, clipped: Bool) {
+    public init(text: String, clipped: Bool, state: State? = nil) {
       let fitted = text.clipped(toUTF16: ChromeChannelProtocol.maxTextLength)
       self.text = fitted
       self.clipped = clipped || fitted != text
+      self.state = state
     }
   }
 
@@ -169,6 +181,9 @@ public struct ChromeRunView: Encodable, Equatable, Sendable {
   public let taskId: String
   public let runId: String
   public let title: String
+  /// What the person sent from this Chrome to start the run, for runs the extension started: a
+  /// follow-up's own words, which the task's title (its first request) does not show.
+  public let prompt: String?
   public let status: Status
   public let step: String?
   public let tabs: [Int]
@@ -179,13 +194,14 @@ public struct ChromeRunView: Encodable, Equatable, Sendable {
   public let fromExtension: Bool
 
   public init(
-    taskId: String, runId: String, title: String, status: Status, step: String?, tabs: [Int],
-    focusTabId: Int?, requests: [ChromeHudRequest], result: Result?, problem: Problem?,
-    fromExtension: Bool
+    taskId: String, runId: String, title: String, prompt: String? = nil, status: Status,
+    step: String?, tabs: [Int], focusTabId: Int?, requests: [ChromeHudRequest], result: Result?,
+    problem: Problem?, fromExtension: Bool
   ) {
     self.taskId = taskId
     self.runId = runId
     self.title = title.clipped(toUTF16: ChromeChannelProtocol.maxTextLength)
+    self.prompt = prompt?.clipped(toUTF16: ChromeChannelProtocol.maxTextLength)
     self.status = status
     self.step = step?.clipped(toUTF16: ChromeChannelProtocol.maxTextLength)
     self.tabs = Array(tabs.prefix(64))

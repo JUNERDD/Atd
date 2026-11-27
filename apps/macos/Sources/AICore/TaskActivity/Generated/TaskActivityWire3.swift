@@ -171,3 +171,24 @@ extension TaskActivityRequestWire {
     }
   }
 }
+
+public struct TaskActivityReplyWire: Codable, Equatable, Sendable {
+  public let text: String
+  public let clipped: Bool
+
+  public init(text: String, clipped: Bool) {
+    self.text = text
+    self.clipped = clipped
+  }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try BridgeCoding.keyed(decoder, CodingKeys.self)
+    text = try container.string(.text, minLength: 1, maxLength: 2_000)
+    clipped = try container.boolean(.clipped)
+  }
+
+  private enum CodingKeys: String, CodingKey, CaseIterable {
+    case text
+    case clipped
+  }
+}

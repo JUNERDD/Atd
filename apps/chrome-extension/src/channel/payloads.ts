@@ -66,19 +66,36 @@ export const RunStatusSchema = Type.Union([
 export type RunStatus = Static<typeof RunStatusSchema>;
 
 /**
+ * A run's reply (clipped where the shell clipped it). Once the run is done it is its answer; while
+ * it runs, the message it is writing or wrote last (`state`), which its next message replaces:
+ * `writing` while it has started no other step since, `paused` once it went on to one.
+ */
+export const RunResultSchema = Type.Object({
+  text: Text,
+  clipped: Type.Boolean(),
+  state: Type.Optional(Type.Union([Type.Literal('writing'), Type.Literal('paused')])),
+});
+export type RunResult = Static<typeof RunResultSchema>;
+
+/**
  * A run tied to this Chrome, as the shell projects task activity and computer progress. `tabs`
- * are the tabs it owns; `result` is the final reply (clipped) for runs started from the extension.
+ * are the tabs it owns; `result` is its reply (`RunResultSchema`) for runs started from the
+ * extension, live while it runs; a run that stopped or failed has none.
+ * `title` is the task's (named after its first request); `prompt`, for runs started from the
+ * extension, is what the person sent to start this run, so the turns of one conversation (runs
+ * of one task) each show their own request.
  */
 export const RunViewSchema = Type.Object({
   taskId: Id,
   runId: Id,
   title: Text,
+  prompt: Type.Optional(Text),
   status: RunStatusSchema,
   step: Type.Optional(Text),
   tabs: Type.Array(TabId, { maxItems: 64 }),
   focusTabId: Type.Optional(TabId),
   requests: Type.Array(HudRequestSchema, { maxItems: 16 }),
-  result: Type.Optional(Type.Object({ text: Text, clipped: Type.Boolean() })),
+  result: Type.Optional(RunResultSchema),
   problem: Type.Optional(Type.Object({ code: Type.String({ maxLength: 128 }), message: Text })),
   fromExtension: Type.Boolean(),
 });

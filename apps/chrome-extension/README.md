@@ -47,7 +47,9 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
   popup whatever the setting (`src/background/action-surface.ts`, opened with `?surface=popup`).
 - The in-page ask opens in every connection state. While Atd cannot take a request (not
   connected, not paired, or busy with one already) it says why, with send disabled, and offers the
-  side panel; its Open side panel control opens the panel for the tab's window at any time.
+  side panel; its Open side panel control opens the panel for the tab's window at any time. A
+  request shows in the HUD as starting the moment it is sent, before Atd answers; one Atd refuses
+  brings the field back with its draft and the reason.
 - Connect from the panel (Connect…), then confirm in Atd: both sides show the same 4-character
   code. Disconnect in Atd's Settings › Computer use.
 - The in-page ask's inspector picks elements of the page to send with a request (up to five): the
@@ -64,6 +66,24 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
   tree that both surfaces render without HTML (raw HTML stays text, an image is its alt text, a
   link keeps only an http(s) or mailto destination). In the HUD a long reply scrolls inside the
   card under an overlay thumb, with edges that fade where it continues; Copy copies the Markdown.
+- The reply shows as the agent writes it. Task activity carries each active run's latest message
+  (`TaskActivityRun.reply`, a few updates a second), and the shell sends it as the run's `result`
+  with a `state`: `writing` while the run has started nothing else since, `paused` once it took a
+  step. The panel shows it under the turn throughout, and its next message replaces it. The HUD's
+  card fills in place while the run writes and steps back to the working row for a step, since
+  the HUD is in the agent's screenshots of the page; when the run is done, the answer takes the
+  card's place without it moving, and Copy, Reply and the rest arrive.
+- A request is a conversation: once its run has ended, Reply (on the HUD's reply card or row, and
+  on the panel's conversation) continues the same task as its next run, so the agent goes on with
+  everything said so far. The reply goes from the tab and page it is sent from, as any request
+  does; the `ask` frame names the task (`taskId`), and the shell accepts it only for a task this
+  profile started whose runs have all ended. In the in-page ask a reply chip names the conversation
+  (removing it sends a new task instead): Reply sets it, and opening the ask over an ended
+  conversation in the HUD offers it once per turn. In the panel Reply sets it on the composer, which
+  keeps replying there until the chip is removed or the panel no longer lists the conversation.
+  Each run carries what the person sent to start it (`RunView.prompt`), so the panel lists a
+  conversation's turns under its row, oldest first, each with its request and reply, and the HUD
+  names a run by its own request rather than the task's first one.
 - The ask shortcut (⇧⌘K by default; Ctrl+Shift+K off macOS) always opens the in-page ask, whatever
   the toolbar button does. It can be changed at `chrome://extensions/shortcuts`, which also accepts
   ⌥⌘K: Chrome refuses Alt with Ctrl or Command only as a manifest default.

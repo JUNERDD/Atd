@@ -1,14 +1,22 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OwnInput } from '../channel/payloads.ts';
 import type { PanelMessage } from '../messages/panel.ts';
 import type { PanelView } from '../messages/views.ts';
 import { linkStatus, shellAnswers } from '../pages/link.ts';
 import { useAtdLanguage } from '../pages/use-atd-language.ts';
-import { Composer } from './composer.tsx';
+import { Composer, type ComposerReply } from './composer.tsx';
 import { ConnectView } from './connect-view.tsx';
 import { EmptyState } from './empty-state.tsx';
-import { composeBlock, reachOf, screenFor, siteOf, type ActivePage } from './model.ts';
+import {
+  composeBlock,
+  conversationsOf,
+  reachOf,
+  replyingTo,
+  screenFor,
+  siteOf,
+  type ActivePage,
+} from './model.ts';
 import { NoticeView } from './notice-view.tsx';
 import { RunsGroup } from './runs-group.tsx';
 import { SURFACE } from './surface.ts';
@@ -84,16 +92,34 @@ interface MainProps {
 }
 
 /**
- * Paired: what runs in this browser (or, before anything has, what the panel is for and where the
- * in-page ask is), then the composer, kept in view at the bottom.
+ * Paired: the conversations in this browser (or, before anything has, what the panel is for and
+ * where the in-page ask is), then the composer, kept in view at the bottom. Reply on a
+ * conversation makes the composer reply to it until the person removes its chip or the panel no
+ * longer lists it.
  */
 function MainView({ view, settled, page, act, channel, takeOwnInput }: MainProps) {
   const { t } = useTranslation('panel');
+  const conversations = useMemo(() => conversationsOf(view.runs), [view.runs]);
+  const [replyTo, setReplyTo] = useState<{ taskId: string; at: number } | null>(null);
+  const replying = replyingTo(conversations, replyTo?.taskId ?? null);
+  const reply: ComposerReply | null =
+    replying && replyTo
+      ? {
+          taskId: replying.taskId,
+          title: replying.latest.title.trim() || t('runs.untitled'),
+          at: replyTo.at,
+        }
+      : null;
   return (
     <>
       <Body settled={settled}>
-        {view.runs.length > 0 ? (
-          <RunsGroup runs={view.runs} reach={reachOf(view)} send={act} />
+        {conversations.length > 0 ? (
+          <RunsGroup
+            conversations={conversations}
+            reach={reachOf(view)}
+            send={act}
+            onReply={(taskId) => setReplyTo({ taskId, at: performance.now() })}
+          />
         ) : (
           <EmptyState title={t('empty.title')} body={t('empty.body')}>
             {view.askShortcut ? (
@@ -105,6 +131,8 @@ function MainView({ view, settled, page, act, channel, takeOwnInput }: MainProps
       <Composer
         page={page}
         block={composeBlock(view, page)}
+        reply={reply}
+        onRemoveReply={() => setReplyTo(null)}
         channel={channel}
         takeOwnInput={takeOwnInput}
       />

@@ -1,5 +1,5 @@
 import type { EdgeLight } from './glow/edge-light.ts';
-import type { GlowMode } from './hud/hud.ts';
+import type { GlowMode } from './hud/states.ts';
 import { reducedMotion } from './motion.ts';
 import type { PageTransitions, TransitionKind } from './transition/transitions.ts';
 

@@ -18,10 +18,17 @@ import {
   arrive,
   calm,
   leave,
+  settles,
   shapeMotion,
 } from './island.ts';
 import { type AnchorPoint, type Box, ShapeMorph } from './morph.ts';
 import { changeInPlace, snapshot } from './parts.ts';
+
+/**
+ * A streaming content drawn at this share of its own size or more has arrived: taking its own size
+ * from there moves it by about a pixel.
+ */
+const ARRIVED = 0.99;
 
 /** What the stage shows: a content and what kind of change leads to it. */
 export interface StageContent {
@@ -29,6 +36,15 @@ export interface StageContent {
   shape: 'row' | 'card' | 'compose';
   /** Content of the same scene changes in place; another scene replaces it. */
   scene: string;
+  /**
+   * The content grows as it streams in (a reply the run is writing). It arrives as any content
+   * does, scaling with its shape; once it has (`IslandStage.growsInPlace`), as the island's answer
+   * streaming in (`IslandContent.resizesInPlace`), each change of its size moves the shape on the
+   * in-place spring with the content at its own size, even while an earlier motion still runs:
+   * lines come faster than the shape settles, so a scale kept from the motion before would shrink
+   * and swell the whole card with every line until the reply stopped growing.
+   */
+  streams?: boolean;
 }
 
 export interface StageEvents {
@@ -49,6 +65,12 @@ export class IslandStage {
   private readonly morph: ShapeMorph;
   private face: HTMLDivElement | null = null;
   private content: StageContent | null = null;
+  /**
+   * When the face that shows has arrived with the shape that brought it, at the latest
+   * (`performance.now()`, ms): the moment its motion would have come to rest without anything
+   * after it.
+   */
+  private arrives = 0;
   private readonly leaving = new Map<HTMLDivElement, number>();
   private phase: 'hidden' | 'shown' | 'leaving' = 'hidden';
   private exiting: Animation[] = [];
@@ -128,6 +150,7 @@ export class IslandStage {
     };
     this.morph.track(face, target, 'scale');
     this.morph.to(target, ENTRANCE, pill);
+    this.arrives = performance.now() + settles(ENTRANCE) * 1000;
     this.shape.animate({ opacity: [0, 1] }, { duration: ENTRANCE_FADE_MS, easing: 'ease-out' });
     arrive(face, CONTENT_BLUR, 0, false);
   }
@@ -138,15 +161,18 @@ export class IslandStage {
     const face = this.mount(next);
     const target = this.measure();
     const moment = shapeMotion(this.morph.drawn(), target, next.shape === 'row');
+    const motion = reduce ? calm(moment) : moment;
     this.morph.track(face, target, reduce ? 'clip' : 'scale');
-    this.morph.to(target, reduce ? calm(moment) : moment);
+    this.morph.to(target, motion);
+    this.arrives = performance.now() + settles(motion) * 1000;
     arrive(face, CONTENT_BLUR, REPLACING_DELAY, reduce);
   }
 
   /**
    * The same scene with new content, as the island changes a content of the same kind: laid out at
    * its new size at once and scaled with the shape as it springs there on the opening springs,
-   * swelling and settling with it, while what changed crosses over in place.
+   * swelling and settling with it, while what changed crosses over in place. Content that grows in
+   * place (`growsInPlace`) keeps its own size instead, on the in-place spring.
    */
   private update(previous: StageContent, next: StageContent, reduce: boolean): void {
     const face = this.face;
@@ -157,24 +183,40 @@ export class IslandStage {
     this.fit(next);
     const target = this.measure();
     changeInPlace(face, before, next.node, reduce);
-    this.morph.track(face, target, reduce ? 'clip' : 'scale');
-    this.morph.to(target, reduce ? calm(RESIZE) : RESIZE);
+    const inPlace = this.growsInPlace(next, face);
+    this.morph.track(face, target, reduce || inPlace ? 'clip' : 'scale');
+    this.morph.to(target, inPlace ? IN_PLACE : reduce ? calm(RESIZE) : RESIZE);
   }
 
   /**
    * The content changed size on its own (the composer's field gaining a line, the window), or its
    * room did and a row laid itself out again: the shape follows on a quick spring with no bounce,
-   * the content at its own size, so the text under the caret holds still.
+   * the content at its own size, so the text under the caret holds still. Content still arriving
+   * with its shape goes on scaling with it rather than snapping to its own size, until the shape
+   * comes to rest or, for content that streams, its arrival is over (`growsInPlace`).
    */
   private resized(): void {
     const face = this.face;
-    if (this.phase !== 'shown' || !face || !this.content) return;
-    this.fit(this.content);
+    const content = this.content;
+    if (this.phase !== 'shown' || !face || !content) return;
+    this.fit(content);
     const target = this.measure();
     const at = this.morph.target;
     if (Math.abs(target.w - at.w) < 0.5 && Math.abs(target.h - at.h) < 0.5) return;
-    this.morph.track(face, target, this.morph.follows(face) ?? 'clip');
+    const follow = this.growsInPlace(content, face) ? 'clip' : (this.morph.follows(face) ?? 'clip');
+    this.morph.track(face, target, follow);
     this.morph.to(target, IN_PLACE);
+  }
+
+  /**
+   * Whether `content`, shown in `face`, grows in place now: it streams and has arrived, drawn at
+   * its own size (`ARRIVED`) or past its arrival's motion (`arrives`). Until then a line growing it
+   * scales it with the shape, as the rest of its arrival does. A stream's growth never lets the
+   * shape rest, so waiting for that would keep the content shrinking and swelling, line by line.
+   */
+  private growsInPlace(content: StageContent, face: HTMLElement): boolean {
+    if (content.streams !== true) return false;
+    return this.morph.drawnScale(face) >= ARRIVED || performance.now() >= this.arrives;
   }
 
   /** A show during the exit: the HUD comes back from where the fade and the shrink have it. */

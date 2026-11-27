@@ -131,9 +131,45 @@ export function runNeedsPerson(run: RunView): boolean {
   return run.status === 'attention' || run.status === 'held';
 }
 
-/** Atd's reply to a request from this extension, shown under its run once it is done. */
+/**
+ * Atd's reply to a request from this extension, shown under its run: as the run writes it, then
+ * its answer once done (the shell sends none for a run that stopped or failed).
+ */
 export function runReply(run: SurfaceRun): SurfaceRun['result'] {
-  return run.status === 'done' && run.fromExtension ? run.result : undefined;
+  return run.fromExtension ? run.result : undefined;
+}
+
+/**
+ * One conversation the panel lists: the runs of one task, its turns (a reply is the task's next
+ * run). The shell sends runs live first and newest first, so a conversation takes the place of
+ * its latest turn, and its turns read oldest first.
+ */
+export interface Conversation {
+  taskId: string;
+  /** The latest turn: the conversation's status, controls and reply target. */
+  latest: SurfaceRun;
+  turns: SurfaceRun[];
+}
+
+export function conversationsOf(runs: readonly SurfaceRun[]): Conversation[] {
+  const byTask = new Map<string, Conversation>();
+  for (const run of runs) {
+    const known = byTask.get(run.taskId);
+    if (known) known.turns.unshift(run);
+    else byTask.set(run.taskId, { taskId: run.taskId, latest: run, turns: [run] });
+  }
+  return [...byTask.values()];
+}
+
+/**
+ * The conversation the composer replies to, `taskId`, while the panel still lists it as one this
+ * extension started; null otherwise, and the composer then sends a new task.
+ */
+export function replyingTo(
+  conversations: readonly Conversation[],
+  taskId: string | null,
+): Conversation | null {
+  return conversations.find((item) => item.taskId === taskId && item.latest.fromExtension) ?? null;
 }
 
 /** The page behind a tab URL; anything but http(s) is not a website Atd can act on. */

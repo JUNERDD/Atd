@@ -38,9 +38,17 @@ export function handlePanelIntent(
       deps.reconnect();
       return;
     case 'ask': {
-      const { requestId, tabId, text, includePage, ownInput } = intent;
-      const ask = { from: 'panel', tabId, requestId, text, includePage } as const;
-      void sendAsk(deps, ownInput === undefined ? ask : { ...ask, ownInput }, reply);
+      const { requestId, tabId, text, includePage, taskId, ownInput } = intent;
+      const ask = {
+        from: 'panel',
+        tabId,
+        requestId,
+        text,
+        includePage,
+        ...(taskId === undefined ? {} : { taskId }),
+        ...(ownInput === undefined ? {} : { ownInput }),
+      } as const;
+      void sendAsk(deps, ask, reply);
       return;
     }
     case 'site.set':

@@ -1,5 +1,5 @@
 import type { OwnInput, PickedElement } from '../channel/payloads.ts';
-import type { AskFailure } from '../messages/views.ts';
+import { canReply, type AskFailure } from '../messages/views.ts';
 import { clipText, type SendFrame } from './native.ts';
 import { failure, type AskAnswer, type PendingRequests } from './requests.ts';
 import type { Store } from './store.ts';
@@ -16,7 +16,7 @@ export interface AskDeps {
  * A request the person sent to Atd. `tab`: a tab's in-page ask, whose page is the tab's own
  * document, with the elements the person picked on it (`elements`). `panel`: the panel's composer,
  * sent from the tab its window shows; its page goes along only while that tab still shows a
- * website, the only page the panel offers to include.
+ * website, the only page the panel offers to include. `taskId`: the conversation it replies to.
  */
 export interface Ask {
   from: 'tab' | 'panel';
@@ -24,6 +24,7 @@ export interface Ask {
   tabId: number;
   text: string;
   includePage: boolean;
+  taskId?: string;
   elements?: readonly PickedElement[];
   ownInput?: OwnInput;
 }
@@ -39,6 +40,8 @@ export async function sendAsk(deps: AskDeps, ask: Ask, answer: AskAnswer): Promi
   const refuse = (reason: AskFailure): void => answer(failure(ask.requestId, reason));
   const early = refusal(deps.store);
   if (early !== undefined) return refuse(early);
+  // A reply goes only to a conversation whose latest turn the surfaces show as ended.
+  if (ask.taskId !== undefined && !mayReply(deps.store, ask.taskId)) return refuse('failed');
   const tab = await chrome.tabs.get(ask.tabId).catch(() => undefined);
   // The panel asked from a tab that has closed since: what it showed is gone.
   if (tab === undefined && ask.from === 'panel') return refuse('failed');
@@ -64,10 +67,17 @@ export async function sendAsk(deps: AskDeps, ask: Ask, answer: AskAnswer): Promi
     url,
     title: withPage ? clipText(tab?.title) : '',
     text: ask.text,
+    ...(ask.taskId === undefined ? {} : { taskId: ask.taskId }),
     ...(elements.length > 0 ? { elements } : {}),
     ...(win?.focused === true && ask.ownInput !== undefined ? { ownInput: ask.ownInput } : {}),
   });
   if (!sent) deps.requests.fail(ask.requestId, 'notConnected');
+}
+
+/** The shell lists runs live first, newest first: a task's first run there is its latest turn. */
+function mayReply(store: Store, taskId: string): boolean {
+  const latest = store.state.runs.find((run) => run.taskId === taskId);
+  return latest !== undefined && canReply(latest);
 }
 
 function refusal(store: Store): AskFailure | undefined {

@@ -1,15 +1,17 @@
 import type { OwnInput } from '../../channel/payloads.ts';
 import type { BackgroundToContent, ContentMessage } from '../../messages/content.ts';
-import { ACTIVE_RUN_STATUSES, type TabView } from '../../messages/views.ts';
+import { ACTIVE_RUN_STATUSES, canReply, type TabView } from '../../messages/views.ts';
 import { t } from '../i18n.ts';
 import { requestId } from '../ids.ts';
 import { Inspector } from '../inspector/inspector.ts';
 import { Composer } from './composer.ts';
+import type { ReplyTarget } from './context.ts';
 import { blockedCopy, canAsk, failureCopy } from './status.ts';
 
 /**
- * `compose`: the field is open. `sending`: the request is on its way. `starting`: Atd took it and
- * the HUD keeps a working look until the run shows for this tab.
+ * `compose`: the field is open. `sending`: the request is on its way. `starting`: Atd took it.
+ * From the press of send until the run shows for this tab (`sent`), the HUD shows the request as
+ * starting, with a working look: the round trip to Atd never leaves the field looking unsent.
  */
 export type AskPhase = 'closed' | 'compose' | 'sending' | 'starting';
 
@@ -29,8 +31,12 @@ export interface AskDeps {
  * state; while Atd cannot take a request it says why, with send disabled, and offers Atd's panel.
  * Its inspector picks elements of the page to send with the request, reading each only as it is
  * picked. Closing it (Esc, or a click elsewhere) keeps the draft, picked elements included, for
- * this tab; Esc hands focus back to where the person was. A failed request reopens the field with
- * its reason and the draft intact.
+ * this tab; Esc hands focus back to where the person was. Sent, the request shows as starting at
+ * once, before Atd answers; a failed one reopens the field with its reason and the draft intact.
+ *
+ * While the HUD shows an ended conversation (`canReply`), the request replies to it: the agent
+ * continues that task with what was said so far. The reply chip says so, and removing it sends a
+ * new task instead; each turn is offered once, so a chip the person removed stays removed for it.
  */
 export class AskFlow {
   phase: AskPhase = 'closed';
@@ -41,6 +47,8 @@ export class AskFlow {
   /** The run Atd said it started for the request; null until accepted (or when not named). */
   private startedRun: string | null = null;
   private returnFocus: HTMLElement | null = null;
+  /** The turn whose conversation the field last offered to reply to. */
+  private offered: string | null = null;
   private startingTimer = 0;
   private view: TabView | null = null;
   /** Built the first time the ask opens: a page where nobody asks never builds it. */
@@ -63,7 +71,12 @@ export class AskFlow {
   }
 
   get composing(): boolean {
-    return this.phase === 'compose' || this.phase === 'sending';
+    return this.phase === 'compose';
+  }
+
+  /** The request was sent and its run has not shown here yet: the HUD shows it as starting. */
+  get sent(): boolean {
+    return this.phase === 'sending' || this.phase === 'starting';
   }
 
   /**
@@ -75,15 +88,21 @@ export class AskFlow {
   }
 
   /**
-   * `ask.open`: opens the field, whatever the connection; a second press closes it. While Atd is
-   * starting the request just sent, the HUD's starting row stays.
+   * `ask.open`: opens the field, whatever the connection; a second press closes it. While the
+   * request just sent is starting, the HUD's starting row stays. `conversation` is the ended
+   * conversation the HUD shows, offered as the one to reply to; `chosen` when the person pressed
+   * its Reply, which offers it again even after they removed it.
    */
-  open(): void {
+  open(conversation: ReplyTarget | null = null, chosen = false): void {
     if (this.composing) return this.close(true);
-    if (this.phase === 'starting') return;
+    if (this.sent) return;
     const active = document.activeElement;
     this.returnFocus = active instanceof HTMLElement && active !== document.body ? active : null;
     this.phase = 'compose';
+    if (chosen || conversation?.runId !== this.offered) {
+      this.offered = conversation?.runId ?? null;
+      this.composer.context.setReply(conversation);
+    }
     this.composer.prepare(this.host());
     this.sync();
     this.deps.changed();
@@ -117,7 +136,6 @@ export class AskFlow {
     this.startedRun = message.runId ?? null;
     this.phase = 'starting';
     this.composer.reset();
-    this.composer.setState(false, true);
     clearTimeout(this.startingTimer);
     this.startingTimer = window.setTimeout(() => this.started(), STARTING_LIMIT_MS);
     this.deps.changed();
@@ -148,9 +166,18 @@ export class AskFlow {
     }
   }
 
-  /** The send button and the status row follow what Atd can take now. */
+  /**
+   * The send button and the status row follow what Atd can take now. The reply chip goes once the
+   * tab no longer shows its conversation ended (a newer run took the tab, or the conversation
+   * went on elsewhere).
+   */
   private sync(): void {
-    this.composer.setState(false, canAsk(this.view));
+    const { reply } = this.composer.context;
+    const run = this.view?.run;
+    if (reply && !(run && run.taskId === reply.taskId && canReply(run))) {
+      this.composer.context.setReply(null);
+    }
+    this.composer.setAllowed(canAsk(this.view));
     this.composer.setBlocked(blockedCopy(this.view), this.view?.panel ?? null);
   }
 
@@ -158,7 +185,7 @@ export class AskFlow {
     if (this.phase !== 'compose' || !this.composer.canSend || !canAsk(this.view)) return;
     this.stopPicking();
     const text = this.composer.text;
-    const { includePage } = this.composer.context;
+    const { includePage, reply } = this.composer.context;
     const elements = this.composer.context.elements();
     this.requestId = requestId();
     this.runAtSend = this.view?.run?.runId ?? null;
@@ -166,13 +193,13 @@ export class AskFlow {
     this.startingText = text;
     this.phase = 'sending';
     this.composer.setError(null);
-    this.composer.setState(true, true);
     const ownInput = this.deps.takeOwnInput();
     this.deps.send({
       type: 'ask',
       requestId: this.requestId,
       text,
       includePage,
+      ...(reply ? { taskId: reply.taskId } : {}),
       ...(elements.length > 0 ? { elements } : {}),
       ...(ownInput === undefined ? {} : { ownInput }),
     });

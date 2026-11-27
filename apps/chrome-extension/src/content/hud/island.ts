@@ -1,4 +1,4 @@
-import { type Spring, springEasing } from '../motion.ts';
+import { type Spring, springCurve, springEasing } from '../motion.ts';
 
 /**
  * The HUD's motion: the command island's (`IslandChoreography` and `MiniPanelChoreography` in
@@ -9,9 +9,9 @@ import { type Spring, springEasing } from '../motion.ts';
  * motions, a little past its rest and back. Content leaves before the shape moves and arrives
  * after it, out of a blur, scaling with the shape; a change within the same kind of content takes
  * its new size at once and scales with the shape as it springs there, so it swells and settles
- * with the glass. Only growth under the person's own input keeps content at its own size. Reduce
- * Motion takes the bounce out of every spring, keeps content at its own size, and drops scale and
- * blur, never the change itself.
+ * with the glass. Only growth under the person's own input, and a reply streaming in once it has
+ * arrived, keeps content at its own size. Reduce Motion takes the bounce out of every spring, keeps
+ * content at its own size, and drops scale and blur, never the change itself.
  */
 
 /** How the shape moves for one moment: each axis on its spring, after its delay (seconds). */
@@ -56,6 +56,14 @@ export function shapeMotion(from: Size, to: Size, toRow: boolean): ShapeMotion {
   if (to.w * to.h >= from.w * from.h) return EXPAND;
   if (toRow && from.h > to.h) return COLLAPSE;
   return SHRINK;
+}
+
+/** How long `moment` takes to come to rest (seconds): its slower axis, delay included. */
+export function settles(moment: ShapeMotion): number {
+  return Math.max(
+    moment.thicknessDelay + springCurve(moment.thickness).settle,
+    moment.lengthDelay + springCurve(moment.length).settle,
+  );
 }
 
 /** The same moment without overshoot, for Reduce Motion. */

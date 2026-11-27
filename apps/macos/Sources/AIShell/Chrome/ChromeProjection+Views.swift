@@ -8,10 +8,13 @@ extension ChromeProjection {
   func views(for link: ChromeLink) -> [ChromeRunView] {
     let live = (snapshot?.runs ?? []).filter { !$0.status.isTerminal && isTied($0, to: link) }
       .sorted { $0.startedAt > $1.startedAt }
-    // A newer run in one of an ended run's tabs replaces it there.
-    let liveTabs = Set(live.flatMap { link.tabs(of: $0.runId).map(\.tabId) })
-    ended[link.installationId] = ended[link.installationId]?.filter {
-      Set($0.value.tabs).isDisjoint(with: liveTabs)
+    // A newer run in one of an ended run's tabs replaces it there, unless it is the next turn of
+    // the same conversation: an earlier turn stays with it.
+    ended[link.installationId] = ended[link.installationId]?.filter { _, kept in
+      live.allSatisfy { run in
+        run.taskId == kept.run.taskId
+          || Set(link.tabs(of: run.runId).map(\.tabId)).isDisjoint(with: kept.tabs)
+      }
     }
     let kept = (ended[link.installationId] ?? [:]).values.sorted {
       $0.run.startedAt > $1.run.startedAt
@@ -71,14 +74,27 @@ extension ChromeProjection {
     let status = status(of: run, held: held)
     let working = !run.status.isTerminal && status != .disconnected
     return ChromeRunView(
-      taskId: run.taskId, runId: run.runId, title: run.title, status: status,
+      taskId: run.taskId, runId: run.runId, title: run.title,
+      prompt: channel.extensionRuns[run.runId]?.prompt, status: status,
       step: working ? TaskActivityPresentation.progress(run) : nil, tabs: tabIds,
       focusTabId: focusTabId, requests: run.requests.compactMap { hud($0, of: run, on: link) },
-      result: fromExtension && status == .done ? answers[run.runId] ?? nil : nil,
+      result: fromExtension ? result(of: run, status: status) : nil,
       problem: run.computer?.problem.map {
         .init(code: $0.code, message: TaskActivityPresentation.problem($0))
       },
       fromExtension: fromExtension)
+  }
+
+  /// The reply of a run this profile started: once done, its answer (until that is read, the
+  /// last message it wrote); while it runs, the message it is writing or wrote last, `writing`
+  /// while it has started no other step since. A run that stopped or failed shows none.
+  private func result(of run: TaskActivityRunWire, status: ChromeRunView.Status)
+    -> ChromeRunView.Result?
+  {
+    if status == .done { return answers[run.runId] ?? lastReply(of: run.runId) }
+    guard !run.status.isTerminal, let reply = run.reply else { return nil }
+    let writing = run.step == nil || run.step == .responding
+    return .init(text: reply.text, clipped: reply.clipped, state: writing ? .writing : .paused)
   }
 
   private func status(of run: TaskActivityRunWire, held: Bool) -> ChromeRunView.Status {

@@ -40,9 +40,9 @@ export interface ComposerEvents {
 
 /**
  * The in-page ask's field: the request on top; below it the Atd mark and the context chips (the
- * page, removable, and the elements picked on it: `context.ts`), the inspector and the panel
- * controls, and the send button; under them why Atd cannot take a request now (or how picking
- * works, while it does), then a failure. It stays one element for the life of the tab, so a
+ * conversation it replies to and the page, each removable, and the elements picked on the page:
+ * `context.ts`), the inspector and the panel controls, and the send button; under them why Atd
+ * cannot take a request now (or how picking works, while it does), then a failure. It stays one element for the life of the tab, so a
  * re-render never loses the caret or an IME composition; the HUD swaps it in and out. Key events
  * stop here: a page's shortcuts must not fire while the person types into Atd's field.
  */
@@ -58,7 +58,6 @@ export class Composer {
   private readonly statusPanel: HTMLButtonElement;
   private readonly note: HTMLDivElement;
   private readonly count: HTMLSpanElement;
-  private busy = false;
   private allowed = true;
   private picking = false;
   private blocked: string | null = null;
@@ -165,11 +164,12 @@ export class Composer {
     this.fit();
   }
 
-  /** While the request is on its way, or when Atd can't take one now, nothing more is sent. */
-  setState(busy: boolean, allowed: boolean): void {
-    this.busy = busy;
+  /**
+   * When Atd can't take a request now, nothing is sent. A request on its way never shows the
+   * field: the HUD shows it as starting instead (`AskFlow`).
+   */
+  setAllowed(allowed: boolean): void {
     this.allowed = allowed;
-    this.field.readOnly = busy;
     this.sync();
   }
 
@@ -198,7 +198,6 @@ export class Composer {
 
   relabel(): void {
     this.field.setAttribute('aria-label', t('ask.label'));
-    this.field.placeholder = t('ask.placeholder');
     this.send.setAttribute('aria-label', t('ask.send'));
     this.send.title = t('ask.send');
     this.context.render();
@@ -206,10 +205,11 @@ export class Composer {
   }
 
   get canSend(): boolean {
-    return this.text.length > 0 && !this.busy && this.allowed;
+    return this.text.length > 0 && this.allowed;
   }
 
   private sync(): void {
+    this.field.placeholder = this.context.reply ? t('ask.replyPlaceholder') : t('ask.placeholder');
     this.send.disabled = !this.canSend;
     this.syncTools();
     this.syncStatus();
@@ -231,7 +231,7 @@ export class Composer {
       : full
         ? t('ask.elementsFull', { max: MAX_ELEMENTS })
         : t('ask.pick');
-    this.inspector.disabled = this.busy || full;
+    this.inspector.disabled = full;
     this.inspector.setAttribute('aria-pressed', String(this.picking));
     name(this.inspector, inspect);
     if (this.panel) name(this.panelButton, panelLabel(this.panel));

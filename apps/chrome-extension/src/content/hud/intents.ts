@@ -2,6 +2,7 @@ import type { PermissionAnswer } from '@atd/agent-contracts';
 import type { HudRequest, RunStatus } from '../../channel/payloads.ts';
 import type { SurfaceRun } from '../../messages/views.ts';
 import type { FollowUpState } from './local.ts';
+import type { WritingReply } from './reply.ts';
 
 /** What a HUD control asks for; the HUD controller turns it into a message to the background. */
 export type HudIntent =
@@ -10,6 +11,8 @@ export type HudIntent =
   | { kind: 'stop' }
   | { kind: 'open' }
   | { kind: 'saveAutomation' }
+  /** Reply: the in-page ask opens to continue this run's conversation. */
+  | { kind: 'reply' }
   | { kind: 'dismiss' }
   | { kind: 'copy'; text: string }
   | { kind: 'answer'; request: HudRequest; answer: PermissionAnswer };
@@ -35,5 +38,7 @@ export interface RunRender {
   covered: boolean;
   /** The run's reply was just copied. */
   copied: boolean;
+  /** The card the run's reply is written into, kept across its updates (`reply.ts`). */
+  writing: WritingReply;
   intent(intent: HudIntent): void;
 }

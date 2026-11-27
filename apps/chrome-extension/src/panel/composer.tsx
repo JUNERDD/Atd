@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import { ArrowUp, CircleAlert, Globe, Plus, X } from 'lucide-react';
+import { ArrowUp, CircleAlert, Globe, Plus, Reply, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OwnInput } from '../channel/payloads.ts';
@@ -85,20 +85,54 @@ function PageChip({
   );
 }
 
+/** The conversation a request replies to, by its title; removing it sends a new task instead. */
+function ReplyChip({ title, onRemove }: { title: string; onRemove: () => void }) {
+  const { t } = useTranslation('panel');
+  return (
+    <span className="pp-chip pp-chip-reply" title={t('compose.replyingTo', { title })}>
+      <Reply aria-hidden="true" />
+      <span className="pp-chip-name">{title}</span>
+      <button
+        type="button"
+        className="pp-chip-x"
+        aria-label={t('compose.removeReply')}
+        title={t('compose.removeReply')}
+        onClick={onRemove}
+      >
+        <X aria-hidden="true" />
+      </button>
+    </span>
+  );
+}
+
 /**
- * The panel's composer (D10, replacing the hand-off to the in-page ask): the request, the page it
- * takes along, and Send. Return sends and Shift-Return starts a new line; an IME composition keeps
- * its Return. While the request cannot go, the draft stays editable and the line under it says
- * why.
+ * The conversation the composer replies to: its task and title. `at` changes on every Reply
+ * pressed, and each time the field takes focus.
+ */
+export interface ComposerReply {
+  taskId: string;
+  title: string;
+  at: number;
+}
+
+/**
+ * The panel's composer (D10, replacing the hand-off to the in-page ask): the request, the
+ * conversation it replies to and the page it takes along, and Send. Return sends and Shift-Return
+ * starts a new line; an IME composition keeps its Return. While the request cannot go, the draft
+ * stays editable and the line under it says why.
  */
 export function Composer({
   page,
   block,
+  reply,
+  onRemoveReply,
   channel,
   takeOwnInput,
 }: {
   page: ActivePage;
   block: ComposeBlock | null;
+  reply: ComposerReply | null;
+  onRemoveReply: () => void;
   channel: Pick<PanelChannel, 'send' | 'onAskStatus'>;
   takeOwnInput: () => OwnInput | undefined;
 }) {
@@ -109,6 +143,7 @@ export function Composer({
   const composer = useComposer({
     page,
     block,
+    replyTo: reply?.taskId ?? null,
     send: channel.send,
     onAskStatus: channel.onAskStatus,
     takeOwnInput,
@@ -117,8 +152,18 @@ export function Composer({
   // The panel opens to write a request, so the field takes focus as it appears, as the in-page
   // ask's does when it opens.
   useEffect(() => field.current?.focus({ preventScroll: true }), []);
+  // Reply on a conversation: the person writes the reply next.
+  const replyAt = reply?.at;
+  useEffect(() => {
+    if (replyAt !== undefined) field.current?.focus({ preventScroll: true });
+  }, [replyAt]);
   const note = noteOf(t, composer.failure, block, page);
   const withPage = page.kind === 'web' && composer.includePage;
+  const placeholder = reply
+    ? t('compose.placeholderReply')
+    : withPage
+      ? t('compose.placeholder')
+      : t('compose.placeholderNoPage');
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
     event.preventDefault();
@@ -141,7 +186,7 @@ export function Composer({
           enterKeyHint="send"
           value={composer.text}
           readOnly={composer.sending}
-          placeholder={withPage ? t('compose.placeholder') : t('compose.placeholderNoPage')}
+          placeholder={placeholder}
           aria-label={t('compose.label')}
           aria-describedby={note ? noteId : undefined}
           aria-invalid={composer.failure !== null}
@@ -149,6 +194,15 @@ export function Composer({
           onKeyDown={onKeyDown}
         />
         <div className="pp-compose-bar">
+          {reply ? (
+            <ReplyChip
+              title={reply.title}
+              onRemove={() => {
+                onRemoveReply();
+                focusField();
+              }}
+            />
+          ) : null}
           <PageChip
             page={page}
             included={composer.includePage}

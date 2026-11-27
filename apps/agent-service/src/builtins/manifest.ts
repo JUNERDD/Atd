@@ -289,7 +289,8 @@ export const BUILTIN_SKILLS: readonly BuiltinEntry[] = [
   // option), downloads stay in Chrome, `chromeDisconnected` asks the person to reconnect it,
   // automations re-create its sites as managed browser targets, the page a task was asked on and
   // the elements the person picked there arrive in its run material, and those elements are found
-  // in a current observation by label and text.
+  // in a current observation by label and text; a reply from Atd for Chrome names the page it was
+  // sent from, which may differ from an earlier turn's.
   skill('computer-use', 37, [
     '95e7f156fded86138d9a94d342e6b7ffc76fd145636c79df9174965b957eba67', // v0.10.0
   ]),

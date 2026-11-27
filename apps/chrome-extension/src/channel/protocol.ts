@@ -74,6 +74,10 @@ export const ExtensionFrameSchema = Type.Union([
    * `url` and `title` are empty when the person removed the page from the request. `elements`: the
    * elements the person picked on that page with the in-page ask's inspector, in the order picked;
    * only together with the page (never with an empty `url`), and absent rather than empty.
+   * `taskId`: the conversation the request continues, a task this profile started whose runs have
+   * all ended; the shell then starts the task's next run instead of a new task (`ask.accepted`
+   * names it), and refuses (`ask.failed`) a task it did not start for this profile or one still
+   * running.
    */
   Type.Object({
     v: V,
@@ -83,6 +87,7 @@ export const ExtensionFrameSchema = Type.Union([
     url: Text,
     title: Text,
     text: Text,
+    taskId: Type.Optional(Id),
     elements: Type.Optional(Type.Array(PickedElementSchema, { minItems: 1, maxItems: 5 })),
     ownInput: Type.Optional(OwnInputSchema),
   }),

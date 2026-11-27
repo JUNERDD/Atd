@@ -8,6 +8,8 @@ import type { PanelChannel } from './use-panel-channel.ts';
 export interface ComposerDeps {
   page: ActivePage;
   block: ComposeBlock | null;
+  /** The conversation the request replies to (its task); null sends a new task. */
+  replyTo: string | null;
   send: (message: PanelMessage) => void;
   onAskStatus: PanelChannel['onAskStatus'];
   takeOwnInput: () => OwnInput | undefined;
@@ -30,12 +32,13 @@ export interface ComposerState {
 /**
  * The panel's request, from draft to Atd's answer. The draft stays across tab switches and goes
  * from the tab the window shows when it is sent, with that tab's page while the person keeps the
- * page chip. Atd takes one request per browser at a time; while one is on its way nothing more is
- * sent. Taken, the draft clears for the next request (its run then shows among the runs); refused,
- * the draft stays with the reason.
+ * page chip, as a reply to `replyTo` while the person keeps the reply chip. Atd takes one request
+ * per browser at a time; while one is on its way nothing more is sent. Taken, the draft clears for
+ * the next request (its run then shows among the runs; a reply's, in its conversation, which the
+ * composer goes on replying to); refused, the draft stays with the reason.
  */
 export function useComposer(deps: ComposerDeps): ComposerState {
-  const { page, block, send, onAskStatus, takeOwnInput, failed } = deps;
+  const { page, block, replyTo, send, onAskStatus, takeOwnInput, failed } = deps;
   const [text, setText] = useState('');
   const [includePage, setIncludePage] = useState(true);
   const [sending, setSending] = useState(false);
@@ -77,9 +80,10 @@ export function useComposer(deps: ComposerDeps): ComposerState {
       tabId,
       text: request,
       includePage: page.kind === 'web' && includePage,
+      ...(replyTo === null ? {} : { taskId: replyTo }),
       ...(ownInput === undefined ? {} : { ownInput }),
     });
-  }, [canSend, tabId, takeOwnInput, send, request, page.kind, includePage]);
+  }, [canSend, tabId, takeOwnInput, send, request, page.kind, includePage, replyTo]);
 
   return {
     text,

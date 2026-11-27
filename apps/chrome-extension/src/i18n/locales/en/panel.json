@@ -24,9 +24,12 @@
     "label": "Ask Atd",
     "placeholder": "Ask about this page, or tell Atd what to do",
     "placeholderNoPage": "Tell Atd what to do in this browser",
+    "placeholderReply": "Reply to continue this conversation",
     "send": "Send",
     "removePage": "Don’t include this page",
     "addPage": "Include this page",
+    "replyingTo": "Replying to “{{title}}”",
+    "removeReply": "Start a new task instead",
     "otherPage": "Atd can’t act on built-in pages like this one. Your request goes without it; Atd opens the sites it needs.",
     "failure": {
       "notConnected": "Lost the connection to Atd. Your request is kept; send it again once Atd reconnects.",
@@ -62,6 +65,9 @@
     "openInAtd": "Open in Atd: {{title}}",
     "copy": "Copy",
     "copied": "Copied",
+    "reply": "Reply",
+    "replyLabel": "Reply to {{title}}",
+    "you": "You:",
     "clipped": "Shortened here. Open in Atd for the full reply."
   },
   "actions": {

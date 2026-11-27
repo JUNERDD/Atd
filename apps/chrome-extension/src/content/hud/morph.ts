@@ -9,8 +9,8 @@ export interface Box extends Size {
 /**
  * How a face (one content of the HUD) follows the shape while it moves: centred on it and scaled to
  * fit inside it, up to `FOLLOW_LIMIT` past its rest (`scale`, as content arrives, leaves or changes),
- * or at its own size, clipped to it (`clip`, as it grows under the person's own input, and under
- * Reduce Motion).
+ * or at its own size, clipped to it (`clip`, as it grows under the person's own input or as a reply
+ * streams in, and under Reduce Motion).
  */
 export type Follow = 'scale' | 'clip';
 
@@ -129,8 +129,20 @@ export class ShapeMorph {
     return this.faces.get(face)?.follow ?? null;
   }
 
-  /** `face`, laid out at `size`, follows the shape until it comes to rest. */
+  /** The scale `face` is drawn at now: 1 at its own size (clipped, or at rest). */
+  drawnScale(face: HTMLElement): number {
+    const track = this.faces.get(face);
+    if (track?.follow !== 'scale') return 1;
+    const box = this.drawn();
+    return Math.min(box.w / track.w, box.h / track.h);
+  }
+
+  /**
+   * `face`, laid out at `size`, follows the shape until it comes to rest. A face that changes how
+   * it follows mid-motion drops what the other way wrote: a clipped face keeps no scale.
+   */
   track(face: HTMLElement, size: Size, follow: Follow): void {
+    if (this.faces.get(face)?.follow !== follow) clearFollow(face);
     this.faces.set(face, { ...size, follow });
     if (this.axes) this.draw(performance.now());
   }

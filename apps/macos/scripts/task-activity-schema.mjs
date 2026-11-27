@@ -15,7 +15,13 @@ const modules = [
   ],
   [
     'task-activity.ts',
-    ['TaskActivityGrant', 'TaskActivityRequest', 'TaskActivityRun', 'TaskActivitySnapshot'],
+    [
+      'TaskActivityGrant',
+      'TaskActivityRequest',
+      'TaskActivityReply',
+      'TaskActivityRun',
+      'TaskActivitySnapshot',
+    ],
   ],
 ];
 const names = modules.flatMap(([, list]) => list);

@@ -89,7 +89,8 @@ html[data-surface='popup'] .pp-compose-field {
   height: 13px;
 }
 
-/* The page chip: the website the request takes along, or the choice to take it again. */
+/* The chips: the conversation the request replies to, and the website it takes along (or the
+   choice to take it again). */
 .pp-chip {
   display: inline-flex;
   flex: 0 1 auto;
@@ -113,6 +114,10 @@ html[data-surface='popup'] .pp-compose-field {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* The conversation a request replies to: named by its title, it leaves the page chip room. */
+.pp-chip-reply {
+  max-width: 60%;
 }
 .pp-chip-x,
 .pp-chip-add {

@@ -1,6 +1,7 @@
 import type { OwnInput, RunView } from '../../channel/payloads.ts';
 import type { ContentMessage } from '../../messages/content.ts';
-import type { SurfaceRun, TabView } from '../../messages/views.ts';
+import { canReply, turnTitle, type SurfaceRun, type TabView } from '../../messages/views.ts';
+import { replyTargetOf } from '../ask/context.ts';
 import { AskFlow } from '../ask/flow.ts';
 import { copyText } from '../clipboard.ts';
 import { t } from '../i18n.ts';
@@ -8,12 +9,10 @@ import { answerableRequest, cardIdentity } from './card.ts';
 import type { HudIntent, RunRender } from './intents.ts';
 import { RunOverlays, STOP_SPINNER_MS, isTerminal, overlayDeadlines } from './local.ts';
 import { HOME, loadAnchor } from './position.ts';
-import { runNode, startingRow } from './states.ts';
+import { WritingReply } from './reply.ts';
+import { glowFor, runNode, startingRow, type GlowMode } from './states.ts';
 import { type HudContent, HudView, restingBounds } from './view.ts';
 import { signal } from '../lifetime.ts';
-
-/** What the tab's light does for the HUD's state (`edge-light.ts`). */
-export type GlowMode = 'off' | 'working' | 'attention' | 'frozen' | 'done' | 'keep';
 
 /** An ended run without a reply leaves on its own after this, unless the person is on the HUD. */
 const AUTO_HIDE_MS = 12_000;
@@ -36,6 +35,7 @@ export interface HudDeps {
 export class Hud {
   readonly ask: AskFlow;
   private readonly overlays = new RunOverlays();
+  private readonly writing = new WritingReply();
   private tab: TabView | null = null;
   private renderTimers: number[] = [];
   private autoHide: { runId: string; timer: number } | null = null;
@@ -83,9 +83,14 @@ export class Hud {
     this.render();
   }
 
-  /** `ask.open` from the background (the toolbar button, the ask shortcut). */
+  /**
+   * `ask.open` from the background (the toolbar button, the ask shortcut): it replies to the
+   * conversation the HUD shows ended, unless the person removed that before.
+   */
   openAsk(): void {
-    this.ask.open();
+    const run = this.tab?.run;
+    const shown = run && !this.overlays.isDismissed(run) && canReply(run) ? run : null;
+    this.ask.open(shown ? replyTargetOf(shown) : null);
   }
 
   /** `followUp.failed`: Save as automation did not reach Atd; the HUD says so and allows a retry. */
@@ -101,25 +106,9 @@ export class Hud {
 
   /** What the light shows for the current state. */
   glowMode(): GlowMode {
-    if (this.ask.phase === 'starting') return 'working';
+    if (this.ask.sent) return 'working';
     const run = this.tab?.run;
-    if (!run) return 'off';
-    switch (this.overlays.status(run, Date.now())) {
-      case 'working':
-        return 'working';
-      case 'attention':
-        return 'attention';
-      case 'stopping':
-        return 'keep';
-      case 'disconnected':
-        return 'frozen';
-      case 'done':
-        return 'done';
-      case 'held':
-      case 'stopped':
-      case 'failed':
-        return 'off';
-    }
+    return run ? glowFor(this.overlays.status(run, Date.now())) : 'off';
   }
 
   /** The layer and capsule, built the first time the HUD has something to show. */
@@ -176,7 +165,8 @@ export class Hud {
     }
     const tab = this.tab;
     if (!tab) return null;
-    if (this.ask.phase === 'starting') {
+    // From the press of send, before Atd has answered: a refusal brings the composer back.
+    if (this.ask.sent) {
       const text = this.ask.startingText;
       return this.reuse(`starting:${text}:${tab.prefs.glowEffects}`, () => ({
         node: startingRow(text, tab.prefs.glowEffects),
@@ -209,7 +199,7 @@ export class Hud {
     return this.reuse(key, () => ({
       ...runNode(ctx),
       role: 'status',
-      label: t('hud.label', { title: run.title }),
+      label: t('hud.label', { title: turnTitle(run) }),
       guarded,
     }));
   }
@@ -241,6 +231,7 @@ export class Hud {
       answering: this.overlays.isAnswering(run, now),
       covered: this.overlays.isCovered(guarded),
       copied: this.overlays.wasCopied(run),
+      writing: this.writing,
       intent: (intent) => this.act(run, intent),
     };
   }
@@ -300,6 +291,8 @@ export class Hud {
         return this.render();
       case 'open':
         return send({ type: 'app.open', taskId });
+      case 'reply':
+        return this.ask.open(replyTargetOf(run), true);
       case 'saveAutomation':
         this.overlays.sentFollowUp(run);
         send({ type: 'run.followUp', taskId, kind: 'saveAutomation' });

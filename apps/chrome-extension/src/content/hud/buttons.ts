@@ -3,6 +3,7 @@ import {
   CircleStop,
   Copy,
   type IconNode,
+  Reply,
   RotateCcw,
   Square,
   X,
@@ -69,6 +70,21 @@ export function saveButton(ctx: RunRender): HTMLButtonElement {
       : createElement(Zap, iconAttrs(14)),
     disabled: !ctx.ready,
     onClick: () => ctx.intent({ kind: 'saveAutomation' }),
+  });
+}
+
+/**
+ * Reply: the in-page ask opens to continue the run's conversation. It opens whatever the
+ * connection, as the ask does, and says there why Atd cannot take the reply yet. On a reply card it
+ * is the primary action (`solid`); a row keeps it beside the others.
+ */
+export function replyButton(ctx: RunRender, place: 'row' | 'card' = 'row'): HTMLButtonElement {
+  return gbtn({
+    act: 'reply',
+    ...(place === 'card' ? { variant: 'solid' } : {}),
+    label: t('hud.reply'),
+    icon: createElement(Reply, iconAttrs(14)),
+    onClick: () => ctx.intent({ kind: 'reply' }),
   });
 }
 

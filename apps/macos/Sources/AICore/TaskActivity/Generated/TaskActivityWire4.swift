@@ -16,12 +16,13 @@ public struct TaskActivityRunWire: Codable, Equatable, Sendable {
   public let terminalAt: String?
   public let requests: [TaskActivityRequestWire]
   public let step: Step?
+  public let reply: TaskActivityReplyWire?
   public let computer: ComputerActivityWire?
 
   public init(
     taskId: String, runId: String, title: String, source: Source, provider: String, status: Status,
     startedAt: String, updatedAt: String, terminalAt: String?, requests: [TaskActivityRequestWire],
-    step: Step?, computer: ComputerActivityWire?
+    step: Step?, reply: TaskActivityReplyWire?, computer: ComputerActivityWire?
   ) {
     self.taskId = taskId
     self.runId = runId
@@ -34,6 +35,7 @@ public struct TaskActivityRunWire: Codable, Equatable, Sendable {
     self.terminalAt = terminalAt
     self.requests = requests
     self.step = step
+    self.reply = reply
     self.computer = computer
   }
 
@@ -51,6 +53,7 @@ public struct TaskActivityRunWire: Codable, Equatable, Sendable {
     terminalAt = try container.optional(.terminalAt) { try container.string($0) }
     requests = try container.array(.requests, of: TaskActivityRequestWire.self, maxItems: 16)
     step = try container.optional(.step) { try container.value($0, Step.self) }
+    reply = try container.optional(.reply) { try container.value($0, TaskActivityReplyWire.self) }
     computer = try container.optional(.computer) {
       try container.value($0, ComputerActivityWire.self)
     }
@@ -69,6 +72,7 @@ public struct TaskActivityRunWire: Codable, Equatable, Sendable {
     try container.encodeIfPresent(terminalAt, forKey: .terminalAt)
     try container.encode(requests, forKey: .requests)
     try container.encodeIfPresent(step, forKey: .step)
+    try container.encodeIfPresent(reply, forKey: .reply)
     try container.encodeIfPresent(computer, forKey: .computer)
   }
 
@@ -84,6 +88,7 @@ public struct TaskActivityRunWire: Codable, Equatable, Sendable {
     case terminalAt
     case requests
     case step
+    case reply
     case computer
   }
 

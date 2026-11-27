@@ -23,7 +23,8 @@ export const PanelMessageSchema = Type.Union([
   /**
    * The panel's composer was sent, from the tab its window shows. `includePage: false` (the person
    * removed the page chip, or the tab is no website) sends the request without the tab's URL and
-   * title. Answered by `ask.status` with the same id, on the same port.
+   * title. `taskId`: the conversation it replies to (Reply on one of the panel's conversations).
+   * Answered by `ask.status` with the same id, on the same port.
    */
   Type.Object({
     type: Type.Literal('ask'),
@@ -31,6 +32,7 @@ export const PanelMessageSchema = Type.Union([
     tabId: TabId,
     text: Type.String({ minLength: 1, maxLength: MAX_REQUEST_TEXT }),
     includePage: Type.Boolean(),
+    taskId: Type.Optional(Id),
     ownInput: Type.Optional(OwnInputSchema),
   }),
   Type.Object({

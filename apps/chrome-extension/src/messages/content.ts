@@ -29,12 +29,14 @@ export const ContentMessageSchema = Type.Union([
    * The in-page ask was sent. `includePage: false` (the person removed the page chip) sends the
    * request without the page's URL and title. `elements`: the elements the person picked on the
    * page (the inspector), built when each was picked; they go to Atd only with the page.
+   * `taskId`: the conversation it replies to, the ended run of it this tab's HUD shows.
    */
   Type.Object({
     type: Type.Literal('ask'),
     requestId: Id,
     text: Type.String({ minLength: 1, maxLength: MAX_REQUEST_TEXT }),
     includePage: Type.Boolean(),
+    taskId: Type.Optional(Id),
     elements: Type.Optional(Type.Array(PickedElementSchema, { minItems: 1, maxItems: 5 })),
     ownInput: Type.Optional(OwnInputSchema),
   }),

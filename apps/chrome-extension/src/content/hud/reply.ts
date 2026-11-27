@@ -1,34 +1,114 @@
 import { CircleCheck, createElement } from 'lucide';
-import type { ReplyView } from '../../messages/views.ts';
+import { turnTitle, type ReplyView } from '../../messages/views.ts';
 import type { RichBlock, RichInline, RichListItem } from '../../rich-text/tree.ts';
 import { h, iconAttrs } from '../dom.ts';
 import { t } from '../i18n.ts';
-import { copyButton, dismissButton, openButton, saveButton } from './buttons.ts';
+import { atdMark } from '../mark.ts';
+import {
+  copyButton,
+  dismissButton,
+  openButton,
+  replyButton,
+  saveButton,
+  stopButton,
+} from './buttons.ts';
 import { card, note } from './card.ts';
 import type { RunRender } from './intents.ts';
 import { scrollArea } from './scroll-area.ts';
 
+/** How close to its end (px) a reply still counts as read to the end while it grows. */
+const AT_END = 4;
+
 /**
- * A run started from this extension ends with its reply here, rendered from the tree the service
- * worker parsed (`rich-text/`), clipped when the shell clipped it; Copy copies its Markdown. A
- * long reply scrolls within the card (`scroll-area.ts`). The body stays the card's `body` part,
- * so a change in place keeps where the person had scrolled to (`parts.ts`).
+ * A run started from this extension ends with its reply here, under the request it answers,
+ * rendered from the tree the service worker parsed (`rich-text/`), clipped when the shell clipped
+ * it; Copy copies its Markdown, and Reply continues the conversation in the in-page ask. A long
+ * reply scrolls within the card (`scroll-area.ts`). The body stays the card's `body` part, so a
+ * change in place keeps where the person had scrolled to (`parts.ts`).
  */
 export function replyCard(ctx: RunRender, reply: ReplyView): HTMLElement {
+  return card(
+    createElement(CircleCheck, iconAttrs(16, 'ok')),
+    turnTitle(ctx.run),
+    replyBody(reply).parts,
+    {
+      trail: [
+        copyButton(ctx, reply.text),
+        openButton(ctx),
+        saveButton(ctx),
+        replyButton(ctx, 'card'),
+      ],
+    },
+    dismissButton(ctx),
+    true,
+  );
+}
+
+/**
+ * The card of a reply the run is writing (`state: 'writing'`): one card while the run writes and
+ * nothing else on it changes, its text replaced in place as more arrives. The card arrives out of
+ * the run's row as any card does; the stage then follows its growth on the in-place spring with
+ * the text at its own size, as the island's answer streaming in grows (`stage.ts`,
+ * `StageContent.streams`), where a new card at every update would cross the whole reply over and a
+ * card scaled with its glass would swell at every line. It shares the finished card's scene and
+ * body, so the answer takes its place in place: the text stays where it was read, and only the
+ * glyph and the actions cross over. While the person has not scrolled up from its end, the end
+ * stays in view as the text grows. The card is busy (`aria-busy`) until then, so a screen reader
+ * reads the answer once rather than every update.
+ */
+export class WritingReply {
+  private shown: {
+    key: string;
+    node: HTMLElement;
+    viewport: HTMLElement;
+    content: HTMLElement;
+    text: string;
+  } | null = null;
+
+  card(ctx: RunRender, reply: ReplyView): HTMLElement {
+    // A change of anything but the text (a newly clipped reply) builds the card again.
+    const key = JSON.stringify([ctx.run.runId, turnTitle(ctx.run), reply.clipped]);
+    if (this.shown?.key !== key) {
+      const body = replyBody(reply);
+      const node = card(
+        atdMark(16),
+        turnTitle(ctx.run),
+        body.parts,
+        { lead: [stopButton(ctx, 'card')], trail: [] },
+        null,
+        true,
+      );
+      node.setAttribute('aria-busy', 'true');
+      this.shown = { key, node, ...body, text: reply.text };
+      return node;
+    }
+    const shown = this.shown;
+    if (shown.text !== reply.text) {
+      const { viewport, content } = shown;
+      const read = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= AT_END;
+      content.replaceChildren(...reply.blocks.map(blockNode));
+      if (read) viewport.scrollTop = viewport.scrollHeight;
+      shown.text = reply.text;
+    }
+    return shown.node;
+  }
+}
+
+/** A reply's body: its text in a scroll area, then the note when the shell clipped it. */
+function replyBody(reply: ReplyView): {
+  parts: HTMLElement[];
+  viewport: HTMLElement;
+  content: HTMLElement;
+} {
   const content = h('div', { class: 'rt' }, ...reply.blocks.map(blockNode));
   const viewport = h(
     'div',
     { class: 'hud-reply scroll-viewport', attrs: { tabindex: 0, 'data-part': 'body' } },
     content,
   );
-  return card(
-    createElement(CircleCheck, iconAttrs(16, 'ok')),
-    ctx.run.title,
-    [scrollArea(viewport, content), reply.clipped ? note(t('hud.clipped')) : null],
-    [copyButton(ctx, reply.text), openButton(ctx), saveButton(ctx)],
-    dismissButton(ctx),
-    true,
-  );
+  const parts = [scrollArea(viewport, content)];
+  if (reply.clipped) parts.push(note(t('hud.clipped')));
+  return { parts, viewport, content };
 }
 
 /*
