@@ -6,32 +6,50 @@ import Foundation
 /// compressor backing ``DiagnosticsBundleBuilder``.
 nonisolated enum DiagnosticsLogTailReader {
   static func collectShellTail(shellLogURL: URL?, dataDirectoryURL: URL? = nil) -> Data? {
-    guard let shellLogURL,
-      !DiagnosticsPathPolicy.isHardExcludedSource(shellLogURL, dataDirectoryURL: dataDirectoryURL)
+    collectTwoFileTail(
+      logURL: shellLogURL,
+      perFileBytes: DiagnosticsBundleBuilder.shellTailPerFileBytes,
+      maxCombinedBytes: DiagnosticsBundleBuilder.maxCombinedLogTailBytes,
+      dataDirectoryURL: dataDirectoryURL)
+  }
+
+  static func collectChromeExtensionTail(
+    chromeExtensionLogURL: URL?, dataDirectoryURL: URL? = nil
+  ) -> Data? {
+    collectTwoFileTail(
+      logURL: chromeExtensionLogURL,
+      perFileBytes: DiagnosticsBundleBuilder.chromeExtensionTailPerFileBytes,
+      maxCombinedBytes: DiagnosticsBundleBuilder.maxCombinedChromeExtensionTailBytes,
+      dataDirectoryURL: dataDirectoryURL)
+  }
+
+  private static func collectTwoFileTail(
+    logURL: URL?, perFileBytes: Int, maxCombinedBytes: Int, dataDirectoryURL: URL?
+  ) -> Data? {
+    guard let logURL,
+      !DiagnosticsPathPolicy.isHardExcludedSource(logURL, dataDirectoryURL: dataDirectoryURL)
     else {
       return nil
     }
-    let dir = shellLogURL.deletingLastPathComponent()
-    let base = shellLogURL.deletingPathExtension().lastPathComponent
-    let ext = shellLogURL.pathExtension
+    let dir = logURL.deletingLastPathComponent()
+    let base = logURL.deletingPathExtension().lastPathComponent
+    let ext = logURL.pathExtension
     let rotated1 = dir.appending(path: "\(base).1.\(ext)", directoryHint: .notDirectory)
     var chunks: [Data] = []
     if let older = DiagnosticsBundleBuilder.readTailSlice(
-      of: rotated1, maxBytes: DiagnosticsBundleBuilder.shellTailPerFileBytes,
-      dataDirectoryURL: dataDirectoryURL),
+      of: rotated1, maxBytes: perFileBytes, dataDirectoryURL: dataDirectoryURL),
       !older.isEmpty
     {
       chunks.append(older)
     }
     if let current = DiagnosticsBundleBuilder.readTailSlice(
-      of: shellLogURL, maxBytes: DiagnosticsBundleBuilder.shellTailPerFileBytes,
-      dataDirectoryURL: dataDirectoryURL),
+      of: logURL, maxBytes: perFileBytes, dataDirectoryURL: dataDirectoryURL),
       !current.isEmpty
     {
       chunks.append(current)
     }
     guard !chunks.isEmpty else { return nil }
-    return joinAndCapTail(chunks, maxBytes: DiagnosticsBundleBuilder.maxCombinedLogTailBytes)
+    return joinAndCapTail(chunks, maxBytes: maxCombinedBytes)
   }
 
   static func collectServiceTail(

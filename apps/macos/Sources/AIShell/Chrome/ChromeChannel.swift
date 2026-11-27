@@ -25,6 +25,11 @@ struct ChromeChannelEnvironment {
   let chromeBinding: (String) -> TargetBindingWire.Browser?
   /// Notes verified HUD input timestamps for `browserPid` so host yield ignores only those events.
   var onChromeOwnInput: (ChromeOwnInput?, pid_t) -> Void = { _, _ in }
+  /// Writes shell-side structured Chrome diagnostics to `shell.log`.
+  var onShellLog: (ShellLogWriter.Level, String, String) -> Void = { _, _, _ in }
+  /// Writes paired extension `diag.batch` entries to `chrome-extension.jsonl`.
+  var onExtensionDiag: (_ entries: [ChromeDiagEntry], _ profile: String, _ dropped: Int) -> Void =
+    { _, _, _ in }
 }
 
 /// The shell's side of Atd for Chrome (D3, D4, D12): installs the native messaging host manifest,
@@ -36,11 +41,6 @@ final class ChromeChannel {
     @Sendable (ChromeChannelIdentity, URL?, URL, URL) -> ChromeHostManifest.Result
 
   static let log = Logger(subsystem: "com.junerdd.ai", category: "chrome")
-
-  private static let genericBrowserBrands: Set<String> = [
-    "chrome", "google chrome", "chromium",
-    "google chrome beta", "google chrome dev", "google chrome canary",
-  ]
 
   let identity: ChromeChannelIdentity
   let links = ChromeLinks()
@@ -60,6 +60,7 @@ final class ChromeChannel {
   private var lastManifestRefresh: ContinuousClock.Instant?
   private static let manifestRefreshCooldown: Duration = .seconds(30)
   var sessions: [ObjectIdentifier: ChromeSession] = [:]
+  var diagLimiters: [ObjectIdentifier: ChromeDiagRateLimiter] = [:]
   /// The welcome and prefs each session was last sent, so a refresh sends only changes.
   private var welcomed: [ObjectIdentifier: ChromeWelcome] = [:]
   private var prefsSent: [ObjectIdentifier: ChromePrefs] = [:]
@@ -102,6 +103,11 @@ final class ChromeChannel {
     hostManifest = installed.status
     installedBrowsers = installed.browsers
     lastManifestRefresh = .now
+    if hostManifest == .failed || hostManifest == .blockedLocation {
+      logShell(
+        .warn, category: "chrome-host",
+        "host_manifest_\(hostManifest.rawValue) browsers=\(installedBrowsers.count)")
+    }
     do {
       let bundleId = bundle.bundleIdentifier ?? ProcessInfo.processInfo.processName
       let pairingsURL =
@@ -117,6 +123,7 @@ final class ChromeChannel {
       self.listener = listener
     } catch {
       Self.log.error("Atd for Chrome is unavailable: \(error, privacy: .public)")
+      logShell(.error, category: "chrome-host", "channel_start_failed: \(error)")
       hostManifest = .failed
       installedBrowsers = []
       environment.onStateChange()
@@ -209,22 +216,6 @@ final class ChromeChannel {
 
   // MARK: State
 
-  var stateEvent: ComputerStateEvent.Chrome {
-    let connections = (store?.pairings ?? [:]).sorted { $0.key < $1.key }.prefix(32).map {
-      id, pairing in
-      ComputerStateEvent.Chrome.Connection(
-        installationId: id, label: pairing.label.clipped(toUTF16: 320),
-        email: pairing.email.flatMap { $0.isEmpty ? nil : $0.clipped(toUTF16: 320) },
-        browser: pairing.browser.isEmpty ? "Chromium" : pairing.browser.clipped(toUTF16: 120),
-        connected: links.link(id) != nil,
-        lastSeenAt: pairing.lastSeenAt, sites: sites(of: id).count)
-    }
-    return ComputerStateEvent.Chrome(
-      hostManifest: hostManifest, browsers: installedBrowsers,
-      extensionIds: .init(expected: identity.extensionId),
-      connections: Array(connections))
-  }
-
   func welcome(_ session: ChromeSession) -> ChromeWelcome? {
     guard let hello = session.hello else { return nil }
     let paired = session.phase == .paired
@@ -261,46 +252,24 @@ final class ChromeChannel {
   // MARK: Sessions
 
   private func accept(_ connection: ChromeHostConnection) {
-    let session = ChromeSession(connection: connection, identity: identity)
+    let session = ChromeSession(
+      connection: connection, identity: identity,
+      onDiagnostic: { [weak self] level, message in
+        self?.logShell(level, category: "chrome", message)
+      })
     sessions[ObjectIdentifier(session)] = session
     session.onFrame = { [weak self] session, frame in self?.receive(frame, from: session) }
     session.onClose = { [weak self] session in self?.ended(session) }
   }
 
   private func ended(_ session: ChromeSession) {
-    sessions[ObjectIdentifier(session)] = nil
-    welcomed[ObjectIdentifier(session)] = nil
-    prefsSent[ObjectIdentifier(session)] = nil
+    let key = ObjectIdentifier(session)
+    sessions[key] = nil
+    diagLimiters[key] = nil
+    welcomed[key] = nil
+    prefsSent[key] = nil
     if let link = session.link { disconnect(link) }
     session.link = nil
-  }
-
-  /// How Settings and the pairing store name a profile: its account, else its own profile name,
-  /// else the verified browser (`Aside`, `Google Chrome`, …).
-  static func label(of hello: ChromeHello, browser: String) -> String {
-    profileName(of: hello, browser: browser)
-      ?? (browser.isEmpty ? "Chromium" : browser.clipped(toUTF16: 200))
-  }
-
-  /// The profile's own name for the pairing alert: its account email (never filtered), else a
-  /// custom profile name; nil when `hello.profile.label` is empty, matches `browser`, or is a
-  /// generic `navigator.userAgentData` engine brand (`Google Chrome`, `Chromium`, `Chrome`).
-  static func profileName(of hello: ChromeHello, browser: String) -> String? {
-    if let email = hello.profile.email?.trimmingCharacters(in: .whitespacesAndNewlines),
-      !email.isEmpty
-    {
-      return email.clipped(toUTF16: 200)
-    }
-    let name = hello.profile.label.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !name.isEmpty, !genericBrowserBrands.contains(name.lowercased()) else { return nil }
-    let trimmedBrowser = browser.trimmingCharacters(in: .whitespacesAndNewlines)
-    if !trimmedBrowser.isEmpty,
-      trimmedBrowser.localizedCaseInsensitiveContains(name)
-        || name.localizedCaseInsensitiveContains(trimmedBrowser)
-    {
-      return nil
-    }
-    return name.clipped(toUTF16: 200)
   }
 
   func link(_ session: ChromeSession, _ hello: ChromeHello) {
@@ -320,6 +289,10 @@ final class ChromeChannel {
     session.paired(link)
     link.onTabsChange = { [weak self] link in self?.projection.tabsChanged(link) }
     links.add(link)
+    logShell(
+      .info, category: "chrome",
+      "session_linked profile=\(Self.profileHash(of: hello.installationId)) browser=\(session.browser)"
+    )
     environment.onStateChange()
     sendWelcome(session)
     projection.linkConnected(link)
@@ -327,6 +300,9 @@ final class ChromeChannel {
 
   private func disconnect(_ link: ChromeLink) {
     links.remove(link)
+    logShell(
+      .info, category: "chrome",
+      "session_disconnected profile=\(Self.profileHash(of: link.installationId))")
     environment.onStateChange()
   }
 

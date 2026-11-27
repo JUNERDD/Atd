@@ -1,6 +1,7 @@
 import AIChromeChannelKit
 import Darwin
 import Foundation
+import os
 
 /// The host's run, from its arguments to its exit. The exit status says how it ended (sysexits):
 ///
@@ -64,6 +65,7 @@ nonisolated struct HostFailure: Error {
 
 /// Ends the process once: the first of the two pump threads to finish decides the status.
 nonisolated enum HostExit {
+  private static let log = Logger(subsystem: "com.junerdd.ai", category: "chrome-host")
   /// Never unlocked: a second caller waits here until the first one's `exit` ends the process,
   /// since calling `exit` twice concurrently is undefined.
   private static let once = NSLock()
@@ -74,6 +76,12 @@ nonisolated enum HostExit {
 
   static func finish(_ status: Int32, _ message: String?) -> Never {
     once.lock()
+    if status != 0 {
+      let detail = message ?? "exit"
+      log.error(
+        "atd-chrome-host exited with status \(status, privacy: .public): \(detail, privacy: .private)"
+      )
+    }
     if let message {
       FileHandle.standardError.write(Data("atd-chrome-host: \(message)\n".utf8))
     }

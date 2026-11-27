@@ -48,7 +48,8 @@ extension ShellController {
       serviceUnavailable: recoveryCtx.unavailable,
       lastFailureSummary: recoveryCtx.lastFailureSummary,
       temporaryDirectoryURL: services.diagnosticsTemporaryDirectoryURL,
-      generatedAt: generatedAt)
+      generatedAt: generatedAt,
+      chromeExtensionLog: services.chromeExtensionLog)
   }
 
   /// Menu-bar, app-menu, and ``WindowRecoveryView`` export flow:

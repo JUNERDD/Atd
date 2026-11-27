@@ -2,6 +2,7 @@ import AIChromeChannelKit
 import AICore
 import Foundation
 import Network
+import OSLog
 
 /// The loopback WebSocket one connected Chrome's browser worker attaches to (D8):
 /// `ws://127.0.0.1:<random port>/devtools/browser/<uuid>`, the shape the worker accepts
@@ -29,12 +30,15 @@ final class ChromeCDPRelay {
     case failed(String)
   }
 
+  private static let log = Logger(subsystem: "com.junerdd.ai", category: "chrome-cdp")
+
   /// Worker connections one relay holds at once (a worker opens one).
   static let maxConnections = 4
 
   /// `/devtools/browser/<uuid>`, the capability path.
   let browserPath = "/devtools/browser/" + UUID().uuidString.lowercased()
   private weak var link: ChromeLink?
+  private let onDiagnostic: (ShellLogWriter.Level, String) -> Void
   private var listener: NWListener?
   private var listening = Listening.starting
   private var waiters: [CheckedContinuation<Result<String, ComputerFailure>, Never>] = []
@@ -44,8 +48,12 @@ final class ChromeCDPRelay {
   private var accepting: [ObjectIdentifier: CDPRelaySocket] = [:]
   private var serial = 0
 
-  init(link: ChromeLink) {
+  init(
+    link: ChromeLink,
+    onDiagnostic: @escaping (ShellLogWriter.Level, String) -> Void = { _, _ in }
+  ) {
     self.link = link
+    self.onDiagnostic = onDiagnostic
   }
 
   /// Starts listening on a random loopback port and takes the link's CDP frames.
@@ -56,6 +64,8 @@ final class ChromeCDPRelay {
     do {
       listener = try NWListener(using: parameters)
     } catch {
+      Self.log.error("CDP relay failed to listen: \(error.localizedDescription, privacy: .public)")
+      onDiagnostic(.error, "relay_listen_failed: \(error.localizedDescription)")
       fail("The relay could not listen: \(error.localizedDescription)")
       return
     }
@@ -100,11 +110,14 @@ final class ChromeCDPRelay {
     switch state {
     case .ready:
       guard let port = listener?.port?.rawValue else {
+        onDiagnostic(.error, "relay_listener_no_port")
         return fail("The relay listens on no port.")
       }
       listening = .ready(port: port)
       resume(.success(url(port)))
     case .failed(let error):
+      Self.log.error("CDP relay listener failed: \(error.localizedDescription, privacy: .public)")
+      onDiagnostic(.error, "relay_listener_failed: \(error.localizedDescription)")
       listener?.cancel()
       fail("The relay stopped listening: \(error.localizedDescription)")
     case .cancelled:
@@ -117,9 +130,13 @@ final class ChromeCDPRelay {
   private func accept(_ connection: NWConnection) {
     guard case .ready(let port) = listening, Self.isLoopback(connection.endpoint),
       sockets.count + accepting.count < Self.maxConnections, link?.isConnected == true
-    else { return connection.cancel() }
+    else {
+      onDiagnostic(.warn, "relay_connection_rejected")
+      return connection.cancel()
+    }
     let socket = CDPRelaySocket(
       connection: connection, path: browserPath, host: "127.0.0.1:\(port)")
+    socket.onDiagnostic = onDiagnostic
     let key = ObjectIdentifier(socket)
     accepting[key] = socket
     socket.onOpen = { [weak self, weak socket] in

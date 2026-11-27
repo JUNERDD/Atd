@@ -33,14 +33,15 @@ final class PlaywrightBrowserEngine: ComputerEngine, BrowserPageOwner {
 
   init(
     chromes: ManagedChromes, workers: BrowserWorkerPool, binaries: EngineBinaries,
-    downloadsRoot: URL, uploadRoot: URL
+    downloadsRoot: URL, uploadRoot: URL,
+    onShellLog: @escaping (ShellLogWriter.Level, String, String) -> Void = { _, _, _ in }
   ) {
     self.chromes = chromes
     self.workers = workers
     chromes.workers = workers
     self.binaries = binaries
     driver = BrowserPageDriver(
-      workers: workers, uploadRoot: uploadRoot, downloadsRoot: downloadsRoot)
+      workers: workers, uploadRoot: uploadRoot, downloadsRoot: downloadsRoot, onLog: onShellLog)
     profile = Self.makeProfile(
       chromeVersion: chromes.version, workerReady: BrowserWorkerPool.isStaged(binaries))
     driver.owner = self

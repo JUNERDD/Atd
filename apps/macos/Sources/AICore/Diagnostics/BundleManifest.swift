@@ -142,6 +142,7 @@ public nonisolated enum DiagnosticsPathPolicy {
     "decision-rings/run-prep.json",
     "renderer-breadcrumbs.json",
     "logs/shell.tail.jsonl",
+    "logs/chrome-extension.tail.jsonl",
     "logs/service.tail.jsonl",
     "logs/computer-driver.tail.log",
     "logs/browser-workers.tail.log",

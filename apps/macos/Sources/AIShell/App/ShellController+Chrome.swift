@@ -34,6 +34,12 @@ extension ShellController {
       chromeBinding: { [weak self] in self?.chromeBinding($0) },
       onChromeOwnInput: { [weak self] input, browserPid in
         self?.computer.disturbance.noteChromeOwnInput(input, browserPid: browserPid)
+      },
+      onShellLog: { [services] level, category, message in
+        services.shellLog.enqueue(level: level, category: category, message: message)
+      },
+      onExtensionDiag: { [services] entries, profile, dropped in
+        services.chromeExtensionLog.enqueue(entries, profile: profile, dropped: dropped)
       })
     return ChromeChannel(
       identity: identity, environment: environment,

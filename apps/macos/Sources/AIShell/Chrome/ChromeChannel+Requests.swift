@@ -34,8 +34,11 @@ extension ChromeChannel {
     {
       environment.onChromeOwnInput(ownInput, link.browserPid)
     }
+    logInboundTabEvent(frame, on: link)
     if link.apply(frame) { return }
     switch frame {
+    case .diagBatch(let batch):
+      handleDiagBatch(batch, from: session, link: link)
     case .ask(let ask):
       if environment.hostState() == .ready,
         attributedInputs.insert("\(link.installationId):ask:\(ask.requestId)")

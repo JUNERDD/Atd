@@ -29,6 +29,7 @@ public final class ShellServices {
   public let dataDirectory: URL
   public let decisionRings: ShellDecisionRings
   public let shellLog: ShellLogWriter
+  public let chromeExtensionLog: ChromeExtensionLogWriter
   let supervisor: ServiceSupervisor?
   let logDirectory: URL?
   let liveProbes = LiveProbeCoordinator()
@@ -82,7 +83,8 @@ public final class ShellServices {
     supervisor: ServiceSupervisor?,
     logDirectory: URL?,
     decisionRings: ShellDecisionRings,
-    shellLog: ShellLogWriter
+    shellLog: ShellLogWriter,
+    chromeExtensionLog: ChromeExtensionLogWriter
   ) {
     link = ServiceLink(source: source)
     self.renderer = renderer
@@ -91,6 +93,7 @@ public final class ShellServices {
     self.logDirectory = logDirectory
     self.decisionRings = decisionRings
     self.shellLog = shellLog
+    self.chromeExtensionLog = chromeExtensionLog
     linkResolutionObservation = link.observeResolutionChanges { [weak self] _ in
       guard let self else { return }
       for observer in self.devAvailabilityObservers.values { observer() }
@@ -121,6 +124,9 @@ public final class ShellServices {
     let shellLog = ShellLogWriter(
       logFileURL: ShellLogWriter.defaultLogURL(
         dataDirectory: data, homeDirectory: home, isDevelopment: true))
+    let chromeExtensionLog = ChromeExtensionLogWriter(
+      logFileURL: ChromeExtensionLogWriter.defaultLogURL(
+        dataDirectory: data, homeDirectory: home, isDevelopment: true))
     return ShellServices(
       source: DevelopmentServiceSource(dataDirectory: data),
       renderer: .devServer(origin),
@@ -128,7 +134,8 @@ public final class ShellServices {
       supervisor: nil,
       logDirectory: nil,
       decisionRings: rings,
-      shellLog: shellLog)
+      shellLog: shellLog,
+      chromeExtensionLog: chromeExtensionLog)
   }
 
   public static func bundled(resources: URL, environment: [String: String], home: URL)
@@ -141,6 +148,9 @@ public final class ShellServices {
     let shellLog = ShellLogWriter(
       logFileURL: ShellLogWriter.defaultLogURL(
         dataDirectory: data, homeDirectory: home, isDevelopment: false))
+    let chromeExtensionLog = ChromeExtensionLogWriter(
+      logFileURL: ChromeExtensionLogWriter.defaultLogURL(
+        dataDirectory: data, homeDirectory: home, isDevelopment: false))
     let supervisor = ServiceSupervisor(
       plan: ServiceLaunchPlan(resources: resources, dataDirectory: data),
       logDirectory: logs,
@@ -152,7 +162,8 @@ public final class ShellServices {
       supervisor: supervisor,
       logDirectory: logs,
       decisionRings: rings,
-      shellLog: shellLog)
+      shellLog: shellLog,
+      chromeExtensionLog: chromeExtensionLog)
   }
 
   /// Brings the supervised service up (Release); Debug only connects.
@@ -193,6 +204,7 @@ public final class ShellServices {
     liveProbes.stop()
     await supervisor?.stop()
     shellLog.close(timeout: .milliseconds(500))
+    chromeExtensionLog.close(timeout: .milliseconds(500))
   }
 
   /// Pre-scrubbed context consumed by ``WindowRecoveryView``.

@@ -1,5 +1,7 @@
+import AICore
 import Foundation
 import Network
+import OSLog
 
 /// One worker connection to a ``ChromeCDPRelay``: a loopback TCP connection that must open with the
 /// relay's exact handshake (``CDPRelayHandshake``) within ``handshakeLimit``, then carries text
@@ -14,6 +16,8 @@ final class CDPRelaySocket {
     case closed
   }
 
+  private static let log = Logger(subsystem: "com.junerdd.ai", category: "chrome-cdp")
+
   /// How long a connection may take to send its handshake.
   static let handshakeLimit: Duration = .seconds(10)
 
@@ -23,6 +27,8 @@ final class CDPRelaySocket {
   var onText: ((String) -> Void)?
   /// The connection ended, whichever side ended it; told once, and only after ``onOpen``.
   var onClose: (() -> Void)?
+  /// Reports handshake and frame-decode failures to the shell log (`chrome-cdp`).
+  var onDiagnostic: ((ShellLogWriter.Level, String) -> Void)?
 
   private let connection: NWConnection
   private let path: String
@@ -43,7 +49,13 @@ final class CDPRelaySocket {
     connection.stateUpdateHandler = { [weak self] state in
       MainActor.assumeIsolated {
         switch state {
-        case .failed, .cancelled: self?.finish()
+        case .failed(let error):
+          Self.log.warning(
+            "CDP relay socket failed: \(error.localizedDescription, privacy: .public)")
+          self?.onDiagnostic?(.warn, "cdp_socket_failed: \(error.localizedDescription)")
+          self?.finish()
+        case .cancelled:
+          self?.finish()
         default: break
         }
       }
@@ -52,6 +64,8 @@ final class CDPRelaySocket {
     handshakeTimer = Task { [weak self] in
       try? await Task.sleep(for: Self.handshakeLimit)
       guard !Task.isCancelled, let self, case .handshaking = self.state else { return }
+      Self.log.warning("CDP relay handshake timed out.")
+      self.onDiagnostic?(.warn, "cdp_handshake_timeout")
       self.finish()
     }
     receive()
@@ -80,6 +94,11 @@ final class CDPRelaySocket {
       MainActor.assumeIsolated {
         guard let self else { return }
         if let data, !data.isEmpty { self.consume(data) }
+        if let error {
+          Self.log.warning(
+            "CDP relay receive failed: \(error.localizedDescription, privacy: .public)")
+          self.onDiagnostic?(.warn, "cdp_receive_failed: \(error.localizedDescription)")
+        }
         if isComplete || error != nil {
           self.finish()
         } else if case .closed = self.state {
@@ -98,6 +117,11 @@ final class CDPRelaySocket {
       switch CDPRelayHandshake.evaluate(request, path: path, host: host) {
       case .incomplete: return
       case .refuse(let response):
+        let status =
+          String(decoding: response, as: UTF8.self).split(separator: "\r\n", maxSplits: 1).first
+          .map(String.init) ?? "refused"
+        Self.log.warning("CDP relay handshake refused: \(status, privacy: .public)")
+        onDiagnostic?(.warn, "cdp_handshake_refused status=\(status)")
         state = .closing
         write(response, then: { [weak self] in self?.finish() })
       case .accept(let response, let consumed):
@@ -127,6 +151,8 @@ final class CDPRelaySocket {
         }
       }
     } catch {
+      Self.log.warning("CDP relay frame decode failed (ws code \(error.code, privacy: .public)).")
+      onDiagnostic?(.warn, "cdp_frame_decode_failed code=\(error.code)")
       close(code: error.code)
     }
   }
@@ -136,7 +162,12 @@ final class CDPRelaySocket {
       content: data,
       completion: .contentProcessed { [weak self] error in
         MainActor.assumeIsolated {
-          if error != nil { self?.finish() }
+          if let error {
+            Self.log.warning(
+              "CDP relay write failed: \(error.localizedDescription, privacy: .public)")
+            self?.onDiagnostic?(.warn, "cdp_write_failed: \(error.localizedDescription)")
+            self?.finish()
+          }
           done?()
         }
       })

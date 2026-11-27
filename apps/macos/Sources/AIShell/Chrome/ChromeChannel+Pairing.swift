@@ -50,6 +50,10 @@ extension ChromeChannel {
       environment.openComputerSettings()
     case .appOpen:
       environment.openTask(nil)
+    case .diagBatch:
+      // Silently ignore extension diagnostic batches while unpaired so no `.error` feedback loop
+      // is triggered.
+      break
     default:
       session.send(
         .error(ref: nil, code: ChromeChannelErrorCode.notPaired, message: "Connect to Atd first."))
@@ -90,13 +94,23 @@ extension ChromeChannel {
           browser: session.browser, browserIdentity: browserIdentity)
         store.resolve()
         session.send(.pairState(.init(state: .paired, code: code, secret: secret, label: label)))
+        logShell(
+          .info, category: "chrome",
+          "profile_paired profile=\(Self.profileHash(of: hello.installationId)) browser=\(session.browser)"
+        )
         link(session, hello)
         await refreshSites()
       } catch {
         Self.log.error("A Chrome pairing could not be saved.")
+        logShell(
+          .error, category: "chrome",
+          "profile_pair_save_failed profile=\(Self.profileHash(of: hello.installationId))")
         session.send(.pairState(.init(state: .error, code: code, reason: "failed")))
       }
     case .denied:
+      logShell(
+        .info, category: "chrome",
+        "profile_pair_denied profile=\(Self.profileHash(of: hello.installationId))")
       session.send(.pairState(.init(state: .denied, code: code)))
     case .busy, .cooldown:
       session.send(
@@ -115,7 +129,43 @@ extension ChromeChannel {
       session.unpair()
       sendWelcome(session)
     }
+    logShell(
+      .info, category: "chrome",
+      "profile_unpaired profile=\(Self.profileHash(of: installationId))")
     environment.onStateChange()
     await deleteSites(of: installationId)
+  }
+
+  private static let genericBrowserBrands: Set<String> = [
+    "chrome", "google chrome", "chromium",
+    "google chrome beta", "google chrome dev", "google chrome canary",
+  ]
+
+  /// How Settings and the pairing store name a profile: its account, else its own profile name,
+  /// else the verified browser (`Aside`, `Google Chrome`, …).
+  static func label(of hello: ChromeHello, browser: String) -> String {
+    profileName(of: hello, browser: browser)
+      ?? (browser.isEmpty ? "Chromium" : browser.clipped(toUTF16: 200))
+  }
+
+  /// The profile's own name for the pairing alert: its account email (never filtered), else a
+  /// custom profile name; nil when `hello.profile.label` is empty, matches `browser`, or is a
+  /// generic `navigator.userAgentData` engine brand (`Google Chrome`, `Chromium`, `Chrome`).
+  static func profileName(of hello: ChromeHello, browser: String) -> String? {
+    if let email = hello.profile.email?.trimmingCharacters(in: .whitespacesAndNewlines),
+      !email.isEmpty
+    {
+      return email.clipped(toUTF16: 200)
+    }
+    let name = hello.profile.label.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !name.isEmpty, !genericBrowserBrands.contains(name.lowercased()) else { return nil }
+    let trimmedBrowser = browser.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !trimmedBrowser.isEmpty,
+      trimmedBrowser.localizedCaseInsensitiveContains(name)
+        || name.localizedCaseInsensitiveContains(trimmedBrowser)
+    {
+      return nil
+    }
+    return name.clipped(toUTF16: 200)
   }
 }

@@ -16,6 +16,9 @@ extension ShellController {
       logDirectory: computerData.appending(path: "browser-workers", directoryHint: .isDirectory),
       uploadRoot: resources)
     return ChromeBrowserEngine(
-      links: links, workers: workers, binaries: .current(), uploadRoot: resources)
+      links: links, workers: workers, binaries: .current(), uploadRoot: resources,
+      onShellLog: { [services] level, category, message in
+        services.shellLog.enqueue(level: level, category: category, message: message)
+      })
   }
 }

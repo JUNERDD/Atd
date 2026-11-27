@@ -32,6 +32,8 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
   /// CDP text for the worker connection `conn`: a response or an event of the emulated browser.
   /// The extension echoes the `conn` the shell sent (a string); a numeric one reads as its digits.
   case cdp(conn: String, msg: String)
+  /// Bounded extension diagnostics batch (`diag.batch`), forwarded only while paired.
+  case diagBatch(ChromeDiagBatch)
   case unknown(String)
 
   /// The frame's `t`, for logs.
@@ -55,6 +57,7 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
     case .tabHanded: "tab.handed"
     case .runDismiss: "run.dismiss"
     case .cdp: "cdp"
+    case .diagBatch: "diag.batch"
     case .unknown(let type): type
     }
   }
@@ -142,6 +145,8 @@ public enum ChromeInboundFrame: Decodable, Equatable, Sendable {
         conn = String(try c.decode(Int.self, forKey: .conn))
       }
       self = .cdp(conn: conn, msg: try c.decode(String.self, forKey: .msg))
+    case "diag.batch":
+      self = .diagBatch(try ChromeDiagBatch(body(K.DiagBatch.self)))
     default:
       self = .unknown(type)
     }
@@ -175,4 +180,5 @@ public enum ChromeInboundKeys {
   public enum OpenFailed: String, CodingKey { case v, t, requestId, reason }
   public enum Handed: String, CodingKey { case v, t, runId, tabId, targetId }
   public enum Cdp: String, CodingKey { case v, t, conn, msg }
+  public enum DiagBatch: String, CodingKey { case v, t, dropped, entries }
 }

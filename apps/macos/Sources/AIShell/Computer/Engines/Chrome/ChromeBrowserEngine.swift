@@ -35,12 +35,18 @@ final class ChromeBrowserEngine: ComputerEngine, BrowserPageOwner {
   var runs: [String: String] = [:]
   private var binaries: EngineBinaries
   private var starts = 0
+  private let onShellLog: (ShellLogWriter.Level, String, String) -> Void
 
-  init(links: ChromeLinks, workers: BrowserWorkerPool, binaries: EngineBinaries, uploadRoot: URL) {
+  init(
+    links: ChromeLinks, workers: BrowserWorkerPool, binaries: EngineBinaries, uploadRoot: URL,
+    onShellLog: @escaping (ShellLogWriter.Level, String, String) -> Void = { _, _, _ in }
+  ) {
     self.links = links
     self.workers = workers
     self.binaries = binaries
-    driver = BrowserPageDriver(workers: workers, uploadRoot: uploadRoot, downloadsRoot: nil)
+    self.onShellLog = onShellLog
+    driver = BrowserPageDriver(
+      workers: workers, uploadRoot: uploadRoot, downloadsRoot: nil, onLog: onShellLog)
     profile = Self.makeProfile(workerReady: BrowserWorkerPool.isStaged(binaries))
     driver.owner = self
     links.observe(
@@ -138,7 +144,11 @@ final class ChromeBrowserEngine: ComputerEngine, BrowserPageOwner {
   /// A paired Chrome connected: its worker attaches through a relay of its own.
   private func connected(_ link: ChromeLink) {
     relays[link.installationId]?.stop()
-    let relay = ChromeCDPRelay(link: link)
+    let relay = ChromeCDPRelay(
+      link: link,
+      onDiagnostic: { [onShellLog] level, message in
+        onShellLog(level, "chrome-cdp", message)
+      })
     relays[link.installationId] = relay
     relay.start()
   }

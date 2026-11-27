@@ -24,6 +24,7 @@ nonisolated enum DiagnosticsExporter {
     var lastFailureSummary: String?
     var temporaryDirectoryURL: URL = FileManager.default.temporaryDirectory
     var generatedAt: Date = Date()
+    var chromeExtensionLog: ChromeExtensionLogWriter? = nil
   }
 
   private struct ServiceArtifacts: Sendable {
@@ -84,6 +85,7 @@ nonisolated enum DiagnosticsExporter {
     -> DiagnosticsBundleBuilder.Inputs
   {
     _ = request.shellLog.flush(timeout: .milliseconds(300))
+    _ = request.chromeExtensionLog?.flush(timeout: .milliseconds(300))
 
     let (eval, svc) = await withTaskGroup(of: BundleStageResult.self) { group in
       group.addTask {
@@ -141,6 +143,7 @@ nonisolated enum DiagnosticsExporter {
       decisionRings: request.decisionRings,
       heldArbiterClaims: request.mainActorSnapshot.heldArbiterClaims,
       shellLogFileURL: request.shellLog.logFileURL,
+      chromeExtensionLogFileURL: request.chromeExtensionLog?.logFileURL,
       serviceLogDirectoryURL: request.serviceLogDirectoryURL,
       dataDirectoryURL: request.dataDirectoryURL,
       crashReportsDirectoryURL: request.crashReportsDirectoryURL,

@@ -49,6 +49,10 @@ extension BrowserPageDriver {
         .targetChanged, "The browser target is not current; list targets again.")
     }
     guard pages.contains(where: { $0.pageId == set.boundPageId }) else {
+      let category = owner?.id == .chrome ? "chrome" : "browser"
+      onLog(
+        .warn, category,
+        "bound_page_missing ref=\(ref.id) expected=\(set.boundPageId) listed=\(pages.count)")
       throw ComputerFailure(.targetChanged, "The target's page closed; list targets again.")
     }
     set.reconcile(pages, origins: target.binding.allowedOrigins)

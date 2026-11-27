@@ -43,6 +43,7 @@ final class ChromeSession {
   private let connection: ChromeHostConnection
   private let identity: ChromeChannelIdentity
   private let verifyBrowser: @Sendable (pid_t) -> ChromeBrowserIdentity?
+  private let onDiagnostic: (ShellLogWriter.Level, String) -> Void
   private(set) var phase = Phase.awaitingHost
   private(set) var hello: ChromeHello?
   /// The browser process: the native host's parent, as the host reported and the shell checked.
@@ -67,11 +68,13 @@ final class ChromeSession {
   init(
     connection: ChromeHostConnection, identity: ChromeChannelIdentity,
     verifyBrowser: @escaping @Sendable (pid_t) -> ChromeBrowserIdentity? =
-      ChromeBrowserSignature.verify
+      ChromeBrowserSignature.verify,
+    onDiagnostic: @escaping (ShellLogWriter.Level, String) -> Void = { _, _ in }
   ) {
     self.connection = connection
     self.identity = identity
     self.verifyBrowser = verifyBrowser
+    self.onDiagnostic = onDiagnostic
     connection.onFrame = { [weak self] body in self?.receive(body) }
     connection.onClose = { [weak self] in self?.ended() }
   }
@@ -87,6 +90,7 @@ final class ChromeSession {
   /// `checkingBrowser`) and closes the session so the extension receives the diagnostic before EOF.
   func reject(code: String, message: String) {
     guard phase != .closed else { return }
+    onDiagnostic(.warn, "session_rejected code=\(code)")
     writeFrame(.error(ref: nil, code: code, message: message))
     close()
   }
@@ -130,11 +134,25 @@ final class ChromeSession {
       guard waiting.count < Self.maxWaiting else { return close() }
       waiting.append(body)
     case .awaitingHello, .unpaired, .paired:
+      if body.count > ChromeDiagBatch.maxFrameBytes,
+        ChromeChannelCoding.peekFrameType(in: body) == "diag.batch"
+      {
+        Self.log.warning("Dropped oversized diag.batch frame (\(body.count) bytes).")
+        onDiagnostic(.warn, "diag_batch_oversized bytes=\(body.count)")
+        if phase == .awaitingHello { close() }
+        return
+      }
       let frame: ChromeInboundFrame
       do {
         frame = try JSONDecoder().decode(ChromeInboundFrame.self, from: body)
       } catch {
+        if phase != .awaitingHello, ChromeChannelCoding.peekFrameType(in: body) == "diag.batch" {
+          Self.log.warning("Dropped malformed diag.batch frame.")
+          onDiagnostic(.warn, "diag_batch_malformed bytes=\(body.count)")
+          return
+        }
         Self.log.error("Refused a malformed frame from Atd for Chrome: \(error, privacy: .public)")
+        onDiagnostic(.warn, "frame_malformed bytes=\(body.count)")
         send(
           .error(
             ref: nil, code: ChromeChannelErrorCode.malformed, message: "The frame was refused."))
@@ -165,6 +183,7 @@ final class ChromeSession {
       hello.pid == connection.peerPid
     else {
       Self.log.error("Refused a native host connection without a valid host.hello.")
+      onDiagnostic(.warn, "host_hello_invalid")
       return close()
     }
     guard hello.origin == identity.origin else {
@@ -183,6 +202,7 @@ final class ChromeSession {
       Self.canonicalPath(hello.browserPath) == Self.canonicalPath(execBefore)
     else {
       Self.log.error("Refused a native host connection whose parent browser could not be verified.")
+      onDiagnostic(.warn, "host_parent_unverified")
       return close()
     }
     phase = .checkingBrowser
@@ -217,6 +237,7 @@ final class ChromeSession {
       Self.isExecutable(canonicalExec, insideBundle: verified.bundlePath)
     else {
       Self.log.error("Refused a native host whose parent browser changed or mismatched its bundle.")
+      onDiagnostic(.warn, "host_parent_changed")
       return close()
     }
     browserPid = hello.ppid

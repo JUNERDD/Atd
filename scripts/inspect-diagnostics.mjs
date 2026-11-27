@@ -24,7 +24,11 @@ const RING_SOURCES = [
   ['decision-rings/relay-supervisor.json', 'ring:relay-supervisor'],
   ['decision-rings/run-prep.json', 'ring:run-prep'],
 ];
-const LOG_FILES = ['logs/shell.tail.jsonl', 'logs/service.tail.jsonl'];
+const LOG_FILES = [
+  'logs/shell.tail.jsonl',
+  'logs/service.tail.jsonl',
+  'logs/chrome-extension.tail.jsonl',
+];
 const INSPECTED_FILES = new Set([
   'manifest.json',
   'environment.json',
@@ -213,6 +217,24 @@ function summarizeRingAnomaly(file, item) {
   return null;
 }
 
+function logRowTimestamp(row) {
+  for (const candidate of [row.ts, row.extTs]) {
+    if (typeof candidate === 'string' && candidate) return candidate;
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+      return new Date(candidate).toISOString();
+    }
+  }
+  return '';
+}
+
+function logRowSummary(row) {
+  const prefix = [row.surface, row.cat, row.code]
+    .filter((part) => typeof part === 'string' && part.length > 0)
+    .join('/');
+  const body = String(row.msg ?? row.preview ?? row.raw_scrubbed ?? 'log');
+  return (prefix ? `${prefix}: ${body}` : body).slice(0, 140);
+}
+
 function collectTimeline(entries) {
   const events = [];
   for (const [file, source] of RING_SOURCES) {
@@ -243,9 +265,9 @@ function collectTimeline(entries) {
         const row = JSON.parse(line);
         if (row.level !== 'error' && row.level !== 'warn' && row.level !== 'fault') continue;
         events.push({
-          ts: typeof row.ts === 'string' ? row.ts : '',
+          ts: logRowTimestamp(row),
           source: `${path.basename(logPath)}:${row.level}`,
-          summary: String(row.msg ?? row.preview ?? row.raw_scrubbed ?? 'log').slice(0, 140),
+          summary: logRowSummary(row),
         });
       } catch {
         // Ignore unparseable lines.

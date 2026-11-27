@@ -22,7 +22,10 @@ extension ShellController {
     let engine = PlaywrightBrowserEngine(
       chromes: chromes, workers: workers, binaries: .current(),
       downloadsRoot: computerData.appending(path: "downloads", directoryHint: .isDirectory),
-      uploadRoot: resources)
+      uploadRoot: resources,
+      onShellLog: { [services] level, category, message in
+        services.shellLog.enqueue(level: level, category: category, message: message)
+      })
     let preparer = BrowserTargetPreparer(
       chromes: chromes, profiles: profiles, services: services, confirmations: confirmations,
       systemPanels: systemPanels)

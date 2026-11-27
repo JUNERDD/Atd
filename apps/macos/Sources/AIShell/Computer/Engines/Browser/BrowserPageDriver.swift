@@ -50,6 +50,8 @@ final class BrowserPageDriver {
   /// `<dataDir>/computer/downloads`: each run's downloads go to its own directory below it. Nil
   /// where the worker saves none (the person's own Chrome keeps its downloads).
   let downloadsRoot: URL?
+  /// Writes structured page-driver diagnostics to `shell.log`.
+  let onLog: (ShellLogWriter.Level, String, String) -> Void
   weak var owner: (any BrowserPageOwner)?
   /// The binding each live ref was resolved from: its allowed sites bound every write.
   private(set) var bindings: [String: TargetBindingWire.Browser] = [:]
@@ -62,10 +64,14 @@ final class BrowserPageDriver {
   /// compares against it. Cleared by each new observation of that page.
   var pressBaselines: [String: String] = [:]
 
-  init(workers: BrowserWorkerPool, uploadRoot: URL, downloadsRoot: URL?) {
+  init(
+    workers: BrowserWorkerPool, uploadRoot: URL, downloadsRoot: URL?,
+    onLog: @escaping (ShellLogWriter.Level, String, String) -> Void = { _, _, _ in }
+  ) {
     self.workers = workers
     self.uploadRoot = uploadRoot
     self.downloadsRoot = downloadsRoot
+    self.onLog = onLog
   }
 
   // MARK: Refs

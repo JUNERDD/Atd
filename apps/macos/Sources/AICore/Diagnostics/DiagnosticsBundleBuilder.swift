@@ -16,6 +16,8 @@ public nonisolated struct DiagnosticsBundleBuilder: Sendable {
   public static let maxManifestReserveBytes = 65_536  // 64 KiB reserved for manifest.json
   public static let maxServiceSnapshotBytes = 614_400  // 600 KiB
   public static let shellTailPerFileBytes = 524_288  // 512 KiB
+  public static let chromeExtensionTailPerFileBytes = 262_144  // 256 KiB
+  public static let maxCombinedChromeExtensionTailBytes = 524_288  // 512 KiB
   public static let servicePrimaryTailBytes = 524_288  // 512 KiB
   public static let serviceRotatedTailBytes = 262_144  // 256 KiB
   public static let maxCombinedLogTailBytes = 1_048_576  // 1.0 MiB
@@ -39,6 +41,7 @@ public nonisolated struct DiagnosticsBundleBuilder: Sendable {
     public var decisionRings: ShellDecisionRings?
     public var heldArbiterClaims: [String]
     public var shellLogFileURL: URL?
+    public var chromeExtensionLogFileURL: URL?
     public var serviceLogDirectoryURL: URL?
     public var dataDirectoryURL: URL?
     public var crashReportsDirectoryURL: URL?
@@ -61,6 +64,7 @@ public nonisolated struct DiagnosticsBundleBuilder: Sendable {
       decisionRings: ShellDecisionRings? = nil,
       heldArbiterClaims: [String] = [],
       shellLogFileURL: URL? = nil,
+      chromeExtensionLogFileURL: URL? = nil,
       serviceLogDirectoryURL: URL? = nil,
       dataDirectoryURL: URL? = nil,
       crashReportsDirectoryURL: URL? = nil,
@@ -82,6 +86,7 @@ public nonisolated struct DiagnosticsBundleBuilder: Sendable {
       self.decisionRings = decisionRings
       self.heldArbiterClaims = heldArbiterClaims
       self.shellLogFileURL = shellLogFileURL
+      self.chromeExtensionLogFileURL = chromeExtensionLogFileURL
       self.serviceLogDirectoryURL = serviceLogDirectoryURL
       self.dataDirectoryURL = dataDirectoryURL
       self.crashReportsDirectoryURL = crashReportsDirectoryURL

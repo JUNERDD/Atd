@@ -63,6 +63,9 @@ extension DiagnosticsBundleBuilder {
 
     let shellTail = DiagnosticsLogTailReader.collectShellTail(
       shellLogURL: inputs.shellLogFileURL, dataDirectoryURL: inputs.dataDirectoryURL)
+    let chromeExtensionTail = DiagnosticsLogTailReader.collectChromeExtensionTail(
+      chromeExtensionLogURL: inputs.chromeExtensionLogFileURL,
+      dataDirectoryURL: inputs.dataDirectoryURL)
     let serviceTail = DiagnosticsLogTailReader.collectServiceTail(
       logDir: inputs.serviceLogDirectoryURL,
       ringLines: inputs.serviceLogRingLines,
@@ -123,6 +126,10 @@ extension DiagnosticsBundleBuilder {
       CandidateSpec(
         path: "logs/shell.tail.jsonl", kind: .jsonl, isPrimaryPriority: false,
         rawBytes: shellTail, precomputedOutcome: nil, unavailableStatus: .omittedUnavailable),
+      CandidateSpec(
+        path: "logs/chrome-extension.tail.jsonl", kind: .jsonl, isPrimaryPriority: false,
+        rawBytes: chromeExtensionTail, precomputedOutcome: nil,
+        unavailableStatus: .omittedUnavailable),
       CandidateSpec(
         path: "logs/service.tail.jsonl", kind: .jsonl, isPrimaryPriority: false,
         rawBytes: serviceTail, precomputedOutcome: nil, unavailableStatus: .omittedUnavailable),
