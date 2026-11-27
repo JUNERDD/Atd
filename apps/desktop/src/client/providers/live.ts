@@ -15,7 +15,7 @@ import type {
   ProviderCredentialIssue,
   ServiceConnection,
 } from '@atd/agent-contracts';
-import { validateConfig } from './configuration';
+import { isInsecureEndpoint, validateConfig } from './configuration';
 import type { Connection, ConnectionDraft, ProviderCatalogEntry } from './schema';
 
 /** Maps a secret-free service connection into the desktop settings row. */
@@ -52,6 +52,7 @@ export function toDesktopConnection(
     verifiedModel: connection.verifiedModel,
     // The service fills these on every response; absent only on stored records.
     options: connection.options ?? {},
+    ...(connection.allowInsecureUsage ? { allowInsecureUsage: true } : {}),
     customModels: connection.customModels ?? [],
     catalog: connection.catalog ?? [],
     catalogError: connection.catalogError ?? '',
@@ -152,6 +153,7 @@ export async function saveLive(
   draft: ConnectionDraft,
 ): Promise<Connection> {
   validateConfig(draft);
+  const allowInsecureUsage = Boolean(draft.allowInsecureUsage && isInsecureEndpoint(draft.baseUrl));
   const configuration = {
     name: draft.name,
     ...(draft.presetId ? { presetId: draft.presetId } : {}),
@@ -167,6 +169,7 @@ export async function saveLive(
   if (!draft.connectionId) {
     const created = await createProvider(options, {
       ...configuration,
+      ...(allowInsecureUsage ? { allowInsecureUsage: true } : {}),
       provider: draft.provider,
       authType: draft.authType,
       credential: initialCredential(draft),
@@ -180,6 +183,7 @@ export async function saveLive(
     throw new Error('Add a separate connection to change the provider or authentication method.');
   const updated = await updateProvider(options, draft.connectionId, {
     ...configuration,
+    allowInsecureUsage,
     expectedRevision: draft.expectedRevision,
     credential: credentialChange(draft, live),
     ...(draft.resumeChatGPTUsage ? { resumeChatGPTUsage: true } : {}),

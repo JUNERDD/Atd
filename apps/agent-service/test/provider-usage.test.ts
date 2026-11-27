@@ -114,13 +114,19 @@ test('Moonshot reports its available balance in the regional currency', async ()
   });
 });
 
-test('OpenRouter derives the remaining credits from total usage', async () => {
-  const usage = await openRouterCredits(
-    responding(
-      { data: { total_credits: 20, total_usage: 7.25 } },
-      { baseUrl: 'https://openrouter.ai/api/v1' },
-    ),
+test('OpenRouter queries /key and maps per-key limits without calling /credits', async () => {
+  let target = '';
+  const req = responding(
+    { data: { limit: 20, limit_remaining: 12.75, usage: 7.25 } },
+    { baseUrl: 'https://openrouter.ai/api/v1' },
   );
+  const baseFetch = req.fetch;
+  req.fetch = (url, init) => {
+    target = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+    return baseFetch(url, init);
+  };
+  const usage = await openRouterCredits(req);
+  assert.equal(target, 'https://openrouter.ai/api/v1/key');
   assert.deepEqual(usage, {
     kind: 'ok',
     windows: [],

@@ -40,6 +40,7 @@ import {
   withInferencePurpose,
 } from './chatgpt-usage.js';
 import { providerUsage } from './usage.js';
+import { isSecureUsageUrl } from './usage-adapters.js';
 
 const STALE = 'This connection changed. Reload its saved settings and try again.';
 
@@ -295,10 +296,17 @@ function applyUpdate(current: ServiceConnection, body: ProviderUpdateRequest): v
   current.name = body.name;
   // Older clients omit this UI metadata; keep the stored identity in that case.
   if (body.presetId !== undefined) current.presetId = body.presetId;
+  const baseUrlChanged = body.baseUrl !== current.baseUrl;
   current.baseUrl = body.baseUrl;
   current.defaultModel = body.defaultModel;
-  if (body.allowInsecureUsage) current.allowInsecureUsage = true;
-  else delete current.allowInsecureUsage;
+  if (!body.baseUrl || isSecureUsageUrl(body.baseUrl)) {
+    delete current.allowInsecureUsage;
+  } else if (body.allowInsecureUsage !== undefined) {
+    if (body.allowInsecureUsage) current.allowInsecureUsage = true;
+    else delete current.allowInsecureUsage;
+  } else if (baseUrlChanged) {
+    delete current.allowInsecureUsage;
+  }
   if (body.defaultThinkingLevel) current.defaultThinkingLevel = body.defaultThinkingLevel;
   else delete current.defaultThinkingLevel;
   current.options = body.options;

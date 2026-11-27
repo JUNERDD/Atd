@@ -49,6 +49,7 @@
       "title": "{{name}} usage",
       "description": "Allowance windows and balance reported by this provider.",
       "loading": "Loading usage…",
+      "pausedForKeychain": "Automatic usage checks are paused until credential access is verified. Click Refresh to check now.",
       "updated": "Updated {{time}}",
       "saveFirst": "Save changes to refresh usage for the new credential.",
       "unsupported": "This provider does not publish plan usage. Check its billing page for details.",

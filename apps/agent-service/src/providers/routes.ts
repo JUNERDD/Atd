@@ -40,6 +40,7 @@ import {
   onCredentialIssuesChanged,
   recordCredentialIssue,
 } from './credential-issues.js';
+import { isSecureUsageUrl } from './usage-adapters.js';
 
 export interface ProviderRouteContext {
   serviceId: string;
@@ -131,7 +132,9 @@ export function registerProviderRoutes(app: FastifyInstance, ctx: ProviderRouteC
       }),
       verifiedModel: '',
       migratedAt: null,
-      ...(body.allowInsecureUsage ? { allowInsecureUsage: true } : {}),
+      ...(body.allowInsecureUsage && body.baseUrl && !isSecureUsageUrl(body.baseUrl)
+        ? { allowInsecureUsage: true }
+        : {}),
       options: body.options,
       customModels: body.customModels,
       ...(body.defaultThinkingLevel ? { defaultThinkingLevel: body.defaultThinkingLevel } : {}),

@@ -147,8 +147,7 @@ async function query(
       // instead of failing every lookup with the stale keyring bearer token.
       const models = runtime ?? (await connectionRuntime(stores, connection));
       const auth = await models.getAuth(connection.provider);
-      if (!auth?.auth.apiKey) return { kind: 'unavailable', reason: 'no-credential' };
-      token = auth.auth.apiKey;
+      token = auth?.auth.apiKey;
     } else {
       const credential = await connectionCredentials(stores, connection).read(connection.provider);
       token = credential?.type === 'api_key' ? credential.key : undefined;

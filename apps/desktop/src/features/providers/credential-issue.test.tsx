@@ -1,16 +1,18 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@atd/ui/components/tooltip';
 import { installBridge } from '../../../tests/app-test-bridge';
 import type { TaskRun } from '../../client/agent/task-schema';
 import type { Connection, ProviderCatalogEntry } from '../../client/providers/schema';
+import { queryClient } from '../../lib/query-client';
 import { StatusBar } from '../agent/transcript/status-bar';
 import { SettingsSubpageContext } from '../settings/settings-navigation';
 import { ProviderConnections } from './provider-connections';
 import { ProviderForm } from './provider-form';
 
 afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => queryClient.clear());
 
 function connectionFixture(overrides?: Partial<Connection>): Connection {
   return {
@@ -50,6 +52,15 @@ const catalogProviderFixture: ProviderCatalogEntry = {
   category: 'api',
   auth: [{ type: 'api_key', label: 'API key' }],
   baseUrl: 'https://api.openai.com/v1',
+  models: [],
+};
+
+const customProviderFixture: ProviderCatalogEntry = {
+  id: 'openai-compatible',
+  name: 'Custom provider',
+  category: 'local',
+  auth: [{ type: 'api_key', label: 'API key' }],
+  baseUrl: '',
   models: [],
 };
 
@@ -166,6 +177,105 @@ describe('provider credential issue UI', () => {
     expect(toggle).not.toBeChecked();
     await user.click(toggle);
     expect(toggle).toBeChecked();
+  });
+
+  it('clears hidden allowInsecureUsage and resets dirty state when restoring a saved HTTPS endpoint', async () => {
+    installBridge();
+    const user = userEvent.setup();
+    const row = connectionFixture({
+      provider: 'openai-compatible',
+      baseUrl: 'https://api.example.com/v1',
+    });
+    render(
+      <TooltipProvider>
+        <SettingsSubpageContext value={() => () => {}}>
+          <ProviderForm
+            provider={customProviderFixture}
+            connection={row}
+            serviceName="Custom provider"
+            planChoice={null}
+            onSaved={vi.fn()}
+            onBack={vi.fn()}
+          />
+        </SettingsSubpageContext>
+      </TooltipProvider>,
+    );
+
+    const refreshButton = screen.getByRole('button', { name: 'Refresh models' });
+    const verifyButton = screen.getByRole('button', { name: 'Verify model access' });
+    expect(refreshButton).not.toHaveAttribute('aria-disabled');
+    expect(verifyButton).not.toHaveAttribute('aria-disabled');
+
+    await user.click(screen.getByRole('button', { name: /advanced settings/i }));
+    const endpointInput = screen.getByLabelText('Base URL');
+
+    fireEvent.change(endpointInput, { target: { value: 'http://api.example.com/v1' } });
+    const toggle = screen.getByRole('switch', {
+      name: /allow usage queries over plain http/i,
+    });
+    await user.click(toggle);
+    expect(toggle).toBeChecked();
+    expect(refreshButton).toHaveAttribute('aria-disabled', 'true');
+    expect(verifyButton).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.getByText('Save changes to refresh usage for the new credential.'),
+    ).toBeInTheDocument();
+
+    fireEvent.change(endpointInput, { target: { value: 'https://api.example.com/v1' } });
+    expect(
+      screen.queryByRole('switch', { name: /allow usage queries over plain http/i }),
+    ).not.toBeInTheDocument();
+    expect(refreshButton).not.toHaveAttribute('aria-disabled');
+    expect(verifyButton).not.toHaveAttribute('aria-disabled');
+    expect(
+      screen.queryByText('Save changes to refresh usage for the new credential.'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(endpointInput, { target: { value: 'http://api.example.com/v1' } });
+    expect(
+      screen.getByRole('switch', { name: /allow usage queries over plain http/i }),
+    ).not.toBeChecked();
+  });
+
+  it('resets allowInsecureUsage when changing plain-HTTP hosts and restores it on saved URL revert', async () => {
+    installBridge();
+    const user = userEvent.setup();
+    const row = connectionFixture({
+      provider: 'openai-compatible',
+      baseUrl: 'http://host-a.example/v1',
+      allowInsecureUsage: true,
+    });
+    render(
+      <TooltipProvider>
+        <SettingsSubpageContext value={() => () => {}}>
+          <ProviderForm
+            provider={customProviderFixture}
+            connection={row}
+            serviceName="Custom provider"
+            planChoice={null}
+            onSaved={vi.fn()}
+            onBack={vi.fn()}
+          />
+        </SettingsSubpageContext>
+      </TooltipProvider>,
+    );
+
+    const refreshButton = screen.getByRole('button', { name: 'Refresh models' });
+    await user.click(screen.getByRole('button', { name: /advanced settings/i }));
+    const endpointInput = screen.getByLabelText('Base URL');
+    const toggle = screen.getByRole('switch', {
+      name: /allow usage queries over plain http/i,
+    });
+    expect(toggle).toBeChecked();
+    expect(refreshButton).not.toHaveAttribute('aria-disabled');
+
+    fireEvent.change(endpointInput, { target: { value: 'http://host-b.example/v1' } });
+    expect(toggle).not.toBeChecked();
+    expect(refreshButton).toHaveAttribute('aria-disabled', 'true');
+
+    fireEvent.change(endpointInput, { target: { value: 'http://host-a.example/v1' } });
+    expect(toggle).toBeChecked();
+    expect(refreshButton).not.toHaveAttribute('aria-disabled');
   });
 
   it('renders a localized credential recovery banner and settings shortcut in StatusBar', async () => {

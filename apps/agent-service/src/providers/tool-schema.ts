@@ -6,6 +6,17 @@ import type {
 } from '@earendil-works/pi-coding-agent';
 
 const JSON_TYPES = new Set(['null', 'boolean', 'object', 'array', 'number', 'integer', 'string']);
+const NULLABLE_SCALAR_TYPES = new Set(['string', 'number', 'integer', 'boolean']);
+const UNION_ANNOTATION_KEYS = new Set([
+  'title',
+  'description',
+  'default',
+  'examples',
+  '$comment',
+  'deprecated',
+  'readOnly',
+  'writeOnly',
+]);
 
 /** Keywords whose values are schema maps, not schemas themselves. */
 const SCHEMA_MAP_KEYS = new Set([
@@ -36,9 +47,9 @@ const SCHEMA_SINGLE_KEYS = new Set([
 const LITERAL_KEYS = new Set(['const', 'enum', 'default', 'examples']);
 
 /**
- * Moonshot's `walle` validator requires `type` on `enum` and `const` nodes, but rejects a
- * `type` beside `anyOf` / `oneOf`: each union branch must carry its own type. Normalize at the
- * provider boundary so the shared contracts stay unchanged and TypeBox's untyped enum nodes pass.
+ * Moonshot's `walle` validator requires explicit `type` on `enum` and `const` nodes (single type or
+ * nullable scalar pair) and rejects a redundant parent `type` on pure non-root `anyOf` / `oneOf`
+ * unions. Root `type` and conjunctive `type` constraints are preserved for providers and `pi-schema`.
  */
 export function normalizeToolSchema(schema: TSchema): TSchema {
   return normalizeSchema(schema) as TSchema;
@@ -73,8 +84,8 @@ export function normalizeExtensionAPI(pi: ExtensionAPI): ExtensionAPI {
   });
 }
 
-function normalizeSchema(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(normalizeSchema);
+function normalizeSchema(value: unknown, isRoot = true): unknown {
+  if (Array.isArray(value)) return value.map((item) => normalizeSchema(item, false));
   if (!isRecord(value)) return value;
   const entries: Array<[string, unknown]> = [];
   for (const [key, child] of Object.entries(value)) {
@@ -86,19 +97,24 @@ function normalizeSchema(value: unknown): unknown {
     } else if (key === 'dependencies') {
       entries.push([key, isRecord(child) ? normalizeDependencies(child) : child]);
     } else if (SCHEMA_ARRAY_KEYS.has(key)) {
-      entries.push([key, Array.isArray(child) ? child.map(normalizeSchema) : child]);
+      entries.push([
+        key,
+        Array.isArray(child) ? child.map((item) => normalizeSchema(item, false)) : child,
+      ]);
     } else if (key === 'items' && Array.isArray(child)) {
-      entries.push([key, child.map(normalizeSchema)]);
+      entries.push([key, child.map((item) => normalizeSchema(item, false))]);
     } else if (SCHEMA_SINGLE_KEYS.has(key)) {
-      entries.push([key, normalizeSchema(child)]);
+      entries.push([key, normalizeSchema(child, false)]);
     } else {
       entries.push([key, child]);
     }
   }
   const next = Object.fromEntries(entries) as Record<string, unknown>;
   if ('anyOf' in next || 'oneOf' in next) {
-    // walle rejects a parent type beside a union; the branches already declare their types.
-    delete next['type'];
+    if (!isRoot && 'type' in next && isRedundantUnionType(next)) {
+      // walle rejects a redundant parent type beside a pure union when every branch is subsumed.
+      delete next['type'];
+    }
     return next;
   }
   if (!('type' in next)) {
@@ -108,9 +124,54 @@ function normalizeSchema(value: unknown): unknown {
   return next;
 }
 
+function isRedundantUnionType(schema: Record<string, unknown>): boolean {
+  for (const key of Object.keys(schema)) {
+    if (key !== 'type' && key !== 'anyOf' && key !== 'oneOf' && !UNION_ANNOTATION_KEYS.has(key)) {
+      return false;
+    }
+  }
+  const parentTypes = validJsonTypes(schema['type']);
+  if (!parentTypes) return false;
+  for (const key of ['anyOf', 'oneOf'] as const) {
+    if (!(key in schema)) continue;
+    const branches = schema[key];
+    if (!Array.isArray(branches) || branches.length === 0) return false;
+    if (
+      !branches.every((branch) => {
+        if (!isRecord(branch)) return false;
+        const branchTypes = validJsonTypes(branch['type']);
+        return branchTypes !== null && isSubsumedBy(branchTypes, parentTypes);
+      })
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validJsonTypes(value: unknown): Set<string> | null {
+  if (typeof value === 'string') return JSON_TYPES.has(value) ? new Set([value]) : null;
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const types = new Set<string>();
+  for (const entry of value) {
+    if (typeof entry !== 'string' || !JSON_TYPES.has(entry)) return null;
+    types.add(entry);
+  }
+  return types;
+}
+
+function isSubsumedBy(branchTypes: Set<string>, parentTypes: Set<string>): boolean {
+  for (const type of branchTypes) {
+    if (!parentTypes.has(type) && !(type === 'integer' && parentTypes.has('number'))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function normalizeMap(map: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(map).map(([name, schema]) => [name, normalizeSchema(schema)]),
+    Object.entries(map).map(([name, schema]) => [name, normalizeSchema(schema, false)]),
   );
 }
 
@@ -119,7 +180,7 @@ function normalizeDependencies(map: Record<string, unknown>): Record<string, unk
   return Object.fromEntries(
     Object.entries(map).map(([name, dependency]) => [
       name,
-      Array.isArray(dependency) ? dependency : normalizeSchema(dependency),
+      Array.isArray(dependency) ? dependency : normalizeSchema(dependency, false),
     ]),
   );
 }
@@ -133,8 +194,15 @@ function enumType(schema: Record<string, unknown>): string | string[] | undefine
 
 function collapse(types: readonly string[]): string | string[] | undefined {
   const unique = [...new Set(types)];
-  if (!unique.length) return undefined;
-  return unique.length === 1 ? unique[0] : unique;
+  if (unique.length === 1) return unique[0];
+  if (
+    unique.length === 2 &&
+    unique.includes('null') &&
+    unique.some((type) => NULLABLE_SCALAR_TYPES.has(type))
+  ) {
+    return unique;
+  }
+  return undefined;
 }
 
 function typesOf(values: readonly unknown[]): string[] {

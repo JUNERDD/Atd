@@ -11,6 +11,7 @@ import {
   normalizeToolSchema,
 } from '../dist/providers/tool-schema.js';
 
+const JSON_TYPES = new Set(['null', 'boolean', 'object', 'array', 'number', 'integer', 'string']);
 const SCHEMA_MAP_KEYS = new Set([
   'properties',
   'patternProperties',
@@ -34,6 +35,16 @@ const SCHEMA_SINGLE_KEYS = new Set([
   'contentSchema',
 ]);
 const LITERAL_KEYS = new Set(['const', 'enum', 'default', 'examples']);
+const UNION_ANNOTATION_KEYS = new Set([
+  'title',
+  'description',
+  'default',
+  'examples',
+  '$comment',
+  'deprecated',
+  'readOnly',
+  'writeOnly',
+]);
 
 function property(schema: TSchema, name: string): Record<string, unknown> {
   const properties = Reflect.get(schema, 'properties');
@@ -43,7 +54,45 @@ function property(schema: TSchema, name: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-/** walle requires `type` on enum/const nodes and forbids it beside anyOf/oneOf. */
+function validJsonTypes(value: unknown): Set<string> | null {
+  if (typeof value === 'string') return JSON_TYPES.has(value) ? new Set([value]) : null;
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const types = new Set<string>();
+  for (const entry of value) {
+    if (typeof entry !== 'string' || !JSON_TYPES.has(entry)) return null;
+    types.add(entry);
+  }
+  return types;
+}
+
+function isPureTypedUnion(schema: Record<string, unknown>): boolean {
+  const pureKeys = Object.keys(schema).every(
+    (key) => key === 'type' || key === 'anyOf' || key === 'oneOf' || UNION_ANNOTATION_KEYS.has(key),
+  );
+  if (!pureKeys) return false;
+  const parentTypes = validJsonTypes(schema['type']);
+  if (!parentTypes) return false;
+  for (const key of ['anyOf', 'oneOf'] as const) {
+    if (!(key in schema)) continue;
+    const branches = schema[key];
+    if (!Array.isArray(branches) || !branches.length) return false;
+    for (const branch of branches) {
+      if (!branch || typeof branch !== 'object' || Array.isArray(branch)) return false;
+      const branchTypes = validJsonTypes((branch as Record<string, unknown>)['type']);
+      if (
+        !branchTypes ||
+        ![...branchTypes].every(
+          (type) => parentTypes.has(type) || (type === 'integer' && parentTypes.has('number')),
+        )
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/** Root schemas declare `type: "object"`; pure non-root unions omit redundant `type`; enum/const declare `type`. */
 function assertProviderSafe(value: unknown, path = ''): void {
   if (Array.isArray(value)) {
     value.forEach((child, index) => assertProviderSafe(child, `${path}[${index}]`));
@@ -51,8 +100,11 @@ function assertProviderSafe(value: unknown, path = ''): void {
   }
   if (!value || typeof value !== 'object') return;
   const schema = value as Record<string, unknown>;
+  const isRoot = path === '';
+  if (isRoot) assert.equal(schema['type'], 'object', 'tool root must declare type: "object"');
   const union = 'anyOf' in schema || 'oneOf' in schema;
-  if (union && 'type' in schema) assert.fail(`union parent declares type at ${path || '<root>'}`);
+  if (!isRoot && union && 'type' in schema && isPureTypedUnion(schema))
+    assert.fail(`pure union parent declares redundant type at ${path}`);
   if (!union && ('enum' in schema || 'const' in schema) && !('type' in schema))
     assert.fail(`missing type at ${path || '<root>'}`);
   for (const [key, child] of Object.entries(schema)) {
@@ -75,6 +127,36 @@ function assertProviderSafe(value: unknown, path = ''): void {
       assertProviderSafe(child, childPath);
     }
   }
+}
+
+function makeTool(name: string, parameters: TSchema): ToolDefinition {
+  return {
+    name,
+    label: name,
+    description: 'Test tool',
+    parameters,
+    execute: async () => ({ content: [], details: undefined }),
+  };
+}
+
+function callArgs(tool: ToolDefinition, args: unknown): unknown {
+  return validateToolArguments(tool, {
+    type: 'toolCall',
+    id: 'call-1',
+    name: tool.name,
+    arguments: args as never,
+  });
+}
+
+function captureTool(register: (pi: ExtensionAPI) => void): ToolDefinition {
+  let registered: ToolDefinition | undefined;
+  register({
+    registerTool: (next: ToolDefinition) => {
+      registered = next;
+    },
+  } as unknown as ExtensionAPI);
+  assert.ok(registered);
+  return registered;
 }
 
 function assertUnionBranchesTyped(schema: TSchema, name: string): void {
@@ -122,91 +204,89 @@ test('the real command tool schema keeps its revision union branches typed', () 
 
 test('the real computer tool schema is provider safe', () => {
   const normalized = normalizeToolSchema(ComputerToolParametersSchema);
+  assert.equal(Reflect.get(normalized, 'type'), 'object');
   assertProviderSafe(normalized);
   assertUnionBranchesTyped(normalized, 'action');
 });
 
-test('normalized schemas validate through Pi without TypeBox markers', () => {
-  const tool = {
-    name: 'computer',
-    label: 'Computer',
-    description: 'Test tool',
-    parameters: normalizeToolSchema(ComputerToolParametersSchema),
-    execute: async () => ({ content: [], details: undefined }),
-  } as ToolDefinition;
-  const args = validateToolArguments(tool, {
-    type: 'toolCall',
-    id: 'call-1',
-    name: 'computer',
-    arguments: { action: 'status', completion: null },
+test('normalized schemas validate through Pi and reject non-object computer arguments', () => {
+  const tool = makeTool('computer', normalizeToolSchema(ComputerToolParametersSchema));
+  assert.deepEqual(callArgs(tool, { action: 'status', completion: null }), {
+    action: 'status',
+    completion: null,
   });
-  assert.deepEqual(args, { action: 'status', completion: null });
+  for (const invalid of [42, 'hello', [], true]) {
+    assert.throws(() => callArgs(tool, invalid));
+  }
 });
 
-test('normalization is provider independent', () => {
-  const schema = Type.Object({ value: Type.Union([Type.Literal('a'), Type.Literal('b')]) });
-  const normalized = normalizeToolSchema(schema);
-  assert.equal('type' in property(normalized, 'value'), false);
-});
-
-test('extension registration normalizes the schema for Moonshot', () => {
-  const tool: ToolDefinition = {
-    name: 'computer',
-    label: 'Computer',
-    description: 'Test tool',
-    parameters: Type.Object({ action: Type.Union([Type.Literal('a'), Type.Literal('b')]) }),
-    execute: async () => ({ content: [], details: undefined }),
-  };
-  let registered: ToolDefinition | undefined;
-  const pi = {
-    registerTool: (next: ToolDefinition) => {
-      registered = next;
-    },
-  } as unknown as ExtensionAPI;
-  const extension = normalizeExtension((api) => api.registerTool(tool));
-  assert.equal(typeof extension, 'function');
-  if (typeof extension === 'function') extension(pi);
-  assert.ok(registered);
-  assert.equal('type' in property(registered.parameters, 'action'), false);
-});
-
-test('a union with a local $ref keeps branches typed and no parent type', () => {
-  const schema = {
+test('extension and API wrappers normalize registered tool schemas', () => {
+  const raw = {
     type: 'object',
     properties: {
-      value: { anyOf: [{ $ref: '#/$defs/Model' }, { type: 'null' }] },
-    },
-    $defs: {
-      Model: { type: 'object', properties: { name: { type: 'string' } } },
+      mode: { enum: ['a', 'b'] },
+      action: { type: 'string', anyOf: [{ const: 'a' }, { const: 'b' }] },
     },
   } as unknown as TSchema;
-  const normalized = normalizeToolSchema(schema);
-  assert.equal('type' in property(normalized, 'value'), false);
-  const defs = Reflect.get(normalized, '$defs') as Record<string, Record<string, unknown>>;
-  assert.equal(defs.Model?.['type'], 'object');
+  assert.equal('type' in property(raw, 'mode'), false);
+  assert.equal(property(raw, 'action')['type'], 'string');
+  const tool = makeTool('computer', raw);
+
+  const assertNormalized = (registered: ToolDefinition): void => {
+    assert.equal(property(registered.parameters, 'mode')['type'], 'string');
+    assertUnionBranchesTyped(registered.parameters, 'action');
+    assert.deepEqual(
+      (property(registered.parameters, 'action')['anyOf'] as Array<Record<string, unknown>>).map(
+        (branch) => branch['type'],
+      ),
+      ['string', 'string'],
+    );
+  };
+
+  const fnExtension = normalizeExtension((api) => api.registerTool(tool));
+  assert.equal(typeof fnExtension, 'function');
+  assertNormalized(
+    captureTool((pi) => {
+      if (typeof fnExtension === 'function') fnExtension(pi);
+    }),
+  );
+
+  const objExtension = normalizeExtension({
+    name: 'inline-tool-schema',
+    hidden: true,
+    factory: (api) => api.registerTool(tool),
+  });
+  if (typeof objExtension === 'function') assert.fail('expected object InlineExtension');
+  assert.equal(objExtension.name, 'inline-tool-schema');
+  assert.equal(objExtension.hidden, true);
+  assertNormalized(
+    captureTool((pi) => {
+      void objExtension.factory(pi);
+    }),
+  );
+
+  assertNormalized(captureTool((pi) => normalizeExtensionAPI(pi).registerTool(tool)));
+  assert.equal('type' in property(raw, 'mode'), false);
+  assert.equal(property(raw, 'action')['type'], 'string');
 });
 
-test('a union with an untyped branch stays without a parent type', () => {
-  const schema = {
-    type: 'object',
-    properties: { value: { anyOf: [{ type: 'string' }, {}] } },
-  } as unknown as TSchema;
-  const normalized = normalizeToolSchema(schema);
-  assert.equal('type' in property(normalized, 'value'), false);
-});
-
-test('an untyped $ref target leaves its union without a parent type', () => {
-  const schema = {
-    type: 'object',
-    properties: { value: { anyOf: [{ $ref: '#/$defs/Model' }, { type: 'null' }] } },
-    $defs: { Model: { properties: { name: { type: 'string' } } } },
-  } as unknown as TSchema;
-  const normalized = normalizeToolSchema(schema);
-  assert.equal('type' in property(normalized, 'value'), false);
+test('assertProviderSafe distinguishes redundant and narrowing union parent types', () => {
+  assertProviderSafe(
+    normalizeToolSchema({
+      type: 'object',
+      properties: { v: { type: 'string', anyOf: [{ type: 'string' }, { type: 'object' }] } },
+    } as unknown as TSchema),
+  );
+  assert.throws(() =>
+    assertProviderSafe({
+      type: 'object',
+      properties: { v: { type: 'number', anyOf: [{ type: 'integer' }, { type: 'integer' }] } },
+    }),
+  );
 });
 
 test('schema maps and literal payloads are not rewritten as schemas', () => {
-  const schema = {
+  const normalized = normalizeToolSchema({
     type: 'object',
     properties: {
       const: { type: 'string' },
@@ -214,8 +294,7 @@ test('schema maps and literal payloads are not rewritten as schemas', () => {
       payload: { const: { const: 'x' } },
     },
     dependencies: { enum: ['other'] },
-  } as unknown as TSchema;
-  const normalized = normalizeToolSchema(schema);
+  } as unknown as TSchema);
   const properties = Reflect.get(normalized, 'properties') as Record<string, unknown>;
   const dependencies = Reflect.get(normalized, 'dependencies') as Record<string, unknown>;
   assert.equal('type' in properties, false);
@@ -224,7 +303,7 @@ test('schema maps and literal payloads are not rewritten as schemas', () => {
 });
 
 test('array constants and enum literals declare the array type', () => {
-  const schema = {
+  const normalized = normalizeToolSchema({
     type: 'object',
     properties: {
       tuple: { const: [1, 2] },
@@ -232,31 +311,27 @@ test('array constants and enum literals declare the array type', () => {
       empty: { const: [] },
       words: { const: ['string'] },
     },
-  } as unknown as TSchema;
-  const normalized = normalizeToolSchema(schema);
-  assert.equal(property(normalized, 'tuple')['type'], 'array');
-  assert.equal(property(normalized, 'choices')['type'], 'array');
-  assert.equal(property(normalized, 'empty')['type'], 'array');
-  assert.equal(property(normalized, 'words')['type'], 'array');
+  } as unknown as TSchema);
+  for (const name of ['tuple', 'choices', 'empty', 'words']) {
+    assert.equal(property(normalized, name)['type'], 'array');
+  }
   assert.deepEqual(property(normalized, 'tuple')['const'], [1, 2]);
   assert.deepEqual(property(normalized, 'choices')['enum'], [['a'], ['b']]);
 });
 
-test('extension API wrapping normalizes child tool registrations', () => {
-  const tool: ToolDefinition = {
-    name: 'child',
-    label: 'Child',
-    description: 'Test tool',
-    parameters: Type.Object({ action: Type.Union([Type.Literal('a'), Type.Literal('b')]) }),
-    execute: async () => ({ content: [], details: undefined }),
-  };
-  let registered: ToolDefinition | undefined;
-  const pi = {
-    registerTool: (next: ToolDefinition) => {
-      registered = next;
+test('heterogeneous enums omit multi-type arrays while nullable scalars stamp pair', () => {
+  const normalized = normalizeToolSchema({
+    type: 'object',
+    properties: {
+      mixed: { enum: ['auto', 0] },
+      triple: { enum: ['a', 0, null] },
+      arrayOrNull: { enum: [[], null] },
+      objectOrNull: { enum: [{}, null] },
+      nullableText: { enum: ['a', null] },
     },
-  } as unknown as ExtensionAPI;
-  normalizeExtensionAPI(pi).registerTool(tool);
-  assert.ok(registered);
-  assert.equal('type' in property(registered.parameters, 'action'), false);
+  } as unknown as TSchema);
+  for (const name of ['mixed', 'triple', 'arrayOrNull', 'objectOrNull']) {
+    assert.equal('type' in property(normalized, name), false, `${name} must omit type`);
+  }
+  assert.deepEqual(property(normalized, 'nullableText')['type'], ['string', 'null']);
 });

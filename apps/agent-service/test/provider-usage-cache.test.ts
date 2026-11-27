@@ -158,6 +158,34 @@ test('a missing stored credential is recorded as missing', async () => {
   clearCredentialIssue('/tmp', connection.connectionId);
 });
 
+test('a missing OAuth credential is recorded as missing and updates stale unreadable on refresh', async () => {
+  const connection = connectionFixture({
+    connectionId: 'usage-missing-oauth',
+    provider: 'openrouter',
+    name: 'OpenRouter',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    authType: 'oauth',
+  });
+  const missingRuntime = { getAuth: async () => undefined };
+  try {
+    const first = await providerUsage(storesFor(connection), connection, {
+      runtime: missingRuntime,
+    });
+    assert.deepEqual(first, { kind: 'unavailable', reason: 'no-credential' });
+    assert.equal(currentCredentialIssue('/tmp', connection.connectionId), 'missing');
+
+    recordCredentialIssue('/tmp', connection.connectionId, 'unreadable');
+    const refreshed = await providerUsage(storesFor(connection), connection, {
+      refresh: true,
+      runtime: { getAuth: async () => ({ auth: {} }) },
+    });
+    assert.deepEqual(refreshed, { kind: 'unavailable', reason: 'no-credential' });
+    assert.equal(currentCredentialIssue('/tmp', connection.connectionId), 'missing');
+  } finally {
+    clearCredentialIssue('/tmp', connection.connectionId);
+  }
+});
+
 test('a manual refresh clears a recorded issue after a readable credential', async () => {
   const connection = connectionFixture({ connectionId: 'usage-clear-issue' });
   recordCredentialIssue('/tmp', connection.connectionId, 'missing');

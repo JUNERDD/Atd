@@ -30,6 +30,17 @@ export function ProviderUsagePanel({
   const query = useProviderUsage(connection);
   const available = providerUsageAvailable(connection);
   const usage = available ? query.data : undefined;
+  const showLoading =
+    available &&
+    !usage &&
+    (query.isFetching || (query.isPending && (query.statusesReady || query.settingsLoading)));
+  const pausedForKeychain =
+    available &&
+    !query.statusesReady &&
+    !query.settingsLoading &&
+    !usage &&
+    !query.isFetching &&
+    !query.isError;
   const gated = !connection.connected
     ? t('connections.usage.unavailable')
     : !available
@@ -76,7 +87,12 @@ export function ProviderUsagePanel({
       <Card size="sm" className="provider-usage-card">
         <CardContent className="grid gap-4">
           {gated && <p className="text-sm text-muted-foreground">{gated}</p>}
-          {available && query.isPending && <UsageSkeleton />}
+          {showLoading && <UsageSkeleton />}
+          {pausedForKeychain && (
+            <p className="text-sm text-muted-foreground">
+              {t('connections.usage.pausedForKeychain')}
+            </p>
+          )}
           {usage?.kind === 'unsupported' && (
             <p className="text-sm text-muted-foreground">{t('connections.usage.unsupported')}</p>
           )}
@@ -84,7 +100,7 @@ export function ProviderUsagePanel({
             <p className="text-sm text-muted-foreground">{t('connections.usage.unavailable')}</p>
           )}
           {usage?.kind === 'error' && <UsageError message={usage.message} />}
-          {available && query.isError && !usage && (
+          {available && query.isError && !usage && !query.isFetching && (
             <UsageError
               message={query.error instanceof Error ? query.error.message : String(query.error)}
             />

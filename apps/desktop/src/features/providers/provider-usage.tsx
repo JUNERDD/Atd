@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@atd/ui/components/dialog';
 import { Progress } from '@atd/ui/components/progress';
+import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { cn } from '@atd/ui/lib/utils';
 import type { Connection, ProviderUsage } from '../../client/providers/schema';
 import {
@@ -39,10 +40,11 @@ export function ProviderUsageSummary({
   enabled?: boolean;
 }) {
   const { t, i18n } = useTranslation('providers');
-  const { data } = useProviderUsage(connection, enabled);
+  const { data, statusesReady } = useProviderUsage(connection, enabled);
   // A disabled query can still retain a cached value; the gate must hide it when consent, plan
-  // permission, the credential or the connection no longer allows a usage read.
-  if (!enabled || !providerUsageAvailable(connection) || data?.kind !== 'ok') return null;
+  // permission, the credential, the status probe or the connection no longer allows a usage read.
+  if (!enabled || !statusesReady || !providerUsageAvailable(connection) || data?.kind !== 'ok')
+    return null;
   const short = data.windows
     .map((window) => `${t(WINDOW_SHORT_LABELS[window.id])} ${percent(window.usedRatio)}`)
     .join(' · ');
@@ -138,6 +140,17 @@ export function ProviderUsageDialog({
   const query = useProviderUsage(connection);
   const available = providerUsageAvailable(connection);
   const usage: ProviderUsage | undefined = available ? query.data : undefined;
+  const showLoading =
+    available &&
+    !usage &&
+    (query.isFetching || (query.isPending && (query.statusesReady || query.settingsLoading)));
+  const pausedForKeychain =
+    available &&
+    !query.statusesReady &&
+    !query.settingsLoading &&
+    !usage &&
+    !query.isFetching &&
+    !query.isError;
   const gated = !connection
     ? null
     : !connection.connected || !available
@@ -150,100 +163,111 @@ export function ProviderUsageDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="panel-dialog max-w-md">
         <DialogHeader>
           <DialogTitle>
             {t('connections.usage.title', { name: connection?.name ?? '' })}
           </DialogTitle>
           <DialogDescription>{t('connections.usage.description')}</DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4">
-          {gated && <p className="text-sm text-muted-foreground">{gated}</p>}
-          {available && query.isPending && (
-            <p className="text-sm text-muted-foreground">{t('connections.usage.loading')}</p>
-          )}
-          {usage?.kind === 'unsupported' && (
-            <p className="text-sm text-muted-foreground">{t('connections.usage.unsupported')}</p>
-          )}
-          {usage?.kind === 'unavailable' && (
-            <p className="text-sm text-muted-foreground">{t('connections.usage.unavailable')}</p>
-          )}
-          {usage?.kind === 'error' && (
-            <div className="grid gap-2">
-              <p className="text-sm text-destructive">{t('connections.usage.error')}</p>
-              <details className="text-xs">
-                <summary className="cursor-pointer">{t('connections.usage.details')}</summary>
-                <p className="mt-2 wrap-anywhere whitespace-pre-wrap">{usage.message}</p>
-              </details>
-            </div>
-          )}
-          {available && query.isError && !usage && (
-            <div className="grid gap-2">
-              <p className="text-sm text-destructive">{t('connections.usage.error')}</p>
-              <details className="text-xs">
-                <summary className="cursor-pointer">{t('connections.usage.details')}</summary>
-                <p className="mt-2 wrap-anywhere whitespace-pre-wrap">
-                  {query.error instanceof Error ? query.error.message : String(query.error)}
-                </p>
-              </details>
-            </div>
-          )}
-          {usage?.kind === 'ok' && query.isError && (
-            <p className="text-xs text-destructive">{t('connections.usage.refreshFailed')}</p>
-          )}
-          {usage?.kind === 'ok' &&
-            usage.windows.map((window) => {
-              const reset = resetIn(window.resetsAt, i18n.language);
-              return (
-                <div key={window.id} className="grid gap-1.5">
-                  <div className="flex items-baseline justify-between gap-3 text-sm">
-                    <span>{t(WINDOW_LABELS[window.id])}</span>
-                    <span className="text-muted-foreground tabular-nums">
-                      {percent(window.usedRatio)}
-                    </span>
+        <ScrollArea className="panel-dialog-scroll" gutter="stable" scrollShadow>
+          <div className="panel-dialog-body">
+            {gated && <p className="text-sm text-muted-foreground">{gated}</p>}
+            {showLoading && (
+              <p className="text-sm text-muted-foreground">{t('connections.usage.loading')}</p>
+            )}
+            {pausedForKeychain && (
+              <p className="text-sm text-muted-foreground">
+                {t('connections.usage.pausedForKeychain')}
+              </p>
+            )}
+            {usage?.kind === 'unsupported' && (
+              <p className="text-sm text-muted-foreground">{t('connections.usage.unsupported')}</p>
+            )}
+            {usage?.kind === 'unavailable' && (
+              <p className="text-sm text-muted-foreground">{t('connections.usage.unavailable')}</p>
+            )}
+            {usage?.kind === 'error' && (
+              <div className="grid gap-2">
+                <p className="text-sm text-destructive">{t('connections.usage.error')}</p>
+                <details className="text-xs">
+                  <summary className="cursor-pointer">{t('connections.usage.details')}</summary>
+                  <p className="mt-2 wrap-anywhere whitespace-pre-wrap">{usage.message}</p>
+                </details>
+              </div>
+            )}
+            {available && query.isError && !usage && !query.isFetching && (
+              <div className="grid gap-2">
+                <p className="text-sm text-destructive">{t('connections.usage.error')}</p>
+                <details className="text-xs">
+                  <summary className="cursor-pointer">{t('connections.usage.details')}</summary>
+                  <p className="mt-2 wrap-anywhere whitespace-pre-wrap">
+                    {query.error instanceof Error ? query.error.message : String(query.error)}
+                  </p>
+                </details>
+              </div>
+            )}
+            {usage?.kind === 'ok' && query.isError && (
+              <p className="text-xs text-destructive">{t('connections.usage.refreshFailed')}</p>
+            )}
+            {usage?.kind === 'ok' &&
+              usage.windows.map((window) => {
+                const reset = resetIn(window.resetsAt, i18n.language);
+                return (
+                  <div key={window.id} className="grid gap-1.5">
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span>{t(WINDOW_LABELS[window.id])}</span>
+                      <span className="text-muted-foreground tabular-nums">
+                        {percent(window.usedRatio)}
+                      </span>
+                    </div>
+                    <Progress value={window.usedRatio * 100} />
+                    {reset && (
+                      <p className="text-xs text-muted-foreground">
+                        {t('connections.usage.resetsIn', { time: reset })}
+                      </p>
+                    )}
                   </div>
-                  <Progress value={window.usedRatio * 100} />
-                  {reset && (
+                );
+              })}
+            {usage?.kind === 'ok' && usage.balance && (
+              <div
+                data-slot="usage-balance"
+                data-separated={usage.windows.length > 0}
+                className={cn(
+                  'grid gap-1 text-sm',
+                  usage.windows.length > 0 && 'border-t border-border pt-3',
+                )}
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <span>{t('connections.usage.balance')}</span>
+                  <span className="tabular-nums">{balanceText(usage.balance, i18n.language)}</span>
+                </div>
+                {usage.balance.monthlyLimitEnabled &&
+                  usage.balance.monthlyLimit !== undefined &&
+                  usage.balance.monthlyUsed !== undefined && (
                     <p className="text-xs text-muted-foreground">
-                      {t('connections.usage.resetsIn', { time: reset })}
+                      {t('connections.usage.monthly', {
+                        used: money(
+                          usage.balance.monthlyUsed,
+                          usage.balance.currency,
+                          i18n.language,
+                        ),
+                        limit: money(
+                          usage.balance.monthlyLimit,
+                          usage.balance.currency,
+                          i18n.language,
+                        ),
+                      })}
                     </p>
                   )}
-                </div>
-              );
-            })}
-          {usage?.kind === 'ok' && usage.balance && (
-            <div
-              data-slot="usage-balance"
-              data-separated={usage.windows.length > 0}
-              className={cn(
-                'grid gap-1 text-sm',
-                usage.windows.length > 0 && 'border-t border-border pt-3',
-              )}
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <span>{t('connections.usage.balance')}</span>
-                <span className="tabular-nums">{balanceText(usage.balance, i18n.language)}</span>
               </div>
-              {usage.balance.monthlyLimitEnabled &&
-                usage.balance.monthlyLimit !== undefined &&
-                usage.balance.monthlyUsed !== undefined && (
-                  <p className="text-xs text-muted-foreground">
-                    {t('connections.usage.monthly', {
-                      used: money(usage.balance.monthlyUsed, usage.balance.currency, i18n.language),
-                      limit: money(
-                        usage.balance.monthlyLimit,
-                        usage.balance.currency,
-                        i18n.language,
-                      ),
-                    })}
-                  </p>
-                )}
-            </div>
-          )}
-          {usage?.kind === 'ok' && !usage.windows.length && !usage.balance && (
-            <p className="text-sm text-muted-foreground">{t('connections.usage.empty')}</p>
-          )}
-        </div>
+            )}
+            {usage?.kind === 'ok' && !usage.windows.length && !usage.balance && (
+              <p className="text-sm text-muted-foreground">{t('connections.usage.empty')}</p>
+            )}
+          </div>
+        </ScrollArea>
         <DialogFooter>
           <Button
             variant="outline"

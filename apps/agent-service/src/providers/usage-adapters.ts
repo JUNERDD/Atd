@@ -110,7 +110,7 @@ export function quotaWindow(id: ProviderUsageWindowId, value: unknown): Provider
   if (!isRecord(value)) return null;
   const usedRatio = numberValue(value.used_ratio);
   if (usedRatio === null) return null;
-  const resetsAt = textValue(value.reset_time);
+  const resetsAt = resetTimeValue(value.reset_time);
   return {
     id,
     usedRatio: Math.min(Math.max(usedRatio, 0), 1),
@@ -157,17 +157,24 @@ export function clampRatio(value: number): number {
   return Math.min(Math.max(value, 0), 1);
 }
 
+const MAX_DATE_MS = 8_640_000_000_000_000;
+
 /** A unix timestamp that may be seconds or milliseconds, as an ISO string. */
 export function unixTimestampToIso(value: unknown): string | undefined {
   const timestamp = numberValue(value);
   if (timestamp === null || timestamp <= 0) return undefined;
   const milliseconds = timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp;
-  return new Date(milliseconds).toISOString();
+  if (!Number.isFinite(milliseconds) || milliseconds > MAX_DATE_MS) return undefined;
+  const date = new Date(Math.trunc(milliseconds));
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
-/** A reset value that may already be an ISO string or a millisecond timestamp. */
+/** A reset value that may be a unix timestamp (number or numeric string) or a parseable date string. */
 export function resetTimeValue(value: unknown): string | undefined {
-  return textValue(value) ?? unixTimestampToIso(value);
+  if (numberValue(value) !== null) return unixTimestampToIso(value);
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && Number.isFinite(Date.parse(trimmed)) ? trimmed : undefined;
 }
 
 /** Kimi Code reports a five-hour session, a weekly window, and monthly quotas. */
@@ -255,24 +262,53 @@ export async function moonshotBalance(
   return { kind: 'ok', windows: [], balance: { currency, remaining } };
 }
 
-/** OpenRouter reports total purchased credits and total usage, so the balance is their difference. */
+/**
+ * OpenRouter exposes per-key budget and limits on `GET /api/v1/key` for standard inference and
+ * OAuth keys (`GET /api/v1/credits` requires a management key that cannot run completions).
+ */
 export async function openRouterCredits(request: UsageRequest): Promise<ProviderUsageResponse> {
   const { response, json } = await getJson(
     request,
-    endpoint(request.baseUrl, '/credits', 'https://openrouter.ai/api/v1'),
+    endpoint(request.baseUrl, '/key', 'https://openrouter.ai/api/v1'),
   );
   if (!response.ok) return failure(response, json);
   const data = isRecord(json) && isRecord(json.data) ? json.data : undefined;
-  const total = data ? numberValue(data.total_credits) : null;
-  if (total === null) return { kind: 'ok', windows: [] };
-  const used = (data && numberValue(data.total_usage)) ?? 0;
+  if (!data) return { kind: 'ok', windows: [] };
+  const effective = isRecord(data.effective_budget) ? data.effective_budget : undefined;
+  const effectiveRemaining = effective ? numberValue(effective.remaining_usd) : null;
+  let remaining: number | null;
+  let total: number | null;
+  let monthly = false;
+  let monthlySpend: number | null = null;
+  if (effective && effectiveRemaining !== null) {
+    remaining = effectiveRemaining;
+    total = numberValue(effective.limit_usd);
+    monthly = textValue(effective.reset_interval) === 'monthly';
+    monthlySpend = numberValue(effective.spend_usd);
+  } else {
+    total = numberValue(data.limit);
+    const usage = numberValue(data.usage);
+    remaining =
+      numberValue(data.limit_remaining) ??
+      (total !== null && usage !== null ? total - usage : null);
+    monthly = !effective && textValue(data.limit_reset) === 'monthly';
+    monthlySpend = numberValue(data.usage_monthly);
+  }
+  if (remaining === null) return { kind: 'ok', windows: [] };
   return {
     kind: 'ok',
     windows: [],
     balance: {
       currency: 'USD',
-      remaining: Math.max(total - used, 0),
-      total: Math.max(total, 0),
+      remaining,
+      ...(total !== null && total >= 0 ? { total } : {}),
+      ...(monthly && total !== null && total > 0 && monthlySpend !== null
+        ? {
+            monthlyUsed: Math.max(monthlySpend, 0),
+            monthlyLimit: total,
+            monthlyLimitEnabled: true,
+          }
+        : {}),
     },
   };
 }

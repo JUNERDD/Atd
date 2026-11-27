@@ -1,8 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installBridge } from '../../../tests/app-test-bridge';
+import { initialTestSettings } from '../../../tests/app-test-settings';
 import type { Connection } from '../../client/providers/schema';
+import type { SettingsSnapshot } from '../../client/settings-contract';
 import { queryClient } from '../../lib/query-client';
+import { ModelConfigPopover } from './model-config-popover';
 import { ProviderUsageSummary } from './provider-usage';
 import { soonestReset } from './provider-usage-format';
 import { ProviderUsagePanel } from './provider-usage-panel';
@@ -10,6 +14,13 @@ import { useProviderUsage } from './use-provider-usage';
 
 afterEach(() => vi.unstubAllGlobals());
 beforeEach(() => queryClient.clear());
+
+function installSettingsBridge(patch?: Partial<SettingsSnapshot>) {
+  installBridge();
+  const snapshot: SettingsSnapshot = { ...initialTestSettings(), ...patch };
+  window.desktop!.settings.get = vi.fn(async () => snapshot);
+  return snapshot;
+}
 
 function connectionFixture(overrides?: Partial<Connection>): Connection {
   return {
@@ -24,7 +35,19 @@ function connectionFixture(overrides?: Partial<Connection>): Connection {
     hasCredential: true,
     options: {},
     customModels: [],
-    catalog: [],
+    catalog: [
+      {
+        id: 'kimi-for-coding',
+        name: 'Kimi for Coding',
+        api: 'openai-completions',
+        baseUrl: 'https://api.kimi.com/coding/v1',
+        reasoning: false,
+        input: ['text'],
+        contextWindow: 128000,
+        maxTokens: 8192,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      },
+    ],
     catalogError: '',
     verifiedModel: 'kimi-for-coding',
     ...overrides,
@@ -140,14 +163,97 @@ describe('provider usage panel', () => {
     expect(usage).toHaveBeenCalledWith('kimi-1', false);
   });
 
-  it('does not read usage automatically while the status probe is gated', () => {
-    installBridge();
-    const usage = vi.fn(async () => ({ kind: 'ok' as const, windows: [] }));
-    window.desktop!.settings.providers.usage = usage;
+  it('gates ModelConfigPopover automatic usage reads without usageEnabled when statuses are unchecked or a sibling is unreadable', async () => {
+    const user = userEvent.setup();
+    const healthy = connectionFixture();
 
-    render(<ProviderUsageSummary connection={connectionFixture()} enabled={false} />);
+    installSettingsBridge({ providerStatusesChecked: false, connections: [healthy] });
+    const usageWhileUnchecked = vi.fn(async () => ({
+      kind: 'ok' as const,
+      windows: [{ id: 'session' as const, usedRatio: 0.4 }],
+    }));
+    window.desktop!.settings.providers.usage = usageWhileUnchecked;
 
-    expect(usage).not.toHaveBeenCalled();
+    const first = render(
+      <ModelConfigPopover
+        connections={[healthy]}
+        model={{ connectionId: healthy.connectionId, modelId: healthy.defaultModel }}
+        hideEffort
+        onModelChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /Kimi for Coding/i }));
+    await waitFor(() => expect(window.desktop!.settings.get).toHaveBeenCalled());
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(usageWhileUnchecked).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Session 40%/i)).not.toBeInTheDocument();
+    first.unmount();
+
+    queryClient.clear();
+    const unreadableSibling = connectionFixture({
+      connectionId: 'sibling-1',
+      name: 'Sibling',
+      credentialIssue: 'unreadable',
+    });
+    installSettingsBridge({
+      providerStatusesChecked: true,
+      connections: [healthy, unreadableSibling],
+    });
+    const usageWithUnreadable = vi.fn(async () => ({
+      kind: 'ok' as const,
+      windows: [{ id: 'session' as const, usedRatio: 0.4 }],
+    }));
+    window.desktop!.settings.providers.usage = usageWithUnreadable;
+
+    render(
+      <ModelConfigPopover
+        connections={[healthy, unreadableSibling]}
+        model={{ connectionId: healthy.connectionId, modelId: healthy.defaultModel }}
+        hideEffort
+        onModelChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /Kimi for Coding/i }));
+    await waitFor(() => expect(window.desktop!.settings.get).toHaveBeenCalled());
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(usageWithUnreadable).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Session 40%/i)).not.toBeInTheDocument();
+  });
+
+  it('pauses ProviderUsagePanel without a stuck skeleton while gated and allows explicit Refresh', async () => {
+    const healthy = connectionFixture();
+    const unreadableSibling = connectionFixture({
+      connectionId: 'sibling-1',
+      credentialIssue: 'unreadable',
+    });
+
+    for (const patch of [
+      { providerStatusesChecked: false, connections: [healthy] },
+      { providerStatusesChecked: true, connections: [healthy, unreadableSibling] },
+    ]) {
+      queryClient.clear();
+      installSettingsBridge(patch);
+      const usage = vi.fn(async () => ({
+        kind: 'ok' as const,
+        windows: [{ id: 'session' as const, usedRatio: 0.25 }],
+      }));
+      window.desktop!.settings.providers.usage = usage;
+
+      const rendered = render(<ProviderUsagePanel connection={healthy} />);
+      expect(
+        await screen.findByText(/automatic usage checks are paused until credential access/i),
+      ).toBeInTheDocument();
+      expect(document.querySelector('[data-slot="skeleton"]')).not.toBeInTheDocument();
+      expect(usage).not.toHaveBeenCalled();
+
+      const refresh = screen.getByRole('button', { name: 'Refresh' });
+      expect(refresh).not.toBeDisabled();
+      fireEvent.click(refresh);
+      expect(await screen.findByText('Session (5 hours)')).toBeInTheDocument();
+      expect(usage).toHaveBeenCalledTimes(1);
+      expect(usage).toHaveBeenCalledWith(healthy.connectionId, true);
+      rendered.unmount();
+    }
   });
 
   it('skips elapsed and invalid resets when picking the soonest one', () => {

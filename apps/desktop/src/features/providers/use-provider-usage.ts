@@ -1,15 +1,28 @@
 import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { queryClient } from '../../lib/query-client';
 import type { Connection, ProviderUsage } from '../../client/providers/schema';
+import type { SettingsSnapshot } from '../../client/settings-contract';
+import { queryClient } from '../../lib/query-client';
+import { useSettingsSnapshot } from '../settings/use-settings';
 
 /**
- * Whether an automatic usage read is allowed. A credential issue must not hit the keychain again
- * (macOS re-prompts on every failed read); callers also gate on the sequential status probe so
- * an unreadable sibling does not turn every row into another prompt.
+ * Whether an automatic usage read is allowed for this connection on its own. A credential issue
+ * must not hit the keychain again (macOS re-prompts on every failed read).
  */
 export function providerUsageAvailable(connection: Connection | null): boolean {
   return Boolean(connection?.connected && !connection.credentialIssue);
+}
+
+/**
+ * Whether the sequential keychain status probe has finished without encountering an unreadable
+ * credential. Automatic usage reads wait on this gate across every surface so an unprobed sibling
+ * never triggers cascading macOS keychain prompts.
+ */
+export function providerStatusesReady(snapshot: SettingsSnapshot | null): boolean {
+  return (
+    snapshot?.providerStatusesChecked === true &&
+    !snapshot.connections.some((item) => item.credentialIssue === 'unreadable')
+  );
 }
 
 /**
@@ -19,6 +32,8 @@ export function providerUsageAvailable(connection: Connection | null): boolean {
  */
 export function useProviderUsage(connection: Connection | null, automatic = true) {
   const bridge = window.desktop?.settings.providers;
+  const { snapshot, loading: settingsLoading } = useSettingsSnapshot();
+  const statusesReady = providerStatusesReady(snapshot);
   // A manual refresh must reach the provider, not the service's 30-second cache.
   const forceRefresh = useRef(false);
   const query = useQuery(
@@ -36,7 +51,7 @@ export function useProviderUsage(connection: Connection | null, automatic = true
         if (usage.kind === 'error') throw new Error(usage.message);
         return usage;
       },
-      enabled: Boolean(bridge && automatic && providerUsageAvailable(connection)),
+      enabled: Boolean(bridge && automatic && statusesReady && providerUsageAvailable(connection)),
       staleTime: 30_000,
       gcTime: 5 * 60_000,
       meta: { errorToast: false },
@@ -45,6 +60,8 @@ export function useProviderUsage(connection: Connection | null, automatic = true
   );
   return {
     ...query,
+    statusesReady,
+    settingsLoading,
     refresh: () => {
       forceRefresh.current = true;
       return query.refetch();
