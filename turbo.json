@@ -26,6 +26,17 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "dist-native/**"]
     },
+    "@atd/website#build": {
+      "dependsOn": ["^build"],
+      "env": [
+        "VITE_ASSET_BASE_URL",
+        "SITE_URL",
+        "VERCEL_PROJECT_PRODUCTION_URL",
+        "VERCEL_ENV",
+        "GITHUB_TOKEN"
+      ],
+      "outputs": ["dist/**"]
+    },
     "@atd/file-index#build": {
       "inputs": [
         "$TURBO_DEFAULT$",

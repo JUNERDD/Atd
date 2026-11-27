@@ -76,6 +76,14 @@ paths = ['''(^|/)apps/macos/Tests/AICoreTests/Diagnostics[A-Za-z]+Tests\.swift$'
 regexTarget = "secret"
 regexes = ['''^(alicecorp|atd|desktop|documents|downloads|extractions|memory|resources|tasks)$''']
 
+[[allowlists]]
+description = "Public Cloudflare Web Analytics browser beacon token rendered into production website HTML"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)apps/website/scripts/prerender\.ts$''']
+regexTarget = "secret"
+regexes = ['''^f4cd11a22cbe46f2a97edb78d28184c1$''']
+
 [[rules]]
 id = "private-figma-file"
 description = "Keep design file URLs in ignored local project context"
