@@ -106,10 +106,8 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
 | `src/channel/protocol.ts`, `payloads.ts` | K2, the extension ↔ shell channel (TypeBox, `Value.Check` only: MV3 forbids `eval`). The source of truth that the shell's `AIChromeChannelKit` mirrors.                                                                                       |
 | `src/messages/`                          | The extension's own contracts: views the service worker projects (`views.ts`), the intents the content script, panel and settings page send (`content.ts`, `panel.ts`, `options.ts`), and the extension's own settings (`settings.ts`).       |
 | `src/background/`                        | Service worker: native channel (chunk reassembly, backoff), pairing, state and projections, owned tabs, the "Atd" tab group and badge, content-script injection, and the CDP translator with its allowlist (`cdp/`, adapted from Playwright). |
-| `src/background/transition-*.ts`         | The page transitions' frames (`captureVisibleTab`) and the gate that holds the agent's screenshots and input while the takeover's ripple plays (`cdp/debuggee.ts` consults it).                                                               |
 | `src/content/`                           | Content script (one IIFE, closed Shadow DOM): HUD, in-page ask (`ask/`), edge light (`glow/`, on `@atd/ui/lib/glow`), pointer.                                                                                                                |
 | `src/content/inspector/`                 | The in-page ask's inspector: picking an element of the page (capture-phase listeners only while picking), its highlight layer, and the selector, label and text each picked element sends.                                                    |
-| `src/content/transition/`                | Page transitions: the takeover's ripple and the done sweep, drawn with WebGL2 over a captured frame of the tab, in their own layer under the light.                                                                                           |
 | `src/rich-text/`                         | A run's reply as a tree (`tree.ts`, types only) and its parser (`parse.ts`, service worker only): `marked`'s lexer, sanitized and bounded. The HUD (`content/hud/reply.ts`) and the panel (`panel/rich-text.tsx`) render it.                  |
 | `src/panel/`                             | The panel (React) on the apple-design web kit, laid out as a Mac sidebar: Chrome's side panel, or the toolbar popup where a browser has none. A toolbar (connection, More menu with this site's permission), the runs, and the composer.      |
 | `src/options/`                           | The settings page (React, `options_ui` in a tab), a macOS System Settings pane on the same kit: Toolbar Button, Keyboard Shortcuts, Allowed Websites and Atd groups.                                                                          |
@@ -124,12 +122,8 @@ From the repository root (or `pnpm --filter @atd/chrome-extension build` / `dev`
 Cancel there stops the run), `tabs` and `tabGroups` (the "Atd" group), `scripting` (tabs open before
 the extension loaded), `nativeMessaging`, `storage` (the pairing, settings and HUD positions),
 `sidePanel` (the panel), and `<all_urls>`
-hosts for the HUD and the in-page ask. The same host access lets the service worker capture a tab
-(`chrome.tabs.captureVisibleTab`) as the frame its page transitions play over: only a tab a run is in (its HUD shows one, or Atd has just taken
-the person's ask with its page there), only while it is the active tab of its window (checked
-before and after the capture), at most twice a second, and the frame goes back only to that tab's
-document. Pages no content script runs on (chrome://, the Web Store) never
-ask; there the toolbar button opens the side panel. No cookies, history, bookmarks, downloads or
+hosts for the HUD and the in-page ask. On pages no content script runs on (chrome://, the Web
+Store) the toolbar button opens the side panel. No cookies, history, bookmarks, downloads or
 webRequest. The content script reads nothing from a page and sends nothing until the person acts.
 While the person picks with the inspector it reads the role, name and size of the element under
 the pointer for its label; it keeps and sends only the elements they pick (a selector, role and

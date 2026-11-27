@@ -61,14 +61,9 @@ export class Hud {
     );
   }
 
-  /** The capsule's box (where it would show while it does not), for the light and transitions. */
+  /** The capsule's box (where it would show while it does not), for the light. */
   bounds(): DOMRectReadOnly {
     return this.built?.bounds() ?? restingBounds(HOME);
-  }
-
-  /** Everything the HUD draws right now (`HudView.drawnBounds`); null while nothing shows. */
-  drawnBounds(): DOMRectReadOnly | null {
-    return this.built?.drawnBounds() ?? null;
   }
 
   /** Whether `event` is the HUD's ⌃⌥⌘ + arrow move shortcut while it shows. */

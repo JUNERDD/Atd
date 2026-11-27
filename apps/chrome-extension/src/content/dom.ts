@@ -98,19 +98,3 @@ export function refocus(container: ParentNode, act: string | null): void {
   const target = container.querySelector<HTMLElement>(`[data-act="${CSS.escape(act)}"]`);
   target?.focus({ preventScroll: true });
 }
-
-/**
- * The box around what `elements` draw, in viewport CSS px (`getBoundingClientRect`, so transforms
- * and running animations count); elements that draw nothing are skipped, and none drawing is null.
- */
-export function drawnBox(elements: Iterable<Element>): DOMRectReadOnly | null {
-  const boxes = [...elements]
-    .map((element) => element.getBoundingClientRect())
-    .filter((box) => box.width > 0 && box.height > 0);
-  if (boxes.length === 0) return null;
-  const left = Math.min(...boxes.map((box) => box.left));
-  const top = Math.min(...boxes.map((box) => box.top));
-  const right = Math.max(...boxes.map((box) => box.right));
-  const bottom = Math.max(...boxes.map((box) => box.bottom));
-  return new DOMRect(left, top, right - left, bottom - top);
-}

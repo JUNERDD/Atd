@@ -1,5 +1,5 @@
 import type { PointerView } from '../../messages/views.ts';
-import { drawnBox, h } from '../dom.ts';
+import { h } from '../dom.ts';
 import { Layer } from '../hosts.ts';
 import { t } from '../i18n.ts';
 import { atdMark } from '../mark.ts';
@@ -172,14 +172,6 @@ export class PointerLayer {
   /** The language changed: the label follows. */
   relabel(): void {
     if (this.placed) this.layOut();
-  }
-
-  /**
-   * The box around what the mark draws (ring, bar, arrow, label) in viewport CSS px, while its
-   * layer is in the page (its fade-out too); null otherwise.
-   */
-  bounds(): DOMRectReadOnly | null {
-    return this.layer.element ? drawnBox([this.ring, this.bar, this.tip, this.pill]) : null;
   }
 
   /** Hides the mark: with its fade, or at once for a failed step; then its layer leaves. */

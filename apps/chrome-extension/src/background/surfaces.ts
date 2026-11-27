@@ -38,8 +38,6 @@ export interface SurfaceViews {
 
 export interface SurfaceHandlers {
   content(tabId: number, intent: ContentIntent, reply: ContentReply): void;
-  /** The tab's content script went away: its port closed, or a new document's replaced it. */
-  contentGone(tabId: number): void;
   /** A content message that failed validation (it may name a request to fail). */
   invalidContent(tabId: number, message: unknown): void;
   panel(intent: PanelMessage, reply: PanelReply): void;
@@ -167,14 +165,10 @@ export class Surfaces {
     const tabId = tab.id;
     // A new document in the tab replaces the old entry; an older port is not closed, because its
     // content script would only reconnect.
-    const replaced = this.tabs.has(tabId);
     this.tabs.set(tabId, { port, ready: false, url: tab.url ?? '', sent: '' });
-    if (replaced) this.handlers.contentGone(tabId);
     port.onMessage.addListener((message: unknown) => this.contentMessage(tabId, port, message));
     port.onDisconnect.addListener(() => {
-      if (this.tabs.get(tabId)?.port !== port) return;
-      this.tabs.delete(tabId);
-      this.handlers.contentGone(tabId);
+      if (this.tabs.get(tabId)?.port === port) this.tabs.delete(tabId);
     });
   }
 
@@ -205,13 +199,8 @@ export class Surfaces {
       const view = this.views.tab(tabId, entry.url);
       const text = JSON.stringify(view);
       if (entry.sent === text) continue;
-      if (post(entry.port, { type: 'state', view })) {
-        entry.sent = text;
-      } else {
-        // Its `onDisconnect` then finds no entry, so this is where the content script goes.
-        this.tabs.delete(tabId);
-        this.handlers.contentGone(tabId);
-      }
+      if (post(entry.port, { type: 'state', view })) entry.sent = text;
+      else this.tabs.delete(tabId);
     }
   }
 }

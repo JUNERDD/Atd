@@ -36,8 +36,6 @@ import { effectivePrefs, restorePrefs, Store } from './store.ts';
 import { Surfaces } from './surfaces.ts';
 import { listenToTabs } from './tab-events.ts';
 import { TabGroups } from './tab-group.ts';
-import { TransitionCaptures } from './transition-capture.ts';
-import { TransitionGate } from './transition-gate.ts';
 
 /**
  * The service worker of Atd for Chrome (an MV3 module). It owns the native channel to the Atd
@@ -75,7 +73,6 @@ const surfaces = new Surfaces(
   },
   {
     content: (tabId, intent, reply) => handleContentIntent(contentDeps, tabId, intent, reply),
-    contentGone: (tabId) => gate.release(tabId),
     invalidContent: (tabId, message) => handleInvalidContent(contentDeps, tabId, message),
     panel: (intent, reply) => handlePanelIntent(panelDeps, intent, reply),
     options: (intent, tab) => handleOptionsIntent(optionsDeps, intent, tab),
@@ -92,19 +89,10 @@ const followUps = new FollowUps((taskId) => {
       surfaces.postToTab(tabId, { type: 'followUp.failed', taskId });
 });
 const indicators = new Indicators(store, owned, groups);
-const gate = new TransitionGate();
-const transitions = new TransitionCaptures({
-  gate,
-  engaged: (tabId) =>
-    shownRun(store.state, tabId, tabRuns(tabId)) !== null || links.starting(tabId),
+const debuggee = new Debuggee({
+  event: (tabId, child, method, params) => translator.debuggerEvent(tabId, child, method, params),
+  input: (tabId) => owned.noteAtdInput(tabId),
 });
-const debuggee = new Debuggee(
-  {
-    event: (tabId, child, method, params) => translator.debuggerEvent(tabId, child, method, params),
-    input: (tabId) => owned.noteAtdInput(tabId),
-  },
-  gate,
-);
 const translator = new CdpTranslator({
   send,
   debuggee,
@@ -128,7 +116,6 @@ const contentDeps: ContentIntentDeps = {
   ownership,
   followUps,
   hidden,
-  transitions,
   shownRun: (tabId) => shownRun(store.state, tabId, tabRuns(tabId)),
 };
 const panelDeps: PanelIntentDeps = {

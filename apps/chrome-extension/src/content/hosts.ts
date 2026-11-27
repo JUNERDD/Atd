@@ -18,26 +18,17 @@ import baseCss from './base.css?inline';
  * backdrop root of its glass and hide the page and the light behind it from the blur.
  */
 
-export type LayerTag = 'atd-transition' | 'atd-glow' | 'atd-pointer' | 'atd-inspector' | 'atd-hud';
+export type LayerTag = 'atd-glow' | 'atd-pointer' | 'atd-inspector' | 'atd-hud';
 
-const TAGS: readonly LayerTag[] = [
-  'atd-transition',
-  'atd-glow',
-  'atd-pointer',
-  'atd-inspector',
-  'atd-hud',
-];
+const TAGS: readonly LayerTag[] = ['atd-glow', 'atd-pointer', 'atd-inspector', 'atd-hud'];
 
 /**
  * Stacking among the layers, all above the page's own content. The HUD is on top: its approval
  * buttons act only while nothing covers its card (`hud/guard.ts`), and a full-viewport layer
  * above it would count as covering it, even one of Atd's own. The inspector's highlight
- * (`inspector/`) marks the page's elements, under the HUD it is picked from. A page transition's
- * frozen frame (`transition/`) is lowest: it stands in for the page itself, under the live light
- * and HUD.
+ * (`inspector/`) marks the page's elements, under the HUD it is picked from.
  */
 const Z_INDEX: Record<LayerTag, number> = {
-  'atd-transition': 2147483643,
   'atd-glow': 2147483644,
   'atd-pointer': 2147483645,
   'atd-inspector': 2147483646,
