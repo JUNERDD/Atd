@@ -12,9 +12,10 @@ enum TaskActivityDecisionPlacement {
 
 /// A request's decisions. An approval offers Decline (Deny for a terminal command) and Allow
 /// once (Allow access for computer access) as its one prominent action, with the broader grant
-/// in a menu on the chevron beside it; on its page the broader grant is a button of its own. An
-/// approval that needs reading first offers Details… in place of allowing. A question offers
-/// Skip, and Answer… on its own line; a view offers Skip and Open view.
+/// in a menu on the chevron beside it; on its page the broader grant is a button of its own while
+/// the footer's one line has room for it. An approval that needs reading first offers Details…
+/// in place of allowing. A question offers Skip, and Answer… on its own line; a view offers Skip
+/// and Open view.
 struct TaskActivityDecisions: View {
   let item: TaskActivityItem
   let request: TaskActivityPendingRequest
@@ -56,42 +57,50 @@ struct TaskActivityDecisions: View {
 
   @ViewBuilder
   private func approvalDecisions(_ approval: TaskActivityApproval) -> some View {
-    let decline = labels.text(approval.isBash ? .activityDeny : .activityDecline)
-    decision(.decline, decline, kind: .plain, tooltip: labels.text(.activityDeclineTooltip))
+    declineDecision(approval)
     if placement != .page && approval.needsDetail {
       decision(.details, labels.text(.activityDetails), kind: .prominent)
-    } else if let broader = approval.broader {
+    } else {
+      allowDecisions(approval)
+    }
+  }
+
+  private func declineDecision(_ approval: TaskActivityApproval) -> some View {
+    let decline = labels.text(approval.isBash ? .activityDeny : .activityDecline)
+    return decision(
+      .decline, decline, kind: .plain, tooltip: labels.text(.activityDeclineTooltip))
+  }
+
+  /// The page's footer, one line: the decline on the leading edge, the broader grant as a button
+  /// of its own, Allow once on the trailing edge. Too wide for that, the broader grant moves into
+  /// the chevron's menu beside Allow once (``split(_:broader:)``), as the action bar offers it,
+  /// rather than any decision moving to a line of its own.
+  private func pageFooter(_ approval: TaskActivityApproval) -> some View {
+    ViewThatFits(in: .horizontal) {
+      HStack(spacing: 4) {
+        declineDecision(approval)
+        Spacer(minLength: 8)
+        if let broader = approval.broader {
+          let grant = grant(broader, approval)
+          decision(broader, grant.title, kind: .bordered, tooltip: grant.hint)
+        }
+        decision(.allow, allowTitle(approval), kind: .prominent)
+      }
+      HStack(spacing: 4) {
+        declineDecision(approval)
+        Spacer(minLength: 8)
+        allowDecisions(approval)
+      }
+    }
+  }
+
+  /// Allow once, with the broader grant (when there is one) in its chevron's menu.
+  @ViewBuilder
+  private func allowDecisions(_ approval: TaskActivityApproval) -> some View {
+    if let broader = approval.broader {
       split(approval, broader: broader)
     } else {
       decision(.allow, allowTitle(approval), kind: .prominent)
-    }
-  }
-
-  /// The page's footer: the decline on the leading edge, the broader grant as a button of its
-  /// own, Allow once on the trailing edge. Too wide for one line, Allow once moves to a line of
-  /// its own, still trailing, and a long grant is cut before anything else is.
-  private func pageFooter(_ approval: TaskActivityApproval) -> some View {
-    let allow = decision(.allow, allowTitle(approval), kind: .prominent)
-    return ViewThatFits(in: .horizontal) {
-      HStack(spacing: 4) {
-        pageFirstLine(approval)
-        allow
-      }
-      VStack(alignment: .trailing, spacing: 4) {
-        HStack(spacing: 4) { pageFirstLine(approval) }
-        allow
-      }
-    }
-  }
-
-  @ViewBuilder
-  private func pageFirstLine(_ approval: TaskActivityApproval) -> some View {
-    let decline = labels.text(approval.isBash ? .activityDeny : .activityDecline)
-    decision(.decline, decline, kind: .plain, tooltip: labels.text(.activityDeclineTooltip))
-    Spacer(minLength: 8)
-    if let broader = approval.broader {
-      let grant = grant(broader, approval)
-      decision(broader, grant.title, kind: .bordered, tooltip: grant.hint, fixed: false)
     }
   }
 
@@ -124,7 +133,7 @@ struct TaskActivityDecisions: View {
   private func decision(
     _ control: TaskActivityControl, _ title: String, kind: TaskActivityButtonKind,
     tooltip: String? = nil, side: TaskActivityCapsuleSide = .whole,
-    busyAs: TaskActivityControl? = nil, fixed: Bool = true
+    busyAs: TaskActivityControl? = nil
   ) -> some View {
     let progress = busyAs ?? control
     let busy =
@@ -137,7 +146,7 @@ struct TaskActivityDecisions: View {
       model.perform(control, on: request, at: index, of: item.key)
     }
     .disabled(sending != nil && busy == nil)
-    .fixedSize(horizontal: fixed, vertical: true)
+    .fixedSize()
     .accessibilityIdentifier(identifier("\(control)"))
   }
 
