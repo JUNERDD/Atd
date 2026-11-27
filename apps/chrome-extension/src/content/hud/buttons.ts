@@ -1,4 +1,5 @@
 import {
+  ArrowUpRight,
   Check,
   CircleStop,
   Copy,
@@ -22,9 +23,9 @@ const STOP_IN_CIRCLE: IconNode = CircleStop.map(([tag, attrs]): IconNode[number]
 
 /**
  * Stop. A row shows Atd's stop glyph: Lucide Square at 12 px, filled (the product's
- * `<Square className="size-3 fill-current" />`). A card shows Stop under answers, where a bare
- * filled square beside a label would read as a checked checkbox, so there the square sits in its
- * circle, as the product's round stop button draws it.
+ * `<Square className="size-3 fill-current" />`). A card shows Stop beside its answers, where a
+ * bare filled square beside a label would read as a checked checkbox, so there the square sits in
+ * its circle, as the product's round stop button draws it.
  */
 export function stopButton(ctx: RunRender, place: 'row' | 'card' = 'row'): HTMLButtonElement {
   return gbtn({
@@ -38,10 +39,15 @@ export function stopButton(ctx: RunRender, place: 'row' | 'card' = 'row'): HTMLB
   });
 }
 
+/**
+ * Open in Atd (or Answer in Atd). Its label alone at full width; compacted (`compact.ts`), it is
+ * the island's arrow icon (`IslandResultFooter`), drawn only then (`compact-only`).
+ */
 export function openButton(ctx: RunRender, label = t('hud.openInAtd')): HTMLButtonElement {
   return gbtn({
     act: 'open',
     label,
+    icon: createElement(ArrowUpRight, iconAttrs(15, 'compact-only')),
     disabled: !ctx.reachable,
     onClick: () => ctx.intent({ kind: 'open' }),
   });

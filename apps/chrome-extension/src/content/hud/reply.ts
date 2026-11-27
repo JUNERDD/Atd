@@ -32,7 +32,7 @@ export function replyCard(ctx: RunRender, reply: ReplyView): HTMLElement {
     turnTitle(ctx.run),
     replyBody(reply).parts,
     {
-      trail: [
+      actions: [
         copyButton(ctx, reply.text),
         openButton(ctx),
         saveButton(ctx),
@@ -74,7 +74,7 @@ export class WritingReply {
         atdMark(16),
         turnTitle(ctx.run),
         body.parts,
-        { lead: [stopButton(ctx, 'card')], trail: [] },
+        { stop: stopButton(ctx, 'card') },
         null,
         true,
       );

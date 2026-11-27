@@ -10,9 +10,10 @@ import { scrollArea } from './scroll-area.ts';
 type InputRequest = Extract<HudRequest, { kind: 'input' }>;
 
 /**
- * The card anatomy: a glyph beside title and body, with a card's close button in its top trailing
- * corner, then the card's own sections (an input's choices), then its footer. Its parts are named
- * (`data-part`; a body and a note name themselves), so a change in place moves each to its place.
+ * The card anatomy: the grabber in the strip above everything, then a glyph beside title and body,
+ * with a card's close button in its top trailing corner, then the card's own sections (an input's
+ * choices), then its footer. Its parts are named (`data-part`; a body and a note name themselves),
+ * so a change in place moves each to its place; the grabber, the same on every card, stays put.
  */
 function shell(
   classes: string,
@@ -27,6 +28,7 @@ function shell(
   return h(
     'div',
     { class: classes },
+    grabber(),
     h(
       'div',
       { class: 'hud-card-head' },
@@ -56,30 +58,36 @@ function titleNode(text: string, clamped = false): HTMLElement {
 }
 
 /**
- * A card's footer: Stop alone at the leading edge, away from everything a click there could be
- * meant for, and the rest at the trailing edge. Each side wraps as one group, so a pair of answers
- * stays together on a narrow card.
+ * The island's result cards' grabber (`IslandGrabber`): Apple's sheet grabber, centred in the strip
+ * that takes the card's top padding. The whole card moves the HUD (`drag.ts`); the grabber is what
+ * says so, highlighted while the pointer is near it or the HUD is dragged. Like the island's, it is
+ * hidden from assistive technology: the HUD stays where it shows.
  */
-function footer(lead: readonly HTMLElement[], trail: readonly HTMLElement[]): HTMLElement {
-  return h(
-    'div',
-    { class: 'hud-card-actions' },
-    lead.length > 0 ? h('div', { class: 'hud-card-lead' }, ...lead) : null,
-    trail.length > 0 ? h('div', { class: 'hud-card-trail' }, ...trail) : null,
-  );
+function grabber(): HTMLElement {
+  return h('div', { class: 'hud-grabber', attrs: { 'aria-hidden': 'true' } });
+}
+
+/**
+ * A card's footer, at the trailing edge as the island's result cards' actions are: Stop first (while
+ * the run can be stopped), then the card's own `actions`, its primary one last. It stays one line:
+ * where the card is too narrow for every label, its secondary actions show their icons alone
+ * (`compact.ts`).
+ */
+function footer(stop: HTMLElement | null, actions: readonly HTMLElement[]): HTMLElement {
+  return h('div', { class: 'hud-card-actions' }, stop, ...actions);
 }
 
 /**
  * A run's card (its reply): the run's `title` on one line, its `body` its own section under
  * the head, as wide as the head (long text reads across the card, not in the title's column beside
- * the glyph), `close` (if any) in its top trailing corner and its `actions` in the footer: Stop
- * alone at the leading edge (`lead`), the rest at the trailing one.
+ * the glyph), `close` (if any) in its top trailing corner and its footer at the trailing edge: Stop
+ * (`stop`), then the card's own `actions`.
  */
 export function card(
   glyph: Element,
   title: string,
   body: readonly (HTMLElement | null)[],
-  actions: { lead?: readonly HTMLElement[]; trail: readonly HTMLElement[] },
+  { stop = null, actions = [] }: { stop?: HTMLElement | null; actions?: readonly HTMLElement[] },
   close: HTMLElement | null,
   wide = false,
 ): HTMLElement {
@@ -90,7 +98,7 @@ export function card(
     titleNode(title, true),
     [],
     [section],
-    footer(actions.lead ?? [], actions.trail),
+    footer(stop, actions),
     close,
   );
 }
@@ -171,14 +179,14 @@ function choices(ctx: RunRender, request: InputRequest): HTMLElement {
  * A request the person can answer here, the same one Atd's task panel shows (the first answer
  * given anywhere wins). A confirmation is Allow once or Don't allow; an input takes one of its
  * options (a sign-in handoff is such an input, offering "I've signed in"). The HUD sends only a
- * listed option, so an input also offers Atd for any other answer. Stop stays available at the
- * footer's leading edge. When the page covered the card as the person answered (`guard.ts`), the
- * card says so and offers Atd instead.
+ * listed option, so an input also offers Atd for any other answer. Stop stays available, first in
+ * the footer. When the page covered the card as the person answered (`guard.ts`), the card says so
+ * and offers Atd instead.
  */
 export function attentionCard(ctx: RunRender, request: HudRequest): HTMLElement {
   const waiting = ctx.answering;
   const covered = ctx.covered ? note(t('hud.covered'), true) : null;
-  const lead = [stopButton(ctx, 'card')];
+  const stop = stopButton(ctx, 'card');
   if (request.kind === 'confirmation') {
     return shell(
       'hud-card',
@@ -186,7 +194,7 @@ export function attentionCard(ctx: RunRender, request: HudRequest): HTMLElement 
       titleNode(request.title),
       [request.detail ? bodyText(request.detail) : null, covered],
       [],
-      footer(lead, [
+      footer(stop, [
         ...(ctx.covered ? [openButton(ctx, t('hud.answerInAtd'))] : []),
         answerButton({
           act: 'deny',
@@ -212,7 +220,7 @@ export function attentionCard(ctx: RunRender, request: HudRequest): HTMLElement 
     titleNode(request.title),
     [covered],
     [choices(ctx, request)],
-    footer(lead, [openButton(ctx, t('hud.answerInAtd'))]),
+    footer(stop, [openButton(ctx, t('hud.answerInAtd'))]),
   );
 }
 
@@ -224,17 +232,14 @@ export function appNeededCard(ctx: RunRender): HTMLElement {
     titleNode(t('hud.needsApp')),
     [bodyText(turnTitle(ctx.run))],
     [],
-    footer(
-      [stopButton(ctx, 'card')],
-      [
-        gbtn({
-          act: 'open',
-          variant: 'solid',
-          label: t('hud.openInAtd'),
-          disabled: !ctx.reachable,
-          onClick: () => ctx.intent({ kind: 'open' }),
-        }),
-      ],
-    ),
+    footer(stopButton(ctx, 'card'), [
+      gbtn({
+        act: 'open',
+        variant: 'solid',
+        label: t('hud.openInAtd'),
+        disabled: !ctx.reachable,
+        onClick: () => ctx.intent({ kind: 'open' }),
+      }),
+    ]),
   );
 }

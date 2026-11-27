@@ -1,6 +1,6 @@
 import { h } from '../dom.ts';
 import { reducedMotion } from '../motion.ts';
-import { fitRow } from './compact.ts';
+import { fitCard, fitRow } from './compact.ts';
 import {
   CONTENT_BLUR,
   CONTENT_EXIT,
@@ -269,6 +269,7 @@ export class IslandStage {
    */
   private fit(content: StageContent): void {
     if (content.shape === 'row') fitRow(content.node);
+    else if (content.shape === 'card') fitCard(content.node);
   }
 
   /** `face` stops being the content: it keeps its size and anchor as it leaves into a blur. */

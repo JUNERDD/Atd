@@ -175,6 +175,11 @@
   display: none;
 }
 
+/* An icon a button draws only compacted (Open in Atd's arrow): at full width its label says it. */
+.gbtn:not(.compact) > .i.compact-only {
+  display: none;
+}
+
 .hud-div {
   width: 1px;
   height: 18px;
@@ -183,14 +188,49 @@
   flex: none;
 }
 
-/* The actions stand in the corners, 6 px from the edges; the head keeps to the row's insets. */
+/*
+ * The actions stand in the corners, 6 px from the edges; the head keeps to the row's insets. The
+ * grabber's 16 px strip takes the top padding, as on the island's result cards
+ * (`IslandMetrics.grabberStrip`), so the head starts under it.
+ */
 .hud-card {
+  position: relative;
   width: 372px;
   max-width: 100%;
-  padding: 6px;
+  padding: 16px 6px 6px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/*
+ * The grabber (`card.ts`): the island's 36 × 5 capsule in the tertiary label colour, centred in the
+ * strip. The strip's middle 96 px takes the pointer, so it need not be hit exactly, and turns it the
+ * secondary colour, as it is while the HUD is dragged.
+ */
+.hud-grabber {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  translate: -50% 0;
+  width: 96px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+}
+
+.hud-grabber::before {
+  content: '';
+  width: 36px;
+  height: 5px;
+  border-radius: 2.5px;
+  background: color-mix(in srgb, var(--fg) 26%, transparent);
+  transition: background-color 120ms ease-out;
+}
+
+.hud-grabber:hover::before,
+.hud.dragging .hud-grabber::before {
+  background: var(--fg-2);
 }
 
 .hud-card.wide {
@@ -211,8 +251,8 @@
 }
 
 /*
- * A card's close button, in its top trailing corner: 6 px from both edges, so concentric with the
- * corner (6 + 16) as the row's controls are, and centred on the title's line. It takes no more of
+ * A card's close button, in its top trailing corner: 6 px from the trailing edge, as the row's
+ * controls are, just under the grabber's strip and centred on the title's line. It takes no more of
  * the head than that line, so the head keeps its height.
  */
 .gbtn.icon.hud-card-close {
@@ -343,28 +383,41 @@
 }
 
 /*
- * The footer's two sides (`card.ts`): Stop at the leading edge, the rest at the trailing edge.
- * When they do not fit on one line, the trailing side moves under the leading one, still trailing.
+ * The footer (`card.ts`), at the trailing edge as the island's result cards' actions: Stop, then the
+ * card's own actions, on one line. Nothing in it shrinks or wraps: when it would run past the card,
+ * its secondary actions show only their icons instead (`compact.ts`).
  */
 .hud-card-actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
 
-.hud-card-lead,
-.hud-card-trail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
+.hud-card-actions > * {
+  flex: none;
+}
+
+/*
+ * Trailing by an auto margin, not `justify-content: flex-end`, which would push what does not fit
+ * past the leading edge, where the footer's `scrollWidth` cannot see it to compact it.
+ */
+.hud-card-actions > :first-child {
+  margin-inline-start: auto;
+}
+
+/*
+ * Too narrow even with its actions compacted (`compact.ts`): the labels left share the room,
+ * each shortened with an ellipsis rather than the footer wrapping or running past the card.
+ */
+.hud-card-actions.tight > .gbtn:not(.compact) {
+  flex: 0 1 auto;
   min-width: 0;
 }
 
-.hud-card-trail {
-  margin-inline-start: auto;
-  justify-content: flex-end;
+.hud-card-actions.tight .gbtn-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /*
