@@ -1,4 +1,5 @@
 import { chromium, type Browser } from 'playwright-core';
+import { errorMessage, workerLog } from './log.js';
 
 /**
  * The worker's one browser connection: playwright-core `connectOverCDP` to the browser socket the
@@ -40,10 +41,21 @@ export function connectBrowser(
   channel: BrowserChannel,
   artifactsDir: string | undefined,
 ): Promise<Browser> {
-  return chromium.connectOverCDP(socket, {
-    isLocal: true,
-    timeout: CONNECT_TIMEOUT_MS,
-    ...(channel === 'chrome' ? { noDefaults: true } : {}),
-    ...(artifactsDir === undefined ? {} : { artifactsDir }),
-  });
+  return chromium
+    .connectOverCDP(socket, {
+      isLocal: true,
+      timeout: CONNECT_TIMEOUT_MS,
+      ...(channel === 'chrome' ? { noDefaults: true } : {}),
+      ...(artifactsDir === undefined ? {} : { artifactsDir }),
+    })
+    .catch((error: unknown) => {
+      workerLog({
+        level: 'error',
+        cat: 'cdp',
+        code: 'connect_failed',
+        channel,
+        msg: errorMessage(error),
+      });
+      throw error;
+    });
 }

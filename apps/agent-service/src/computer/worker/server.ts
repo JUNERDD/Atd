@@ -6,18 +6,19 @@ import { fill, navigate, press, scroll } from './actions.js';
 import { wait } from './conditions.js';
 import { Downloads, downloadRootFor } from './downloads.js';
 import { key, select, upload } from './inputs.js';
+import { errorMessage, workerLog } from './log.js';
 import { observe } from './observe.js';
 import { pageFocus } from './occupancy.js';
 import { openPage } from './open.js';
 import * as openingSchemas from './opening-schemas.js';
-import { OperationRegistry, WorkerError, type Operation } from './operations.js';
+import { OperationRegistry, type Operation } from './operations.js';
 import { browserChannelFromEnvironment, browserSocketFromEnvironment } from './connection.js';
 import { Pages } from './pages.js';
 import { Previews } from './preview.js';
 import * as previewSchemas from './preview-schemas.js';
 import { profileDownloadDir } from './profile-downloads.js';
+import { runOperation, toolResult } from './run-operation.js';
 import * as schemas from './schemas.js';
-import { truncate } from './text.js';
 import { restoreWindows } from './windows.js';
 
 /**
@@ -53,54 +54,6 @@ const WORKER_VERSION = '0.6.0';
 const PLAYWRIGHT_CORE_VERSION = (
   createRequire(import.meta.url)('playwright-core/package.json') as { version: string }
 ).version;
-
-type ToolResult = {
-  content: { type: 'text'; text: string }[];
-  structuredContent: Record<string, unknown>;
-  isError?: boolean;
-};
-
-/** The text content mirrors the structured result without screenshot data. */
-function toolResult(structured: Record<string, unknown>, isError: boolean): ToolResult {
-  const { screenshot, frame, ...rest } = structured;
-  if (frame !== undefined) rest.frame = '[preview jpeg]';
-  const text = JSON.stringify(screenshot === undefined ? rest : { ...rest, screenshot: '[png]' });
-  return isError
-    ? { content: [{ type: 'text', text }], structuredContent: structured, isError: true }
-    : { content: [{ type: 'text', text }], structuredContent: structured };
-}
-
-/**
- * Runs one page tool as an operation and shapes its result: `dispatched` comes from the
- * operation, so a failure after a dispatch still says the page may have changed. Errors that are
- * not a `WorkerError` (CDP failures, a closed socket) become `engineFailed`.
- */
-async function runOperation(
-  registry: OperationRegistry,
-  signal: AbortSignal,
-  input: { pageId?: string; operationId?: string | undefined },
-  work: (op: Operation) => Promise<Record<string, unknown>>,
-  report: () => Promise<Record<string, unknown>> = async () => ({}),
-): Promise<ToolResult> {
-  const op = registry.begin(signal, input.operationId);
-  const page = () => ({
-    dispatched: op.dispatched,
-    pageId: input.pageId,
-    navigationGeneration: op.navigationGeneration,
-    observationVersion: op.observationVersion,
-  });
-  try {
-    const fields = await work(op);
-    return toolResult({ ok: true, ...page(), ...fields, ...(await report()) }, false);
-  } catch (error) {
-    const code = error instanceof WorkerError ? error.code : 'engineFailed';
-    const message = truncate(error instanceof Error ? error.message : String(error), 2000);
-    const saved = await report();
-    return toolResult({ ok: false, ...page(), error: { code, message }, ...saved }, true);
-  } finally {
-    registry.end(op);
-  }
-}
 
 async function main(): Promise<void> {
   const uploadRoot = process.env['ATD_UPLOAD_ROOT'];
@@ -151,6 +104,7 @@ async function main(): Promise<void> {
           return work(op, parsed);
         },
         report,
+        { tool: name, channel },
       );
     });
   };
@@ -334,8 +288,11 @@ async function main(): Promise<void> {
 try {
   await main();
 } catch (error) {
-  process.stderr.write(
-    `computer worker: ${error instanceof Error ? error.message : String(error)}\n`,
-  );
+  workerLog({
+    level: 'error',
+    cat: 'worker',
+    code: 'startup_failed',
+    msg: errorMessage(error),
+  });
   process.exit(1);
 }

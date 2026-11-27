@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { Browser, Frame, Locator, Page } from 'playwright-core';
+import type { Browser, Page } from 'playwright-core';
 import { connectBrowser, type BrowserChannel } from './connection.js';
 import type { Downloads } from './downloads.js';
+import { workerLog } from './log.js';
 import {
   orIfActive,
   throwIfCancelled,
@@ -10,8 +11,27 @@ import {
   WorkerError,
   type Operation,
 } from './operations.js';
-import { readPageIdentity, type PageIdentity } from './page-identity.js';
-import { parseSnapshot, type SnapshotElement } from './snapshot.js';
+import {
+  locatorFor,
+  originOf,
+  refOf,
+  type DocumentState,
+  type Element,
+  type Origins,
+  type PageRead,
+} from './page-elements.js';
+import { PageIdentityCache, type PageIdentity } from './page-identity.js';
+import { parseSnapshot } from './snapshot.js';
+
+export {
+  locatorFor,
+  originOf,
+  refOf,
+  type DocumentState,
+  type Element,
+  type Origins,
+  type PageRead,
+};
 
 /**
  * Exact page access over one playwright-core `connectOverCDP` connection per worker, with
@@ -53,51 +73,6 @@ interface PageState {
   baselines: Map<string, string>;
 }
 
-/** One listed element with the frame and role/name locator that addresses it. */
-export interface Element extends SnapshotElement {
-  frame: Frame;
-  origin: string;
-  /** Index among the frame's elements with the same role (and name, when named). */
-  nth: number;
-}
-
-/** The main document as one fixed evaluation read it. */
-export interface DocumentState {
-  url: string;
-  title: string;
-  navigationGeneration: number;
-}
-
-/** A full read of a page: document, elements of allowed frames and the observation version. */
-export interface PageRead extends DocumentState {
-  observationVersion: number;
-  elements: Element[];
-}
-
-/** The binding's origins as the host passes them; absent: the main frame's own origin. */
-export type Origins = readonly string[] | undefined;
-
-export function originOf(url: string): string {
-  try {
-    return new URL(url).origin;
-  } catch {
-    return 'null';
-  }
-}
-
-/** The Playwright locator of a listed element: its role and exact name, nth in its frame. */
-export function locatorFor(element: Element): Locator {
-  const base =
-    element.name === ''
-      ? element.frame.getByRole(element.role)
-      : element.frame.getByRole(element.role, { name: element.name, exact: true });
-  return base.nth(element.nth);
-}
-
-export function refOf(read: PageRead, element: Element): string {
-  return `${read.navigationGeneration}.${read.elements.indexOf(element) + 1}`;
-}
-
 /**
  * A dialog listener that does nothing: with a listener registered Playwright neither dismisses nor
  * accepts the dialog (its client closes one only when no `dialog` listener answered), so it stays
@@ -107,7 +82,8 @@ function leaveOpen(): void {}
 
 export class Pages {
   private browser: Promise<Browser> | undefined;
-  private readonly ids = new WeakMap<Page, PageIdentity>();
+  private closing = false;
+  private readonly identities = new PageIdentityCache();
   private readonly states = new Map<string, PageState>();
 
   constructor(
@@ -121,6 +97,7 @@ export class Pages {
     const { socket } = this;
     if (socket === undefined)
       throw new WorkerError('engineFailed', 'ATD_CDP_WS is missing or not a local browser socket.');
+    this.closing = false;
     this.browser ??= (async () => {
       const browser = await connectBrowser(socket, this.channel, this.downloads.staging());
       for (const context of browser.contexts()) {
@@ -129,7 +106,19 @@ export class Pages {
         for (const page of context.pages()) this.track(page);
         context.on('page', (page) => this.track(page));
       }
-      browser.on('disconnected', () => (this.browser = undefined));
+      browser.on('disconnected', () => {
+        this.browser = undefined;
+        this.identities.resetDrops();
+        if (!this.closing) {
+          workerLog({
+            level: 'warn',
+            cat: 'cdp',
+            code: 'browser_disconnected',
+            channel: this.channel,
+            msg: 'Browser CDP connection disconnected unexpectedly.',
+          });
+        }
+      });
       return browser;
     })().catch((error: unknown) => {
       this.browser = undefined;
@@ -153,21 +142,13 @@ export class Pages {
     const openers = new Map(
       (await this.attached()).map((entry) => [entry.targetId, entry.openerId] as const),
     );
-    const chain = [(await this.identity(page)).targetId];
+    const chain = [(await this.identities.resolve(page)).targetId];
     for (let hop = 0; hop < OPENER_HOPS; hop += 1) {
       const opener = openers.get(chain[chain.length - 1] ?? '');
       if (opener === undefined || chain.includes(opener)) break;
       chain.push(opener);
     }
     return chain;
-  }
-
-  private async identity(page: Page, op?: Operation): Promise<PageIdentity> {
-    const known = this.ids.get(page);
-    if (known !== undefined) return known;
-    const id = await readPageIdentity(page, op);
-    this.ids.set(page, id);
-    return id;
   }
 
   private async attached(op?: Operation): Promise<({ page: Page } & PageIdentity)[]> {
@@ -177,7 +158,7 @@ export class Pages {
       for (const page of context.pages()) {
         if (op !== undefined) throwIfCancelled(op);
         if (page.isClosed()) continue;
-        const id = await orIfActive(op, this.identity(page, op), undefined);
+        const id = await this.identities.tryResolve(page, op, this.channel);
         if (id !== undefined) result.push({ page, ...id });
       }
     return result;
@@ -337,6 +318,7 @@ export class Pages {
 
   /** Disconnects (over CDP Playwright only detaches, so Chrome and its pages stay) and removes this worker's download staging. */
   async closeAll(): Promise<void> {
+    this.closing = true;
     const browser = await this.browser?.catch(() => undefined);
     await browser?.close().catch(() => undefined);
     await this.downloads.removeStaging();
