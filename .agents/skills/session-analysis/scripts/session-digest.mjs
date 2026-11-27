@@ -151,7 +151,11 @@ if (root && task) {
     for (const a of audit) {
       if (a.toolCallId || a.decision) {
         if (a.toolCallId) decisions.set(a.toolCallId, [...(decisions.get(a.toolCallId) ?? []), a]);
-        else say(`- ${a.decision} ${a.tool} (server ${a.serverId})`);
+        else {
+          const server = a.serverId ? ` (server ${a.serverId})` : '';
+          const reason = a.reason ? `: ${oneLine(a.reason, MAX)}` : '';
+          say(`- ${a.decision} ${a.tool}${server}${reason}`);
+        }
         continue;
       }
       const { ts, taskId: _taskId, runId: _runId, ...rest } = a;

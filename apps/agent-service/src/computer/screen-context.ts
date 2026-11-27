@@ -121,11 +121,13 @@ export function screenContextExtension({ runner, source }: HarnessDeps): Extensi
         }
         facts = reply.sources.map(visualSourceFacts);
         sharedSources = reply.sharedSources;
+        const hasFrames = reply.sources.some((source) => source.state === 'frame');
+        if (!hasFrames && !sharedSources?.length && !terminal) return undefined;
         content.push({
           type: 'text',
           text: JSON.stringify({ kind: 'screenContext', sharedSources }),
         });
-        if (!reply.sources.some((source) => source.state === 'frame')) {
+        if (!hasFrames) {
           content.push({
             type: 'text',
             text: JSON.stringify({

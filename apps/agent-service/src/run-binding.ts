@@ -100,7 +100,14 @@ export async function prepareRunBinding(
   // `mcp_servers` section, so what the model is told, what pi keeps and what runs all agree.
   const restricted = isRestrictedComputerRun(run.snapshot);
   const mcp = restricted
-    ? { ...prepared, factory: () => undefined, bindings: [], resourceServers: [], tools: [] }
+    ? {
+        ...prepared,
+        factory: () => undefined,
+        bindings: [],
+        resourceServers: [],
+        skipped: [],
+        tools: [],
+      }
     : prepared;
   // Memory tools follow the frozen memory flag and `load_skill` the catalog; `tools` is in the key.
   // An unattended run (an automation's, unattended.ts) may search and read memory but never
@@ -142,6 +149,7 @@ export async function prepareRunBinding(
       binding.namespace,
     ]),
     mcpResources: mcp.resourceServers,
+    mcpSkipped: mcp.skipped,
     role: role && [role.role.roleId, role.role.revision, role.capabilities.revokedTools],
     memory: run.snapshot.memory,
     // The computer tool reads the run's targets and grant per call; the key still separates

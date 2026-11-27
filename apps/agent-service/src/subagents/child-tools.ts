@@ -1,5 +1,4 @@
 import {
-  createBashToolDefinition,
   createWriteToolDefinition,
   type ExtensionAPI,
   type ToolDefinition,
@@ -16,7 +15,7 @@ import { childSearchTools } from '../harness/search/tools.js';
 import { childWebTools } from '../harness/web-extension.js';
 import { resourceIdAt } from '../service-fs.js';
 import { authorizeShellCommand } from '../shell-policy.js';
-import { boundedExec } from '../shell-tool.js';
+import { boundedExec, createBoundedBashToolDefinition } from '../shell-tool.js';
 import { servicePaths } from '../storage.js';
 import { editOperations, writeOperations, type ResolvePath } from '../tool-proxies.js';
 import { checkChildPath, isChildToolAllowed } from './intersection.js';
@@ -136,7 +135,7 @@ export function registerChildTools(pi: ChildPi, host: ChildToolHost): void {
   for (const tool of tools) pi.registerTool(childDefinition(tool));
   registerFileTools(pi, host, parent.resourceHint);
   if (host.allowedTools.includes('bash')) {
-    const bash = createBashToolDefinition(host.cwd, {
+    const bash = createBoundedBashToolDefinition(host.cwd, {
       exposeSessionEnvironment: false,
       operations: { exec: boundedExec },
     });

@@ -12,6 +12,7 @@ import {
   type McpToolBinding,
 } from './mcp/index.js';
 import { mcpServersSection } from './mcp/servers-section.js';
+import type { McpSkippedServer } from './mcp/tool-proxies.js';
 import { ResourceStore } from './resources.js';
 import { readServiceId } from './storage.js';
 import type { RunnerContext } from './task-runner.js';
@@ -49,6 +50,8 @@ export interface SessionMcpPrep {
   bindings: McpToolBinding[];
   /** The servers whose resources `factory`'s resource tools reach (mcp/resource-tools.ts). */
   resourceServers: McpResourceServer[];
+  /** Enabled MCP servers skipped while binding (e.g. approval required or unreachable). */
+  skipped: McpSkippedServer[];
   /**
    * What these add to a session's allowlist: the proxies, `tool_search` when a server is deferred,
    * and the resource tools when a server's resources are reachable. A subagent child that keeps
@@ -79,15 +82,17 @@ export async function prepareSessionMcp(deps: SessionMcpDeps): Promise<SessionMc
     log: deps.ctx.log,
   });
   const tier = effectiveTaskTier(deps.ctx.ledger, deps.taskId, deps.ctx.tier);
-  const { factory, factoryFor, bindings, resourceServers } = await authority.prepareRunnerTools(
-    proxyHost(deps, { runId: deps.currentRunId, executionId: deps.executionId, tier }),
-  );
+  const { factory, factoryFor, bindings, resourceServers, skipped } =
+    await authority.prepareRunnerTools(
+      proxyHost(deps, { runId: deps.currentRunId, executionId: deps.executionId, tier }),
+    );
   deps.audit({ taskId: deps.taskId, runId: deps.currentRunId(), mcpTools: bindings.length });
   const deferred = bindings.some((binding) => binding.exposure === 'deferred');
   return {
     factory,
     bindings,
     resourceServers,
+    skipped,
     tools: [
       ...bindings.map((binding) => binding.proxyName),
       ...(deferred ? [TOOL_SEARCH_TOOL] : []),

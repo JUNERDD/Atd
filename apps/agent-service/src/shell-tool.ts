@@ -5,7 +5,9 @@ import {
   type AgentToolResult,
   type BashOperations,
   type BashToolDetails,
+  type BashToolOptions,
 } from '@earendil-works/pi-coding-agent';
+import { Type } from 'typebox';
 import type { PermissionTier } from '@atd/agent-contracts';
 import type { Gate } from './harness/gate.js';
 import type { Logger } from './logging.js';
@@ -66,6 +68,33 @@ export const boundedExec: BashOperations['exec'] = (command, cwd, options) =>
     ),
   });
 
+const BOUNDED_TIMEOUT_NOTE = `Commands default to and are capped at a ${SHELL_TIMEOUT_CEILING_SECONDS}-second timeout; longer-running commands are terminated.`;
+
+const BOUNDED_BASH_PARAMETERS = Type.Object({
+  command: Type.String({ description: 'Shell command to execute' }),
+  timeout: Type.Optional(
+    Type.Number({
+      description: `Timeout in seconds (optional; defaults to ${SHELL_TIMEOUT_CEILING_SECONDS}, capped at ${SHELL_TIMEOUT_CEILING_SECONDS} — commands running longer than ${SHELL_TIMEOUT_CEILING_SECONDS} seconds are terminated).`,
+    }),
+  ),
+});
+
+/**
+ * Pi's bash tool definition with the service's timeout ceiling reflected in its description and
+ * parameter schema. Shared by the parent and subagent child bash proxies.
+ */
+export function createBoundedBashToolDefinition(
+  cwd: string,
+  options?: BashToolOptions,
+): ReturnType<typeof createBashToolDefinition> {
+  const tool = createBashToolDefinition(cwd, options);
+  return {
+    ...tool,
+    description: `${tool.description} ${BOUNDED_TIMEOUT_NOTE}`,
+    parameters: BOUNDED_BASH_PARAMETERS,
+  };
+}
+
 /**
  * The parent's bash tool: pi's bash with a service-owned `exec`, decided by the shell policy
  * (`authorizeShellCommand`, the same decision children make).
@@ -75,7 +104,7 @@ export function bashToolDefinition(
   gate: Gate,
   invocation: ToolInvocation,
 ): ReturnType<typeof createBashToolDefinition> {
-  const tool = createBashToolDefinition(host.cwd, {
+  const tool = createBoundedBashToolDefinition(host.cwd, {
     exposeSessionEnvironment: false,
     operations: {
       // The guard refuses an exec that pi reached outside a tool invocation.

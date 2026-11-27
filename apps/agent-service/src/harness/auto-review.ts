@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Api, Model } from '@earendil-works/pi-ai';
+import type { Api, Model, ThinkingLevel } from '@earendil-works/pi-ai';
 import type { ModelRuntime, SessionEntry } from '@earendil-works/pi-coding-agent';
 import { errorMessage, type ConfirmReview, type GrantScope } from '@atd/agent-contracts';
 import type { Logger } from '../logging.js';
@@ -33,7 +33,11 @@ export type Reviewer = (request: ReviewRequest, signal?: AbortSignal) => Promise
 /** What a review reads from the task's live session; null while no session is live. */
 export interface ReviewSource {
   models: ModelRuntime;
-  /** The run's model; omitted reasoning leaves the review on its provider's default. */
+  /**
+   * The run's model. Reasoning is omitted when the model allows `off` (so providers disable it),
+   * and otherwise set to the model's lowest supported non-`off` level in `thinkingLevelMap`
+   * instead of leaving mandatory-thinking models on their server default.
+   */
   model: Model<Api>;
   branch: () => SessionEntry[];
 }
@@ -58,8 +62,41 @@ const USER_CHARS = 8000;
 const OPENING_CHARS = 2000;
 const DETAIL_CHARS = 6000;
 const REVIEW_TIMEOUT_MS = 45000;
+const REVIEW_MAX_TOKENS = 2048;
+/** Room for reasoning + verdict on models whose lowest mandatory thinking level is medium or above. */
+const REVIEW_HIGH_REASONING_MAX_TOKENS = 8192;
+const REVIEW_THINKING_ORDER: readonly ThinkingLevel[] = [
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+];
+const HIGH_THINKING_LEVELS: ReadonlySet<ThinkingLevel> = new Set([
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+]);
 /** Consecutive failed reviews after which the task stops reviewing and asks directly. */
 const FAILURE_LIMIT = 3;
+
+/**
+ * Lowest non-`off` thinking level supported by a mandatory-thinking model (`off === null`), or
+ * `undefined` when the model allows `off` or has reasoning disabled. Mirrors Pi's own
+ * `getSupportedThinkingLevels` rule so APIs without `clampThinkingLevel` receive a valid level.
+ */
+function reviewReasoning(model: Model<Api>): ThinkingLevel | undefined {
+  if (!model.reasoning || model.thinkingLevelMap?.off !== null) return undefined;
+  const map = model.thinkingLevelMap;
+  return REVIEW_THINKING_ORDER.find((level) => {
+    const mapped = map[level];
+    if (mapped === null) return false;
+    if (level === 'xhigh' || level === 'max') return mapped !== undefined;
+    return true;
+  });
+}
 
 /**
  * What the review of an unattended run's call adds to the policy, as a paragraph of its own. The
@@ -117,6 +154,11 @@ export function createReviewer(deps: ReviewerDeps): Reviewer {
     if (!source) return fail('No live session to review against.');
     let text: string;
     try {
+      const reasoning = reviewReasoning(source.model);
+      const maxTokensLimit =
+        reasoning && HIGH_THINKING_LEVELS.has(reasoning)
+          ? REVIEW_HIGH_REASONING_MAX_TOKENS
+          : REVIEW_MAX_TOKENS;
       const result = await source.models.completeSimple(
         source.model,
         {
@@ -130,7 +172,8 @@ export function createReviewer(deps: ReviewerDeps): Reviewer {
           ],
         },
         {
-          maxTokens: Math.min(2048, source.model.maxTokens),
+          maxTokens: Math.min(maxTokensLimit, source.model.maxTokens),
+          ...(reasoning ? { reasoning } : {}),
           // A separate, stable route lets providers reuse the review policy's prompt cache.
           // Each request still contains only its own review input, without prior review results.
           sessionId: reviewSession.id,

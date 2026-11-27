@@ -105,7 +105,13 @@ export function bindingExposure(
   return tools > MCP_DEFERRED_TOOL_THRESHOLD ? 'deferred' : 'direct';
 }
 
-/** What a run binds: its proxies, and the servers its resource tools reach (maybe none). */
+/** An enabled MCP server skipped while binding a run's tools, with its failure reason. */
+export interface McpSkippedServer {
+  serverId: string;
+  reason: string;
+}
+
+/** What a run binds: its proxies, the servers its resource tools reach, and any skipped servers. */
 export interface McpRunTools {
   factory: ExtensionFactory;
   /**
@@ -115,6 +121,7 @@ export interface McpRunTools {
   factoryFor: (host: McpProxyHost) => ExtensionFactory;
   bindings: McpToolBinding[];
   resourceServers: McpResourceServer[];
+  skipped: McpSkippedServer[];
 }
 
 /**
@@ -129,21 +136,25 @@ export async function prepareMcpTools(
 ): Promise<McpRunTools> {
   const bindings: McpToolBinding[] = [];
   const resourceServers: McpResourceServer[] = [];
+  const skipped: McpSkippedServer[] = [];
   const used = new Set<string>();
   // Servers list at once; binding follows record order, so proxy names do not depend on timing.
   const listed = await Promise.all(
     options.records
       .filter((record) => !record.disabled)
       .map(async (record) => {
+        let skippedReason: string | undefined;
         const listed = await options.facade
           .listedServer(record.serverId, signal)
           .catch((error: unknown): McpListedServer => {
+            const reason = errorMessage(error).slice(0, 500);
+            skippedReason = reason;
             host.audit({
               taskId: host.taskId,
               runId: host.runId(),
               tool: `mcp:${record.serverId}`,
               decision: 'bind-skip',
-              reason: errorMessage(error).slice(0, 500),
+              reason,
             });
             host.log.warn('MCP server skipped while binding run tools.', {
               serverId: record.serverId,
@@ -151,10 +162,14 @@ export async function prepareMcpTools(
             });
             return { instructions: null, tools: [], resources: false };
           });
-        return { record, ...listed };
+        return { record, skippedReason, ...listed };
       }),
   );
-  for (const { record, instructions, tools, resources } of listed) {
+  for (const { record, skippedReason, instructions, tools, resources } of listed) {
+    if (skippedReason !== undefined) {
+      skipped.push({ serverId: record.serverId, reason: skippedReason });
+      continue;
+    }
     if (resources && record.exposeResources)
       resourceServers.push({ serverId: record.serverId, revision: record.revision });
     const namespace = proxyNamespace(
@@ -209,5 +224,5 @@ export async function prepareMcpTools(
       selected: options.selected.length,
       bound: bindings.length,
     });
-  return { factory: factoryFor(host), factoryFor, bindings, resourceServers };
+  return { factory: factoryFor(host), factoryFor, bindings, resourceServers, skipped };
 }

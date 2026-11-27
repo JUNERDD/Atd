@@ -161,7 +161,7 @@ export async function createLiveState(
         runId: deps.currentRunId(),
       })),
       binding.mcp.factory,
-      mcpServersSection(binding.mcp.bindings),
+      mcpServersSection(binding.mcp.bindings, binding.mcp.skipped),
       // Registered inactive; the allowlist declares it for deferred service tools or MCP servers.
       createToolSearchExtension(),
       // Registered inactive; every parent run's allowlist declares it (run-binding.ts).
