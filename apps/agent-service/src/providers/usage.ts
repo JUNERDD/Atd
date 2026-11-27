@@ -65,11 +65,14 @@ export async function providerUsage(
   if (connection.baseUrl && !connection.allowInsecureUsage && !isSecureUsageUrl(connection.baseUrl))
     return { kind: 'unsupported' };
   // Automatic reads stop at a recorded issue; an explicit refresh retries so re-entering the
-  // credential can clear it instead of leaving the row permanently stuck.
+  // credential or signing in again can clear it instead of leaving the row permanently stuck.
   if (!options.refresh && currentCredentialIssue(stores.dataDir, connection.connectionId))
     return {
       kind: 'error',
-      message: 'The saved credential needs attention. Re-enter it in connection settings.',
+      message:
+        connection.authType === 'oauth'
+          ? 'The saved credential needs attention. Sign in again in connection settings.'
+          : 'The saved credential needs attention. Re-enter it in connection settings.',
     };
   // Saving a connection increments its revision, so a replaced credential or changed
   // configuration misses the cache instead of serving the previous account's allowance.
@@ -142,9 +145,8 @@ async function query(
   let token: string | undefined;
   try {
     if (connection.authType === 'oauth') {
-      // Resolve OAuth through Pi's runtime auth, like model catalog refresh, so an expired SIWC
-      // access token refreshes under the credential lock and a revoked grant invalidates cleanly
-      // instead of failing every lookup with the stale keyring bearer token.
+      // Resolve OAuth through Pi's runtime auth, like model catalog refresh, so an expired OAuth
+      // access token refreshes under the credential lock instead of failing with a stale token.
       const models = runtime ?? (await connectionRuntime(stores, connection));
       const auth = await models.getAuth(connection.provider);
       token = auth?.auth.apiKey;
@@ -158,7 +160,9 @@ async function query(
     return {
       kind: 'error',
       message:
-        'The saved credential could not be read or refreshed. Sign in again in connection settings.',
+        connection.authType === 'oauth'
+          ? 'The saved credential could not be read or refreshed. Sign in again in connection settings.'
+          : 'The saved credential could not be read. Re-enter it in connection settings.',
     };
   }
   if (!token) {

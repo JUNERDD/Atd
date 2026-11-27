@@ -48,6 +48,9 @@ export function toDesktopConnection(
     ...(connection.chatgptUsagePaused === undefined
       ? {}
       : { chatgptUsagePaused: connection.chatgptUsagePaused }),
+    ...(connection.chatgptUsagePauseReason
+      ? { chatgptUsagePauseReason: connection.chatgptUsagePauseReason }
+      : {}),
     hasCredential: connection.hasCredential,
     verifiedModel: connection.verifiedModel,
     // The service fills these on every response; absent only on stored records.

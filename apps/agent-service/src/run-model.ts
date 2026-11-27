@@ -13,6 +13,7 @@ import {
 import { ConnectionStore } from './credentials/connections.js';
 import { KeyringBackend } from './credentials/keyring.js';
 import { presentConnection } from './providers/connection-view.js';
+import { withAtdIdentity } from './providers/client-identity.js';
 import type { ContextOverride } from './providers/context-override.js';
 import {
   connectionCredentials,
@@ -219,7 +220,7 @@ async function configureTempModel(models: ModelRuntime, run: TaskRun): Promise<M
   const provider = models.getProvider(selected.provider);
   if (!provider) throw new Error('The selected provider is unavailable.');
   models.registerNativeProvider({
-    ...provider,
+    ...withAtdIdentity(provider),
     auth: {
       apiKey: {
         name: 'Service temporary credentials',

@@ -144,7 +144,12 @@ test('a keychain read failure records an unreadable credential', async () => {
   };
   const result = await providerUsage(stores, connection);
   assert.equal(result.kind, 'error');
+  if (result.kind === 'error') assert.match(result.message, /Re-enter it in connection settings\./);
   assert.equal(currentCredentialIssue('/tmp', connection.connectionId), 'unreadable');
+  const cachedIssue = await providerUsage(stores, connection);
+  assert.equal(cachedIssue.kind, 'error');
+  if (cachedIssue.kind === 'error')
+    assert.match(cachedIssue.message, /Re-enter it in connection settings\./);
   clearCredentialIssue('/tmp', connection.connectionId);
 });
 
@@ -173,6 +178,13 @@ test('a missing OAuth credential is recorded as missing and updates stale unread
     });
     assert.deepEqual(first, { kind: 'unavailable', reason: 'no-credential' });
     assert.equal(currentCredentialIssue('/tmp', connection.connectionId), 'missing');
+
+    const recorded = await providerUsage(storesFor(connection), connection, {
+      runtime: missingRuntime,
+    });
+    assert.equal(recorded.kind, 'error');
+    if (recorded.kind === 'error')
+      assert.match(recorded.message, /Sign in again in connection settings\./);
 
     recordCredentialIssue('/tmp', connection.connectionId, 'unreadable');
     const refreshed = await providerUsage(storesFor(connection), connection, {

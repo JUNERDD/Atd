@@ -31,11 +31,21 @@ export const ProviderLoginRequestSchema = Type.Object(
 );
 export type ProviderLoginRequest = Static<typeof ProviderLoginRequestSchema>;
 
-export const CHATGPT_USAGE_ERRORS = [
+export const CHATGPT_USAGE_LIMIT_ERRORS = [
   'subscription_sharing_usage_limit_exceeded',
+  'subscription_sharing_workplace_individual_usage_limit_exceeded',
+] as const;
+export type ChatGPTUsageLimitError = (typeof CHATGPT_USAGE_LIMIT_ERRORS)[number];
+export const ChatGPTUsageLimitErrorSchema = Type.Union([
+  Type.Literal('subscription_sharing_usage_limit_exceeded'),
+  Type.Literal('subscription_sharing_workplace_individual_usage_limit_exceeded'),
+]);
+
+export const CHATGPT_USAGE_ERRORS = [
+  ...CHATGPT_USAGE_LIMIT_ERRORS,
   'subscription_sharing_usage_unavailable',
-  'subscription_sharing_user_not_eligible',
   'subscription_sharing_user_unavailable',
+  'subscription_sharing_user_not_eligible',
   'subscription_sharing_unsupported_capability',
   'subscription_sharing_route_not_supported',
   'subscription_sharing_invalid_user',

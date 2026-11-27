@@ -284,6 +284,7 @@ function applyUpdate(current: ServiceConnection, body: ProviderUpdateRequest): v
   if (body.resumeChatGPTUsage) {
     if (!isChatGPT(current)) throw new TypeError('Only ChatGPT connections can resume plan usage.');
     current.chatgptUsagePaused = false;
+    delete current.chatgptUsagePauseReason;
   }
   const configurationId = serviceConfigurationId({
     provider: current.provider,

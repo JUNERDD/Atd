@@ -33,6 +33,7 @@ import { CatalogFailure, catalogFailureReason } from './catalog-http.js';
 import { loadOpenRouterModels, openRouterProvider } from './openrouter-catalog.js';
 import { compatibleProvider } from './compatible-provider.js';
 import { compatibleModels } from './compatible-models.js';
+import { withAtdIdentity } from './client-identity.js';
 
 export interface ProviderStores {
   dataDir: string;
@@ -52,7 +53,7 @@ export function connectionCredentials(
     connection.connectionId,
     connection.provider,
     connection.configurationId,
-    options,
+    { ...options, dataDir: stores.dataDir },
   );
 }
 
@@ -129,15 +130,17 @@ export async function connectionRuntime(
     if (usesChatGPT)
       provider = chatgptProvider(
         provider,
-        chatgptOAuth(stores.dataDir, connection.connectionId, loginOptions),
+        chatgptOAuth(stores.dataDir, connection.connectionId, {
+          ...loginOptions,
+          reuseRegistration: connection.connected,
+        }),
         connection.catalog ?? [],
         chatgptUsage(stores, connection),
       );
     if (connection.provider === 'openrouter') provider = openRouterProvider(provider, connection);
-    provider = compatibleProvider(
-      provider,
-      !isLocalProvider(connection.provider) && connection.provider !== 'openrouter',
-    );
+    const normalizeNative =
+      !isLocalProvider(connection.provider) && connection.provider !== 'openrouter';
+    provider = compatibleProvider(provider, normalizeNative);
     const { apiKey, oauth } = provider.auth;
     const options: Record<string, string> = {
       ...connection.options,
@@ -148,7 +151,7 @@ export async function connectionRuntime(
         : {}),
     };
     models.registerNativeProvider({
-      ...provider,
+      ...withAtdIdentity(provider),
       auth:
         connection.authType === 'oauth'
           ? { ...(oauth && { oauth }) }

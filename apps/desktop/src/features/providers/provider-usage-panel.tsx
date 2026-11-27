@@ -5,14 +5,14 @@ import { Card, CardContent } from '@atd/ui/components/card';
 import { Progress } from '@atd/ui/components/progress';
 import { Skeleton } from '@atd/ui/components/skeleton';
 import { cn } from '@atd/ui/lib/utils';
-import {
-  CHATGPT_PRIVACY_VERSION,
-  type ProviderUsageBalance,
-  type ProviderUsageWindow,
-} from '@atd/agent-contracts';
+import type { ProviderUsageBalance, ProviderUsageWindow } from '@atd/agent-contracts';
 import type { Connection } from '../../client/providers/schema';
 import { WINDOW_LABELS, balanceText, money, percent, resetIn } from './provider-usage-format';
-import { providerUsageAvailable, useProviderUsage } from './use-provider-usage';
+import {
+  providerUsageAvailable,
+  usageUnavailableKey,
+  useProviderUsage,
+} from './use-provider-usage';
 
 /**
  * The connection detail page's allowance section. It makes the provider's real windows and
@@ -41,15 +41,8 @@ export function ProviderUsagePanel({
     !usage &&
     !query.isFetching &&
     !query.isError;
-  const gated = !connection.connected
-    ? t('connections.usage.unavailable')
-    : !available
-      ? connection.credentialIssue
-        ? t('connections.usage.unavailable')
-        : connection.chatgptConsent?.privacyVersion === CHATGPT_PRIVACY_VERSION
-          ? t('chatgpt.planDisabledDescription')
-          : t('chatgpt.privacyRequired')
-      : null;
+  const unavailableKey = usageUnavailableKey(connection);
+  const gated = !connection.connected || connection.credentialIssue ? t(unavailableKey) : null;
   const updated = query.dataUpdatedAt
     ? new Intl.DateTimeFormat(i18n.language, { hour: '2-digit', minute: '2-digit' }).format(
         query.dataUpdatedAt,
@@ -97,7 +90,7 @@ export function ProviderUsagePanel({
             <p className="text-sm text-muted-foreground">{t('connections.usage.unsupported')}</p>
           )}
           {usage?.kind === 'unavailable' && (
-            <p className="text-sm text-muted-foreground">{t('connections.usage.unavailable')}</p>
+            <p className="text-sm text-muted-foreground">{t(unavailableKey)}</p>
           )}
           {usage?.kind === 'error' && <UsageError message={usage.message} />}
           {available && query.isError && !usage && !query.isFetching && (

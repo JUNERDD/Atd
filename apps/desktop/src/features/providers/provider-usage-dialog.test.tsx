@@ -6,6 +6,7 @@ import type { Connection } from '../../client/providers/schema';
 import type { SettingsSnapshot } from '../../client/settings-contract';
 import { bridgeKeys } from '../../lib/bridge-cache';
 import { queryClient } from '../../lib/query-client';
+import { ChatGPTSettings } from './chatgpt-settings';
 import { ProviderUsageDialog, ProviderUsageSummary } from './provider-usage';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -123,5 +124,111 @@ describe('ProviderUsageDialog layout and keychain gate', () => {
     });
 
     await waitFor(() => expect(screen.queryByText('Session 51%')).not.toBeInTheDocument());
+  });
+
+  it('handles ChatGPT OAuth enabled, plan-disabled, and unreadable states in ProviderUsageDialog', () => {
+    installSettingsBridge();
+    const usage = vi.fn(async () => ({ kind: 'unsupported' as const }));
+    const openLink = vi.spyOn(window.desktop!.agent, 'openLink').mockResolvedValue();
+    window.desktop!.settings.providers.usage = usage;
+
+    const enabled = render(
+      <ProviderUsageDialog
+        connection={connectionFixture({
+          provider: 'openai',
+          authType: 'oauth',
+          chatgptPlanEnabled: true,
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(/ChatGPT plan usage is managed in ChatGPT settings/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Refresh' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Manage usage' }));
+    expect(openLink).toHaveBeenCalledWith('https://chatgpt.com/settings/usage');
+    expect(usage).not.toHaveBeenCalled();
+    enabled.unmount();
+
+    const planDisabled = render(
+      <ProviderUsageDialog
+        connection={connectionFixture({
+          provider: 'openai',
+          authType: 'oauth',
+          chatgptPlanEnabled: false,
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/plan usage is not enabled/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Manage usage' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Refresh' })).not.toBeInTheDocument();
+    expect(usage).not.toHaveBeenCalled();
+    planDisabled.unmount();
+
+    render(
+      <ProviderUsageDialog
+        connection={connectionFixture({
+          provider: 'openai',
+          authType: 'oauth',
+          chatgptPlanEnabled: true,
+          credentialIssue: 'unreadable',
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(/saved credentials cannot be read from the OS keychain/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Manage usage' })).not.toBeInTheDocument();
+    expect(usage).not.toHaveBeenCalled();
+  });
+
+  it('shows workplace vs plan limit guidance in ChatGPTSettings from chatgptUsagePauseReason', () => {
+    installBridge();
+    const saved = connectionFixture({
+      provider: 'openai',
+      authType: 'oauth',
+      chatgptUsagePaused: true,
+      chatgptUsagePauseReason: 'subscription_sharing_workplace_individual_usage_limit_exceeded',
+    });
+    const draft = {
+      connectionId: saved.connectionId,
+      expectedRevision: saved.revision,
+      provider: saved.provider,
+      name: saved.name,
+      baseUrl: saved.baseUrl,
+      authType: saved.authType,
+      defaultModel: saved.defaultModel,
+      options: {},
+      customModels: [],
+    };
+    const first = render(
+      <ChatGPTSettings
+        draft={draft}
+        saved={saved}
+        disabled={false}
+        onConsent={vi.fn()}
+        onResume={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(/individual usage limit for this ChatGPT Business workspace/i),
+    ).toBeInTheDocument();
+    first.unmount();
+
+    render(
+      <ChatGPTSettings
+        draft={draft}
+        saved={{ ...saved, chatgptUsagePauseReason: 'subscription_sharing_usage_limit_exceeded' }}
+        disabled={false}
+        onConsent={vi.fn()}
+        onResume={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(/ChatGPT plan or Atd’s app allowance has reached a limit/i),
+    ).toBeInTheDocument();
   });
 });

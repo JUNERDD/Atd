@@ -13,6 +13,7 @@ import {
   type ChatGPTCredential,
   type ChatGPTRegistration,
 } from './chatgpt-storage.js';
+import { atdUserAgent } from './client-identity.js';
 
 export const CHATGPT_RESOURCE = 'https://api.openai.com/v1';
 const ISSUER = 'https://auth.openai.com';
@@ -24,12 +25,16 @@ async function configuration(clientId: string, signal: AbortSignal) {
     oidc.discovery(new URL(ISSUER), clientId, undefined, oidc.None(), {
       timeout: 15,
       execute: [oidc.enableNonRepudiationChecks],
-      [oidc.customFetch]: (url, { body, ...options }) =>
-        fetch(url, {
+      [oidc.customFetch]: (url, { body, ...options }) => {
+        const headers = new Headers(options.headers);
+        headers.set('user-agent', atdUserAgent());
+        return fetch(url, {
           ...options,
+          headers,
           ...(body === undefined ? {} : { body }),
           signal: AbortSignal.any([signal, options.signal ?? AbortSignal.timeout(15000)]),
-        }),
+        });
+      },
     }),
   );
 }
@@ -82,7 +87,8 @@ export function chatgptOAuth(
     loginLabel: 'Continue with ChatGPT',
     async login(interaction) {
       const signal = interaction.signal;
-      const registration = await registrations.read();
+      const registration =
+        options?.reuseRegistration === false ? undefined : await registrations.read();
       const hostId = await chatgptHostId(dataDir);
       const config = await configuration(registration?.clientId ?? 'dynamic_agent_client', signal);
       const state = oidc.randomState();
@@ -93,6 +99,7 @@ export function chatgptOAuth(
       try {
         const url = oidc.buildAuthorizationUrl(config, {
           ...(!registration ? { agent_name_hint: 'Atd' } : {}),
+          ...(registration?.email ? { login_hint: registration.email } : {}),
           ext_agent_host_id: hostId,
           redirect_uri: callback.redirectUri,
           resource: CHATGPT_RESOURCE,
@@ -103,7 +110,7 @@ export function chatgptOAuth(
           code_challenge_method: 'S256',
           ...(options?.enablePlanUsage ? { prompt: 'consent' } : {}),
         });
-        // Do not send an ID-token hint through the renderer. Account selection stays in the browser.
+        // Never send an ID-token hint through the renderer; login_hint only pre-fills reauth email.
         interaction.notify({
           type: 'auth_url',
           url: url.href,
@@ -127,7 +134,6 @@ export function chatgptOAuth(
         if (!returned.searchParams.get('code'))
           throw new LoginFailure('ChatGPT did not return an authorization code.');
         const selected = { ...registration, clientId };
-        await registrations.write(selected);
         const issued = new oidc.Configuration(
           config.serverMetadata(),
           clientId,
@@ -153,11 +159,6 @@ export function chatgptOAuth(
         );
         const credential = credentialFrom(tokens, selected);
         signal.throwIfAborted();
-        await registrations.write({
-          clientId,
-          subject: credential.subject,
-          ...(credential.email ? { email: credential.email } : {}),
-        });
         return credential;
       } finally {
         // The login owner answers the browser only after the keyring and connection commit.

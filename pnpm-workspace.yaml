@@ -59,7 +59,7 @@ overrides:
   'pi-web-access>@modelcontextprotocol/sdk': 1.32.2
 
 patchedDependencies:
-  # Keep malformed loopback callback URLs from crashing OpenRouter and Radius sign-in.
+  # Keep malformed loopback callback URLs from crashing OAuth sign-in and keep deterministic SIWC refusals non-retryable.
   '@earendil-works/pi-ai@1.6.1': patches/@earendil-works__pi-ai@1.6.1.patch
   # Preserve the app's summary output budgets; Pi 1.6 otherwise uses the model's full limit.
   '@earendil-works/pi-coding-agent@1.6.1': patches/@earendil-works__pi-coding-agent@1.6.1.patch

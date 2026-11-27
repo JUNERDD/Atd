@@ -14,6 +14,7 @@ import { Progress } from '@atd/ui/components/progress';
 import { ScrollArea } from '@atd/ui/components/scroll-area';
 import { cn } from '@atd/ui/lib/utils';
 import type { Connection, ProviderUsage } from '../../client/providers/schema';
+import { ManageChatGPTUsage } from './chatgpt-plan';
 import {
   WINDOW_LABELS,
   WINDOW_SHORT_LABELS,
@@ -23,7 +24,12 @@ import {
   resetIn,
   soonestReset,
 } from './provider-usage-format';
-import { providerUsageAvailable, useProviderUsage } from './use-provider-usage';
+import {
+  isChatGPTConnection,
+  providerUsageAvailable,
+  usageUnavailableKey,
+  useProviderUsage,
+} from './use-provider-usage';
 
 /**
  * A compact allowance badge for a connection row or the model picker. It stays out of the way
@@ -41,8 +47,8 @@ export function ProviderUsageSummary({
 }) {
   const { t, i18n } = useTranslation('providers');
   const { data, statusesReady } = useProviderUsage(connection, enabled);
-  // A disabled query can still retain a cached value; the gate must hide it when consent, plan
-  // permission, the credential, the status probe or the connection no longer allows a usage read.
+  // A disabled query can still retain a cached value; the gate must hide it when the credential,
+  // the status probe or the connection no longer allows a usage read.
   if (!enabled || !statusesReady || !providerUsageAvailable(connection) || data?.kind !== 'ok')
     return null;
   const short = data.windows
@@ -139,6 +145,11 @@ export function ProviderUsageDialog({
   const { t, i18n } = useTranslation('providers');
   const query = useProviderUsage(connection);
   const available = providerUsageAvailable(connection);
+  const chatgptConnected = Boolean(
+    isChatGPTConnection(connection) && connection?.connected && !connection.credentialIssue,
+  );
+  const chatgptManaged = chatgptConnected && Boolean(connection?.chatgptPlanEnabled);
+  const chatgptPlanDisabled = chatgptConnected && !connection?.chatgptPlanEnabled;
   const usage: ProviderUsage | undefined = available ? query.data : undefined;
   const showLoading =
     available &&
@@ -151,10 +162,13 @@ export function ProviderUsageDialog({
     !usage &&
     !query.isFetching &&
     !query.isError;
+  const unavailableKey = connection
+    ? usageUnavailableKey(connection)
+    : 'connections.usage.unavailable';
   const gated = !connection
     ? null
-    : !connection.connected || !available
-      ? t('connections.usage.unavailable')
+    : !connection.connected || connection.credentialIssue
+      ? t(unavailableKey)
       : null;
   return (
     <Dialog
@@ -173,6 +187,14 @@ export function ProviderUsageDialog({
         <ScrollArea className="panel-dialog-scroll" gutter="stable" scrollShadow>
           <div className="panel-dialog-body">
             {gated && <p className="text-sm text-muted-foreground">{gated}</p>}
+            {chatgptManaged && (
+              <p className="text-sm text-muted-foreground">{t('chatgpt.manageUsageDescription')}</p>
+            )}
+            {chatgptPlanDisabled && (
+              <p className="text-sm text-muted-foreground">
+                {t('chatgpt.planDisabledDescription')}
+              </p>
+            )}
             {showLoading && (
               <p className="text-sm text-muted-foreground">{t('connections.usage.loading')}</p>
             )}
@@ -185,7 +207,7 @@ export function ProviderUsageDialog({
               <p className="text-sm text-muted-foreground">{t('connections.usage.unsupported')}</p>
             )}
             {usage?.kind === 'unavailable' && (
-              <p className="text-sm text-muted-foreground">{t('connections.usage.unavailable')}</p>
+              <p className="text-sm text-muted-foreground">{t(unavailableKey)}</p>
             )}
             {usage?.kind === 'error' && (
               <div className="grid gap-2">
@@ -269,15 +291,19 @@ export function ProviderUsageDialog({
           </div>
         </ScrollArea>
         <DialogFooter>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!available || query.isFetching}
-            onClick={() => void query.refresh()}
-          >
-            <RefreshCw />
-            {t('connections.usage.retry')}
-          </Button>
+          {chatgptManaged ? (
+            <ManageChatGPTUsage variant="outline" size="sm" />
+          ) : chatgptPlanDisabled ? null : (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!available || query.isFetching}
+              onClick={() => void query.refresh()}
+            >
+              <RefreshCw />
+              {t('connections.usage.retry')}
+            </Button>
+          )}
           <Button size="sm" onClick={onClose}>
             {t('connections.usage.close')}
           </Button>

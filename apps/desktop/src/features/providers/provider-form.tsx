@@ -124,7 +124,7 @@ export function ProviderForm({
             disabled={disabled}
             change={change}
           />
-          {saved && <ProviderUsagePanel connection={saved} dirty={dirty} />}
+          {saved && !chatgpt && <ProviderUsagePanel connection={saved} dirty={dirty} />}
           {accountLogin && (
             <>
               {!chatgpt && !login.state && needsSignIn && (

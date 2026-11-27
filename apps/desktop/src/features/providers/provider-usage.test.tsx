@@ -145,22 +145,45 @@ describe('provider usage panel', () => {
     expect(usage).toHaveBeenLastCalledWith('kimi-1', true);
   });
 
-  it('names ChatGPT OAuth as unsupported instead of calling the retired Codex endpoint', async () => {
+  it('distinguishes unreadable vs missing credentials for API-key and OAuth panels', () => {
     installBridge();
     const usage = vi.fn(async () => ({ kind: 'unsupported' as const }));
     window.desktop!.settings.providers.usage = usage;
 
-    render(
+    const first = render(
       <ProviderUsagePanel
         connection={connectionFixture({
-          provider: 'openai',
+          provider: 'openrouter',
           authType: 'oauth',
+          credentialIssue: 'unreadable',
         })}
       />,
     );
+    expect(
+      screen.getByText(/saved credentials cannot be read from the OS keychain/i),
+    ).toBeInTheDocument();
+    expect(usage).not.toHaveBeenCalled();
+    first.unmount();
 
-    expect(await screen.findByText(/does not publish plan usage/i)).toBeInTheDocument();
-    expect(usage).toHaveBeenCalledWith('kimi-1', false);
+    const second = render(
+      <ProviderUsagePanel
+        connection={connectionFixture({
+          provider: 'openrouter',
+          authType: 'oauth',
+          credentialIssue: 'missing',
+        })}
+      />,
+    );
+    expect(screen.getByText(/has no saved credentials\. Sign in again/i)).toBeInTheDocument();
+    second.unmount();
+
+    render(
+      <ProviderUsagePanel connection={connectionFixture({ credentialIssue: 'unreadable' })} />,
+    );
+    expect(
+      screen.getByText(/saved API key cannot be read from the OS keychain/i),
+    ).toBeInTheDocument();
+    expect(usage).not.toHaveBeenCalled();
   });
 
   it('gates ModelConfigPopover automatic usage reads without usageEnabled when statuses are unchecked or a sibling is unreadable', async () => {

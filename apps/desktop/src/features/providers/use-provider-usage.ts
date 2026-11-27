@@ -5,12 +5,40 @@ import type { SettingsSnapshot } from '../../client/settings-contract';
 import { queryClient } from '../../lib/query-client';
 import { useSettingsSnapshot } from '../settings/use-settings';
 
+/** ChatGPT OAuth manages plan usage externally through ChatGPT settings rather than a local API. */
+export function isChatGPTConnection(connection: Connection | null | undefined): boolean {
+  return connection?.provider === 'openai' && connection.authType === 'oauth';
+}
+
+export type UsageUnavailableKey =
+  | 'connections.usage.unavailable'
+  | 'connections.usage.unavailableOauth'
+  | 'connections.usage.unreadable'
+  | 'connections.usage.unreadableOauth';
+
+/** Picks copy matching both auth kind (OAuth vs API key) and keychain failure mode. */
+export function usageUnavailableKey(
+  connection: Pick<Connection, 'authType' | 'credentialIssue'>,
+): UsageUnavailableKey {
+  if (connection.credentialIssue === 'unreadable') {
+    return connection.authType === 'oauth'
+      ? 'connections.usage.unreadableOauth'
+      : 'connections.usage.unreadable';
+  }
+  return connection.authType === 'oauth'
+    ? 'connections.usage.unavailableOauth'
+    : 'connections.usage.unavailable';
+}
+
 /**
  * Whether an automatic usage read is allowed for this connection on its own. A credential issue
- * must not hit the keychain again (macOS re-prompts on every failed read).
+ * must not hit the keychain again (macOS re-prompts on every failed read), and ChatGPT OAuth
+ * manages plan usage in ChatGPT settings rather than through a local usage endpoint.
  */
 export function providerUsageAvailable(connection: Connection | null): boolean {
-  return Boolean(connection?.connected && !connection.credentialIssue);
+  return Boolean(
+    connection?.connected && !connection.credentialIssue && !isChatGPTConnection(connection),
+  );
 }
 
 /**

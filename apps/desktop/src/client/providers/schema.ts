@@ -2,6 +2,7 @@ import { Type, type Static } from 'typebox';
 import {
   ChatGPTConsentSchema,
   ChatGPTConsentRequestSchema,
+  ChatGPTUsageLimitErrorSchema,
   type ModelAlias,
   type ModelAliasDraft,
   type ProviderCredentialIssue,
@@ -159,6 +160,7 @@ export const StoredConnectionSchema = Type.Object(
     chatgptConsent: Type.Optional(ChatGPTConsentSchema),
     chatgptPlanEnabled: Type.Optional(Type.Boolean()),
     chatgptUsagePaused: Type.Optional(Type.Boolean()),
+    chatgptUsagePauseReason: Type.Optional(ChatGPTUsageLimitErrorSchema),
     encryptedCredential: Type.String({ maxLength: 65536 }),
     catalog: Type.Array(ModelDefinitionSchema),
     catalogError: Type.String(),

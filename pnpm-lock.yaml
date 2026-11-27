@@ -275,7 +275,7 @@ overrides:
   pi-web-access>@modelcontextprotocol/sdk: 1.32.2
 
 patchedDependencies:
-  '@earendil-works/pi-ai@1.6.1': 14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96
+  '@earendil-works/pi-ai@1.6.1': 2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1
   '@earendil-works/pi-coding-agent@1.6.1': 9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb
   pi-subagents@0.90.0: 4ff9cfad6de1702c0337b158b803da27083672a59cbf330013d19ee6c540eb5a
   streamdown@2.8.0: 5cbd845726db955f7039787c68f5ae22ca195e879c1bbf32135f6e4ebfa32cfe
@@ -322,7 +322,7 @@ importers:
         version: link:../../packages/plugin-kit
       '@earendil-works/pi-ai':
         specifier: 1.6.1
-        version: 1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
+        version: 1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
       '@earendil-works/pi-coding-agent':
         specifier: 1.6.1
         version: 1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7)
@@ -337,7 +337,7 @@ importers:
         version: 1.0.71
       '@juicesharp/rpiv-todo':
         specifier: 2.15.0
-        version: 2.15.0(@earendil-works/pi-ai@1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(typebox@1.4.7)
+        version: 2.15.0(@earendil-works/pi-ai@1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(typebox@1.4.7)
       '@modelcontextprotocol/sdk':
         specifier: 1.32.2
         version: 1.32.2(supports-color@10.2.2)(zod@4.6.7)
@@ -385,10 +385,10 @@ importers:
         version: 6.9.1
       pi-subagents:
         specifier: 0.90.0
-        version: 0.90.0(patch_hash=4ff9cfad6de1702c0337b158b803da27083672a59cbf330013d19ee6c540eb5a)(@earendil-works/pi-agent-core@1.6.1(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-ai@1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(typebox@1.4.7)
+        version: 0.90.0(patch_hash=4ff9cfad6de1702c0337b158b803da27083672a59cbf330013d19ee6c540eb5a)(@earendil-works/pi-agent-core@1.6.1(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-ai@1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(typebox@1.4.7)
       pi-web-access:
         specifier: 0.48.0
-        version: 0.48.0(@earendil-works/pi-ai@1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(supports-color@10.2.2)(typebox@1.4.7)(zod@4.6.7)
+        version: 0.48.0(@earendil-works/pi-ai@1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(supports-color@10.2.2)(typebox@1.4.7)(zod@4.6.7)
       playwright-core:
         specifier: 1.65.1
         version: 1.65.1
@@ -8922,7 +8922,7 @@ snapshots:
 
   '@earendil-works/pi-agent-core@1.6.1(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)':
     dependencies:
-      '@earendil-works/pi-ai': 1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
+      '@earendil-works/pi-ai': 1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
       '@earendil-works/pi-schema': 1.6.1
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
@@ -8937,7 +8937,7 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-ai@1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)':
+  '@earendil-works/pi-ai@1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)':
     dependencies:
       '@anthropic-ai/sdk': 0.129.0(zod@4.6.7)
       '@aws-sdk/client-bedrock-runtime': 3.1127.0
@@ -8970,7 +8970,7 @@ snapshots:
   '@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7)':
     dependencies:
       '@earendil-works/pi-agent-core': 1.6.1(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
-      '@earendil-works/pi-ai': 1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
+      '@earendil-works/pi-ai': 1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
       '@earendil-works/pi-codemode': 1.6.1
       '@earendil-works/pi-mcp': 1.6.1
       '@earendil-works/pi-tui': 1.6.1
@@ -9543,9 +9543,9 @@ snapshots:
     dependencies:
       typebox: 1.4.7
 
-  '@juicesharp/rpiv-todo@2.15.0(@earendil-works/pi-ai@1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(typebox@1.4.7)':
+  '@juicesharp/rpiv-todo@2.15.0(@earendil-works/pi-ai@1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(typebox@1.4.7)':
     dependencies:
-      '@earendil-works/pi-ai': 1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
+      '@earendil-works/pi-ai': 1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
       '@earendil-works/pi-coding-agent': 1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7)
       '@earendil-works/pi-tui': 1.6.1
       '@juicesharp/rpiv-config': 2.15.0(typebox@1.4.7)
@@ -14828,7 +14828,7 @@ snapshots:
 
   pathe@2.0.3: {}
 
-  pi-subagents@0.90.0(patch_hash=4ff9cfad6de1702c0337b158b803da27083672a59cbf330013d19ee6c540eb5a)(@earendil-works/pi-agent-core@1.6.1(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-ai@1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(typebox@1.4.7):
+  pi-subagents@0.90.0(patch_hash=4ff9cfad6de1702c0337b158b803da27083672a59cbf330013d19ee6c540eb5a)(@earendil-works/pi-agent-core@1.6.1(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-ai@1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(typebox@1.4.7):
     dependencies:
       '@js-temporal/polyfill': 0.5.1
       acorn: 8.18.0
@@ -14837,12 +14837,12 @@ snapshots:
       yaml: 2.8.3
     optionalDependencies:
       '@earendil-works/pi-agent-core': 1.6.1(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
-      '@earendil-works/pi-ai': 1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
+      '@earendil-works/pi-ai': 1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
       '@earendil-works/pi-coding-agent': 1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7)
       '@earendil-works/pi-tui': 1.6.1
       typebox: 1.4.7
 
-  pi-web-access@0.48.0(@earendil-works/pi-ai@1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(supports-color@10.2.2)(typebox@1.4.7)(zod@4.6.7):
+  pi-web-access@0.48.0(@earendil-works/pi-ai@1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-coding-agent@1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7))(@earendil-works/pi-tui@1.6.1)(supports-color@10.2.2)(typebox@1.4.7)(zod@4.6.7):
     dependencies:
       '@modelcontextprotocol/sdk': 1.32.2(supports-color@10.2.2)(zod@4.6.7)
       '@mozilla/readability': 0.6.0
@@ -14855,7 +14855,7 @@ snapshots:
       undici: 8.13.1
       unpdf: 1.9.0
     optionalDependencies:
-      '@earendil-works/pi-ai': 1.6.1(patch_hash=14be6c3721d231593480195dedb0ec3ca9f630747973f2715606947979f91d96)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
+      '@earendil-works/pi-ai': 1.6.1(patch_hash=2225939ae3c7ef449f977af47ea67cf3b6c0726425d49f85e9f4f62b854edbd1)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(undici@8.13.1)(ws@8.21.3)(zod@4.6.7)
       '@earendil-works/pi-coding-agent': 1.6.1(patch_hash=9321e8a62b757cbe73fb0dfaef82c0a5030db081a18da09dfe20ec624930c4cb)(@modelcontextprotocol/sdk@1.32.2(supports-color@10.2.2)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(google-auth-library@10.9.1(supports-color@10.2.2))(supports-color@10.2.2)(ws@8.21.3)(zod@4.6.7)
       '@earendil-works/pi-tui': 1.6.1
     transitivePeerDependencies:
