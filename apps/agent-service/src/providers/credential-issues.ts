@@ -42,6 +42,14 @@ export function expectsStoredCredential(
   );
 }
 
+/** The recorded runtime issue for one connection, without pruning any other connection. */
+export function currentCredentialIssue(
+  dataDir: string,
+  connectionId: string,
+): ProviderCredentialIssue | undefined {
+  return issuesByDataDir.get(dataDir)?.get(connectionId);
+}
+
 /** Records a detected runtime credential issue for a connection and notifies subscribers on change. */
 export function recordCredentialIssue(
   dataDir: string,

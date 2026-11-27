@@ -11,7 +11,12 @@ import {
   CHATGPT_RECONNECT_NOTICE,
   isChatGPTRefreshInvalidation,
 } from '../providers/chatgpt-refresh-error.js';
-import { ChatGPTCredentialSchema } from '../providers/chatgpt-storage.js';
+import {
+  ChatGPTCredentialSchema,
+  ChatGPTRegistrationStore,
+  type ChatGPTRegistration,
+} from '../providers/chatgpt-storage.js';
+import { resumeChatGPTUsage } from '../providers/chatgpt-usage.js';
 import { ConflictError } from '../errors.js';
 import { ConnectionStore } from './connections.js';
 import { keyringAccount, KeyringBackend, KeyringUnavailable } from './keyring.js';
@@ -53,6 +58,7 @@ export async function withCredentialLock<T>(
 /** Secrets persist in the OS keyring; writes check fresh connection metadata under the lock. */
 export class ServiceCredentialStore implements CredentialStore {
   private skipRead: boolean;
+  private readonly dataDir: string | undefined;
 
   constructor(
     private readonly keyring: KeyringBackend,
@@ -60,9 +66,10 @@ export class ServiceCredentialStore implements CredentialStore {
     private readonly connectionId: string,
     private readonly providerId: string,
     private readonly configurationId: string,
-    options?: { skipInitialRead?: boolean },
+    options?: { skipInitialRead?: boolean; dataDir?: string },
   ) {
     this.skipRead = options?.skipInitialRead ?? false;
+    this.dataDir = options?.dataDir;
   }
 
   private get account(): string {
@@ -146,6 +153,7 @@ export class ServiceCredentialStore implements CredentialStore {
       if (!next && readError) throw readError;
       options?.signal?.throwIfAborted();
       if (next) {
+        let chatgptRegistration: ChatGPTRegistration | undefined;
         const revision = await this.connections.change(
           (data) => {
             const item = data.connections.find((entry) => entry.connectionId === this.connectionId);
@@ -167,6 +175,11 @@ export class ServiceCredentialStore implements CredentialStore {
               const chatgpt = parse(ChatGPTCredentialSchema, next);
               item.accountLabel = chatgpt.email ?? 'ChatGPT';
               item.chatgptPlanEnabled = chatgpt.scopes.includes('chatgpt.tokens.use.direct');
+              chatgptRegistration = {
+                clientId: chatgpt.clientId,
+                subject: chatgpt.subject,
+                ...(chatgpt.email ? { email: chatgpt.email } : {}),
+              };
               if (!item.chatgptPlanEnabled) {
                 item.catalog = [];
                 item.defaultModel = '';
@@ -182,6 +195,9 @@ export class ServiceCredentialStore implements CredentialStore {
             await this.keyring.set(this.account, JSON.stringify(next));
           },
         );
+        const dataDir = this.dataDir ?? this.connections.dataDir;
+        if (chatgptRegistration && dataDir)
+          await new ChatGPTRegistrationStore(dataDir, this.connectionId).write(chatgptRegistration);
         this.skipRead = false;
         options?.onCommitted?.(revision);
       }
@@ -220,6 +236,7 @@ export class ServiceCredentialStore implements CredentialStore {
         delete item.accountLabel;
         delete item.chatgptPlanEnabled;
         delete item.chatgptUsagePaused;
+        delete item.chatgptUsagePauseReason;
         cleanup = async () => {
           try {
             await this.keyring.delete(this.account);
@@ -229,10 +246,13 @@ export class ServiceCredentialStore implements CredentialStore {
             // Persist the disconnected state even while the OS keyring cannot remove the token.
             if (!(error instanceof KeyringUnavailable)) throw error;
           }
+          const dataDir = this.dataDir ?? this.connections.dataDir;
+          if (dataDir) await new ChatGPTRegistrationStore(dataDir, this.connectionId).delete();
         };
       },
       () => cleanup(),
     );
+    resumeChatGPTUsage(this.connectionId);
   }
 
   private async clear(
@@ -258,8 +278,8 @@ export class ServiceCredentialStore implements CredentialStore {
           if (!item || item.configurationId !== this.configurationId)
             throw new Error('The connection configuration changed.');
           const hasSecret = item.hasCredential || item.credentialCleanupPending;
-          const revoke =
-            item.hasCredential && item.provider === 'openai' && item.authType === 'oauth';
+          const isChatGPT = item.provider === 'openai' && item.authType === 'oauth';
+          const revoke = item.hasCredential && isChatGPT;
           item.hasCredential = false;
           item.connected = false;
           item.revision += 1;
@@ -267,6 +287,7 @@ export class ServiceCredentialStore implements CredentialStore {
           delete item.accountLabel;
           delete item.chatgptPlanEnabled;
           delete item.chatgptUsagePaused;
+          delete item.chatgptUsagePauseReason;
           delete item.credentialCleanupPending;
           delete item.authNotice;
           // Reserve the longest possible result before storage validation. A successful revoke
@@ -289,10 +310,14 @@ export class ServiceCredentialStore implements CredentialStore {
               }
             }
             if (hasSecret) await this.keyring.delete(this.account);
+            const dataDir = this.dataDir ?? this.connections.dataDir;
+            if (isChatGPT && dataDir)
+              await new ChatGPTRegistrationStore(dataDir, this.connectionId).delete();
           };
         },
         () => commit(),
       );
+      resumeChatGPTUsage(this.connectionId);
       return notice;
     });
   }

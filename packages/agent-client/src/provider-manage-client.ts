@@ -14,6 +14,7 @@ import {
   type ProviderLoginRequest,
   ProviderModelRequestSchema,
   ProviderRefreshRequestSchema,
+  ProviderUsageResponseSchema,
   ProviderUpdateRequestSchema,
   ProviderVerifyRequestSchema,
   type ProviderContextChoice,
@@ -22,6 +23,7 @@ import {
   type ProviderDefaultResponse,
   type ProviderLevelsResponse,
   type ProviderLoginResponse,
+  type ProviderUsageResponse,
   type ProviderUpdateRequest,
   type ThinkingLevel,
 } from '@atd/agent-contracts';
@@ -122,6 +124,23 @@ export function verifyProvider(
     'POST',
     parse(ProviderVerifyRequestSchema, { modelId }),
     decodeConnection,
+    fetchImpl,
+  );
+}
+
+/** The provider-reported allowance windows and balance for one connected connection. */
+export function getProviderUsage(
+  options: AgentClientOptions,
+  connectionId: string,
+  refresh = false,
+  fetchImpl?: typeof fetch,
+): Promise<ProviderUsageResponse> {
+  return manageRequest(
+    options,
+    `${connectionPath(connectionId, '/usage')}${refresh ? '?refresh=true' : ''}`,
+    'GET',
+    undefined,
+    (json) => parse(ProviderUsageResponseSchema, json),
     fetchImpl,
   );
 }

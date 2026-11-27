@@ -27,6 +27,7 @@ import {
 } from '../providers/provider-connections-tab';
 import { ModelAliasesSection } from '../providers/model-aliases-section';
 import { ProviderServiceForm } from '../providers/provider-service-form';
+import { providerStatusesReady } from '../providers/use-provider-usage';
 import { showErrorToast, showToast } from '../../components/toast-store';
 import { queryClient } from '../../lib/query-client';
 import { bridgeKeys } from '../../lib/bridge-cache';
@@ -62,6 +63,9 @@ export function ProviderSettingsForm({
   const hasUnreadableIssue = (snapshot?.connections ?? []).some(
     (connection) => connection.credentialIssue === 'unreadable',
   );
+  // Automatic usage reads also touch the OS keychain. Wait for the sequential status probe and
+  // stop entirely while one connection is unreadable, so opening Settings never cascades prompts.
+  const usageEnabled = providerStatusesReady(snapshot);
   useEffect(() => {
     if (connected && bridge && !hasUnreadableIssue) {
       void bridge.checkStatuses().catch(() => undefined);
@@ -287,6 +291,7 @@ export function ProviderSettingsForm({
             defaultConnectionId={snapshot?.defaultConnectionId ?? null}
             pending={pending}
             canManage={catalogReady && !catalogQuery.isFetching}
+            usageEnabled={usageEnabled}
             addProvider={addProviderAction}
             onManage={(connection) => void manage(connection)}
             onConfirm={setConfirming}

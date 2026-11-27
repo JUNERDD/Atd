@@ -39,6 +39,8 @@ import {
   resumeChatGPTUsage,
   withInferencePurpose,
 } from './chatgpt-usage.js';
+import { providerUsage } from './usage.js';
+import { isSecureUsageUrl } from './usage-adapters.js';
 
 const STALE = 'This connection changed. Reload its saved settings and try again.';
 
@@ -168,6 +170,19 @@ export function registerConnectionRoutes(
     };
   });
 
+  /** Provider-reported allowance windows and balance; providers without an API answer `unsupported`. */
+  app.get<Params & { Querystring: { refresh?: string } }>(
+    '/v1/providers/:connectionId/usage',
+    RENDERER_ROUTE,
+    async (request) => {
+      const { live, ...opened } = await load(request.params.connectionId);
+      if (!live.connected) throw new ConflictError(`Reconnect ${live.name} to view usage.`);
+      // An explicit refresh bypasses the short server cache; the row's automatic read still shares
+      // one provider call between the summary, the dialog and the detail panel.
+      return providerUsage(opened, live, { refresh: request.query.refresh === 'true' });
+    },
+  );
+
   app.get<Params>('/v1/providers/:connectionId/contexts', RENDERER_ROUTE, async (request) => {
     const { modelId } = parse(ProviderContextsQuerySchema, request.query);
     const { live } = await load(request.params.connectionId);
@@ -269,6 +284,7 @@ function applyUpdate(current: ServiceConnection, body: ProviderUpdateRequest): v
   if (body.resumeChatGPTUsage) {
     if (!isChatGPT(current)) throw new TypeError('Only ChatGPT connections can resume plan usage.');
     current.chatgptUsagePaused = false;
+    delete current.chatgptUsagePauseReason;
   }
   const configurationId = serviceConfigurationId({
     provider: current.provider,
@@ -281,8 +297,17 @@ function applyUpdate(current: ServiceConnection, body: ProviderUpdateRequest): v
   current.name = body.name;
   // Older clients omit this UI metadata; keep the stored identity in that case.
   if (body.presetId !== undefined) current.presetId = body.presetId;
+  const baseUrlChanged = body.baseUrl !== current.baseUrl;
   current.baseUrl = body.baseUrl;
   current.defaultModel = body.defaultModel;
+  if (!body.baseUrl || isSecureUsageUrl(body.baseUrl)) {
+    delete current.allowInsecureUsage;
+  } else if (body.allowInsecureUsage !== undefined) {
+    if (body.allowInsecureUsage) current.allowInsecureUsage = true;
+    else delete current.allowInsecureUsage;
+  } else if (baseUrlChanged) {
+    delete current.allowInsecureUsage;
+  }
   if (body.defaultThinkingLevel) current.defaultThinkingLevel = body.defaultThinkingLevel;
   else delete current.defaultThinkingLevel;
   current.options = body.options;

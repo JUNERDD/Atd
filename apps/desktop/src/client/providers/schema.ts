@@ -2,6 +2,7 @@ import { Type, type Static } from 'typebox';
 import {
   ChatGPTConsentSchema,
   ChatGPTConsentRequestSchema,
+  ChatGPTUsageLimitErrorSchema,
   type ModelAlias,
   type ModelAliasDraft,
   type ProviderCredentialIssue,
@@ -10,6 +11,7 @@ import {
   type ProviderContextsResponse,
   type ProviderLevelsResponse,
   type ProviderContextChoice,
+  type ProviderUsageResponse,
   type RunContextChoice,
 } from '@atd/agent-contracts';
 
@@ -46,6 +48,8 @@ export type ModelContexts = ProviderContextsResponse;
 export type ModelContextChoice = ProviderContextChoice;
 /** The levels one model offers, and the level it runs at when nothing names one. */
 export type ModelLevels = ProviderLevelsResponse;
+/** Provider-reported allowance windows and balance for one connection. */
+export type ProviderUsage = ProviderUsageResponse;
 
 export const ModelDefinitionSchema = Type.Object(
   {
@@ -126,6 +130,8 @@ export const ConnectionConfigSchema = Type.Object(
       Type.Record(id, Type.Integer({ minimum: 1024, maximum: 100_000_000 })),
     ),
     options: Type.Record(Type.String(), text),
+    /** Allow usage queries to a plain-HTTP endpoint; off unless the user explicitly opts in. */
+    allowInsecureUsage: Type.Optional(Type.Boolean()),
     customModels: Type.Array(ModelDefinitionSchema, { maxItems: 100 }),
   },
   { additionalProperties: false },
@@ -154,6 +160,7 @@ export const StoredConnectionSchema = Type.Object(
     chatgptConsent: Type.Optional(ChatGPTConsentSchema),
     chatgptPlanEnabled: Type.Optional(Type.Boolean()),
     chatgptUsagePaused: Type.Optional(Type.Boolean()),
+    chatgptUsagePauseReason: Type.Optional(ChatGPTUsageLimitErrorSchema),
     encryptedCredential: Type.String({ maxLength: 65536 }),
     catalog: Type.Array(ModelDefinitionSchema),
     catalogError: Type.String(),
@@ -278,6 +285,8 @@ export interface ProviderBridge {
   /** Probes stored credentials in the OS keyring for connected connections, no network. */
   checkStatuses: () => Promise<void>;
   verify: (reference: ModelReference) => Promise<void>;
+  /** Provider-reported allowance windows and balance; unsupported providers answer as such. */
+  usage: (connectionId: string, refresh?: boolean) => Promise<ProviderUsage>;
   login: (connectionId: string, request?: ProviderLoginRequest) => Promise<LoginState>;
   answer: (id: string, promptId: string, value: string) => Promise<void>;
   cancel: (id: string) => Promise<void>;

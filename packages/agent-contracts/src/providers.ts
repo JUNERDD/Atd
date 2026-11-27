@@ -215,6 +215,7 @@ export const ProviderCreateRequestSchema = Type.Object(
     defaultModel: ServiceConnectionSchema.properties.defaultModel,
     defaultThinkingLevel: ServiceConnectionSchema.properties.defaultThinkingLevel,
     options: Type.Record(Type.String(), Type.String({ maxLength: 2048 })),
+    allowInsecureUsage: Type.Optional(Type.Boolean()),
     customModels: Type.Array(ServiceModelDefinitionSchema, { maxItems: 100 }),
     credential: Type.Union([ProviderCredentialSchema, Type.Null()]),
   },

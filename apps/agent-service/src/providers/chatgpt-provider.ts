@@ -6,12 +6,13 @@ import {
   type OAuthAuth,
   type AssistantMessageEvent,
 } from '@earendil-works/pi-ai';
-import { parse, type ServiceModelDefinition } from '@atd/agent-contracts';
+import { chatgptUsageError, parse, type ServiceModelDefinition } from '@atd/agent-contracts';
 import { CHATGPT_RESOURCE } from './chatgpt-oauth.js';
 import type { chatgptUsage } from './chatgpt-usage.js';
 import { chatgptHttpError, chatgptTransport } from './chatgpt-http.js';
 import { chatgptPayload } from './chatgpt-payload.js';
 import { CatalogFailure } from './catalog-http.js';
+import { atdClientIdentity, atdUserAgent } from './client-identity.js';
 
 const CatalogSchema = Type.Object({
   models: Type.Array(
@@ -51,6 +52,7 @@ export function chatgptProvider(
         return observe(
           base.stream<Api>(model, context, {
             ...options,
+            identity: atdClientIdentity(),
             maxRetries: 0,
             fetch: transport.request,
             onPayload: chatgptPayload(options?.onPayload),
@@ -66,6 +68,7 @@ export function chatgptProvider(
         return observe(
           base.streamSimple(model, context, {
             ...options,
+            identity: atdClientIdentity(),
             maxRetries: 0,
             fetch: transport.request,
             onPayload: chatgptPayload(options?.onPayload),
@@ -82,6 +85,22 @@ export function chatgptProvider(
   return provider;
 }
 
+/** Keep the HTTP diagnostic while preserving recognized SIWC codes and SDK guidance lines. */
+function mergeChatGPTError(reason: string, upstream: string): string {
+  const reasonCode = chatgptUsageError(reason);
+  const upstreamCode = chatgptUsageError(upstream);
+  if (!reasonCode && upstreamCode) return `${reason}\n${upstream}`;
+  if (upstreamCode) {
+    const hints = upstream
+      .split('\n')
+      .slice(1)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !reason.includes(line));
+    if (hints.length > 0) return `${reason}\n${hints.join('\n')}`;
+  }
+  return reason;
+}
+
 async function* observe(
   events: AsyncIterable<AssistantMessageEvent>,
   failed: (message: string) => Promise<void>,
@@ -89,9 +108,15 @@ async function* observe(
 ): AsyncIterable<AssistantMessageEvent> {
   for await (const event of events) {
     if (event.type === 'error') {
+      const upstream = event.error.errorMessage ?? '';
       const reason = diagnostic();
-      if (reason) event.error.errorMessage = reason;
-      else await failed(event.error.errorMessage ?? '');
+      if (reason) {
+        const merged = mergeChatGPTError(reason, upstream);
+        event.error.errorMessage = merged;
+        if (!chatgptUsageError(reason) && chatgptUsageError(merged)) await failed(merged);
+      } else {
+        await failed(upstream);
+      }
     }
     yield event;
   }
@@ -104,7 +129,11 @@ export async function loadChatGPTModels(
   signal: AbortSignal,
 ): Promise<ServiceModelDefinition[]> {
   const response = await fetch(`${CHATGPT_RESOURCE}/models`, {
-    headers: { Authorization: `Bearer ${access}`, Accept: 'application/json' },
+    headers: {
+      Authorization: `Bearer ${access}`,
+      Accept: 'application/json',
+      'User-Agent': atdUserAgent(),
+    },
     signal,
     redirect: 'error',
   });

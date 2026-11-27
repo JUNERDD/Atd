@@ -124,6 +124,7 @@ export function buildProviderBridge(
     refreshCatalogs: async () => providers.refreshShownCatalogs(),
     checkStatuses: () => providers.checkStatuses(),
     verify: (reference) => providers.verify(reference),
+    usage: (id, refresh) => providers.usage(id, refresh),
     login: (id, request) => providers.login.start(id, request),
     answer: (id, promptId, value) => providers.login.answer(id, promptId, value),
     cancel: (id) => providers.login.cancel(id),

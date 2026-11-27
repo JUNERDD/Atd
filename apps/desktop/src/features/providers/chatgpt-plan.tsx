@@ -18,13 +18,14 @@ const WELCOME_KEY = 'atd.chatgpt-plan-welcome';
 
 export function ManageChatGPTUsage({
   variant = 'outline',
+  size = 'xs',
   className,
-}: Pick<ComponentProps<typeof Button>, 'variant' | 'className'>) {
+}: Pick<ComponentProps<typeof Button>, 'variant' | 'size' | 'className'>) {
   const { t } = useTranslation('providers');
   return (
     <Button
       variant={variant}
-      size="xs"
+      size={size}
       className={className}
       onClick={() => {
         void window.desktop?.agent
@@ -110,6 +111,7 @@ export function ChatGPTUsageError({ error }: { error: string }) {
   if (!code) return null;
   const messages = {
     subscription_sharing_usage_limit_exceeded: 'chatgpt.usageLimit',
+    subscription_sharing_workplace_individual_usage_limit_exceeded: 'chatgpt.workplaceUsageLimit',
     subscription_sharing_usage_unavailable: 'chatgpt.usageUnavailable',
     subscription_sharing_user_not_eligible: 'chatgpt.notEligible',
     subscription_sharing_user_unavailable: 'chatgpt.userUnavailable',
@@ -122,7 +124,9 @@ export function ChatGPTUsageError({ error }: { error: string }) {
     chatgpt_privacy_required: 'chatgpt.privacyRequired',
     chatgpt_background_consent_required: 'chatgpt.backgroundRequired',
   } as const satisfies Record<UsageError, string>;
-  const limit = code === 'subscription_sharing_usage_limit_exceeded';
+  const limit =
+    code === 'subscription_sharing_usage_limit_exceeded' ||
+    code === 'subscription_sharing_workplace_individual_usage_limit_exceeded';
   return (
     <div className="flex flex-col items-start gap-2">
       <p>{t(messages[code])}</p>

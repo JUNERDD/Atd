@@ -3,6 +3,7 @@ import { ChevronDown, TriangleAlert } from 'lucide-react';
 import { Button } from '@atd/ui/components/button';
 import { Input } from '@atd/ui/components/input';
 import { Label } from '@atd/ui/components/label';
+import { ItemGroup } from '@atd/ui/components/item';
 import {
   Collapsible,
   CollapsibleContent,
@@ -23,8 +24,45 @@ import type {
 } from '../../client/providers/schema';
 import { CLOUD_FIELDS, isCustom, isAmbient } from '../../client/providers/metadata';
 import { isInsecureEndpoint } from '../../client/providers/configuration';
+import { SettingsSwitchRow } from '../settings/settings-switch-row';
 import type { ConnectionDraftPatch } from './use-provider-draft';
 import { CustomModels } from './custom-models';
+
+function endpointOrigin(value: string): string | null {
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? `${url.protocol}//${url.host}`
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Keeps `allowInsecureUsage` scoped to the current plain-HTTP origin: restoring the saved URL
+ * returns the draft to its saved baseline, while leaving plain HTTP or changing origins clears the
+ * opt-in so a hidden switch never stays dirty or carries cleartext consent onto another host.
+ */
+function nextEndpointPatch(
+  nextBaseUrl: string,
+  draftBaseUrl: string,
+  saved: Connection | null,
+): ConnectionDraftPatch {
+  if (saved && nextBaseUrl === saved.baseUrl) {
+    return {
+      baseUrl: nextBaseUrl,
+      allowInsecureUsage: Boolean(saved.allowInsecureUsage && isInsecureEndpoint(nextBaseUrl)),
+    };
+  }
+  if (
+    !isInsecureEndpoint(nextBaseUrl) ||
+    endpointOrigin(nextBaseUrl) !== endpointOrigin(draftBaseUrl)
+  ) {
+    return { baseUrl: nextBaseUrl, allowInsecureUsage: false };
+  }
+  return { baseUrl: nextBaseUrl };
+}
 
 /** Authentication and model configuration remain independent of the chosen billing plan. */
 export function ProviderConnectionFields({
@@ -44,6 +82,7 @@ export function ProviderConnectionFields({
   const custom = isCustom(draft.provider);
   const cloud = isAmbient(draft.provider);
   const accountLogin = draft.authType === 'oauth';
+  const insecureEndpoint = isInsecureEndpoint(draft.baseUrl);
   const options =
     provider.auth.length && cloud && !provider.auth.some((auth) => auth.type === 'api_key')
       ? [...provider.auth, { type: 'api_key' as const, label: t('form.authFallback') }]
@@ -149,16 +188,30 @@ export function ProviderConnectionFields({
                   type="url"
                   value={draft.baseUrl}
                   readOnly={!custom && draft.provider !== 'azure'}
-                  onChange={(event) => change({ baseUrl: event.target.value })}
+                  onChange={(event) =>
+                    change(nextEndpointPatch(event.target.value, draft.baseUrl, saved))
+                  }
                   placeholder="https://your-provider.example/v1"
                 />
-                {isInsecureEndpoint(draft.baseUrl) && (
+                {insecureEndpoint && (
                   <output className="provider-transport-warning">
                     <TriangleAlert aria-hidden="true" />
                     <span>{t('form.insecureHttpWarning')}</span>
                   </output>
                 )}
               </div>
+              {insecureEndpoint && (
+                <ItemGroup>
+                  <SettingsSwitchRow
+                    id="provider-allow-insecure-usage"
+                    title={t('form.allowInsecureUsage')}
+                    description={t('form.allowInsecureUsageDescription')}
+                    checked={draft.allowInsecureUsage ?? false}
+                    disabled={disabled}
+                    onCheckedChange={(allowInsecureUsage) => change({ allowInsecureUsage })}
+                  />
+                </ItemGroup>
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>

@@ -105,6 +105,7 @@ interface ProviderConnectionsTabProps {
   defaultConnectionId: string | null;
   pending: boolean;
   canManage: boolean;
+  usageEnabled: boolean;
   addProvider: AddProviderAction;
   onManage: (connection: Connection) => void;
   onConfirm: (confirm: ConnectionConfirm) => void;
@@ -121,6 +122,7 @@ export function ProviderConnectionsTab({
   defaultConnectionId,
   pending,
   canManage,
+  usageEnabled,
   addProvider,
   onManage,
   onConfirm,
@@ -144,6 +146,7 @@ export function ProviderConnectionsTab({
         defaultConnectionId={defaultConnectionId}
         pending={pending}
         canManage={canManage}
+        usageEnabled={usageEnabled}
         onManage={onManage}
         onConfirm={onConfirm}
         perform={perform}

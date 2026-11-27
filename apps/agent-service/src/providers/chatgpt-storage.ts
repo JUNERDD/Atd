@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { Type, type Static } from 'typebox';
 import { parse } from '@atd/agent-contracts';
@@ -55,7 +55,7 @@ export function chatgptHostId(dataDir: string): Promise<string> {
   return pending;
 }
 
-/** Registration has no tokens. Retain it through logout and failed code exchanges. */
+/** Registration has no tokens. Persisted only alongside an active saved credential. */
 export class ChatGPTRegistrationStore {
   private readonly file: string;
   constructor(dataDir: string, connectionId: string) {
@@ -73,5 +73,9 @@ export class ChatGPTRegistrationStore {
 
   write(registration: ChatGPTRegistration): Promise<void> {
     return atomicWrite(this.file, parse(RegistrationSchema, registration));
+  }
+
+  delete(): Promise<void> {
+    return rm(this.file, { force: true });
   }
 }

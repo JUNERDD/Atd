@@ -119,6 +119,7 @@ export class ConnectionStore {
   }
 
   private constructor(
+    readonly dataDir: string,
     private readonly file: string,
     public data: ServiceConnectionsFile,
   ) {}
@@ -128,6 +129,7 @@ export class ConnectionStore {
     try {
       let migrated = false;
       const store = new ConnectionStore(
+        dataDir,
         file,
         await readConnections(file, () => {
           migrated = true;
@@ -137,7 +139,7 @@ export class ConnectionStore {
       return store;
     } catch (error) {
       if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-        const store = new ConnectionStore(file, emptyFile());
+        const store = new ConnectionStore(dataDir, file, emptyFile());
         await atomicWrite(file, store.data);
         return store;
       }

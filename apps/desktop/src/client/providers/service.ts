@@ -1,6 +1,7 @@
 import {
   getProviderContexts,
   getProviderLevels,
+  getProviderUsage,
   refreshProvider,
   setDefaultProvider,
   setProviderContext,
@@ -30,6 +31,7 @@ import type {
   ModelReference,
   ModelThinkingLevel,
   ProviderCatalogEntry,
+  ProviderUsage,
 } from './schema';
 import { probeCredentialStatuses } from './status-probe';
 
@@ -283,6 +285,11 @@ export class ProviderService {
       verifyProvider(options, reference.connectionId, reference.modelId),
     );
     this.markProbed(reference.connectionId);
+  }
+
+  /** Provider-reported allowance windows and balance; providers without an API answer as such. */
+  async usage(connectionId: string, refresh = false): Promise<ProviderUsage> {
+    return getProviderUsage(this.options(), connectionId, refresh);
   }
 
   /**

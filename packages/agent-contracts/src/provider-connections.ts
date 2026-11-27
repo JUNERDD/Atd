@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 import { Identifier } from './identifiers.js';
-import { ChatGPTConsentSchema } from './chatgpt.js';
+import { ChatGPTConsentSchema, ChatGPTUsageLimitErrorSchema } from './chatgpt.js';
 import { MAX_MODEL_ALIASES, ModelAliasSchema } from './model-aliases.js';
 import {
   ContextTierSchema,
@@ -69,6 +69,7 @@ export const ServiceConnectionSchema = Type.Object(
     /** Identity sign-in can succeed without permission to use the ChatGPT plan. */
     chatgptPlanEnabled: Type.Optional(Type.Boolean()),
     chatgptUsagePaused: Type.Optional(Type.Boolean()),
+    chatgptUsagePauseReason: Type.Optional(ChatGPTUsageLimitErrorSchema),
     /** Missing on older connections: require the notice before further use. */
     chatgptConsent: Type.Optional(ChatGPTConsentSchema),
     configurationId: Type.String({ minLength: 1, maxLength: 256 }),
@@ -81,6 +82,8 @@ export const ServiceConnectionSchema = Type.Object(
      */
     /** Non-secret provider options such as a region or deployment map. */
     options: Type.Optional(Type.Record(Type.String(), Type.String({ maxLength: 2048 }))),
+    /** Allow usage queries to a plain-HTTP endpoint; off unless the user explicitly opts in. */
+    allowInsecureUsage: Type.Optional(Type.Boolean()),
     /** Caller-defined models for custom endpoints. */
     customModels: Type.Optional(Type.Array(ServiceModelDefinitionSchema, { maxItems: 100 })),
     /** Last successful catalog refresh; absent until one succeeds for this configuration. */

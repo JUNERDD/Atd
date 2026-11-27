@@ -1,16 +1,19 @@
-import { Check, CircleAlert, Ellipsis, RefreshCw, Settings2, Trash2, Unplug } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Check,
+  CircleAlert,
+  Ellipsis,
+  Gauge,
+  RefreshCw,
+  Settings2,
+  Trash2,
+  Unplug,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@atd/ui/components/badge';
 import { providerPresentation } from './provider-services';
 import { HighlightedText } from '@atd/ui/components/highlighted-text';
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemTitle,
-} from '@atd/ui/components/item';
+import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@atd/ui/components/item';
 import type { MatchRange } from '@atd/ui/lib/fuzzy-match';
 import {
   DropdownMenu,
@@ -23,6 +26,9 @@ import { ItemContextMenu, ItemMenuItem, ItemMenuSeparator } from '../../componen
 import type { ConnectionConfirm } from './connection-confirm-dialog';
 import { ModelConfigPopover } from './model-config-popover';
 import { ProviderBrand } from './provider-brand';
+import { ProviderStatusBadge } from './provider-status-badge';
+import { ProviderUsageDialog, ProviderUsageSummary } from './provider-usage';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@atd/ui/components/tooltip';
 import '../../components/open-row.css';
 
 /** One overview row: a connection and where the overview search matched its name. */
@@ -41,6 +47,7 @@ export function ProviderConnections({
   defaultConnectionId,
   pending,
   canManage,
+  usageEnabled = true,
   onManage,
   onConfirm,
   perform,
@@ -50,6 +57,8 @@ export function ProviderConnections({
   pending: boolean;
   /** Whether the provider catalog is loaded, which a connection's page needs. */
   canManage: boolean;
+  /** Whether automatic usage reads may touch the keychain; manual dialogs stay available. */
+  usageEnabled?: boolean;
   onManage: (connection: Connection) => void;
   /** Asks before a disconnect or a removal. */
   onConfirm: (confirm: ConnectionConfirm) => void;
@@ -57,194 +66,227 @@ export function ProviderConnections({
 }) {
   const { t } = useTranslation('providers');
   const bridge = window.desktop?.settings.providers;
+  // Resolve the live row instead of pinning the snapshot the menu opened with, so a connection
+  // that updates, disconnects or is removed while the dialog is open is not shown stale.
+  const [usageConnectionId, setUsageConnectionId] = useState<string | null>(null);
+  const usageConnection = usageConnectionId
+    ? (rows.find((row) => row.connection.connectionId === usageConnectionId)?.connection ?? null)
+    : null;
   return (
-    <ItemGroup className="provider-connections">
-      {rows.map(({ connection, nameRanges }) => {
-        const presentation = providerPresentation(connection);
-        const isDefault = defaultConnectionId === connection.connectionId;
-        const model = connection.defaultModel
-          ? { connectionId: connection.connectionId, modelId: connection.defaultModel }
-          : null;
-        const verified = Boolean(
-          connection.verifiedModel && connection.verifiedModel === connection.defaultModel,
-        );
-        const credentialIssue = connection.credentialIssue;
-        const description = !connection.connected
-          ? t('connections.status.disconnected')
-          : credentialIssue
-            ? t(
-                connection.authType === 'oauth'
-                  ? credentialIssue === 'unreadable'
-                    ? 'connections.status.oauthUnreadable'
-                    : 'connections.status.oauthMissing'
-                  : credentialIssue === 'unreadable'
-                    ? 'connections.status.credentialUnreadable'
-                    : 'connections.status.credentialMissing',
-              )
-            : connection.provider === 'openai' &&
-                connection.authType === 'oauth' &&
-                connection.chatgptUsagePaused
-              ? t('chatgpt.paused')
+    <>
+      <ItemGroup className="provider-connections">
+        {rows.map(({ connection, nameRanges }) => {
+          const presentation = providerPresentation(connection);
+          const isDefault = defaultConnectionId === connection.connectionId;
+          const model = connection.defaultModel
+            ? { connectionId: connection.connectionId, modelId: connection.defaultModel }
+            : null;
+          const verified = Boolean(
+            connection.verifiedModel && connection.verifiedModel === connection.defaultModel,
+          );
+          const credentialIssue = connection.credentialIssue;
+          const description = !connection.connected
+            ? t('connections.status.disconnected')
+            : credentialIssue
+              ? t(
+                  connection.authType === 'oauth'
+                    ? credentialIssue === 'unreadable'
+                      ? 'connections.status.oauthUnreadable'
+                      : 'connections.status.oauthMissing'
+                    : credentialIssue === 'unreadable'
+                      ? 'connections.status.credentialUnreadable'
+                      : 'connections.status.credentialMissing',
+                )
               : connection.provider === 'openai' &&
                   connection.authType === 'oauth' &&
-                  !connection.chatgptPlanEnabled
-                ? t('chatgpt.planDisabled')
-                : connection.authType === 'oauth'
-                  ? t('connections.status.oauth')
-                  : connection.authType === 'none'
-                    ? t('connections.status.noKey', { baseUrl: connection.baseUrl })
-                    : connection.authType === 'ambient'
-                      ? t('connections.status.ambient')
-                      : t(
-                          verified
-                            ? 'connections.status.apiKeyVerified'
-                            : 'connections.status.apiKeyUnverified',
-                        );
-        // More's items, which a right-click on the row opens too while More is enabled.
-        const menu = (
-          <>
-            <ItemMenuItem
-              disabled={isDefault || !connection.defaultModel || !connection.connected}
-              onSelect={() =>
-                void perform(() => bridge!.setDefault(connection.connectionId, connection.revision))
-              }
-            >
-              <Check />
-              <div>
-                {isDefault ? t('connections.currentDefault') : t('connections.makeDefault')}
-                {!connection.defaultModel && (
-                  <p className="text-xs text-muted-foreground">
-                    {t('connections.chooseDefaultModel')}
-                  </p>
-                )}
-              </div>
-            </ItemMenuItem>
-            <ItemMenuSeparator />
-            <ItemMenuItem disabled={!canManage} onSelect={() => onManage(connection)}>
-              <Settings2 />
-              {t('connections.manage')}
-            </ItemMenuItem>
-            <ItemMenuItem
-              disabled={!connection.connected}
-              onSelect={() => void perform(() => bridge!.refresh(connection.connectionId))}
-            >
-              <RefreshCw />
-              {t('connections.refresh')}
-            </ItemMenuItem>
-            <ItemMenuSeparator />
-            <ItemMenuItem
-              variant="destructive"
-              disabled={!connection.connected}
-              onSelect={() => onConfirm({ action: 'disconnect', connection })}
-            >
-              <Unplug />
-              {t('connections.disconnect')}
-            </ItemMenuItem>
-            <ItemMenuItem
-              variant="destructive"
-              onSelect={() => onConfirm({ action: 'remove', connection })}
-            >
-              <Trash2 />
-              {t('connections.remove')}
-            </ItemMenuItem>
-          </>
-        );
-        return (
-          <ItemContextMenu key={connection.connectionId} menu={pending ? null : menu}>
-            <Item asChild variant="outline" className="provider-connection-row open-row">
-              <li>
-                <button
-                  type="button"
-                  className="open-row-button"
-                  aria-label={t('connections.manageLabel', { name: connection.name })}
-                  disabled={!canManage}
-                  onClick={() => onManage(connection)}
-                />
-                <div className="provider-identity">
-                  <ProviderBrand provider={presentation?.service.brand ?? connection.provider} />
-                  <ItemContent>
-                    <div className="provider-name-track">
-                      <ItemTitle className="min-w-0" title={connection.name}>
-                        <HighlightedText text={connection.name} ranges={nameRanges} />
-                      </ItemTitle>
-                      {isDefault && (
-                        <Badge variant="secondary">{t('connections.defaultBadge')}</Badge>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {presentation && (
-                        <Badge variant="secondary">{t(presentation.plan.nameKey)}</Badge>
-                      )}
-                      <ItemDescription className="whitespace-normal">{description}</ItemDescription>
-                    </div>
-                  </ItemContent>
-                </div>
-                <ItemActions className="provider-model-controls">
-                  <ModelConfigPopover
-                    connections={[connection]}
-                    model={model}
-                    // Without a saved level the popover shows the model's own default.
-                    thinkingLevel={connection.defaultThinkingLevel}
-                    scopeLabel={t('connections.defaultModelLabel', { name: connection.name })}
-                    disabled={pending}
-                    onModelChange={(reference) =>
-                      void perform(() => bridge!.setModel(reference, connection.revision))
-                    }
-                    onThinkingLevelChange={(level) => {
-                      // The popover offers levels only once a model is chosen.
-                      if (!model) return;
-                      void perform(() => bridge!.setModel(model, connection.revision, level));
-                    }}
-                  />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <IconButton
-                        label={t('connections.more')}
-                        aria-label={t('connections.actionsLabel', { name: connection.name })}
-                        disabled={pending}
-                        tooltip={false}
-                      >
-                        <Ellipsis />
-                      </IconButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" sideOffset={4} collisionPadding={8}>
-                      {menu}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </ItemActions>
-                {credentialIssue && (
-                  <output className="provider-row-notice provider-row-notice-warning">
-                    <CircleAlert aria-hidden="true" />
-                    <span>
-                      {t(
-                        connection.authType === 'oauth'
-                          ? credentialIssue === 'unreadable'
-                            ? 'connections.credentialIssue.oauthUnreadable'
-                            : 'connections.credentialIssue.oauthMissing'
-                          : credentialIssue === 'unreadable'
-                            ? 'connections.credentialIssue.apiKeyUnreadable'
-                            : 'connections.credentialIssue.apiKeyMissing',
-                      )}
-                    </span>
-                  </output>
-                )}
-                {connection.catalogError && (
-                  <output className="provider-row-notice">{connection.catalogError}</output>
-                )}
-                {connection.authNotice && (
-                  <output className="provider-row-notice">{connection.authNotice}</output>
-                )}
-                {connection.defaultModel &&
-                  !connection.catalog.some((model) => model.id === connection.defaultModel) && (
-                    <p className="provider-row-notice">
-                      {t('connections.unavailableModel', { model: connection.defaultModel })}
+                  connection.chatgptUsagePaused
+                ? t('chatgpt.paused')
+                : connection.provider === 'openai' &&
+                    connection.authType === 'oauth' &&
+                    !connection.chatgptPlanEnabled
+                  ? t('chatgpt.planDisabled')
+                  : connection.authType === 'oauth'
+                    ? t('connections.status.oauth')
+                    : connection.authType === 'none'
+                      ? t('connections.status.noKey', { baseUrl: connection.baseUrl })
+                      : connection.authType === 'ambient'
+                        ? t('connections.status.ambient')
+                        : t(
+                            verified
+                              ? 'connections.status.apiKeyVerified'
+                              : 'connections.status.apiKeyUnverified',
+                          );
+          // More's items, which a right-click on the row opens too while More is enabled.
+          const menu = (
+            <>
+              <ItemMenuItem
+                disabled={isDefault || !connection.defaultModel || !connection.connected}
+                onSelect={() =>
+                  void perform(() =>
+                    bridge!.setDefault(connection.connectionId, connection.revision),
+                  )
+                }
+              >
+                <Check />
+                <div>
+                  {isDefault ? t('connections.currentDefault') : t('connections.makeDefault')}
+                  {!connection.defaultModel && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('connections.chooseDefaultModel')}
                     </p>
                   )}
-              </li>
-            </Item>
-          </ItemContextMenu>
-        );
-      })}
-    </ItemGroup>
+                </div>
+              </ItemMenuItem>
+              <ItemMenuSeparator />
+              <ItemMenuItem disabled={!canManage} onSelect={() => onManage(connection)}>
+                <Settings2 />
+                {t('connections.manage')}
+              </ItemMenuItem>
+              <ItemMenuItem
+                disabled={!connection.connected}
+                onSelect={() => void perform(() => bridge!.refresh(connection.connectionId))}
+              >
+                <RefreshCw />
+                {t('connections.refresh')}
+              </ItemMenuItem>
+              <ItemMenuItem
+                disabled={!connection.connected}
+                onSelect={() => setUsageConnectionId(connection.connectionId)}
+              >
+                <Gauge />
+                {t('connections.usage.action')}
+              </ItemMenuItem>
+              <ItemMenuSeparator />
+              <ItemMenuItem
+                variant="destructive"
+                disabled={!connection.connected}
+                onSelect={() => onConfirm({ action: 'disconnect', connection })}
+              >
+                <Unplug />
+                {t('connections.disconnect')}
+              </ItemMenuItem>
+              <ItemMenuItem
+                variant="destructive"
+                onSelect={() => onConfirm({ action: 'remove', connection })}
+              >
+                <Trash2 />
+                {t('connections.remove')}
+              </ItemMenuItem>
+            </>
+          );
+          return (
+            <ItemContextMenu key={connection.connectionId} menu={pending ? null : menu}>
+              <Item asChild variant="outline" className="provider-connection-row open-row">
+                <li>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="open-row-button"
+                        aria-label={t('connections.manageLabel', { name: connection.name })}
+                        disabled={!canManage}
+                        onClick={() => onManage(connection)}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>{description}</TooltipContent>
+                  </Tooltip>
+                  <div className="provider-identity">
+                    <ProviderBrand provider={presentation?.service.brand ?? connection.provider} />
+                    <ItemContent>
+                      <div className="provider-name-track">
+                        <ItemTitle className="min-w-0" title={connection.name}>
+                          <HighlightedText text={connection.name} ranges={nameRanges} />
+                        </ItemTitle>
+                        {isDefault && (
+                          <Badge variant="secondary">{t('connections.defaultBadge')}</Badge>
+                        )}
+                        <ProviderStatusBadge
+                          connection={connection}
+                          verified={verified}
+                          description={description}
+                          t={t}
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {presentation && (
+                          <Badge variant="secondary">{t(presentation.plan.nameKey)}</Badge>
+                        )}
+                        <ProviderUsageSummary connection={connection} enabled={usageEnabled} />
+                      </div>
+                    </ItemContent>
+                  </div>
+                  <ItemActions className="provider-model-controls">
+                    <ModelConfigPopover
+                      connections={[connection]}
+                      model={model}
+                      // Without a saved level the popover shows the model's own default.
+                      thinkingLevel={connection.defaultThinkingLevel}
+                      scopeLabel={t('connections.defaultModelLabel', { name: connection.name })}
+                      disabled={pending}
+                      usageEnabled={usageEnabled}
+                      onModelChange={(reference) =>
+                        void perform(() => bridge!.setModel(reference, connection.revision))
+                      }
+                      onThinkingLevelChange={(level) => {
+                        // The popover offers levels only once a model is chosen.
+                        if (!model) return;
+                        void perform(() => bridge!.setModel(model, connection.revision, level));
+                      }}
+                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton
+                          label={t('connections.more')}
+                          aria-label={t('connections.actionsLabel', { name: connection.name })}
+                          disabled={pending}
+                          tooltip={false}
+                        >
+                          <Ellipsis />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" sideOffset={4} collisionPadding={8}>
+                        {menu}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </ItemActions>
+                  {credentialIssue && (
+                    <output className="provider-row-notice provider-row-notice-warning">
+                      <CircleAlert aria-hidden="true" />
+                      <span>
+                        {t(
+                          connection.authType === 'oauth'
+                            ? credentialIssue === 'unreadable'
+                              ? 'connections.credentialIssue.oauthUnreadable'
+                              : 'connections.credentialIssue.oauthMissing'
+                            : credentialIssue === 'unreadable'
+                              ? 'connections.credentialIssue.apiKeyUnreadable'
+                              : 'connections.credentialIssue.apiKeyMissing',
+                        )}
+                      </span>
+                    </output>
+                  )}
+                  {connection.catalogError && (
+                    <output className="provider-row-notice">{connection.catalogError}</output>
+                  )}
+                  {connection.authNotice && (
+                    <output className="provider-row-notice">{connection.authNotice}</output>
+                  )}
+                  {connection.defaultModel &&
+                    !connection.catalog.some((model) => model.id === connection.defaultModel) && (
+                      <p className="provider-row-notice">
+                        {t('connections.unavailableModel', { model: connection.defaultModel })}
+                      </p>
+                    )}
+                </li>
+              </Item>
+            </ItemContextMenu>
+          );
+        })}
+      </ItemGroup>
+      <ProviderUsageDialog
+        connection={usageConnection}
+        onClose={() => setUsageConnectionId(null)}
+      />
+    </>
   );
 }

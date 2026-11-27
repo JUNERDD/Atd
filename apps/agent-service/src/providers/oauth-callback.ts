@@ -8,6 +8,7 @@ import { oauthPage, OAUTH_PAGE_STYLE, type OAuthOutcome } from './oauth-page.js'
 export type OAuthCallback = Awaited<ReturnType<typeof oauthCallback>>;
 export interface ChatGPTLoginOptions extends ProviderLoginRequest {
   onCallback?: (callback: OAuthCallback) => void;
+  reuseRegistration?: boolean;
 }
 
 /** Desktop loopback transport; the OIDC client owns protocol and token validation. */
