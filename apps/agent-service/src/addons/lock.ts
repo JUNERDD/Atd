@@ -77,6 +77,9 @@ export function hostArch(arch: string = process.arch): AddonArch | null {
   return null;
 }
 
+import { DEV_LOCK_FILE, DevLockWatcher, devLockWatchPath } from './dev-lock-watcher.js';
+export { DevLockWatcher, devLockWatchPath };
+
 /**
  * Where this build's lock is: `AI_ADDONS_LOCK` (an absolute path) wins, then the one the pack put
  * in the service package root, then, for a development service only, the one
@@ -89,7 +92,7 @@ async function lockPath(development: boolean): Promise<string | null> {
     return override;
   }
   const candidates = [path.join(PACKAGE_ROOT, LOCK_FILE)];
-  if (development) candidates.push(path.join(PACKAGE_ROOT, '..', '..', 'tmp', 'addons', LOCK_FILE));
+  if (development) candidates.push(DEV_LOCK_FILE);
   for (const candidate of candidates) if (await readable(candidate)) return candidate;
   return null;
 }
@@ -167,4 +170,33 @@ export async function loadAddonCatalog(options: {
     });
     return empty;
   }
+}
+
+function sameArtifact(a: AddonArtifact | undefined, b: AddonArtifact | undefined): boolean {
+  if (!a || !b) return a === b;
+  return (
+    a.sha256 === b.sha256 &&
+    a.version === b.version &&
+    a.size === b.size &&
+    a.urls.length === b.urls.length &&
+    a.urls.every((url, index) => url === b.urls[index])
+  );
+}
+
+/** Whether two loaded catalogs describe the exact same lock source, ids, and pinned artifacts. */
+export function sameAddonCatalog(a: AddonCatalog, b: AddonCatalog): boolean {
+  if (a.source !== b.source) return false;
+  if (a.ids.length !== b.ids.length || a.artifacts.size !== b.artifacts.size) return false;
+  for (let i = 0; i < a.ids.length; i += 1) if (a.ids[i] !== b.ids[i]) return false;
+  for (const [id, first] of a.artifacts)
+    if (!sameArtifact(first, b.artifacts.get(id))) return false;
+  return true;
+}
+
+/** Whether two artifacts in a catalog differ (used to clear stale errors on lock reload). */
+export function artifactChanged(
+  a: AddonArtifact | undefined,
+  b: AddonArtifact | undefined,
+): boolean {
+  return !sameArtifact(a, b);
 }

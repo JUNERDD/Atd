@@ -182,6 +182,7 @@ export class AutomationService {
     this.trialRuns?.close();
     await this.engine.stop();
     await this.trialRuns?.idle();
+    await this.trials?.idle();
     this.announcer.cancel();
     if (AutomationService.instances.get(this.deps.paths.root) === this)
       AutomationService.instances.delete(this.deps.paths.root);

@@ -204,6 +204,11 @@ export class ComputerTrials {
     });
   }
 
+  /** Resolves once all queued `trials.json` writes have finished. */
+  idle(): Promise<void> {
+    return this.chain;
+  }
+
   private change<T>(update: (draft: TrialsFile) => T): Promise<T> {
     const operation = this.chain.then(async () => {
       const { problem } = this;

@@ -60,6 +60,8 @@ export interface SessionFactoryDeps {
   setStatus: (runId: string, status: RunStatus) => void;
   /** Whether Stop was requested for the current run. */
   stopRequested: () => boolean;
+  /** Aborted when Stop is requested for the current run; unblocks pre-session waits. */
+  runSignal?: () => AbortSignal;
   /**
    * Whether the task was deleted (`TaskRunner.discard`), set before its session closes. From then
    * on the session's memory reads off, so its memory learning stops at once

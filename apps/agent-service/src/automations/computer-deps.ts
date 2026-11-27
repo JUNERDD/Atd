@@ -36,6 +36,10 @@ export interface AutomationComputer {
    * engine (`atd`, for apps) never names one.
    */
   missingAddons(engines: readonly ComputerEngine[]): string[];
+  /** Awaits/starts updates for already-installed (`outdated`) add-ons required by `engines`. */
+  ensureEngines?(engines: readonly ComputerEngine[], signal?: AbortSignal): Promise<void>;
+  /** Truthful error message when an already-installed add-on failed its automatic update. */
+  addonUnavailableMessage?(addonId: string): string | undefined;
   /** The latest fact per action of one task run (`records.ts` `readRunFacts` bound to dataDir). */
   readRunFacts(runId: string): Promise<ComputerFact[]>;
   /** `records.ts` `summarizeFacts`: the counts a run record keeps. */
@@ -50,6 +54,10 @@ export function automationComputer(runtime: ComputerRuntime): AutomationComputer
     bindings: runtime.bindings,
     profiles: () => runtime.coordinator.hostStatus().profiles,
     missingAddons: (engines) => engines.flatMap((engine) => runtime.missingAddon(engine) ?? []),
+    ensureEngines: async (engines, signal) => {
+      await Promise.all(engines.map((engine) => runtime.ensureEngineInstalled(engine, signal)));
+    },
+    addonUnavailableMessage: (addonId) => runtime.addonUnavailableMessage(addonId),
     readRunFacts: (runId) => readRunFacts(runtime.dataDir, runId),
     summarizeFacts,
     cancelRun: (taskId, runId, reason) => runtime.cancelRun(taskId, runId, reason),

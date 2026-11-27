@@ -72,7 +72,7 @@ export class TaskRunner {
   private readonly slot = new LiveSlot();
   private currentRunId = '';
   private material: RunMaterial = NO_RUN_MATERIAL;
-  private aborted = false;
+  private runAbort = new AbortController();
   /** The task was deleted (`discard`); its sessions read memory off from then on. */
   private deleted = false;
   /** A manual compaction of the idle session runs; runs wait for it. */
@@ -117,12 +117,13 @@ export class TaskRunner {
       setStatus: (runId, status) => {
         void this.setStatus(runId, status, '').catch(() => undefined);
       },
-      stopRequested: () => this.aborted,
+      stopRequested: () => this.runAbort.signal.aborted,
+      runSignal: () => this.runAbort.signal,
       deleted: () => this.deleted,
     };
     this.pending = new TaskQueue({
       live: () => this.slot.live,
-      stopped: () => this.aborted,
+      stopped: () => this.runAbort.signal.aborted,
       interject: (undelivered) => ctx.confirms.interject(taskId, undelivered),
       publish: (queue) =>
         ctx.events.publish({
@@ -206,7 +207,7 @@ export class TaskRunner {
     folders: RunFolders,
   ): Promise<void> {
     this.currentRunId = run.id;
-    this.aborted = false;
+    this.runAbort = new AbortController();
     // A lite session answers only its own prompt; what is queued meanwhile waits (held-queue.ts).
     if (run.snapshot.lite) this.pending.held.start();
     this.audit = new AuditWriter(
@@ -234,7 +235,7 @@ export class TaskRunner {
       }
       this.material = prepared.material;
       const live = await openRunSession(
-        { session: this.session, slot: this.slot, stopped: () => this.aborted },
+        { session: this.session, slot: this.slot, stopped: () => this.runAbort.signal.aborted },
         run,
         prepared.agents,
       );
@@ -268,10 +269,8 @@ export class TaskRunner {
       this.material = { ...NO_RUN_MATERIAL, catalog, memory, viewInitiative };
       // A lite run froze nothing (run-prepare.ts).
       if (!run.snapshot.lite) await releaseRunSelections(this.session, run.id);
-      // The host keeps per-run state (screen shares, previews, run-scoped browser profiles, target
-      // preparation such as occlusion keep-alive) until it hears the run ended normally
-      // (`finished`); an aborted run already told it through `abort`.
-      if (!this.aborted)
+      // Release per-run host state on normal exit; aborted runs already notified via `abort`.
+      if (!this.runAbort.signal.aborted)
         await this.ctx.computer.cancelRun(this.taskId, run.id, 'finished').catch(() => undefined);
       await this.audit?.flush();
     }
@@ -279,7 +278,7 @@ export class TaskRunner {
 
   /** Stops the run and returns the queued messages it withdrew, undelivered. */
   async abort(runId: string): Promise<QueueState> {
-    this.aborted = true;
+    this.runAbort.abort();
     const unsent = this.pending.withdraw();
     await abortSubagentsForTask(this.taskId);
     await this.ctx.confirms.cancelRun(this.taskId, runId, 'Task stopped.');
@@ -319,7 +318,8 @@ export class TaskRunner {
 
   /** Stop was requested for the run. */
   private isStopping(runId: string): boolean {
-    return this.statusOf(runId) === 'stopping' || this.aborted;
+    const status = this.statusOf(runId);
+    return status === 'stopping' || status === 'cancelled' || this.runAbort.signal.aborted;
   }
 
   private async setStatus(runId: string, status: RunStatus, error: string): Promise<void> {

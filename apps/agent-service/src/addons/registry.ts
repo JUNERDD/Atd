@@ -4,14 +4,13 @@ import {
   WPS_SELECTION_ADDON,
   errorMessage,
   type AddonErrorCode,
-  type AddonPhase,
   type AddonView,
 } from '@atd/agent-contracts';
 import { ConflictError } from '../errors.js';
 import { LedgerNotFound } from '../ledger.js';
 import type { Logger } from '../logging.js';
-import { AddonFailure, toAddonFailure } from './failure.js';
-import { runInstall } from './install.js';
+import { AddonAutoUpdater, type AutoUpdateJob } from './auto-update.js';
+import { AddonFailure } from './failure.js';
 import { loadAddonCatalog, type AddonCatalog } from './lock.js';
 import {
   addonsRoot,
@@ -27,52 +26,58 @@ import {
   type InstalledAddon,
 } from './store.js';
 
-/**
- * Why a consumer cannot let an add-on go right now (a sentence for the person removing it), or
- * null when it may be removed.
- */
 export type AddonUseCheck = () => string | null;
 
-/** What runs for one add-on: an install (cancellable) or a removal. */
-interface Job {
-  phase: AddonPhase;
-  received: number;
-  controller: AbortController;
-  done: Promise<void>;
+interface StoredAddonError {
+  code: AddonErrorCode;
+  message: string;
+  source: 'install' | 'remove';
 }
 
 /**
- * The service's add-ons (design §6–8): the archives this build pins (lock.ts), the active
- * installs (`state.json`, store.ts) and what is running for each id, one job per id at a time.
- * It answers the views routes and the shell read, the install facts service features gate on
- * (`installed`), and refuses a removal while a registered consumer still uses the add-on.
- * Listeners hear every change a view shows except download progress, which views poll.
+ * The service's add-ons (design §6–8): pinned archives (lock.ts), active installs (`state.json`),
+ * per-id jobs, auto-update/retry/dev-lock coordination (auto-update.ts), and consumer removal
+ * checks. Listeners hear every view change except download progress.
  */
 export class AddonRegistry {
-  private readonly jobs = new Map<string, Job>();
-  private readonly errors = new Map<string, { code: AddonErrorCode; message: string }>();
+  private readonly jobs = new Map<string, AutoUpdateJob>();
+  private readonly errors = new Map<string, StoredAddonError>();
   private readonly checks = new Map<string, AddonUseCheck[]>();
   private readonly listeners = new Set<() => void>();
-  /** State writes, serialized so each starts from the state the previous one committed. */
+  private readonly autoUpdater: AddonAutoUpdater;
   private writes = Promise.resolve();
-  /** Set once shutdown begins; no install or removal starts after it. */
   private stopping = false;
 
   private constructor(
     private readonly dataDir: string,
-    private readonly catalog: AddonCatalog,
-    private readonly development: boolean,
+    private catalog: AddonCatalog,
+    development: boolean,
     private readonly log: Logger,
     private state: AddonState,
     private readonly active: Map<string, InstalledAddon>,
-  ) {}
+  ) {
+    this.autoUpdater = new AddonAutoUpdater({
+      dataDir,
+      development,
+      log,
+      isStopping: () => this.stopping,
+      catalog: () => this.catalog,
+      setCatalog: (next) => (this.catalog = next),
+      activeIds: () => this.active.keys(),
+      hasActive: (id) => this.active.has(id),
+      isCurrent: (id) => this.installed(id) !== undefined,
+      job: (id) => this.jobs.get(id),
+      setJob: (id, job) => this.jobs.set(id, job),
+      deleteJob: (id) => this.jobs.delete(id),
+      jobs: () => this.jobs.entries(),
+      clearError: (id) => void this.errors.delete(id),
+      recordInstallError: (id, error) => this.errors.set(id, { ...error, source: 'install' }),
+      activate: (id, record) => this.activate(id, record),
+      notifyChanged: () => this.changed(),
+    });
+  }
 
-  /**
-   * Loads the lock and the install state. Staging left by an earlier process is removed, a
-   * recorded install whose directory is gone or changed is dropped, an install of a retired
-   * add-on (`RETIRED_ADDONS`) is dropped and its directory deleted, and every install directory no
-   * record names is deleted.
-   */
+  /** Loads lock + state, clears staging, drops missing/retired installs, and runs GC. */
   static async create(options: {
     dataDir: string;
     development: boolean;
@@ -107,7 +112,6 @@ export class AddonRegistry {
     return new AddonRegistry(dataDir, catalog, options.development, log, state, active);
   }
 
-  /** Every add-on this build knows: the lock's ids and the computer engines, none retired. */
   ids(): string[] {
     const ids = new Set([...COMPUTER_ADDONS, WPS_SELECTION_ADDON, ...this.catalog.ids]);
     return [...ids].filter((id) => !RETIRED_ADDONS.has(id)).sort();
@@ -144,7 +148,7 @@ export class AddonRegistry {
           }
         : {}),
       ...(active && !current ? { outdated: { version: active.version } } : {}),
-      ...(error ? { error } : {}),
+      ...(error ? { error: { code: error.code, message: error.message } } : {}),
     };
   }
 
@@ -154,34 +158,56 @@ export class AddonRegistry {
     return active && active.sha256 === this.catalog.artifacts.get(id)?.sha256 ? active : undefined;
   }
 
-  /** Calls `listener` after every change a view shows, progress excepted; returns the remover. */
+  isOutdated(id: string): boolean {
+    return this.active.has(id) && this.installed(id) === undefined;
+  }
+
+  /** Last install/update failure for `id`, excluding cancellations and removal errors. */
+  lastUpdateError(id: string): { code: AddonErrorCode; message: string } | undefined {
+    const error = this.errors.get(id);
+    if (!error || error.source !== 'install' || error.code === 'cancelled') return undefined;
+    return { code: error.code, message: error.message };
+  }
+
+  /** Ensures an already-installed (`outdated`) add-on matches the lock; never installs new ones. */
+  async ensureInstalled(id: string, signal?: AbortSignal): Promise<InstalledAddon | undefined> {
+    await this.autoUpdater.ensureCurrent(id, signal);
+    return this.installed(id);
+  }
+
   onChange(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
-  /** Registers a consumer's check, asked before any of `ids` is removed. */
   useBy(ids: readonly string[], check: AddonUseCheck): void {
     for (const id of ids) this.checks.set(id, [...(this.checks.get(id) ?? []), check]);
   }
 
-  /**
-   * Starts installing the pinned archive, or joins the job running, and answers at once. An add-on
-   * this build ships no archive for answers 409, and its view keeps that refusal as `error`.
-   */
   install(id: string): AddonView {
     this.view(id);
-    if (this.jobs.has(id) || this.installed(id)) return this.view(id);
+    this.autoUpdater.clearRetry(id);
+    const running = this.jobs.get(id);
+    if (running) {
+      if (running.phase !== 'removing') running.background = false;
+      return this.view(id);
+    }
+    if (this.installed(id)) return this.view(id);
     if (this.stopping) throw new ConflictError('The service is shutting down.');
     if (!this.catalog.artifacts.has(id))
-      this.refuse(id, 'unavailable', 'This build does not offer this add-on for this Mac.');
-    this.startInstall(id);
+      this.refuse(
+        id,
+        'unavailable',
+        'This build does not offer this add-on for this Mac.',
+        'install',
+      );
+    this.autoUpdater.startInstall(id, false);
     return this.view(id);
   }
 
-  /** Cancels a running install and answers once it has stopped; the active install stays. */
   async cancel(id: string): Promise<AddonView> {
     this.view(id);
+    this.autoUpdater.clearRetry(id);
     const job = this.jobs.get(id);
     if (job && job.phase !== 'removing') {
       job.controller.abort();
@@ -190,25 +216,28 @@ export class AddonRegistry {
     return this.view(id);
   }
 
-  /**
-   * Removes the add-on: refused (409) while it installs or a consumer reports it in use, the
-   * refusal kept as the view's `error` when it is `inUse`. The state record goes first and is
-   * announced, so consumers stop using the files before their directory is deleted.
-   */
   async remove(id: string): Promise<AddonView> {
     this.view(id);
-    if (this.jobs.has(id))
-      throw new ConflictError('The add-on is being installed; cancel it first.');
+    this.autoUpdater.clearRetry(id);
     if (this.stopping) throw new ConflictError('The service is shutting down.');
+    for (;;) {
+      const running = this.jobs.get(id);
+      if (!running) break;
+      if (!running.background || running.phase === 'removing')
+        throw new ConflictError('The add-on is being installed; cancel it first.');
+      this.assertUnused(id);
+      running.controller.abort();
+      await running.done;
+      this.autoUpdater.clearRetry(id);
+      if (this.stopping) throw new ConflictError('The service is shutting down.');
+    }
     this.clearError(id);
     if (!this.active.has(id)) return this.view(id);
-    for (const check of this.checks.get(id) ?? []) {
-      const reason = check();
-      if (reason) this.refuse(id, 'inUse', reason);
-    }
+    this.assertUnused(id);
     let finish!: () => void;
-    const job: Job = {
+    const job: AutoUpdateJob = {
       phase: 'removing',
+      background: false,
       received: 0,
       controller: new AbortController(),
       done: new Promise((resolve) => (finish = resolve)),
@@ -222,7 +251,7 @@ export class AddonRegistry {
       await collectGarbage(this.dataDir, id, undefined);
     } catch (error) {
       const message = `The add-on was not removed completely: ${errorMessage(error)}`;
-      this.errors.set(id, new AddonFailure('disk', message).view());
+      this.errors.set(id, { ...new AddonFailure('disk', message).view(), source: 'remove' });
       this.log.warn('An add-on was not removed completely.', { id, error: errorMessage(error) });
     } finally {
       this.jobs.delete(id);
@@ -232,61 +261,18 @@ export class AddonRegistry {
     return this.view(id);
   }
 
-  /** Replaces, in the background, every outdated install this build ships an archive for. */
   start(): void {
-    for (const id of this.active.keys())
-      if (!this.installed(id) && this.catalog.artifacts.has(id) && !this.jobs.has(id)) {
-        this.log.info('Updating an outdated add-on.', { id });
-        this.startInstall(id);
-      }
+    this.autoUpdater.start();
   }
 
-  /** Cancels every running install and waits for every job to end (service shutdown). */
   async stop(): Promise<void> {
     this.stopping = true;
+    this.autoUpdater.stop();
     for (const job of this.jobs.values()) if (job.phase !== 'removing') job.controller.abort();
     await Promise.all([...this.jobs.values()].map((job) => job.done));
     await this.writes;
   }
 
-  private startInstall(id: string): void {
-    const artifact = this.catalog.artifacts.get(id);
-    if (!artifact) return;
-    this.clearError(id);
-    const controller = new AbortController();
-    const job: Job = { phase: 'downloading', received: 0, controller, done: Promise.resolve() };
-    this.jobs.set(id, job);
-    job.done = runInstall({
-      dataDir: this.dataDir,
-      artifact,
-      development: this.development,
-      signal: controller.signal,
-      phase: (phase) => {
-        if (job.phase === phase) return;
-        job.phase = phase;
-        this.changed();
-      },
-      progress: (received) => (job.received = received),
-      activate: (record) => this.activate(id, record),
-    })
-      .catch((error: unknown) => {
-        const failure = toAddonFailure(error, controller.signal);
-        this.errors.set(id, failure.view());
-        if (failure.code !== 'cancelled')
-          this.log.warn('An add-on was not installed.', {
-            id,
-            code: failure.code,
-            error: failure.message,
-          });
-      })
-      .finally(() => {
-        this.jobs.delete(id);
-        this.changed();
-      });
-    this.changed();
-  }
-
-  /** The commit point of an install: the verified directory becomes the active install. */
   private async activate(id: string, record: AddonRecord): Promise<void> {
     const installed = await resolveInstalled(this.dataDir, id, record);
     if (!installed)
@@ -295,13 +281,11 @@ export class AddonRegistry {
     this.active.set(id, installed);
     this.changed();
     this.log.info('An add-on was installed.', { id, version: record.version });
-    // Older versions go once the new one is active; a process still running one keeps its files.
     await collectGarbage(this.dataDir, id, record.sha256).catch((error: unknown) =>
       this.log.warn('An older add-on version was not deleted.', { id, error: errorMessage(error) }),
     );
   }
 
-  /** Applies one change to the persisted state, after the writes before it. */
   private commit(change: (active: AddonState['active']) => void): Promise<void> {
     const write = this.writes.then(async () => {
       const next: AddonState = { schemaVersion: 1, active: { ...this.state.active } };
@@ -313,9 +297,20 @@ export class AddonRegistry {
     return write;
   }
 
-  /** Records a refusal in the view, announces it and answers the route's 409. */
-  private refuse(id: string, code: AddonErrorCode, message: string): never {
-    this.errors.set(id, new AddonFailure(code, message).view());
+  private assertUnused(id: string): void {
+    for (const check of this.checks.get(id) ?? []) {
+      const reason = check();
+      if (reason) this.refuse(id, 'inUse', reason, 'remove');
+    }
+  }
+
+  private refuse(
+    id: string,
+    code: AddonErrorCode,
+    message: string,
+    source: 'install' | 'remove',
+  ): never {
+    this.errors.set(id, { ...new AddonFailure(code, message).view(), source });
     this.changed();
     throw new ConflictError(message);
   }

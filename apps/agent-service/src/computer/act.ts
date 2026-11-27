@@ -155,10 +155,13 @@ export async function runAct(
   const targetRef = runtime.coordinator.target(ctx.runId, input.targetRefId);
   if (!targetRef) refuse(ctx, 'Unknown or outdated targetRefId: call targets again.');
   const known = { bindingId: targetRef.bindingId };
-  if (!runtime.engineInstalled(targetRef.engine))
+  if (!(await runtime.ensureEngineInstalled(targetRef.engine, ctx.signal)))
     refuse(
       ctx,
-      'The target engine was removed. Install its add-on and call targets again; nothing was sent.',
+      runtime.engineUnavailableReason(
+        targetRef.engine,
+        'The target engine was removed. Install its add-on and call targets again; nothing was sent.',
+      ),
       known,
     );
   const binding = runBinding(ctx.computer, targetRef.bindingId, runtime.bindings);
@@ -201,8 +204,15 @@ export async function runAct(
   };
   await authorize(ctx, allowed, binding);
   ctx.signal?.throwIfAborted();
-  if (!runtime.engineInstalled(targetRef.engine))
-    refuse(ctx, 'The target engine was removed while awaiting approval; nothing was sent.', known);
+  if (!(await runtime.ensureEngineInstalled(targetRef.engine, ctx.signal)))
+    refuse(
+      ctx,
+      runtime.engineUnavailableReason(
+        targetRef.engine,
+        'The target engine was removed while awaiting approval; nothing was sent.',
+      ),
+      known,
+    );
   const { action, effect, recipeStepId } = allowed;
   const grantRef = ctx.scope.mode === 'grant' ? ctx.scope.grantRef : undefined;
   const automationRunId = ctx.snapshot.trigger?.automationRunId;

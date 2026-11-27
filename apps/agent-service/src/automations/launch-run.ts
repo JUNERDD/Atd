@@ -31,7 +31,7 @@ import {
   type ResolvedAutomationPolicy,
 } from './model-policy.js';
 import type { AutomationComputer } from './computer-deps.js';
-import { computerPreflight, type FrozenComputer } from './computer-fire.js';
+import { computerPreflight, neededEngines, type FrozenComputer } from './computer-fire.js';
 import type { AutomationRuns } from './engine-deps.js';
 import { finalAnswer } from './outcome.js';
 import { automationFrame, automationPrompt, clip, runTitle, type FireFacts } from './prompt.js';
@@ -66,6 +66,12 @@ export interface LaunchDeps {
   computer?: AutomationComputer;
   /** Whether a computer hold stands on the automation. */
   held: (automationId: string) => boolean;
+  /** Live lookup for re-checking an automation after awaiting an engine update. */
+  liveAutomation?: (automationId: string) => Automation | undefined;
+  /** Whether all automations are globally paused; re-checked after awaiting an engine update. */
+  paused?: () => boolean;
+  /** Aborted when the automation dispatcher stops (unblocks engine-update waits on shutdown). */
+  signal?: AbortSignal;
 }
 
 /** A run that could not start, with the reason its record fails with. */
@@ -112,27 +118,43 @@ export async function launchRun(
   request: LaunchRequest,
 ): Promise<SubmitTaskResponse> {
   const { automation, record } = request;
-  const folders = runFolderIds(automation);
+  if (automation.policy.computer && deps.computer?.ensureEngines) {
+    await deps.computer.ensureEngines(
+      neededEngines(automation.policy.computer, deps.computer.bindings),
+      deps.signal,
+    );
+    deps.signal?.throwIfAborted();
+  }
+  const live = deps.liveAutomation ? deps.liveAutomation(automation.id) : automation;
+  if (!live)
+    throw new LaunchFailure('computerGrantInvalid', 'The automation was removed before launch.');
+  if (record.source !== 'manual' && (!live.enabled || deps.paused?.()))
+    throw new LaunchFailure('paused', 'The automation is paused.');
+  if (record.source === 'manual' && live.policy.computer && automation.enabled && !live.enabled)
+    throw new LaunchFailure('paused', 'The automation was turned off before launch.');
+  const folders = runFolderIds(live);
   const saved = lookups(deps.dataDir);
   if (!(await foldersReadable(deps, folders)))
     throw new LaunchFailure('folderUnavailable', 'A folder of the automation cannot be read.');
-  const { action } = automation;
+  const { action } = live;
   const command = action.kind === 'command' ? await saved.command(action.commandId) : null;
-  if (!(await policyModelAvailable(automation, command, saved)))
+  if (!(await policyModelAvailable(live, command, saved)))
     throw new LaunchFailure('modelUnavailable', 'No provider connection can run the automation.');
-  const resolved = await resolveAutomationPolicy(deps.dataDir, automation.policy);
+  const resolved = await resolveAutomationPolicy(deps.dataDir, live.policy);
   if (resolved.missingAlias)
     throw new LaunchFailure('modelUnavailable', 'The chosen model alias no longer exists.');
-  const held = deps.held(automation.id);
-  const preflight = computerPreflight(automation, deps.computer, held, request.frozen);
+  const held = deps.held(live.id);
+  const preflight = computerPreflight(live, deps.computer, held, request.frozen);
   if (!preflight.ok) throw new LaunchFailure(preflight.reason, preflight.message);
+  const liveRequest: LaunchRequest =
+    live === automation ? request : { ...request, automation: live };
   const internal: InternalSubmitOptions = {
-    origin: { kind: 'automation', automationId: automation.id },
-    permissionTier: automation.policy.permissionTier,
-    title: runTitle(automation, Date.parse(record.firedAt)),
+    origin: { kind: 'automation', automationId: live.id },
+    permissionTier: live.policy.permissionTier,
+    title: runTitle(live, Date.parse(record.firedAt)),
     trigger: {
       kind: 'automation',
-      automationId: automation.id,
+      automationId: live.id,
       automationRunId: record.id,
       source: record.source,
       firedAt: record.firedAt,
@@ -140,9 +162,9 @@ export async function launchRun(
     ...(preflight.computer ? { computer: preflight.computer } : {}),
   };
   try {
-    return automation.action.kind === 'prompt'
-      ? await submitPrompt(deps, request, automation.action.prompt, folders, internal, resolved)
-      : await submitCommand(deps, request, folders, internal, command, resolved);
+    return live.action.kind === 'prompt'
+      ? await submitPrompt(deps, liveRequest, live.action.prompt, folders, internal, resolved)
+      : await submitCommand(deps, liveRequest, folders, internal, command, resolved);
   } catch (error) {
     throw launchFailure(error);
   }
@@ -312,6 +334,7 @@ export function launchSettlement(error: unknown): Settlement {
     return { outcome: 'interrupted', detail: 'Atd quit before the run started.' };
   const reason = error instanceof LaunchFailure ? error.reason : 'submitFailed';
   const detail = clip(errorMessage(error), 2000);
+  if (reason === 'paused') return { outcome: 'skipped', reason };
   // Files a command cannot take are no failure of the automation; they are not tried again.
   if (reason === 'unsupportedFiles') return { outcome: 'skipped', reason, detail };
   if (reason === 'computerHold' || reason === 'computerGrantInvalid')

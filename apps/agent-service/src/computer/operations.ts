@@ -88,7 +88,6 @@ export function wrongKind(ctx: CallBase, op: string, bindingId?: string): never 
  * a ref on the binding's own engine is kept.
  */
 export async function resolveTargets(ctx: CallContext, timeoutMs = TARGETS_TIMEOUT_MS) {
-  const deadline = performance.now() + timeoutMs;
   const { bindings, coordinator } = ctx.runtime;
   const found: TargetBinding[] = [];
   const missing: { bindingId: string; reason: string; error?: ComputerError }[] = [];
@@ -97,15 +96,18 @@ export async function resolveTargets(ctx: CallContext, timeoutMs = TARGETS_TIMEO
     const chrome = binding && chromeProblem(binding, ctx.unattended, ctx.scope.mode !== 'free');
     if (!binding) missing.push({ bindingId, reason: 'removed' });
     else if (chrome) missing.push({ bindingId, reason: `attendedOnly: ${chrome}` });
-    else if (!ctx.runtime.engineInstalled(computerEngineFor(binding)))
+    else if (!(await ctx.runtime.ensureEngineInstalled(computerEngineFor(binding), ctx.signal)))
       missing.push({
         bindingId,
-        reason:
+        reason: ctx.runtime.engineUnavailableReason(
+          computerEngineFor(binding),
           'engineNotInstalled: the person installs the browser engine in Settings → Computer use → Engines (it also drives their own Chrome through Atd for Chrome); then call targets again.',
+        ),
       });
     else found.push(binding);
   }
   if (!found.length) return { targets: [], unavailable: missing };
+  const deadline = performance.now() + timeoutMs;
   checkTargetDeadline(ctx, deadline);
   const outcome = await coordinator.request(
     envelopeFor(

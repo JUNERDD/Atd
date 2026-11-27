@@ -225,10 +225,9 @@ export async function createService(
   // Clearing the endpoint tells the native supervisor the stop has finished
   // (`ServiceStopper`): it gives the process a short grace to exit, then kills it.
   const stopService = async () => {
-    // No automation fires once draining begins; the runs it started stop with the manager.
-    await automations.stop();
-    // Running add-on installs stop before anything else writes under the dataDir for the last time.
-    await addons.stop();
+    // Stop automations and add-on installs together: both flip stopping synchronously, so aborting
+    // add-on downloads unblocks any automation launch awaiting an outdated engine update.
+    await Promise.all([automations.stop(), addons.stop()]);
     // The host stops every computer action first; the runs then drain with the manager.
     await computer.stopAll('shuttingDown');
     await manager.shutdown();

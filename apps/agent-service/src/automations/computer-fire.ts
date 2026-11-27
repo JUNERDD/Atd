@@ -128,12 +128,17 @@ export function computerPreflight(
   if (!computer || !stillFrozen(automation, frozen) || grantProblem(automation, computer.bindings))
     return invalid(blockedMessage('computerGrantInvalid'));
   const missing = computer.missingAddons(neededEngines(policy, computer.bindings));
-  if (missing.length)
+  if (missing.length) {
+    const outdatedMessages = missing
+      .map((id) => computer.addonUnavailableMessage?.(id))
+      .filter((message): message is string => message !== undefined);
     return {
       ok: false,
       reason: 'computerTargetUnavailable',
-      message: missingAddonsMessage(missing),
+      message:
+        outdatedMessages.length > 0 ? outdatedMessages.join(' ') : missingAddonsMessage(missing),
     };
+  }
   const engines = engineProfilesHash(policy, computer.bindings, computer.profiles());
   if (!engines)
     return {
@@ -147,7 +152,7 @@ export function computerPreflight(
 }
 
 /** The engines the policy's registered targets run on, each once. */
-function neededEngines(
+export function neededEngines(
   policy: AutomationComputerPolicy,
   bindings: ComputerBindingSource,
 ): ComputerEngine[] {
@@ -164,7 +169,7 @@ const ENGINE_NAMES: Readonly<Record<string, string>> = {
 };
 
 /** Why a computer run cannot start without its engines' add-ons, naming them. */
-function missingAddonsMessage(ids: readonly string[]): string {
+export function missingAddonsMessage(ids: readonly string[]): string {
   const names = ids.map((id) => `the ${ENGINE_NAMES[id] ?? `"${id}" add-on`}`).join(' and ');
   const [verb, them] = ids.length === 1 ? ['is', 'it'] : ['are', 'them'];
   return `Computer use needs ${names}, which ${verb} not installed. Install ${them} in Settings → Computer use → Engines.`;

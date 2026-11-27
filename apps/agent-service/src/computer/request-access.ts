@@ -52,10 +52,14 @@ export async function requestAccess(
   const prepared = preparedTarget(target, base.snapshot.computer);
   // Only a website's engine is an add-on: the browser engine, which also drives the person's
   // own Chrome through Atd for Chrome.
-  if (!runtime.engineInstalled(preparedEngine(prepared)))
+  const engine = preparedEngine(prepared);
+  if (!(await runtime.ensureEngineInstalled(engine, base.signal)))
     refuse(
       base,
-      "This website needs the browser engine, which is not installed (it also drives the person's own Chrome through Atd for Chrome): the person installs it in Settings → Computer use → Engines, then request access again.",
+      runtime.engineUnavailableReason(
+        engine,
+        "This website needs the browser engine, which is not installed (it also drives the person's own Chrome through Atd for Chrome): the person installs it in Settings → Computer use → Engines, then request access again.",
+      ),
     );
   const computer = runtime.access.effective(runId, base.snapshot.computer) ?? { bindingIds: [] };
   const ctx: CallContext = { ...base, computer, scope: { ok: true, mode: 'free' } };

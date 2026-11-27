@@ -29,6 +29,8 @@ const COMPUTER_ADDON_FOR_ENGINE: Readonly<Partial<Record<ComputerEngine, string>
 /** Why a computer add-on cannot be removed while computer use acts (`AddonUseCheck`). */
 const IN_USE =
   'Computer use is acting on a target right now. Wait for it to finish or stop it, then remove the add-on.';
+/** How long to wait for the bound host's `computer.hello` to advertise a freshly updated engine. */
+const HOST_PROFILE_WAIT_MS = 5_000;
 
 /**
  * The service's computer-use module, built once by the composition root (index.ts) and shared
@@ -103,10 +105,109 @@ export class ComputerRuntime {
     return this.missingAddon(engine) === undefined;
   }
 
+  /**
+   * Ensures an engine's add-on is current when an earlier version is already installed (`outdated`):
+   * awaits/starts the background update and, for any add-on-backed engine, waits briefly for
+   * `computer.hello` if a host is bound without that engine's profile yet. Never installs an
+   * add-on the user has not installed.
+   */
+  async ensureEngineInstalled(engine: ComputerEngine, signal?: AbortSignal): Promise<boolean> {
+    const addon = COMPUTER_ADDON_FOR_ENGINE[engine];
+    if (addon === undefined) return true;
+    if (this.addons.installed(addon) === undefined) {
+      const installed = await this.addons.ensureInstalled(addon, signal);
+      if (!installed) return false;
+    }
+    await this.waitForHostProfile(engine, signal);
+    return this.engineInstalled(engine);
+  }
+
+  /** Ensures outdated add-ons for any of `bindingIds` finish updating before checking availability. */
+  async ensureEnginesFor(bindingIds: readonly string[], signal?: AbortSignal): Promise<boolean> {
+    const engines = [
+      ...new Set(
+        bindingIds.flatMap((id) => {
+          const binding = this.bindings.get(id);
+          return binding ? [computerEngineFor(binding)] : [];
+        }),
+      ),
+    ];
+    await Promise.all(engines.map((engine) => this.ensureEngineInstalled(engine, signal)));
+    return this.hasEngineFor(bindingIds);
+  }
+
+  /**
+   * Truthful message when an already-installed add-on is still `outdated` after an update attempt;
+   * `undefined` when the add-on was never installed (caller keeps its "not installed" copy).
+   */
+  addonUnavailableMessage(addonId: string): string | undefined {
+    if (!this.addons.isOutdated(addonId)) return undefined;
+    const view = this.addons.view(addonId);
+    const name = addonId === COMPUTER_BROWSER_ADDON ? 'browser engine' : `"${addonId}" add-on`;
+    if (!view.available)
+      return `The installed ${name} is outdated for this build and no matching update archive is available. Check Settings → Computer use → Engines.`;
+    const error = this.addons.lastUpdateError(addonId);
+    if (error)
+      return `The ${name} is already installed, but its automatic update failed (${error.message}). Check your connection or update it in Settings → Computer use → Engines.`;
+    return `The ${name} update for this build has not completed yet. Check Settings → Computer use → Engines.`;
+  }
+
+  /** Distinguishes an outdated engine whose update failed from one the user never installed. */
+  engineUnavailableReason(engine: ComputerEngine, fallback: string): string {
+    const addon = this.missingAddon(engine);
+    return (addon !== undefined ? this.addonUnavailableMessage(addon) : undefined) ?? fallback;
+  }
+
   /** The add-on an engine needs that is not installed, or undefined (built in or installed). */
   missingAddon(engine: ComputerEngine): string | undefined {
     const addon = COMPUTER_ADDON_FOR_ENGINE[engine];
     return addon === undefined || this.addons.installed(addon) !== undefined ? undefined : addon;
+  }
+
+  private waitForHostProfile(engine: ComputerEngine, signal?: AbortSignal): Promise<void> {
+    if (
+      this.coordinator.hostGeneration() === null ||
+      this.coordinator.profile(engine) !== undefined
+    )
+      return Promise.resolve();
+    signal?.throwIfAborted();
+    return new Promise<void>((resolve, reject) => {
+      let done = false;
+      let timer: NodeJS.Timeout | undefined;
+      let offHost: (() => void) | undefined;
+      const onAbort = () => {
+        if (done) return;
+        done = true;
+        cleanup();
+        reject(signal?.reason ?? new Error('Aborted'));
+      };
+      const finish = () => {
+        if (done) return;
+        done = true;
+        cleanup();
+        resolve();
+      };
+      const cleanup = () => {
+        if (timer) clearTimeout(timer);
+        offHost?.();
+        signal?.removeEventListener('abort', onAbort);
+      };
+      offHost = this.coordinator.onHostChanged(() => {
+        if (
+          this.coordinator.hostGeneration() === null ||
+          this.coordinator.profile(engine) !== undefined
+        )
+          finish();
+      });
+      signal?.addEventListener('abort', onAbort, { once: true });
+      timer = setTimeout(finish, HOST_PROFILE_WAIT_MS);
+      timer.unref();
+      if (
+        this.coordinator.hostGeneration() === null ||
+        this.coordinator.profile(engine) !== undefined
+      )
+        finish();
+    });
   }
 
   /**

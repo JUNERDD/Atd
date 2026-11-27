@@ -44,6 +44,7 @@ export interface RunFreezeDeps {
   ctx: RunnerContext;
   taskId: string;
   audit: (entry: Record<string, unknown>) => void;
+  runSignal?: () => AbortSignal;
 }
 
 /** What a run's freeze resolved for its material and session. */
@@ -80,6 +81,8 @@ export async function freezeRunSelections(
   // and the agent harness do not read each other, so they freeze together.
   const plugins = await timePreparation('freeze_plugins', () => freezePlugins(deps, run));
   // Decided once here, so the catalog's skills and the session's tools agree (run-binding.ts).
+  if (run.snapshot.trigger !== undefined && run.snapshot.computer !== undefined)
+    await deps.ctx.computer.ensureEnginesFor(run.snapshot.computer.bindingIds, deps.runSignal?.());
   const computer = computerToolFor(run.snapshot, deps.ctx.computer);
   const [{ toolCeiling, skills, catalog }, mcp, harness] = await Promise.all([
     timePreparation('freeze_skills', () => freezeSkillsForRun(deps, run, plugins.skills, computer)),

@@ -13,7 +13,7 @@ import {
   type ServiceEvent,
   type SubmitTaskResponse,
 } from '@atd/agent-contracts';
-import { ConflictError } from '../errors.js';
+import { ConflictError, DrainingError } from '../errors.js';
 import type { EventLog } from '../event-log.js';
 import { LedgerNotFound, type Ledger } from '../ledger.js';
 import type { Logger } from '../logging.js';
@@ -22,11 +22,13 @@ import { lookups, type Lookups } from './checks.js';
 import { resolveAutomationPolicy } from './model-policy.js';
 import { fingerprintOf } from './computer-approval.js';
 import type { AutomationComputer } from './computer-deps.js';
+import { missingAddonsMessage, neededEngines } from './computer-fire.js';
 import {
   definitionHash,
   engineProfilesHash,
   liveBindingHashes,
   recipeHash,
+  sameBindingHashes,
 } from './computer-grant.js';
 import type { ComputerTrials, PendingTrial } from './computer-trials.js';
 import { baseInput, PROMPT_TOOLS, runFolderIds, type LaunchDeps } from './launch-run.js';
@@ -69,7 +71,10 @@ function trialContext(automation: Automation): string {
 
 export class TrialRuns {
   private unsubscribe: (() => void) | null = null;
+  private readonly shutdown = new AbortController();
+  private readonly starts = new Set<Promise<unknown>>();
   private readonly settling = new Map<string, Promise<void>>();
+  private readonly starting = new Set<string>();
 
   constructor(private readonly deps: TrialRunDeps) {}
 
@@ -80,52 +85,102 @@ export class TrialRuns {
   }
 
   close(): void {
+    this.shutdown.abort(new DrainingError());
     this.unsubscribe?.();
     this.unsubscribe = null;
   }
 
   async idle(): Promise<void> {
-    while (this.settling.size) await Promise.all(this.settling.values());
+    while (this.starts.size || this.settling.size) {
+      await Promise.allSettled(this.starts);
+      await Promise.allSettled(this.settling.values());
+    }
+    await this.deps.trials.idle();
   }
 
   /** POST `/v1/automations/:id/computer-trial`. */
-  async start(id: string, request: ComputerTrialRequest): Promise<ComputerTrialResponse> {
+  start(id: string, request: ComputerTrialRequest): Promise<ComputerTrialResponse> {
+    const work = this.runStart(id, request);
+    this.starts.add(work);
+    void work.catch(() => undefined).finally(() => this.starts.delete(work));
+    return work;
+  }
+
+  private async runStart(
+    id: string,
+    request: ComputerTrialRequest,
+  ): Promise<ComputerTrialResponse> {
+    const { trials, computer } = this.deps;
+    const initial = this.checkStartable(id, request.expectedRevision);
+    this.starting.add(id);
+    try {
+      if (computer.ensureEngines)
+        await computer.ensureEngines(
+          neededEngines(initial.policy, computer.bindings),
+          this.shutdown.signal,
+        );
+      const { automation, policy, bindingHashes } = this.checkStartable(
+        id,
+        request.expectedRevision,
+        true,
+      );
+      if (!sameBindingHashes(initial.bindingHashes, bindingHashes))
+        throw new ConflictError('A computer target changed. Reload it before trying it.');
+      const missing = computer.missingAddons(neededEngines(policy, computer.bindings));
+      if (missing.length) {
+        const outdated = missing
+          .map((addonId) => computer.addonUnavailableMessage?.(addonId))
+          .filter((message): message is string => message !== undefined);
+        throw new ConflictError(
+          outdated.length ? outdated.join(' ') : missingAddonsMessage(missing),
+        );
+      }
+      const engines = engineProfilesHash(policy, computer.bindings, computer.profiles());
+      if (!engines) throw new ConflictError('The computer host is not ready to run this trial.');
+      const fingerprint = await fingerprintOf(automation, this.deps.lookups());
+      if (this.shutdown.signal.aborted) throw new DrainingError();
+      const trial: ComputerRunTrial = {
+        automationId: id,
+        trialId: randomUUID(),
+        definitionHash: definitionHash(automation),
+        recipeHash: recipeHash(policy.recipe),
+        bindingHashes,
+      };
+      const accepted = await this.submit(automation, trial, fingerprint);
+      const pending: PendingTrial = {
+        trial,
+        engineProfilesHash: engines,
+        policy,
+        taskId: accepted.taskId,
+        runId: accepted.runId,
+        startedAt: new Date(this.deps.now()).toISOString(),
+      };
+      await trials.begin(pending);
+      // The run may have ended before the trial was recorded as waiting on it.
+      if (!this.shutdown.signal.aborted) this.settleIfEnded(pending);
+      return { trialId: trial.trialId, taskId: accepted.taskId, runId: accepted.runId };
+    } finally {
+      this.starting.delete(id);
+    }
+  }
+
+  private checkStartable(id: string, expectedRevision: number, inStart = false) {
+    if (this.shutdown.signal.aborted) throw new DrainingError();
     const { store, trials, computer } = this.deps;
     const automation = store.data.definitions.automations.find((item) => item.id === id);
     if (!automation) throw new LedgerNotFound('Automation', id);
-    if (automation.revision !== request.expectedRevision)
+    if (automation.revision !== expectedRevision)
       throw new ConflictError('This automation changed. Reload it before trying it.');
     const policy = automation.policy.computer;
     if (!policy) throw new TypeError('Invalid automation: it requests no computer scope.');
     if (store.data.state.automations[id]?.computerHold)
       throw new ConflictError('Review the run that left computer actions unresolved first.');
     if (trials.problem) throw new ConflictError(trials.problem);
-    if (trials.running(id)) throw new ConflictError('A trial of this automation is running.');
+    if (trials.running(id) || (!inStart && this.starting.has(id)))
+      throw new ConflictError('A trial of this automation is running.');
     const bindingHashes = liveBindingHashes(policy, computer.bindings);
     if (!bindingHashes) throw new TypeError('Invalid automation: a computer target is gone.');
-    const engines = engineProfilesHash(policy, computer.bindings, computer.profiles());
-    if (!engines) throw new ConflictError('The computer host is not ready to run this trial.');
-    const fingerprint = await fingerprintOf(automation, this.deps.lookups());
-    const trial: ComputerRunTrial = {
-      automationId: id,
-      trialId: randomUUID(),
-      definitionHash: definitionHash(automation),
-      recipeHash: recipeHash(policy.recipe),
-      bindingHashes,
-    };
-    const accepted = await this.submit(automation, trial, fingerprint);
-    const pending: PendingTrial = {
-      trial,
-      engineProfilesHash: engines,
-      policy,
-      taskId: accepted.taskId,
-      runId: accepted.runId,
-      startedAt: new Date(this.deps.now()).toISOString(),
-    };
-    await trials.begin(pending);
-    // The run may have ended before the trial was recorded as waiting on it.
-    this.settleIfEnded(pending);
-    return { trialId: trial.trialId, taskId: accepted.taskId, runId: accepted.runId };
+    return { automation, policy, bindingHashes };
   }
 
   private async submit(
@@ -146,6 +201,7 @@ export class TrialRuns {
     const now = new Date(this.deps.now()).toISOString();
     const folders = runFolderIds(automation);
     const resolved = await resolveAutomationPolicy(launch.dataDir, policy);
+    if (this.shutdown.signal.aborted) throw new DrainingError();
     if (resolved.missingAlias) throw new TypeError('The chosen model alias no longer exists.');
     const picks = {
       ...(resolved.model ? { model: resolved.model } : {}),
@@ -201,7 +257,7 @@ export class TrialRuns {
         this.deps.trials.finish(pending.runId, facts, new Date(this.deps.now()).toISOString()),
       )
       .then((recorded) => {
-        if (recorded) this.deps.changed();
+        if (recorded && !this.shutdown.signal.aborted) this.deps.changed();
       })
       .catch((error: unknown) => {
         this.deps.log.warn('A computer trial could not be recorded.', {

@@ -31,8 +31,15 @@ export async function runObserve(ctx: CallContext, request: ObserveRequest): Pro
   const targetRef = coordinator.target(ctx.runId, request.targetRefId);
   if (!targetRef) refuse(ctx, 'Unknown or outdated targetRefId: call targets again.');
   const known = { bindingId: targetRef.bindingId };
-  if (!ctx.runtime.engineInstalled(targetRef.engine))
-    refuse(ctx, 'The target engine was removed. Install its add-on and call targets again.', known);
+  if (!(await ctx.runtime.ensureEngineInstalled(targetRef.engine, ctx.signal)))
+    refuse(
+      ctx,
+      ctx.runtime.engineUnavailableReason(
+        targetRef.engine,
+        'The target engine was removed. Install its add-on and call targets again.',
+      ),
+      known,
+    );
   if (!ctx.computer.bindingIds.includes(targetRef.bindingId))
     refuse(ctx, 'That target is not one this run may use.', known);
   const binding = bindings.get(targetRef.bindingId);

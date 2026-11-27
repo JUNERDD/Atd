@@ -32,11 +32,9 @@ import {
 import { RunSupervisor, type WatchedRun } from './supervisor.js';
 
 /**
- * From a fire to a settled record: the durable receipt, a FIFO queue in front of two slots shared
- * by every automation (decision D6), the launch through the run pipeline and its supervision (or a
- * memory consolidation, which starts no task), the result, and the automations chained to that
- * result (at most `MAX_CHAIN_DEPTH` hops from the first run). A computer automation's fire freezes
- * its grant in the receipt and never runs content newer than that (computer-fire.ts).
+ * Fire-to-settlement dispatcher: durable receipt, FIFO queue (max 2 concurrent runs), launch +
+ * supervision (or memory consolidation), and chained fires (up to `MAX_CHAIN_DEPTH`). Computer
+ * fires freeze their grant in the receipt and never run content newer than that.
  */
 
 /** Automation runs at once, across all automations. */
@@ -69,8 +67,8 @@ export class Dispatcher {
   private readonly queue: Queued[] = [];
   /** Dispatches and settlements in flight. */
   private readonly work = new Set<Promise<void>>();
+  private readonly shutdown = new AbortController();
   private dispatching = 0;
-  private stopped = false;
 
   constructor(
     private readonly deps: EngineDeps,
@@ -100,17 +98,13 @@ export class Dispatcher {
 
   /** Stops dispatching; fires still queued end `interrupted` at the next start (never retried). */
   stop(): void {
-    this.stopped = true;
+    this.shutdown.abort();
     this.queue.length = 0;
     this.supervisor.close();
     this.consolidations.close();
   }
 
-  /**
-   * Writes the fire's receipt, then queues it; a fire the automation cannot take is recorded as
-   * skipped instead. Answers the record (the skip's for a skipped fire); null when a folder's
-   * files keep waiting for the automation's run to end.
-   */
+  /** Writes the fire's receipt and queues it; returns null while folder files wait on a run. */
   async fire(
     automation: Automation,
     request: FireRequest,
@@ -133,12 +127,11 @@ export class Dispatcher {
     // Only once the receipt is durable do the files count as handled (decision D8). A snapshot
     // that cannot be written may fire the files again later; the run itself still starts.
     if (request.files?.length)
-      await this.folderWatch.consume(automation.id, request.files).catch((error: unknown) => {
-        this.deps.log.warn('Fired files could not be marked in the folder snapshot.', {
-          automationId: automation.id,
-          error: errorMessage(error),
-        });
-      });
+      await this.folderWatch
+        .consume(automation.id, request.files)
+        .catch(
+          this.onWarn(automation.id, 'Fired files could not be marked in the folder snapshot.'),
+        );
     this.queue.push({
       automationId: automation.id,
       record: receipt.record,
@@ -196,7 +189,7 @@ export class Dispatcher {
 
   pump(): void {
     while (
-      !this.stopped &&
+      !this.shutdown.signal.aborted &&
       this.queue.length &&
       this.supervisor.size + this.consolidations.size + this.dispatching < MAX_RUNS_AT_ONCE
     ) {
@@ -210,13 +203,13 @@ export class Dispatcher {
     try {
       const automation = this.definition(entry.automationId);
       // Deleted while it waited, its records went with it; once stopped, nothing more starts.
-      if (!automation || this.stopped) return;
-      // A fire that waited for a slot starts only while its automation is on and nothing is
-      // paused; Run now still starts whatever the pause, as it does when it is pressed.
+      if (!automation || this.shutdown.signal.aborted) return;
+      // Only non-manual fires skip while paused; Run now still starts.
       const paused = !automation.enabled || this.deps.store.data.definitions.paused;
+      const settleEntry = (s: Settlement) =>
+        this.settle(entry.automationId, entry.record.id, s, entry.depth, '');
       if (paused && entry.record.source !== 'manual') {
-        const skipped: Settlement = { outcome: 'skipped', reason: 'paused' };
-        await this.settle(entry.automationId, entry.record.id, skipped, entry.depth, '');
+        await settleEntry({ outcome: 'skipped', reason: 'paused' });
         return;
       }
       if (automation.action.kind === 'consolidateMemory') {
@@ -224,7 +217,7 @@ export class Dispatcher {
         return;
       }
       if (!stillFrozen(automation, entry.frozen)) {
-        await this.settle(entry.automationId, entry.record.id, CHANGED_SINCE_FIRE, entry.depth, '');
+        await settleEntry(CHANGED_SINCE_FIRE);
         return;
       }
       let accepted: { taskId: string; runId: string };
@@ -239,11 +232,16 @@ export class Dispatcher {
           ...(entry.frozen ? { frozen: entry.frozen } : {}),
         });
       } catch (error) {
-        const failed = launchSettlement(error);
-        await this.settle(entry.automationId, entry.record.id, failed, entry.depth, '');
+        if (this.shutdown.signal.aborted) return;
+        await settleEntry(launchSettlement(error));
+        return;
+      }
+      if (!this.definition(entry.automationId)) {
+        await this.deps.manager.cancel(accepted.taskId, accepted.runId).catch(() => undefined);
         return;
       }
       await this.attach(entry, accepted);
+      if (this.shutdown.signal.aborted) return;
       this.supervisor.watch({
         automationId: entry.automationId,
         recordId: entry.record.id,
@@ -255,10 +253,7 @@ export class Dispatcher {
         timedOut: false,
       });
     } catch (error) {
-      this.deps.log.warn('An automation run could not be dispatched.', {
-        automationId: entry.automationId,
-        error: errorMessage(error),
-      });
+      this.onWarn(entry.automationId, 'An automation run could not be dispatched.')(error);
     } finally {
       this.dispatching -= 1;
       this.pump();
@@ -274,31 +269,37 @@ export class Dispatcher {
         );
         if (record) Object.assign(record, { taskId: accepted.taskId, runId: accepted.runId });
       })
-      .catch((error: unknown) => {
-        this.deps.log.warn('An automation run record could not name its task.', {
-          automationId: entry.automationId,
-          error: errorMessage(error),
-        });
-      });
+      .catch(this.onWarn(entry.automationId, 'An automation run record could not name its task.'));
   }
 
   private launchDeps(): LaunchDeps {
     const { paths, manager, launchCommand, folders, resources, computer, store } = this.deps;
-    const held = (id: string) => store.data.state.automations[id]?.computerHold !== undefined;
-    const base = { dataDir: paths.root, manager, launchCommand, folders, resources, held };
-    return computer ? { ...base, computer } : base;
+    return {
+      dataDir: paths.root,
+      manager,
+      launchCommand,
+      folders,
+      resources,
+      held: (id) => store.data.state.automations[id]?.computerHold !== undefined,
+      liveAutomation: (id) => this.definition(id),
+      paused: () => store.data.definitions.paused,
+      signal: this.shutdown.signal,
+      ...(computer ? { computer } : {}),
+    };
   }
 
   private async ended(run: WatchedRun, end: RunEnd): Promise<void> {
     const automation = this.definition(run.automationId);
     // Before the record settles: the automation counts as running until then (folder-watch.ts).
     if (automation && end.wrote.length)
-      await this.folderWatch.absorbWrites(automation, end.wrote).catch((error: unknown) => {
-        this.deps.log.warn("A run's own writes could not be kept from firing its automation.", {
-          automationId: run.automationId,
-          error: errorMessage(error),
-        });
-      });
+      await this.folderWatch
+        .absorbWrites(automation, end.wrote)
+        .catch(
+          this.onWarn(
+            run.automationId,
+            "A run's own writes could not be kept from firing its automation.",
+          ),
+        );
     const result = endedSettlement(end, automation, this.deps.computer);
     await this.settle(run.automationId, run.recordId, result, run.depth, end.answer);
   }
@@ -312,7 +313,7 @@ export class Dispatcher {
   ): Promise<void> {
     const upstream = this.definition(upstreamId);
     const { definitions } = this.deps.store.data;
-    if (!upstream || this.stopped) return;
+    if (!upstream || this.shutdown.signal.aborted) return;
     const chained = chainedTo(definitions.automations, upstream, record, answer);
     if (!chained) return;
     for (const automation of chained.followers) {
@@ -332,12 +333,13 @@ export class Dispatcher {
             depth: depth + 1,
           });
       } catch (error) {
-        this.deps.log.warn('A chained automation could not fire.', {
-          automationId: automation.id,
-          error: errorMessage(error),
-        });
+        this.onWarn(automation.id, 'A chained automation could not fire.')(error);
       }
     }
+  }
+
+  private onWarn(automationId: string, message: string): (error: unknown) => void {
+    return (error) => this.deps.log.warn(message, { automationId, error: errorMessage(error) });
   }
 
   private definition(automationId: string): Automation | undefined {
